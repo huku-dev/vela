@@ -1,0 +1,97 @@
+export type SignalColor = 'green' | 'red' | 'grey';
+export type BriefType = 'signal_change' | 'notable_update' | 'daily_digest';
+export type TradeStatus = 'open' | 'closed';
+
+export interface Asset {
+  id: string;
+  symbol: string;
+  name: string;
+  coingecko_id: string;
+  enabled: boolean;
+}
+
+export interface Signal {
+  id: string;
+  asset_id: string;
+  timestamp: string;
+  signal_color: SignalColor;
+  reason_code: string;
+  price_at_signal: number;
+  ema_9: number;
+  ema_21: number;
+  rsi_14: number;
+  sma_50_daily: number;
+  adx_4h: number;
+  created_at: string;
+}
+
+export interface Brief {
+  id: string;
+  asset_id: string | null;
+  signal_id: string | null;
+  brief_type: BriefType;
+  headline: string;
+  summary: string;
+  detail: {
+    signal_breakdown?: {
+      ema_cross?: string;
+      rsi?: string;
+      trend_filter?: string;
+      adx?: string;
+      anti_whipsaw?: string;
+    };
+    market_context?: {
+      fear_greed?: string;
+      btc_dominance?: string;
+    };
+    what_would_change?: string;
+    indicators?: {
+      ema_9: number;
+      ema_21: number;
+      rsi_14: number;
+      sma_50_daily: number;
+      adx_4h: number;
+    };
+    price_at_brief?: number;
+  } | null;
+  context: string | null;
+  created_at: string;
+}
+
+export interface PaperTrade {
+  id: string;
+  asset_id: string;
+  entry_signal_id: string;
+  exit_signal_id: string | null;
+  entry_price: number;
+  exit_price: number | null;
+  pnl_pct: number | null;
+  status: TradeStatus;
+  yellow_events: Array<{
+    timestamp: string;
+    rsi: number;
+    type: string;
+    suggested_action: string;
+  }> | null;
+  created_at: string;
+  closed_at: string | null;
+}
+
+export interface IndicatorSnapshot {
+  id: string;
+  asset_id: string;
+  timestamp: string;
+  price: number;
+  ema_9: number;
+  ema_21: number;
+  rsi_14: number;
+  sma_50_daily: number;
+  adx_4h: number;
+}
+
+// Combined view for the dashboard
+export interface AssetDashboard {
+  asset: Asset;
+  signal: Signal | null;
+  brief: Brief | null;
+}
