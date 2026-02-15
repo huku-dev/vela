@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
-import { Agentation } from 'agentation';
 import theme from './theme';
 import Layout from './components/Layout';
 
@@ -35,7 +34,6 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
-      {import.meta.env.DEV && <Agentation position="bottom-right" />}
     </ThemeProvider>
   );
 }

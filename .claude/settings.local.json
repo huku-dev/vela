@@ -12,7 +12,9 @@
       "Bash(python3:*)",
       "Bash(pip3 install:*)",
       "Bash(echo $ANTHROPIC_API_KEY)",
-      "WebFetch(domain:agentation.dev)"
+      "WebFetch(domain:agentation.dev)",
+      "Bash(curl:*)",
+      "Bash(npx agentation-mcp doctor)"
     ]
   }
 }
