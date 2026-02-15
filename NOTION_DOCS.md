@@ -130,11 +130,28 @@ git commit -m "[skip-notion] WIP: testing something"
 
 ### Daily Workflow
 
-1. **Open Notion** - Your Vela page is your central reference
-2. **Check Changelog** - See what changed recently
-3. **Review Tasks** - Move cards through your kanban board
-4. **Code with Claude** - Make changes, commit normally
-5. **Notion auto-updates** - Your changelog populates automatically
+**Starting a Session:**
+```bash
+vela-start
+```
+This shows you:
+- Git status
+- Recent changes (last 7 days)
+- Tasks in progress
+- Next tasks ready to work on
+
+**During the Session:**
+- Code with Claude as usual
+- Git commits auto-update Notion Changelog
+
+**Ending the Session:**
+```bash
+vela-end
+```
+This prompts you to:
+- Log important decisions
+- Add follow-up tasks
+- Link everything to the Claude conversation URL
 
 ### When Making Decisions
 
@@ -151,11 +168,17 @@ This prevents you forgetting why you made choices 6 months later!
 
 ### End of Coding Session
 
-After working with Claude, you can optionally ask:
+At the end of each session, run the automation script:
 
-> "Summarize what we changed today and update the Notion Decisions if we made any important choices."
+```bash
+vela-end
+```
 
-Claude will help you capture anything the git hook might have missed (like strategic decisions vs. code changes).
+This will:
+- Show recent commits (Changelog already auto-updated)
+- Prompt you to log important decisions with conversation links
+- Prompt you to add follow-up tasks with conversation links
+- Everything is dated automatically!
 
 ### Tracking Design Changes
 
