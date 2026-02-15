@@ -2,9 +2,9 @@ import Chip from '@mui/material/Chip';
 import type { SignalColor } from '../types';
 
 const colorMap: Record<SignalColor, { bg: string; text: string; label: string }> = {
-  green: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e', label: 'Buy' },
-  red: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444', label: 'Exit' },
-  grey: { bg: 'rgba(100,116,139,0.15)', text: '#94a3b8', label: 'Wait' },
+  green: { bg: '#DCFCE7', text: '#15803D', label: 'BUY' },
+  red: { bg: '#FEE2E2', text: '#DC2626', label: 'EXIT' },
+  grey: { bg: '#DBEAFE', text: '#2563EB', label: 'WAIT' },
 };
 
 interface SignalChipProps {
@@ -14,7 +14,6 @@ interface SignalChipProps {
 
 export default function SignalChip({ color, size = 'medium' }: SignalChipProps) {
   const { bg, text, label } = colorMap[color];
-
   return (
     <Chip
       label={label}
@@ -22,12 +21,15 @@ export default function SignalChip({ color, size = 'medium' }: SignalChipProps) 
       sx={{
         backgroundColor: bg,
         color: text,
-        fontWeight: 700,
-        fontSize: size === 'small' ? '0.7rem' : '0.8rem',
-        letterSpacing: '0.08em',
+        fontWeight: 800,
+        fontSize: size === 'small' ? '0.65rem' : '0.75rem',
+        letterSpacing: '0.1em',
         textTransform: 'uppercase',
+        border: '2px solid #1A1A1A',
         borderRadius: '8px',
-        px: 0.5,
+        boxShadow: '2px 2px 0px #1A1A1A',
+        height: size === 'small' ? 26 : 32,
+        px: 0.25,
       }}
     />
   );

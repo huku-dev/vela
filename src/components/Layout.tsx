@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
+import CircularProgress from '@mui/material/CircularProgress';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
-import HistoryIcon from '@mui/icons-material/History';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const navItems = [
   { label: 'Signals', icon: <ShowChartIcon />, path: '/' },
-  { label: 'Track Record', icon: <HistoryIcon />, path: '/track-record' },
+  { label: 'Your Trades', icon: <BarChartIcon />, path: '/trades' },
 ];
 
 export default function Layout() {
@@ -26,11 +27,10 @@ export default function Layout() {
     setValue(getNavValue());
   }, [location.pathname]);
 
-  // Hide bottom nav on asset detail pages
   const showNav = !location.pathname.startsWith('/asset/');
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: 'background.default' }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#FEF9EF' }}>
       <Outlet />
       {showNav && (
         <BottomNavigation
@@ -53,8 +53,13 @@ export default function Layout() {
               label={item.label}
               icon={item.icon}
               sx={{
-                color: 'text.secondary',
-                '&.Mui-selected': { color: 'primary.main' },
+                color: '#9CA3AF',
+                '&.Mui-selected': { color: '#1A1A1A', fontWeight: 700 },
+                '& .MuiBottomNavigationAction-label': {
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                },
               }}
             />
           ))}

@@ -33,17 +33,8 @@ export interface Brief {
   headline: string;
   summary: string;
   detail: {
-    signal_breakdown?: {
-      ema_cross?: string;
-      rsi?: string;
-      trend_filter?: string;
-      adx?: string;
-      anti_whipsaw?: string;
-    };
-    market_context?: {
-      fear_greed?: string;
-      btc_dominance?: string;
-    };
+    signal_breakdown?: Record<string, string>;
+    market_context?: Record<string, string>;
     what_would_change?: string;
     indicators?: {
       ema_9: number;
@@ -77,21 +68,14 @@ export interface PaperTrade {
   closed_at: string | null;
 }
 
-export interface IndicatorSnapshot {
-  id: string;
-  asset_id: string;
-  timestamp: string;
+export interface PriceData {
   price: number;
-  ema_9: number;
-  ema_21: number;
-  rsi_14: number;
-  sma_50_daily: number;
-  adx_4h: number;
+  change24h: number;
 }
 
-// Combined view for the dashboard
 export interface AssetDashboard {
   asset: Asset;
   signal: Signal | null;
   brief: Brief | null;
+  priceData: PriceData | null;
 }

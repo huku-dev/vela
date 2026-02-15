@@ -1,0 +1,174 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import type { Asset, Signal, Brief, PaperTrade, AssetDashboard, PriceData } from '../types';
+
+const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
+const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+const STALE_THRESHOLD = 60 * 1000; // 1 minute — skip refetch if data is younger
+
+export const DEFAULT_POSITION_SIZE = 1000;
+
+// ── Module-level cache so data persists across navigations ──
+let cachedDashboard: AssetDashboard[] | null = null;
+let cachedDigest: Brief | null = null;
+let lastFetchTime = 0;
+
+async function fetchLivePrices(ids: string[]): Promise<Record<string, PriceData>> {
+  try {
+    const url = `${COINGECKO_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`;
+    const res = await fetch(url);
+    if (!res.ok) return {};
+    const data = await res.json();
+    const result: Record<string, PriceData> = {};
+    for (const id of ids) {
+      if (data[id]) {
+        result[id] = { price: data[id].usd, change24h: data[id].usd_24h_change ?? 0 };
+      }
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+export function useDashboard() {
+  const [data, setData] = useState<AssetDashboard[]>(cachedDashboard || []);
+  const [digest, setDigest] = useState<Brief | null>(cachedDigest);
+  const [loading, setLoading] = useState(!cachedDashboard);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    lastFetchTime ? new Date(lastFetchTime) : null
+  );
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = useCallback(async (force = false) => {
+    // Skip if data is fresh and not forced
+    if (!force && cachedDashboard && Date.now() - lastFetchTime < STALE_THRESHOLD) {
+      setData(cachedDashboard);
+      setDigest(cachedDigest);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const [assetsRes, signalsRes, briefsRes, digestsRes] = await Promise.all([
+        supabase.from('assets').select('*').eq('enabled', true).order('id'),
+        supabase.from('latest_signals').select('*'),
+        supabase.from('latest_briefs').select('*'),
+        supabase.from('latest_digest').select('*').limit(1),
+      ]);
+
+      if (assetsRes.error) throw assetsRes.error;
+
+      const assets = assetsRes.data || [];
+      const signals = signalsRes.data || [];
+      const briefs = briefsRes.data || [];
+
+      const coingeckoIds = assets.map((a: Asset) => a.coingecko_id);
+      const livePrices = await fetchLivePrices(coingeckoIds);
+
+      const dashboard: AssetDashboard[] = assets.map((asset: Asset) => ({
+        asset,
+        signal: signals.find((s: Signal) => s.asset_id === asset.id) || null,
+        brief: briefs.find((b: Brief) => b.asset_id === asset.id) || null,
+        priceData: livePrices[asset.coingecko_id] || null,
+      }));
+
+      // Update module cache
+      cachedDashboard = dashboard;
+      cachedDigest = digestsRes.data?.[0] || null;
+      lastFetchTime = Date.now();
+
+      setData(dashboard);
+      setDigest(cachedDigest);
+      setLastUpdated(new Date());
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    intervalRef.current = setInterval(() => fetchData(true), REFRESH_INTERVAL);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchData]);
+
+  return { data, digest, loading, error, lastUpdated, refresh: () => fetchData(true) };
+}
+
+export function useAssetDetail(assetId: string) {
+  const [asset, setAsset] = useState<Asset | null>(null);
+  const [signal, setSignal] = useState<Signal | null>(null);
+  const [brief, setBrief] = useState<Brief | null>(null);
+  const [recentBriefs, setRecentBriefs] = useState<Brief[]>([]);
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to hydrate from cache instantly
+    if (cachedDashboard) {
+      const cached = cachedDashboard.find((d) => d.asset.id === assetId);
+      if (cached) {
+        setAsset(cached.asset);
+        setSignal(cached.signal);
+        setBrief(cached.brief);
+        setPriceData(cached.priceData);
+      }
+    }
+
+    const fetchDetail = async () => {
+      const [assetRes, signalRes, briefRes, briefsRes] = await Promise.all([
+        supabase.from('assets').select('*').eq('id', assetId).single(),
+        supabase.from('signals').select('*').eq('asset_id', assetId).order('timestamp', { ascending: false }).limit(1),
+        supabase.from('briefs').select('*').eq('asset_id', assetId).neq('brief_type', 'daily_digest').order('created_at', { ascending: false }).limit(1),
+        supabase.from('briefs').select('*').eq('asset_id', assetId).neq('brief_type', 'daily_digest').order('created_at', { ascending: false }).limit(10),
+      ]);
+
+      const assetData = assetRes.data;
+      setAsset(assetData);
+      setSignal(signalRes.data?.[0] || null);
+      setBrief(briefRes.data?.[0] || null);
+      setRecentBriefs(briefsRes.data || []);
+
+      if (assetData?.coingecko_id) {
+        const prices = await fetchLivePrices([assetData.coingecko_id]);
+        setPriceData(prices[assetData.coingecko_id] || null);
+      }
+
+      setLoading(false);
+    };
+
+    fetchDetail();
+  }, [assetId]);
+
+  return { asset, signal, brief, recentBriefs, priceData, loading };
+}
+
+export function useTrackRecord() {
+  const [trades, setTrades] = useState<(PaperTrade & { asset_symbol?: string })[]>([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      const [tradesRes, statsRes] = await Promise.all([
+        supabase.from('paper_trades').select('*, assets(symbol)').order('created_at', { ascending: false }).limit(50),
+        supabase.from('paper_trade_stats').select('*'),
+      ]);
+
+      setTrades(
+        (tradesRes.data || []).map((t: any) => ({ ...t, asset_symbol: t.assets?.symbol }))
+      );
+      setStats(statsRes.data || []);
+      setLoading(false);
+    };
+    fetchAll();
+  }, []);
+
+  return { trades, stats, loading };
+}
