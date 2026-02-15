@@ -1,0 +1,741 @@
+/**
+ * VELA DESIGN SYSTEM v2.0
+ * Complete design system with semantic tokens, accessibility, and theming support
+ *
+ * Structure:
+ * 1. Font imports
+ * 2. Primitive tokens (raw values)
+ * 3. Semantic tokens (contextual aliases)
+ * 4. Component styles
+ * 5. Utilities
+ * 6. Responsive & theme variants
+ */
+
+/* ============================================================================
+   1. FONT IMPORTS
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+/* ============================================================================
+   2. PRIMITIVE TOKENS
+   ============================================================================ */
+
+:root {
+  /* Color primitives - Foundation */
+  --white: #ffffff;
+  --black: #000000;
+  --cream-base: #f5f1e8;
+
+  /* Gray scale - Enhanced with darker option for better contrast */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #94a3b8;
+  --gray-500: #6b7280;
+  --gray-600: #475569;
+  --gray-700: #374151;  /* NEW: Better WCAG contrast */
+  --gray-800: #1f2937;
+  --gray-900: #0f172a;
+
+  /* Pastels - Card backgrounds */
+  --lavender-50: #f5f3ff;
+  --lavender-100: #ede9fe;
+  --mint-50: #f0fdf4;
+  --mint-100: #dcfce7;
+  --peach-50: #fff7ed;
+  --peach-100: #ffedd5;
+  --sky-50: #f0f9ff;
+  --sky-100: #e0f2fe;
+
+  /* Brand colors */
+  --vela-purple: #8b5cf6;
+  --vela-purple-dark: #7c3aed;
+  --vela-purple-light: #a78bfa;
+
+  /* Action colors */
+  --blue-primary: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-light: #dbeafe;
+
+  /* Status colors - Trading signals */
+  --green-primary: #10b981;
+  --green-dark: #059669;
+  --green-light: #d1fae5;
+  --green-bg: #ecfdf5;
+
+  --red-primary: #ef4444;
+  --red-dark: #dc2626;
+  --red-light: #fecaca;
+  --red-bg: #fef2f2;
+
+  --amber-primary: #f59e0b;
+  --amber-dark: #d97706;
+  --amber-light: #fde68a;
+  --amber-bg: #fffbeb;
+
+  /* Data visualization palette */
+  --data-1: #8b5cf6;  /* Purple */
+  --data-2: #3b82f6;  /* Blue - Trend strength */
+  --data-3: #10b981;  /* Green - Profitability */
+  --data-4: #f59e0b;  /* Amber - Volatility */
+  --data-5: #ef4444;  /* Red - Risk/drawdown */
+  --data-6: #ec4899;  /* Pink - Sentiment */
+}
+
+/* ============================================================================
+   2. SEMANTIC TOKENS
+   Contextual aliases for theming and accessibility
+   ============================================================================ */
+
+:root {
+  /* Text colors - WCAG AA compliant */
+  --color-text-primary: var(--gray-900);      /* 4.5:1+ on cream */
+  --color-text-secondary: var(--gray-700);    /* Enhanced contrast */
+  --color-text-muted: var(--gray-600);
+  --color-text-disabled: var(--gray-400);
+  --color-text-on-accent: var(--white);
+  --color-text-inverse: var(--white);
+
+  /* Background colors */
+  --color-bg-page: var(--cream-base);
+  --color-bg-surface: var(--white);
+  --color-bg-surface-subtle: var(--lavender-50);
+  --color-bg-elevated: var(--lavender-100);
+  --color-bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Border colors */
+  --color-border-default: var(--black);
+  --color-border-subtle: var(--gray-400);
+  --color-border-muted: var(--gray-200);
+
+  /* Brand & Actions */
+  --color-brand: var(--vela-purple);
+  --color-brand-hover: var(--vela-purple-dark);
+  --color-brand-light: var(--vela-purple-light);
+
+  --color-action-primary: var(--blue-primary);
+  --color-action-primary-hover: var(--blue-hover);
+  --color-action-primary-bg: var(--blue-light);
+
+  /* Status colors - Trading signals */
+  --color-status-buy-bg: var(--green-bg);
+  --color-status-buy-text: var(--green-dark);
+  --color-status-buy-border: var(--green-primary);
+
+  --color-status-sell-bg: var(--red-bg);
+  --color-status-sell-text: var(--red-dark);
+  --color-status-sell-border: var(--red-primary);
+
+  --color-status-wait-bg: var(--amber-bg);
+  --color-status-wait-text: var(--amber-dark);
+  --color-status-wait-border: var(--amber-primary);
+
+  --color-status-neutral-bg: var(--gray-50);
+  --color-status-neutral-text: var(--gray-700);
+  --color-status-neutral-border: var(--gray-400);
+
+  /* State colors */
+  --color-success: var(--green-primary);
+  --color-warning: var(--amber-primary);
+  --color-error: var(--red-primary);
+  --color-info: var(--blue-primary);
+
+  /* Typography scale */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+
+  /* Font weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  /* Line heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-7: 1.75rem;   /* 28px - NEW */
+  --space-8: 2rem;      /* 32px */
+  --space-9: 2.25rem;   /* 36px - NEW */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+  --space-20: 5rem;     /* 80px */
+
+  /* Border widths */
+  --border-thin: 1px;
+  --border-medium: 2px;
+  --border-thick: 3px;
+  --border-heavy: 4px;
+
+  /* Border radius */
+  --radius-sm: 0.5rem;   /* 8px */
+  --radius-md: 0.75rem;  /* 12px */
+  --radius-lg: 1rem;     /* 16px */
+  --radius-xl: 1.5rem;   /* 24px */
+  --radius-full: 9999px;
+
+  /* Shadows - Neobrutalist style */
+  --shadow-xs: 2px 2px 0 var(--black);
+  --shadow-sm: 3px 3px 0 var(--black);
+  --shadow-md: 4px 4px 0 var(--black);
+  --shadow-lg: 6px 6px 0 var(--black);
+  --shadow-xl: 8px 8px 0 var(--black);
+
+  /* Motion tokens */
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 300ms;
+  --motion-ease-out: cubic-bezier(0.2, 0.85, 0.4, 1);
+  --motion-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-notification: 800;
+}
+
+/* ============================================================================
+   3. COMPOSITE TYPE TOKENS
+   Pre-configured type styles for consistency
+   ============================================================================ */
+
+:root {
+  /* Display type - Space Grotesk */
+  --type-display-xl-font: 'Space Grotesk', system-ui, sans-serif;
+  --type-display-xl-size: var(--text-4xl);
+  --type-display-xl-weight: var(--weight-bold);
+  --type-display-xl-line-height: var(--leading-tight);
+  --type-display-xl-tracking: var(--tracking-tight);
+
+  --type-display-lg-font: 'Space Grotesk', system-ui, sans-serif;
+  --type-display-lg-size: var(--text-3xl);
+  --type-display-lg-weight: var(--weight-bold);
+  --type-display-lg-line-height: var(--leading-tight);
+
+  --type-heading-xl-font: 'Space Grotesk', system-ui, sans-serif;
+  --type-heading-xl-size: var(--text-2xl);
+  --type-heading-xl-weight: var(--weight-bold);
+  --type-heading-xl-line-height: var(--leading-snug);
+
+  --type-heading-lg-font: 'Space Grotesk', system-ui, sans-serif;
+  --type-heading-lg-size: var(--text-xl);
+  --type-heading-lg-weight: var(--weight-semibold);
+  --type-heading-lg-line-height: var(--leading-snug);
+
+  /* Body type - Inter */
+  --type-body-lg-font: 'Inter', system-ui, sans-serif;
+  --type-body-lg-size: var(--text-lg);
+  --type-body-lg-weight: var(--weight-normal);
+  --type-body-lg-line-height: var(--leading-relaxed);
+
+  --type-body-base-font: 'Inter', system-ui, sans-serif;
+  --type-body-base-size: var(--text-base);
+  --type-body-base-weight: var(--weight-normal);
+  --type-body-base-line-height: var(--leading-normal);
+
+  --type-body-sm-font: 'Inter', system-ui, sans-serif;
+  --type-body-sm-size: var(--text-sm);
+  --type-body-sm-weight: var(--weight-normal);
+  --type-body-sm-line-height: var(--leading-normal);
+
+  /* Label type - Inter */
+  --type-label-lg-font: 'Inter', system-ui, sans-serif;
+  --type-label-lg-size: var(--text-base);
+  --type-label-lg-weight: var(--weight-semibold);
+  --type-label-lg-line-height: var(--leading-normal);
+  --type-label-lg-tracking: var(--tracking-wide);
+
+  --type-label-base-font: 'Inter', system-ui, sans-serif;
+  --type-label-base-size: var(--text-sm);
+  --type-label-base-weight: var(--weight-semibold);
+  --type-label-base-line-height: var(--leading-normal);
+  --type-label-base-tracking: var(--tracking-wide);
+
+  --type-label-sm-font: 'Inter', system-ui, sans-serif;
+  --type-label-sm-size: var(--text-xs);
+  --type-label-sm-weight: var(--weight-semibold);
+  --type-label-sm-line-height: var(--leading-normal);
+  --type-label-sm-tracking: var(--tracking-wide);
+
+  /* Mono type - JetBrains Mono (prices, numbers) */
+  --type-mono-lg-font: 'JetBrains Mono', monospace;
+  --type-mono-lg-size: var(--text-xl);
+  --type-mono-lg-weight: var(--weight-bold);
+  --type-mono-lg-line-height: var(--leading-tight);
+
+  --type-mono-base-font: 'JetBrains Mono', monospace;
+  --type-mono-base-size: var(--text-base);
+  --type-mono-base-weight: var(--weight-semibold);
+  --type-mono-base-line-height: var(--leading-snug);
+}
+
+/* ============================================================================
+   4. BASE STYLES
+   ============================================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--type-body-base-font);
+  font-size: var(--type-body-base-size);
+  font-weight: var(--type-body-base-weight);
+  line-height: var(--type-body-base-line-height);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================================
+   5. COMPONENT STYLES
+   ============================================================================ */
+
+/* Buttons */
+.vela-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--type-label-base-font);
+  font-size: var(--type-label-base-size);
+  font-weight: var(--type-label-base-weight);
+  letter-spacing: var(--type-label-base-tracking);
+  text-decoration: none;
+  border: var(--border-thick) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out),
+    background var(--motion-fast) var(--motion-ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vela-btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-md);
+}
+
+.vela-btn:active {
+  transform: translate(0, 0);
+  box-shadow: var(--shadow-xs);
+}
+
+.vela-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Button variants */
+.vela-btn-primary {
+  background: var(--color-action-primary);
+  color: var(--color-text-on-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.vela-btn-primary:hover {
+  background: var(--color-action-primary-hover);
+}
+
+.vela-btn-brand {
+  background: var(--color-brand);
+  color: var(--color-text-on-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.vela-btn-brand:hover {
+  background: var(--color-brand-hover);
+}
+
+.vela-btn-secondary {
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.vela-btn-ghost {
+  background: transparent;
+  border-color: var(--color-border-default);
+  color: var(--color-text-primary);
+}
+
+/* Status buttons */
+.vela-btn-buy {
+  background: var(--color-status-buy-bg);
+  color: var(--color-status-buy-text);
+  border-color: var(--color-status-buy-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.vela-btn-sell {
+  background: var(--color-status-sell-bg);
+  color: var(--color-status-sell-text);
+  border-color: var(--color-status-sell-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.vela-btn-wait {
+  background: var(--color-status-wait-bg);
+  color: var(--color-status-wait-text);
+  border-color: var(--color-status-wait-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Button sizes */
+.vela-btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.vela-btn-lg {
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--text-lg);
+}
+
+/* Cards */
+.vela-card {
+  background: var(--color-bg-surface);
+  border: var(--border-thick) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out);
+}
+
+.vela-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Card variants */
+.vela-card-lavender {
+  background: var(--lavender-50);
+}
+
+.vela-card-mint {
+  background: var(--mint-50);
+}
+
+.vela-card-peach {
+  background: var(--peach-50);
+}
+
+.vela-card-sky {
+  background: var(--sky-50);
+}
+
+.vela-card-elevated {
+  background: var(--color-bg-elevated);
+}
+
+.vela-card-compact {
+  padding: var(--space-4);
+}
+
+/* Nested card fix for visual hierarchy */
+.vela-card .vela-card {
+  box-shadow: var(--shadow-xs);
+  border-width: var(--border-medium);
+}
+
+/* Badges */
+.vela-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--type-label-sm-font);
+  font-size: var(--type-label-sm-size);
+  font-weight: var(--type-label-sm-weight);
+  letter-spacing: var(--type-label-sm-tracking);
+  text-transform: uppercase;
+  border: var(--border-medium) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+}
+
+/* Badge variants - Status */
+.vela-badge-buy {
+  background: var(--color-status-buy-bg);
+  color: var(--color-status-buy-text);
+  border-color: var(--color-status-buy-border);
+}
+
+.vela-badge-sell {
+  background: var(--color-status-sell-bg);
+  color: var(--color-status-sell-text);
+  border-color: var(--color-status-sell-border);
+}
+
+.vela-badge-wait {
+  background: var(--color-status-wait-bg);
+  color: var(--color-status-wait-text);
+  border-color: var(--color-status-wait-border);
+}
+
+.vela-badge-neutral {
+  background: var(--color-status-neutral-bg);
+  color: var(--color-status-neutral-text);
+  border-color: var(--color-status-neutral-border);
+}
+
+/* Badge variants - Price change */
+.vela-badge-up {
+  background: var(--green-light);
+  color: var(--green-dark);
+  border-color: var(--green-primary);
+}
+
+.vela-badge-down {
+  background: var(--red-light);
+  color: var(--red-dark);
+  border-color: var(--red-primary);
+}
+
+/* Inputs */
+.vela-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--type-body-base-font);
+  font-size: var(--type-body-base-size);
+  color: var(--color-text-primary);
+  background: var(--color-bg-surface);
+  border: var(--border-medium) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  transition: border-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.vela-input:focus {
+  outline: none;
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 3px var(--blue-light);
+}
+
+.vela-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.vela-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--gray-50);
+}
+
+.vela-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.vela-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23000' d='M4 6l4 4 4-4z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-10);
+}
+
+/* ============================================================================
+   6. UTILITY CLASSES
+   ============================================================================ */
+
+/* Typography utilities */
+.vela-heading-xl {
+  font-family: var(--type-heading-xl-font);
+  font-size: var(--type-heading-xl-size);
+  font-weight: var(--type-heading-xl-weight);
+  line-height: var(--type-heading-xl-line-height);
+}
+
+.vela-heading-lg {
+  font-family: var(--type-heading-lg-font);
+  font-size: var(--type-heading-lg-size);
+  font-weight: var(--type-heading-lg-weight);
+  line-height: var(--type-heading-lg-line-height);
+}
+
+.vela-body-lg {
+  font-family: var(--type-body-lg-font);
+  font-size: var(--type-body-lg-size);
+  font-weight: var(--type-body-lg-weight);
+  line-height: var(--type-body-lg-line-height);
+}
+
+.vela-body-sm {
+  font-family: var(--type-body-sm-font);
+  font-size: var(--type-body-sm-size);
+  font-weight: var(--type-body-sm-weight);
+  line-height: var(--type-body-sm-line-height);
+}
+
+.vela-label {
+  font-family: var(--type-label-base-font);
+  font-size: var(--type-label-base-size);
+  font-weight: var(--type-label-base-weight);
+  line-height: var(--type-label-base-line-height);
+  letter-spacing: var(--type-label-base-tracking);
+}
+
+.vela-mono {
+  font-family: var(--type-mono-base-font);
+  font-size: var(--type-mono-base-size);
+  font-weight: var(--type-mono-base-weight);
+  line-height: var(--type-mono-base-line-height);
+}
+
+.vela-price {
+  font-family: var(--type-mono-lg-font);
+  font-size: var(--type-mono-lg-size);
+  font-weight: var(--type-mono-lg-weight);
+  line-height: var(--type-mono-lg-line-height);
+}
+
+/* Text colors */
+.vela-text-primary { color: var(--color-text-primary); }
+.vela-text-secondary { color: var(--color-text-secondary); }
+.vela-text-muted { color: var(--color-text-muted); }
+.vela-text-brand { color: var(--color-brand); }
+
+/* Layout utilities */
+.vela-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.vela-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.vela-stack-sm { gap: var(--space-2); }
+.vela-stack-md { gap: var(--space-4); }
+.vela-stack-lg { gap: var(--space-6); }
+.vela-stack-xl { gap: var(--space-8); }
+
+.vela-row {
+  display: flex;
+  align-items: center;
+}
+
+.vela-row-sm { gap: var(--space-2); }
+.vela-row-md { gap: var(--space-4); }
+.vela-row-lg { gap: var(--space-6); }
+
+.vela-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.vela-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.vela-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.vela-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 768px) {
+  .vela-grid-2,
+  .vela-grid-3,
+  .vela-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   7. DARK MODE SUPPORT
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Remap semantic tokens for dark mode */
+    --color-bg-page: #020617;
+    --color-bg-surface: #0f172a;
+    --color-bg-surface-subtle: #1e293b;
+    --color-bg-elevated: #334155;
+
+    --color-text-primary: #f9fafb;
+    --color-text-secondary: #e5e7eb;
+    --color-text-muted: #9ca3af;
+
+    --color-border-default: #334155;
+    --color-border-subtle: #475569;
+
+    /* Adjust status colors for dark backgrounds */
+    --color-status-buy-bg: #064e3b;
+    --color-status-buy-text: #bbf7d0;
+
+    --color-status-sell-bg: #7f1d1d;
+    --color-status-sell-text: #fecaca;
+
+    --color-status-wait-bg: #78350f;
+    --color-status-wait-text: #fde68a;
+
+    /* Keep shadows but with lighter color */
+    --shadow-xs: 2px 2px 0 #334155;
+    --shadow-sm: 3px 3px 0 #334155;
+    --shadow-md: 4px 4px 0 #334155;
+    --shadow-lg: 6px 6px 0 #334155;
+  }
+}
+
+/* ============================================================================
+   8. HIGH CONTRAST MODE
+   ============================================================================ */
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-text-primary: #000000;
+    --color-text-secondary: #1a1a1a;
+    --color-border-default: #000000;
+    --border-thick: 4px;
+  }
+}
+
+/* ============================================================================
+   9. MOTION PREFERENCES
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

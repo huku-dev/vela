@@ -14,7 +14,9 @@
       "Bash(echo $ANTHROPIC_API_KEY)",
       "WebFetch(domain:agentation.dev)",
       "Bash(curl:*)",
-      "Bash(npx agentation-mcp doctor)"
+      "Bash(npx agentation-mcp doctor)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(open:*)"
     ]
   }
 }
