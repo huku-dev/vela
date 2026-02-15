@@ -11,7 +11,8 @@
       "Bash(chmod:*)",
       "Bash(python3:*)",
       "Bash(pip3 install:*)",
-      "Bash(echo $ANTHROPIC_API_KEY)"
+      "Bash(echo $ANTHROPIC_API_KEY)",
+      "WebFetch(domain:agentation.dev)"
     ]
   }
 }
