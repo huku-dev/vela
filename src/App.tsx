@@ -35,7 +35,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
-      {import.meta.env.DEV && <Agentation />}
+      {import.meta.env.DEV && <Agentation position="bottom-right" />}
     </ThemeProvider>
   );
 }
