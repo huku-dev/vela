@@ -1,0 +1,69 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Security check: Look for hardcoded API keys
+echo "🔐 Checking for hardcoded secrets..."
+if grep -r "ntn_" src/ 2>/dev/null; then
+  echo "❌ ERROR: Found Notion token in source code!"
+  echo "   Remove hardcoded secrets and use environment variables."
+  exit 1
+fi
+
+if grep -r "sk-" src/ 2>/dev/null; then
+  echo "❌ ERROR: Found API key in source code!"
+  echo "   Remove hardcoded secrets and use environment variables."
+  exit 1
+fi
+
+if grep -r "eyJhbGciOiJ" src/ 2>/dev/null; then
+  echo "❌ ERROR: Found JWT token in source code!"
+  echo "   Remove hardcoded secrets and use environment variables."
+  exit 1
+fi
+
+echo "✅ No hardcoded secrets found"
+
+# 2. TypeScript type checking
+echo "🔧 Running TypeScript type check..."
+npm run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ ERROR: TypeScript type check failed!"
+  echo "   Fix type errors before committing."
+  exit 1
+fi
+echo "✅ TypeScript check passed"
+
+# 3. Linting
+echo "🧹 Running ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ ERROR: ESLint found issues!"
+  echo "   Fix linting errors before committing."
+  exit 1
+fi
+echo "✅ Linting passed"
+
+# 4. Format check
+echo "💅 Checking code formatting..."
+npm run format -- --check
+if [ $? -ne 0 ]; then
+  echo "⚠️  WARNING: Code is not formatted. Auto-formatting..."
+  npm run format
+  git add .
+fi
+echo "✅ Formatting check passed"
+
+# 5. Run tests
+echo "🧪 Running tests..."
+npm run test -- --run
+if [ $? -ne 0 ]; then
+  echo "❌ ERROR: Tests failed!"
+  echo "   Fix failing tests before committing."
+  exit 1
+fi
+echo "✅ Tests passed"
+
+echo ""
+echo "✨ All pre-commit checks passed! Ready to commit."
