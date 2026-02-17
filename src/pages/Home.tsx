@@ -13,7 +13,16 @@ export default function Home() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', pt: 10, flexDirection: 'column', gap: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          pt: 10,
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
         <CircularProgress size={28} sx={{ color: '#1A1A1A' }} />
         <Typography sx={{ fontSize: '0.8rem', color: '#6B7280' }}>Loading signals...</Typography>
       </Box>
@@ -38,7 +47,8 @@ export default function Home() {
         <Typography variant="h4">Vela</Typography>
         {lastUpdated && (
           <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', mt: 0.5 }}>
-            Updates every 15 mins · {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            Updates every 15 mins ·{' '}
+            {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
           </Typography>
         )}
       </Box>
@@ -119,7 +129,7 @@ export default function Home() {
         <EmptyState type="no-signals" />
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {data.map((item) => (
+          {data.map(item => (
             <SignalCard key={item.asset.id} data={item} />
           ))}
         </Box>

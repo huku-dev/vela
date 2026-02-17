@@ -43,7 +43,8 @@ export function getCoinIcon(coingeckoId: string): string {
     ethereum: 'https://coin-images.coingecko.com/coins/images/279/small/ethereum.png',
     hyperliquid: 'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
     hype: 'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
-    'hyperliquid-hype': 'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
+    'hyperliquid-hype':
+      'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
   };
 
   const iconUrl = icons[coingeckoId] || '';
@@ -58,7 +59,8 @@ export function getCoinIcon(coingeckoId: string): string {
 export function formatPrice(price: number | null | undefined): string {
   if (price == null) return '—';
   if (price >= 1000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  if (price >= 1) return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (price >= 1)
+    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `$${price.toFixed(4)}`;
 }
 

@@ -52,7 +52,7 @@ export default function SignalCard({ data }: SignalCardProps) {
                   width={36}
                   height={36}
                   style={{ objectFit: 'cover', borderRadius: '50%' }}
-                  onError={(e) => {
+                  onError={e => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
@@ -65,7 +65,9 @@ export default function SignalCard({ data }: SignalCardProps) {
 
             {/* Name */}
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#1A1A1A', lineHeight: 1.2 }}>
+              <Typography
+                sx={{ fontWeight: 700, fontSize: '1rem', color: '#1A1A1A', lineHeight: 1.2 }}
+              >
                 {asset.symbol}
               </Typography>
               <Typography sx={{ fontSize: '0.75rem', color: '#6B7280', lineHeight: 1.3 }}>
@@ -87,7 +89,15 @@ export default function SignalCard({ data }: SignalCardProps) {
                 {formatPrice(price)}
               </Typography>
               {priceData?.change24h != null && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end', mt: 0.25 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    justifyContent: 'flex-end',
+                    mt: 0.25,
+                  }}
+                >
                   <PriceArrow change24h={priceData.change24h} />
                   <Typography
                     sx={{
@@ -110,7 +120,12 @@ export default function SignalCard({ data }: SignalCardProps) {
             {/* Chevron */}
             <ChevronRightIcon
               className="chevron"
-              sx={{ color: '#9CA3AF', fontSize: '1.2rem', transition: 'transform 0.15s ease', flexShrink: 0 }}
+              sx={{
+                color: '#9CA3AF',
+                fontSize: '1.2rem',
+                transition: 'transform 0.15s ease',
+                flexShrink: 0,
+              }}
             />
           </Box>
 

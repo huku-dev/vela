@@ -23,10 +23,34 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
       <svg width="140" height="80" viewBox="0 0 140 80">
         {/* Arc segments - scaled 1.4x, thicker strokes */}
-        <path d="M 14 70 A 56 56 0 0 1 42 25.2" stroke="#EF4444" strokeWidth="11" fill="none" strokeLinecap="round" />
-        <path d="M 42 25.2 A 56 56 0 0 1 70 14" stroke="#F59E0B" strokeWidth="11" fill="none" strokeLinecap="round" />
-        <path d="M 70 14 A 56 56 0 0 1 98 25.2" stroke="#EAB308" strokeWidth="11" fill="none" strokeLinecap="round" />
-        <path d="M 98 25.2 A 56 56 0 0 1 126 70" stroke="#22C55E" strokeWidth="11" fill="none" strokeLinecap="round" />
+        <path
+          d="M 14 70 A 56 56 0 0 1 42 25.2"
+          stroke="#EF4444"
+          strokeWidth="11"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 42 25.2 A 56 56 0 0 1 70 14"
+          stroke="#F59E0B"
+          strokeWidth="11"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 70 14 A 56 56 0 0 1 98 25.2"
+          stroke="#EAB308"
+          strokeWidth="11"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <path
+          d="M 98 25.2 A 56 56 0 0 1 126 70"
+          stroke="#22C55E"
+          strokeWidth="11"
+          fill="none"
+          strokeLinecap="round"
+        />
 
         {/* Needle - bolder */}
         <line
