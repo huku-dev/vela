@@ -59,9 +59,10 @@ export default function AssetDetail() {
   // Extract fear/greed from market context string if available
   const fearGreedMatch = detail?.market_context?.fear_greed?.match(/(\d+)/);
   const fearGreedValue = fearGreedMatch ? parseInt(fearGreedMatch[1], 10) : null;
-  const fearGreedLabel = detail?.market_context?.fear_greed?.match(
-    /extreme fear|fear|neutral|greed|extreme greed/i
-  )?.[0] || '';
+  const fearGreedLabel =
+    detail?.market_context?.fear_greed?.match(
+      /extreme fear|fear|neutral|greed|extreme greed/i
+    )?.[0] || '';
 
   // Parse summary into paragraphs
   const summaryParagraphs = breakIntoParagraphs(brief?.summary || '', 2);
@@ -107,7 +108,7 @@ export default function AssetDetail() {
               width={36}
               height={36}
               style={{ objectFit: 'cover', borderRadius: '50%' }}
-              onError={(e) => {
+              onError={e => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
@@ -139,7 +140,15 @@ export default function AssetDetail() {
             {formatPrice(price)}
           </Typography>
           {change24h != null && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end', mt: 0.25 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                justifyContent: 'flex-end',
+                mt: 0.25,
+              }}
+            >
               <PriceArrow change24h={change24h} />
               <Typography
                 sx={{
@@ -193,7 +202,7 @@ export default function AssetDetail() {
       {summaryParagraphs.length > 0 && (
         <Card sx={{ mb: 2 }}>
           <CardContent sx={{ p: 2.5 }}>
-            <SectionLabel>What's happening</SectionLabel>
+            <SectionLabel>What&apos;s happening</SectionLabel>
             {summaryParagraphs.map((para, i) => (
               <Typography
                 key={i}
@@ -214,7 +223,10 @@ export default function AssetDetail() {
       {/* Tier 3: Why we think this — collapsible, with bullet points */}
       {detail && (
         <Accordion sx={{ mb: 2 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#1A1A1A' }} />} sx={{ px: 2.5, minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: '#1A1A1A' }} />}
+            sx={{ px: 2.5, minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
+          >
             <SectionLabel sx={{ mb: 0 }}>Why we think this</SectionLabel>
           </AccordionSummary>
           <AccordionDetails sx={{ px: 2.5, pt: 0, pb: 2.5 }}>
@@ -318,7 +330,12 @@ export default function AssetDetail() {
                     return (
                       <Box
                         key={key}
-                        sx={{ display: 'flex', justifyContent: 'space-between', color: '#374151', py: 0.25 }}
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          color: '#374151',
+                          py: 0.25,
+                        }}
                       >
                         <span style={{ color: '#6B7280', fontSize: '0.68rem' }}>{label}</span>
                         <span style={{ fontWeight: 600 }}>{formatted}</span>
@@ -346,10 +363,12 @@ export default function AssetDetail() {
       {recentBriefs.length > 1 && (
         <Box sx={{ mt: 3 }}>
           <SectionLabel sx={{ px: 0.5, mb: 1.5 }}>Recent Updates</SectionLabel>
-          {recentBriefs.slice(1).map((b) => (
+          {recentBriefs.slice(1).map(b => (
             <Card key={b.id} sx={{ mb: 1.5 }}>
               <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                <Typography sx={{ fontSize: '0.82rem', color: '#1A1A1A', fontWeight: 600, mb: 0.5 }}>
+                <Typography
+                  sx={{ fontSize: '0.82rem', color: '#1A1A1A', fontWeight: 600, mb: 0.5 }}
+                >
                   {b.headline}
                 </Typography>
                 <Typography sx={{ fontSize: '0.65rem', color: '#9CA3AF' }}>

@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Asset, Signal, Brief, PaperTrade, AssetDashboard, PriceData } from '../types';
+import type {
+  Asset,
+  Signal,
+  Brief,
+  PaperTrade,
+  PaperTradeStats,
+  AssetDashboard,
+  PriceData,
+} from '../types';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
@@ -83,8 +91,8 @@ export function useDashboard() {
       setDigest(cachedDigest);
       setLastUpdated(new Date());
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to fetch data');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -112,7 +120,7 @@ export function useAssetDetail(assetId: string) {
   useEffect(() => {
     // Try to hydrate from cache instantly
     if (cachedDashboard) {
-      const cached = cachedDashboard.find((d) => d.asset.id === assetId);
+      const cached = cachedDashboard.find(d => d.asset.id === assetId);
       if (cached) {
         setAsset(cached.asset);
         setSignal(cached.signal);
@@ -124,9 +132,26 @@ export function useAssetDetail(assetId: string) {
     const fetchDetail = async () => {
       const [assetRes, signalRes, briefRes, briefsRes] = await Promise.all([
         supabase.from('assets').select('*').eq('id', assetId).single(),
-        supabase.from('signals').select('*').eq('asset_id', assetId).order('timestamp', { ascending: false }).limit(1),
-        supabase.from('briefs').select('*').eq('asset_id', assetId).neq('brief_type', 'daily_digest').order('created_at', { ascending: false }).limit(1),
-        supabase.from('briefs').select('*').eq('asset_id', assetId).neq('brief_type', 'daily_digest').order('created_at', { ascending: false }).limit(10),
+        supabase
+          .from('signals')
+          .select('*')
+          .eq('asset_id', assetId)
+          .order('timestamp', { ascending: false })
+          .limit(1),
+        supabase
+          .from('briefs')
+          .select('*')
+          .eq('asset_id', assetId)
+          .neq('brief_type', 'daily_digest')
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('briefs')
+          .select('*')
+          .eq('asset_id', assetId)
+          .neq('brief_type', 'daily_digest')
+          .order('created_at', { ascending: false })
+          .limit(10),
       ]);
 
       const assetData = assetRes.data;
@@ -151,18 +176,25 @@ export function useAssetDetail(assetId: string) {
 
 export function useTrackRecord() {
   const [trades, setTrades] = useState<(PaperTrade & { asset_symbol?: string })[]>([]);
-  const [stats, setStats] = useState<any[]>([]);
+  const [stats, setStats] = useState<PaperTradeStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchAll = async () => {
       const [tradesRes, statsRes] = await Promise.all([
-        supabase.from('paper_trades').select('*, assets(symbol)').order('created_at', { ascending: false }).limit(50),
+        supabase
+          .from('paper_trades')
+          .select('*, assets(symbol)')
+          .order('created_at', { ascending: false })
+          .limit(50),
         supabase.from('paper_trade_stats').select('*'),
       ]);
 
       setTrades(
-        (tradesRes.data || []).map((t: any) => ({ ...t, asset_symbol: t.assets?.symbol }))
+        (tradesRes.data || []).map((t: PaperTrade & { assets?: { symbol: string } }) => ({
+          ...t,
+          asset_symbol: t.assets?.symbol,
+        }))
       );
       setStats(statsRes.data || []);
       setLoading(false);

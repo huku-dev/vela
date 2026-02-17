@@ -1,9 +1,8 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
-import CircularProgress from '@mui/material/CircularProgress';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
 
@@ -16,16 +15,16 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getNavValue = () => {
-    const idx = navItems.findIndex((item) => item.path === location.pathname);
+  const getNavValue = useCallback(() => {
+    const idx = navItems.findIndex(item => item.path === location.pathname);
     return idx >= 0 ? idx : 0;
-  };
+  }, [location.pathname]);
 
   const [value, setValue] = useState(getNavValue);
 
   useEffect(() => {
     setValue(getNavValue());
-  }, [location.pathname]);
+  }, [getNavValue]);
 
   const showNav = !location.pathname.startsWith('/asset/');
 
@@ -47,7 +46,7 @@ export default function Layout() {
             zIndex: 1000,
           }}
         >
-          {navItems.map((item) => (
+          {navItems.map(item => (
             <BottomNavigationAction
               key={item.label}
               label={item.label}

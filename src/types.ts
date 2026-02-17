@@ -68,6 +68,15 @@ export interface PaperTrade {
   closed_at: string | null;
 }
 
+export interface PaperTradeStats {
+  asset_id: string;
+  total_closed: number;
+  wins: number;
+  losses: number;
+  avg_win_pct: number | null;
+  avg_loss_pct: number | null;
+}
+
 export interface PriceData {
   price: number;
   change24h: number;

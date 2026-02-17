@@ -32,6 +32,7 @@ interface CardProps {
   hover?: boolean;
   className?: string;
   onClick?: () => void;
+  style?: React.CSSProperties;
 }
 
 interface BadgeProps {
@@ -120,9 +121,9 @@ export function Card({
   children,
   variant = 'default',
   compact = false,
-  hover = true,
   className = '',
   onClick,
+  style,
 }: CardProps) {
   const baseClass = 'vela-card';
   const variantClass = variant !== 'default' ? `vela-card-${variant}` : '';
@@ -133,8 +134,19 @@ export function Card({
     <div
       className={`${baseClass} ${variantClass} ${compactClass} ${clickable} ${className}`.trim()}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      style={style}
     >
       {children}
     </div>
@@ -186,7 +198,10 @@ export function SignalCard({
     <Card variant={cardVariantMap[signal]} onClick={onClick}>
       <div className="vela-stack vela-stack-md">
         {/* Header */}
-        <div className="vela-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div
+          className="vela-row"
+          style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
+        >
           <div>
             <h3 className="vela-heading-lg">{asset}</h3>
             {timestamp && <p className="vela-body-sm vela-text-muted">{timestamp}</p>}
@@ -221,9 +236,7 @@ export function StatCard({ label, value, change, variant = 'default' }: StatCard
           {label}
         </p>
         <p className="vela-price">{value}</p>
-        {change && (
-          <Badge variant={change.startsWith('+') ? 'up' : 'down'}>{change}</Badge>
-        )}
+        {change && <Badge variant={change.startsWith('+') ? 'up' : 'down'}>{change}</Badge>}
       </div>
     </Card>
   );
@@ -264,7 +277,11 @@ export function Input({ label, error, helper, className = '', ...props }: InputP
         </label>
       )}
       <input className="vela-input" {...props} />
-      {error && <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>{error}</p>}
+      {error && (
+        <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>
+          {error}
+        </p>
+      )}
       {helper && !error && <p className="vela-body-sm vela-text-muted">{helper}</p>}
     </div>
   );
@@ -283,13 +300,17 @@ export function Select({ label, error, options, className = '', ...props }: Sele
         </label>
       )}
       <select className="vela-input vela-select" {...props}>
-        {options.map((option) => (
+        {options.map(option => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
         ))}
       </select>
-      {error && <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>{error}</p>}
+      {error && (
+        <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -307,7 +328,11 @@ export function TextArea({ label, error, helper, className = '', ...props }: Tex
         </label>
       )}
       <textarea className="vela-input vela-textarea" {...props} />
-      {error && <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>{error}</p>}
+      {error && (
+        <p className="vela-body-sm" style={{ color: 'var(--color-error)' }}>
+          {error}
+        </p>
+      )}
       {helper && !error && <p className="vela-body-sm vela-text-muted">{helper}</p>}
     </div>
   );
@@ -376,7 +401,10 @@ export function PageHeader({
   return (
     <div className="vela-stack vela-stack-md" style={{ marginBottom: 'var(--space-8)' }}>
       {backButton && <div>{backButton}</div>}
-      <div className="vela-row" style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div
+        className="vela-row"
+        style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}
+      >
         <div className="vela-stack vela-stack-sm">
           <h1
             className="vela-heading-xl"
@@ -411,8 +439,16 @@ export function Alert({
 }) {
   const variantStyles = {
     info: { bg: 'var(--blue-light)', color: 'var(--blue-primary)', border: 'var(--blue-primary)' },
-    success: { bg: 'var(--green-light)', color: 'var(--green-dark)', border: 'var(--green-primary)' },
-    warning: { bg: 'var(--amber-light)', color: 'var(--amber-dark)', border: 'var(--amber-primary)' },
+    success: {
+      bg: 'var(--green-light)',
+      color: 'var(--green-dark)',
+      border: 'var(--green-primary)',
+    },
+    warning: {
+      bg: 'var(--amber-light)',
+      color: 'var(--amber-dark)',
+      border: 'var(--amber-primary)',
+    },
     error: { bg: 'var(--red-light)', color: 'var(--red-dark)', border: 'var(--red-primary)' },
   };
 

@@ -18,12 +18,12 @@ export default function TrackRecord() {
     );
   }
 
-  const totalClosed = stats.reduce((sum: number, s: any) => sum + (s.total_closed || 0), 0);
-  const totalWins = stats.reduce((sum: number, s: any) => sum + (s.wins || 0), 0);
+  const totalClosed = stats.reduce((sum, s) => sum + (s.total_closed || 0), 0);
+  const totalWins = stats.reduce((sum, s) => sum + (s.wins || 0), 0);
   const overallWinRate = totalClosed > 0 ? ((totalWins / totalClosed) * 100).toFixed(0) : '—';
 
   const totalDollarPnl = trades
-    .filter((t) => t.status === 'closed' && t.pnl_pct != null)
+    .filter(t => t.status === 'closed' && t.pnl_pct != null)
     .reduce((sum, t) => sum + (t.pnl_pct! / 100) * DEFAULT_POSITION_SIZE, 0);
 
   return (
@@ -57,31 +57,44 @@ export default function TrackRecord() {
       </Box>
 
       {/* Per-Asset Breakdown */}
-      {stats.length > 0 && stats.some((s: any) => s.total_closed > 0) && (
+      {stats.length > 0 && stats.some(s => s.total_closed > 0) && (
         <Box sx={{ mb: 2.5 }}>
           <SectionLabel>By Asset</SectionLabel>
-          {stats.map((s: any) => {
+          {stats.map(s => {
             const assetPnl = trades
-              .filter((t) => t.asset_id === s.asset_id && t.status === 'closed' && t.pnl_pct != null)
+              .filter(t => t.asset_id === s.asset_id && t.status === 'closed' && t.pnl_pct != null)
               .reduce((sum, t) => sum + (t.pnl_pct! / 100) * DEFAULT_POSITION_SIZE, 0);
 
             return (
               <Card key={s.asset_id} sx={{ mb: 1.5 }}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box
+                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
                     <Typography sx={{ fontWeight: 700, fontSize: '0.95rem', color: '#1A1A1A' }}>
                       {s.asset_id?.toUpperCase()}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 2.5, fontFamily: '"JetBrains Mono", monospace', fontSize: '0.72rem' }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        gap: 2.5,
+                        fontFamily: '"JetBrains Mono", monospace',
+                        fontSize: '0.72rem',
+                      }}
+                    >
                       <StatMini label="W / L" value={`${s.wins ?? 0} / ${s.losses ?? 0}`} />
                       <StatMini
                         label="Avg Win"
-                        value={s.avg_win_pct != null ? `+${Number(s.avg_win_pct).toFixed(1)}%` : '—'}
+                        value={
+                          s.avg_win_pct != null ? `+${Number(s.avg_win_pct).toFixed(1)}%` : '—'
+                        }
                         color="#15803D"
                       />
                       <StatMini
                         label="Avg Loss"
-                        value={s.avg_loss_pct != null ? `${Number(s.avg_loss_pct).toFixed(1)}%` : '—'}
+                        value={
+                          s.avg_loss_pct != null ? `${Number(s.avg_loss_pct).toFixed(1)}%` : '—'
+                        }
                         color="#DC2626"
                       />
                       <StatMini
@@ -126,14 +139,20 @@ export default function TrackRecord() {
         <EmptyState type="no-trades" />
       ) : (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-          {trades.map((trade) => {
+          {trades.map(trade => {
             const dollarPnl =
               trade.pnl_pct != null ? (trade.pnl_pct / 100) * DEFAULT_POSITION_SIZE : null;
 
             return (
               <Card key={trade.id}>
                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                         <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', color: '#1A1A1A' }}>
@@ -163,7 +182,8 @@ export default function TrackRecord() {
                         }}
                       >
                         Entry: ${trade.entry_price.toLocaleString()}
-                        {trade.exit_price != null && ` → Exit: $${trade.exit_price.toLocaleString()}`}
+                        {trade.exit_price != null &&
+                          ` → Exit: $${trade.exit_price.toLocaleString()}`}
                       </Typography>
                     </Box>
 
@@ -178,7 +198,8 @@ export default function TrackRecord() {
                             lineHeight: 1.2,
                           }}
                         >
-                          {trade.pnl_pct >= 0 ? '+' : ''}{trade.pnl_pct.toFixed(1)}%
+                          {trade.pnl_pct >= 0 ? '+' : ''}
+                          {trade.pnl_pct.toFixed(1)}%
                         </Typography>
                         {dollarPnl != null && (
                           <Typography
@@ -200,7 +221,10 @@ export default function TrackRecord() {
                   {trade.yellow_events && trade.yellow_events.length > 0 && (
                     <Box sx={{ mt: 1, pt: 1, borderTop: '2px solid #E5E7EB' }}>
                       {trade.yellow_events.map((ye, i) => (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, mb: 0.25 }}>
+                        <Box
+                          key={i}
+                          sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.75, mb: 0.25 }}
+                        >
                           <Box
                             sx={{
                               width: 6,
@@ -274,7 +298,9 @@ function StatCard({
   valueColor?: string;
 }) {
   return (
-    <Card sx={{ backgroundColor: bg, border: '2.5px solid #1A1A1A', boxShadow: '4px 4px 0px #1A1A1A' }}>
+    <Card
+      sx={{ backgroundColor: bg, border: '2.5px solid #1A1A1A', boxShadow: '4px 4px 0px #1A1A1A' }}
+    >
       <CardContent sx={{ p: 1.5, textAlign: 'center', '&:last-child': { pb: 1.5 } }}>
         <Typography
           sx={{
@@ -306,7 +332,9 @@ function StatCard({
 function StatMini({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <Box sx={{ textAlign: 'center' }}>
-      <Typography sx={{ fontSize: '0.58rem', color: '#9CA3AF', display: 'block', mb: 0.25, fontWeight: 600 }}>
+      <Typography
+        sx={{ fontSize: '0.58rem', color: '#9CA3AF', display: 'block', mb: 0.25, fontWeight: 600 }}
+      >
         {label}
       </Typography>
       <span style={{ color: color || '#1A1A1A', fontWeight: 600 }}>{value}</span>
