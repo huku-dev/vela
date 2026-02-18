@@ -22,6 +22,9 @@
    ============================================================================ */
 
 :root {
+  /* Force light mode — Vela is a cream/neobrutalist design, dark mode not yet supported */
+  color-scheme: light only;
+
   /* Color primitives - Foundation */
   --white: #ffffff;
   --black: #000000;
@@ -708,9 +711,10 @@ body {
    7. DARK MODE SUPPORT
    ============================================================================ */
 
+/* Dark mode disabled — Vela v1 is light-only (cream neobrutalist).
+   Re-enable when dark mode is properly designed and tested.
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Remap semantic tokens for dark mode */
     --color-bg-page: #020617;
     --color-bg-surface: #0f172a;
     --color-bg-surface-subtle: #1e293b;
@@ -723,7 +727,6 @@ body {
     --color-border-default: #334155;
     --color-border-subtle: #475569;
 
-    /* Adjust status colors for dark backgrounds */
     --color-status-buy-bg: #064e3b;
     --color-status-buy-text: #bbf7d0;
 
@@ -733,13 +736,13 @@ body {
     --color-status-wait-bg: #78350f;
     --color-status-wait-text: #fde68a;
 
-    /* Keep shadows but with lighter color */
     --shadow-xs: 2px 2px 0 #334155;
     --shadow-sm: 3px 3px 0 #334155;
     --shadow-md: 4px 4px 0 #334155;
     --shadow-lg: 6px 6px 0 #334155;
   }
 }
+*/
 
 /* ============================================================================
    8. HIGH CONTRAST MODE

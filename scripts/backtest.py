@@ -1235,7 +1235,7 @@ def run_backtest(
     asset_id: str,
     days: int,
     dry_run: bool,
-    config: dict = SIGNAL_CONFIG,
+    config: dict = IMPROVED_CONFIG,
     df_cached: pd.DataFrame | None = None,
     quiet: bool = False,
     btc_df: pd.DataFrame | None = None,
@@ -1933,7 +1933,7 @@ def run_stress_test(assets: list[dict], days: int, event_date: str) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Vela Backtesting Engine")
     parser.add_argument("--asset", type=str, help="CoinGecko ID (e.g. 'bitcoin')")
-    parser.add_argument("--days", type=int, default=180, help="Lookback period in days (default: 180)")
+    parser.add_argument("--days", type=int, default=365, help="Lookback period in days (default: 365)")
     parser.add_argument("--dry-run", action="store_true", help="Print trades without writing to Supabase")
     parser.add_argument("--compare", action="store_true", help="A/B test: current config vs improved config")
     parser.add_argument("--stress-test", type=str, metavar="YYYY-MM-DD",
@@ -1972,12 +1972,16 @@ def main():
     print("=" * 60)
     print("  Vela Backtesting Engine v4 — Volume + ATR + BTC Filter + RSI BB")
     print(f"  Lookback: {args.days} days | Dry run: {args.dry_run}")
-    print(f"  Signal config: ADX >= {SIGNAL_CONFIG['adx_threshold']}, "
-          f"RSI long [{SIGNAL_CONFIG['rsi_long_entry_min']}-{SIGNAL_CONFIG['rsi_long_entry_max']}], "
-          f"RSI short [{SIGNAL_CONFIG['rsi_short_entry_min']}-{SIGNAL_CONFIG['rsi_short_entry_max']}], "
-          f"Stop-loss {SIGNAL_CONFIG['stop_loss_pct']}%")
-    print(f"  Yellow trims: RSI >= {SIGNAL_CONFIG['rsi_yellow_threshold']} → trim {int(SIGNAL_CONFIG['trim_pct_yellow']*100)}%, "
-          f"RSI >= {SIGNAL_CONFIG['rsi_orange_threshold']} → trim {int(SIGNAL_CONFIG['trim_pct_orange']*100)}%")
+    cfg = IMPROVED_CONFIG
+    print(f"  Signal config: {cfg['name']} | ADX >= {cfg['adx_threshold']}, "
+          f"RSI long [{cfg['rsi_long_entry_min']}-{cfg['rsi_long_entry_max']}], "
+          f"RSI short [{cfg['rsi_short_entry_min']}-{cfg['rsi_short_entry_max']}], "
+          f"Stop-loss {cfg['stop_loss_pct']}%")
+    print(f"  Yellow trims: RSI >= {cfg['rsi_yellow_threshold']} → trim {int(cfg['trim_pct_yellow']*100)}%, "
+          f"RSI >= {cfg['rsi_orange_threshold']} → trim {int(cfg['trim_pct_orange']*100)}%")
+    print(f"  RSI BB: {'ON' if cfg.get('rsi_bb_complementary') else 'OFF'} | "
+          f"Volume: {'ON' if cfg.get('volume_confirm') else 'OFF'} | "
+          f"ATR stop: {'ON' if cfg.get('atr_stop_loss') else 'OFF'}")
     print("=" * 60)
 
     if args.asset:
