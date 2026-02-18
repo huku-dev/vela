@@ -158,6 +158,15 @@ IMPROVED_CONFIG = {
     "rsi_bb_complementary": True,
     "rsi_bb_hold_days": 3,  # max days to hold (shorter = less exposure to trends)
     "rsi_bb_stop_pct": 5.0,  # max loss on BB trade before closing (limits damage)
+    # ── NEW: BB trend filter ──
+    # Only allow BB longs when price > SMA-50 (uptrend confirms dip-buying)
+    # Only allow BB shorts when price < SMA-50 (downtrend confirms fade-selling)
+    # Prevents mean-reversion trades from fighting the prevailing trend
+    "rsi_bb_trend_filter": True,
+    # ── NEW: BB cooldown after stop-out ──
+    # After a BB stop-loss, wait N days before opening another BB in same direction
+    # Prevents back-to-back losses during strong directional moves (e.g. ETH May 2025)
+    "rsi_bb_cooldown_days": 3,
 }
 
 
@@ -621,6 +630,10 @@ def simulate_trades(
     bb_short_bars: int = 0
     bb_hold_days = config.get("rsi_bb_hold_days", 5)
     rsi_bb_enabled = config.get("rsi_bb_complementary", False)
+    bb_trend_filter = config.get("rsi_bb_trend_filter", False)
+    bb_cooldown_days = config.get("rsi_bb_cooldown_days", 0)
+    bb_long_cooldown_until: int = -1  # bar index until which BB longs are blocked
+    bb_short_cooldown_until: int = -1  # bar index until which BB shorts are blocked
 
     # BTC crash filter setup
     btc_crash_enabled = config.get("btc_crash_filter", False) and not is_btc and btc_df is not None
@@ -846,6 +859,8 @@ def simulate_trades(
                         "exit_indicators": _snapshot_indicators(row),
                     })
                     bb_open_long = None
+                    if bb_stopped and bb_cooldown_days > 0:
+                        bb_long_cooldown_until = bar_idx + bb_cooldown_days
                     bb_long_bars = 0
 
             if bb_open_short is not None:
@@ -868,10 +883,18 @@ def simulate_trades(
                         "exit_indicators": _snapshot_indicators(row),
                     })
                     bb_open_short = None
+                    if bb_stopped and bb_cooldown_days > 0:
+                        bb_short_cooldown_until = bar_idx + bb_cooldown_days
                     bb_short_bars = 0
 
             # Open new BB trades (only if no existing BB trade in that direction)
-            if rsi_below_bb and bb_open_long is None and open_long is None:
+            # Trend filter: only allow BB longs in uptrend, BB shorts in downtrend
+            sma50 = row.get("sma_50", float("nan"))
+            bb_long_ok = not bb_trend_filter or (not pd.isna(sma50) and price > sma50)
+            bb_short_ok = not bb_trend_filter or (not pd.isna(sma50) and price < sma50)
+
+            if (rsi_below_bb and bb_open_long is None and open_long is None
+                    and bb_long_ok and bar_idx > bb_long_cooldown_until):
                 bb_open_long = {
                     "direction": "bb_long",
                     "entry_date": str(date),
@@ -883,7 +906,8 @@ def simulate_trades(
                 }
                 bb_long_bars = 0
 
-            if rsi_above_bb and bb_open_short is None and open_short is None:
+            if (rsi_above_bb and bb_open_short is None and open_short is None
+                    and bb_short_ok and bar_idx > bb_short_cooldown_until):
                 bb_open_short = {
                     "direction": "bb_short",
                     "entry_date": str(date),
@@ -1559,6 +1583,8 @@ def run_comparison(assets: list[dict], days: int) -> None:
         ("portfolio_circuit_breaker", "Portfolio circuit breaker"),
         ("rsi_bb_complementary", "RSI BB complementary"),
         ("rsi_bb_hold_days", "RSI BB hold days"),
+        ("rsi_bb_trend_filter", "BB trend filter (SMA-50)"),
+        ("rsi_bb_cooldown_days", "BB cooldown after stop"),
     ]
     for key, label in diff_keys:
         va = config_a.get(key, "n/a")
