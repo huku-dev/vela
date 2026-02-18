@@ -49,6 +49,8 @@ export interface Brief {
   created_at: string;
 }
 
+export type TradeSource = 'live' | 'backtest';
+
 export interface PaperTrade {
   id: string;
   asset_id: string;
@@ -58,6 +60,7 @@ export interface PaperTrade {
   exit_price: number | null;
   pnl_pct: number | null;
   status: TradeStatus;
+  source: TradeSource;
   yellow_events: Array<{
     timestamp: string;
     rsi: number;

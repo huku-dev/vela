@@ -208,6 +208,7 @@ export function useTrackRecord() {
       setTrades(
         (tradesRes.data || []).map((t: PaperTrade & { assets?: { symbol: string } }) => ({
           ...t,
+          source: t.source || 'live',
           asset_symbol: t.assets?.symbol,
         }))
       );

@@ -1,6 +1,3 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-
 interface EmptyStateProps {
   type: 'no-trades' | 'no-signals' | 'loading-error';
   message?: string;
@@ -8,19 +5,20 @@ interface EmptyStateProps {
 
 export default function EmptyState({ type, message }: EmptyStateProps) {
   return (
-    <Box sx={{ textAlign: 'center', py: 4, px: 3 }}>
-      <Box sx={{ mb: 2 }}>
+    <div style={{ textAlign: 'center', padding: '32px 24px' }}>
+      <div style={{ marginBottom: '16px' }}>
         {type === 'no-trades' && <NoTradesIllustration />}
         {type === 'no-signals' && <NoSignalsIllustration />}
         {type === 'loading-error' && <ErrorIllustration />}
-      </Box>
-      <Typography sx={{ fontWeight: 700, fontSize: '1rem', color: '#1A1A1A', mb: 0.75 }}>
+      </div>
+      <p className="vela-heading-lg" style={{ marginBottom: '6px' }}>
         {type === 'no-trades' && 'No trades yet'}
         {type === 'no-signals' && 'No signals yet'}
         {type === 'loading-error' && 'Something went wrong'}
-      </Typography>
-      <Typography
-        sx={{ fontSize: '0.85rem', color: '#6B7280', maxWidth: 280, mx: 'auto', lineHeight: 1.6 }}
+      </p>
+      <p
+        className="vela-body-base vela-text-secondary"
+        style={{ maxWidth: 280, margin: '0 auto', lineHeight: 1.6 }}
       >
         {message ||
           (type === 'no-trades'
@@ -28,8 +26,8 @@ export default function EmptyState({ type, message }: EmptyStateProps) {
             : type === 'no-signals'
               ? 'Waiting for the signal engine to run. It checks every 4 hours.'
               : "Couldn't load data. Try again later.")}
-      </Typography>
-    </Box>
+      </p>
+    </div>
   );
 }
 
