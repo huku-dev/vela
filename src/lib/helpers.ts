@@ -120,6 +120,35 @@ export function parsePriceSegments(text: string): PriceSegment[] {
 }
 
 /**
+ * Replaces technical jargon with plain-english equivalents.
+ * Applied to AI-generated text (e.g. what_would_change) so the UI stays
+ * consistent with our indicator labels.
+ */
+const jargonMap: [RegExp, string][] = [
+  [/\bEMA\s*\(?9\)?/gi, 'short-term average'],
+  [/\bEMA\s*\(?21\)?/gi, 'medium-term average'],
+  [/\bSMA\s*\(?50\)?/gi, '50-day average'],
+  [/\bRSI\s*\(?14\)?/gi, 'buying pressure'],
+  [/\bADX\s*\(?4[hH]\)?/gi, 'trend strength'],
+  [/\bcrossover\b/gi, 'cross above'],
+  [/\bcrossunder\b/gi, 'cross below'],
+  [/\bEMA\b/gi, 'moving average'],
+  [/\bSMA\b/gi, 'moving average'],
+  [/\bRSI\b/gi, 'buying pressure'],
+  [/\bADX\b/gi, 'trend strength'],
+  [/\bMACD\b/gi, 'trend momentum'],
+];
+
+export function plainEnglish(text: string): string {
+  if (!text) return text;
+  let result = text;
+  for (const [pattern, replacement] of jargonMap) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+/**
  * Friendly indicator labels — spells out abbreviations for clarity.
  */
 export const indicatorLabels: Record<string, string> = {

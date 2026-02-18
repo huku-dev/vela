@@ -21,6 +21,8 @@ import {
   getCoinIcon,
   stripAssetPrefix,
   groupBriefsBySignalState,
+  parsePriceSegments,
+  plainEnglish,
 } from '../lib/helpers';
 import type { SignalColor, BriefGroup } from '../types';
 
@@ -177,37 +179,29 @@ export default function AssetDetail() {
         </Box>
       </Box>
 
-      {/* Tier 1: Key Signal — signal color as section title */}
-      {brief && (
-        <Card
-          sx={{
-            mb: 2,
-            backgroundColor: signalBg[signalColor],
-            border: '2.5px solid #1A1A1A',
-            boxShadow: '4px 4px 0px #1A1A1A',
-          }}
-        >
-          <CardContent sx={{ p: 2.5 }}>
-            <Typography
-              sx={{
-                fontWeight: 800,
-                fontSize: '0.65rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#6B7280',
-                mb: 0.75,
-              }}
-            >
-              Key Signal — {signalTitles[signalColor]}
-            </Typography>
-            <Typography
-              sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#1A1A1A', lineHeight: 1.5 }}
-            >
-              {stripAssetPrefix(brief.headline, asset.symbol)}
-            </Typography>
-          </CardContent>
-        </Card>
-      )}
+      {/* Tier 1: Key Signal — expandable with signal history */}
+      {brief &&
+        (() => {
+          const signalGroups =
+            recentBriefs.length > 1
+              ? groupBriefsBySignalState(
+                  recentBriefs.slice(1),
+                  signalLookup as Record<string, SignalColor>,
+                  signalColor
+                )
+              : [];
+          const hasHistory = signalGroups.length > 0;
+
+          return (
+            <SignalHistoryCard
+              signalColor={signalColor}
+              headline={stripAssetPrefix(brief.headline, asset.symbol)}
+              groups={signalGroups}
+              hasHistory={hasHistory}
+              symbol={asset.symbol}
+            />
+          );
+        })()}
 
       {/* Tier 2: What's happening — with paragraph breaks */}
       {summaryParagraphs.length > 0 && (
@@ -258,7 +252,10 @@ export default function AssetDetail() {
                         '&::marker': { color: '#1A1A1A' },
                       }}
                     >
-                      {value as string}
+                      {(() => {
+                        const t = plainEnglish(value as string);
+                        return t.charAt(0).toUpperCase() + t.slice(1);
+                      })()}
                     </Box>
                   ))}
                 </Box>
@@ -304,7 +301,10 @@ export default function AssetDetail() {
                         '&::marker': { color: '#1A1A1A' },
                       }}
                     >
-                      {value as string}
+                      {(() => {
+                        const t = value as string;
+                        return t.charAt(0).toUpperCase() + t.slice(1);
+                      })()}
                     </Box>
                   ))}
                 </Box>
@@ -322,6 +322,27 @@ export default function AssetDetail() {
                 const rsi = indicators.rsi_14;
                 const adx = indicators.adx_4h;
                 const sma50 = indicators.sma_50_daily;
+
+                // Find oldest brief with indicators for delta comparison
+                const oldestWithIndicators = [...recentBriefs]
+                  .reverse()
+                  .find(b => b.detail?.indicators && b.id !== brief?.id);
+                const oldInd = oldestWithIndicators?.detail?.indicators;
+
+                // Compute deltas (current - oldest)
+                const rsiDelta = oldInd ? rsi - oldInd.rsi_14 : null;
+                const adxDelta = oldInd ? adx - oldInd.adx_4h : null;
+
+                // Compute timeframe label for delta context
+                const deltaLabel = oldestWithIndicators
+                  ? (() => {
+                      const diffMs =
+                        new Date(brief!.created_at).getTime() -
+                        new Date(oldestWithIndicators.created_at).getTime();
+                      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                      return diffDays <= 1 ? 'vs yesterday' : `vs ${diffDays} days ago`;
+                    })()
+                  : null;
 
                 // Derive Plain English descriptions
                 const trendLabel =
@@ -377,7 +398,22 @@ export default function AssetDetail() {
 
                 return (
                   <Box sx={{ mb: 2 }}>
-                    <SubLabel>Indicators</SubLabel>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: '#1A1A1A' }}>
+                        Indicators
+                      </Typography>
+                      {deltaLabel && (
+                        <Typography
+                          sx={{
+                            fontSize: '0.6rem',
+                            color: '#9CA3AF',
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          Trends {deltaLabel}
+                        </Typography>
+                      )}
+                    </Box>
                     <Box
                       sx={{
                         display: 'flex',
@@ -401,6 +437,7 @@ export default function AssetDetail() {
                         description={`${rsiLabel} (${rsi.toFixed(0)})`}
                         color={rsiColor}
                         tooltip="Measures buying vs selling pressure on a 0-100 scale. Above 70 means overbought (may pull back), below 30 means oversold (may bounce)."
+                        delta={rsiDelta}
                       />
 
                       <IndicatorRow
@@ -408,6 +445,7 @@ export default function AssetDetail() {
                         description={`${adxLabel} (${adx.toFixed(0)})`}
                         color={adxColor}
                         tooltip="Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways."
+                        delta={adxDelta}
                       />
 
                       <IndicatorRow
@@ -465,7 +503,28 @@ export default function AssetDetail() {
                           fontStyle: 'italic',
                         }}
                       >
-                        {detail.what_would_change}
+                        {parsePriceSegments(plainEnglish(detail.what_would_change)).map((seg, i) =>
+                          seg.type === 'price' ? (
+                            <Box
+                              component="span"
+                              key={i}
+                              sx={{
+                                fontFamily: '"JetBrains Mono", monospace',
+                                fontWeight: 600,
+                                fontStyle: 'normal',
+                                color: '#1A1A1A',
+                                backgroundColor: '#F3F4F6',
+                                borderRadius: '4px',
+                                px: 0.5,
+                                py: 0.1,
+                              }}
+                            >
+                              {seg.value}
+                            </Box>
+                          ) : (
+                            <React.Fragment key={i}>{seg.value}</React.Fragment>
+                          )
+                        )}
                       </Typography>
                     )}
                   </Box>
@@ -474,30 +533,6 @@ export default function AssetDetail() {
           </AccordionDetails>
         </Accordion>
       )}
-
-      {/* Recent Updates — grouped by signal state */}
-      {recentBriefs.length > 1 &&
-        (() => {
-          const groups = groupBriefsBySignalState(
-            recentBriefs.slice(1),
-            signalLookup as Record<string, SignalColor>,
-            signalColor
-          );
-          if (!groups.length) return null;
-          return (
-            <Box sx={{ mt: 3 }}>
-              <SectionLabel sx={{ px: 0.5, mb: 1.5 }}>Recent Updates</SectionLabel>
-              {groups.map((group, gi) => (
-                <RecentUpdateGroup
-                  key={gi}
-                  group={group}
-                  symbol={asset.symbol}
-                  defaultExpanded={gi === 0}
-                />
-              ))}
-            </Box>
-          );
-        })()}
 
       {/* Timestamp — use latest brief date (more meaningful than signal creation date) */}
       {brief && (
@@ -545,13 +580,27 @@ function IndicatorRow({
   description,
   color,
   tooltip,
+  delta,
 }: {
   label: string;
   description: string;
   color: string;
   tooltip: string;
+  /** Optional numeric delta from oldest → newest brief. Positive = rising, negative = falling. */
+  delta?: number | null;
 }) {
   const [showTip, setShowTip] = React.useState(false);
+
+  // Delta display: arrow + value
+  const deltaDisplay = (() => {
+    if (delta == null || Math.abs(delta) < 0.1) return null;
+    const up = delta > 0;
+    return {
+      arrow: up ? '↑' : '↓',
+      text: `${up ? '+' : ''}${delta.toFixed(1)}`,
+      color: up ? '#15803D' : '#DC2626',
+    };
+  })();
 
   return (
     <Box>
@@ -580,15 +629,31 @@ function IndicatorRow({
             ?
           </Box>
         </Box>
-        <Typography
-          sx={{
-            fontSize: '0.72rem',
-            fontWeight: 600,
-            color,
-          }}
-        >
-          {description}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+          {deltaDisplay && (
+            <Box
+              component="span"
+              sx={{
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                fontFamily: '"JetBrains Mono", monospace',
+                color: deltaDisplay.color,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              {deltaDisplay.arrow}{deltaDisplay.text}
+            </Box>
+          )}
+          <Typography
+            sx={{
+              fontSize: '0.72rem',
+              fontWeight: 600,
+              color,
+            }}
+          >
+            {description}
+          </Typography>
+        </Box>
       </Box>
       {showTip && (
         <Typography
@@ -723,202 +788,156 @@ function formatDateRange(start: string, end: string): string {
   return `${s.toLocaleDateString(undefined, opts)} – ${e.toLocaleDateString(undefined, opts)}`;
 }
 
-function daysBetween(start: string, end: string): number {
-  const ms = new Date(end).getTime() - new Date(start).getTime();
-  return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
-}
-
-function RecentUpdateGroup({
-  group,
+/**
+ * Key Signal card with expandable signal history.
+ * Shows the current signal status + bold headline always visible.
+ * Expands to reveal a compact timeline of previous signal states.
+ */
+function SignalHistoryCard({
+  signalColor,
+  headline,
+  groups,
+  hasHistory,
   symbol,
-  defaultExpanded,
 }: {
-  group: BriefGroup;
+  signalColor: SignalColor;
+  headline: string;
+  groups: BriefGroup[];
+  hasHistory: boolean;
   symbol: string;
-  defaultExpanded: boolean;
 }) {
-  const [expanded, setExpanded] = React.useState(defaultExpanded);
-  const colors = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
-  const isSignalChange = group.type === 'signal_change';
-  const days = daysBetween(group.dateRange[0], group.dateRange[1]);
-  const count = group.briefs.length;
-
-  // The first brief in a signal_change group is the change event itself
-  const leadBrief = group.briefs[0];
+  const [expanded, setExpanded] = React.useState(false);
 
   return (
-    <Box
+    <Card
       sx={{
-        mb: 1.5,
-        borderRadius: '8px',
-        border: isSignalChange ? '2px solid #1A1A1A' : '1.5px solid #E5E7EB',
-        borderLeft: `4px solid ${colors.border}`,
-        boxShadow: isSignalChange ? '3px 3px 0px #1A1A1A' : 'none',
-        overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        mb: 2,
+        backgroundColor: signalBg[signalColor],
+        cursor: hasHistory ? 'pointer' : 'default',
       }}
     >
-      {/* Group header — always visible, clickable to expand */}
-      <Box
-        onClick={() => setExpanded(!expanded)}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          p: 1.5,
-          cursor: 'pointer',
-          '&:hover': { backgroundColor: '#FAFAFA' },
-          transition: 'background-color 0.15s',
-        }}
+      {/* Always-visible: signal title + bold headline */}
+      <CardContent
+        sx={{ p: 2.5, pb: hasHistory ? 1.5 : 2.5, '&:last-child': { pb: hasHistory ? 1.5 : 2.5 } }}
+        onClick={() => hasHistory && setExpanded(!expanded)}
       >
-        {/* Signal badge */}
-        <Box
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <SectionLabel sx={{ mb: 0 }}>
+            Key Signal — {signalTitles[signalColor]}
+          </SectionLabel>
+          {hasHistory && (
+            <ExpandMoreIcon
+              sx={{
+                fontSize: '1.1rem',
+                color: '#9CA3AF',
+                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+              }}
+            />
+          )}
+        </Box>
+        <Typography
           sx={{
-            fontSize: '0.6rem',
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: colors.text,
-            backgroundColor: colors.bg,
-            border: `1.5px solid ${colors.border}`,
-            borderRadius: '4px',
-            px: 0.75,
-            py: 0.25,
-            lineHeight: 1.3,
-            flexShrink: 0,
+            mt: 1,
+            fontWeight: 700,
+            fontSize: '0.92rem',
+            color: '#1A1A1A',
+            lineHeight: 1.45,
           }}
         >
-          {colors.label}
-        </Box>
+          {headline}
+        </Typography>
+      </CardContent>
 
-        {/* Group title */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+      {/* Expandable: signal history timeline */}
+      {expanded && hasHistory && (
+        <Box sx={{ borderTop: '1.5px solid rgba(0,0,0,0.08)', px: 2.5, pt: 1.5, pb: 2 }}>
           <Typography
             sx={{
-              fontSize: '0.78rem',
-              fontWeight: isSignalChange ? 700 : 600,
-              color: '#1A1A1A',
-              lineHeight: 1.4,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              fontWeight: 700,
+              fontSize: '0.62rem',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: '#6B7280',
+              mb: 1,
             }}
           >
-            {isSignalChange
-              ? stripAssetPrefix(leadBrief.headline, symbol)
-              : count === 1
-                ? stripAssetPrefix(leadBrief.headline, symbol)
-                : `${count} updates over ${days} day${days !== 1 ? 's' : ''}`}
+            Signal History
           </Typography>
-          <Typography sx={{ fontSize: '0.62rem', color: '#9CA3AF', mt: 0.15 }}>
-            {formatDateRange(group.dateRange[0], group.dateRange[1])}
-          </Typography>
-        </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {groups.map((group, gi) => {
+              const gc = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
+              const leadBrief = group.briefs[0];
+              const isFirst = gi === 0;
 
-        {/* Expand/collapse chevron */}
-        {count > 1 && (
-          <ExpandMoreIcon
-            sx={{
-              fontSize: '1rem',
-              color: '#9CA3AF',
-              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
-              flexShrink: 0,
-            }}
-          />
-        )}
-      </Box>
-
-      {/* Expanded content — latest summary + timeline */}
-      {expanded && (
-        <Box sx={{ borderTop: '1px solid #E5E7EB' }}>
-          {/* Latest analysis — the most recent brief's summary */}
-          {leadBrief.summary && (
-            <Box sx={{ px: 1.5, pt: 1.25, pb: count > 1 ? 0.5 : 1.25 }}>
-              <Typography
-                sx={{
-                  fontSize: '0.74rem',
-                  color: '#374151',
-                  lineHeight: 1.6,
-                }}
-              >
-                {leadBrief.summary}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Timeline — compact list of all updates in this group */}
-          {count > 1 && (
-            <Box sx={{ px: 1.5, pb: 1 }}>
-              <Typography
-                sx={{
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  color: '#9CA3AF',
-                  mt: 0.75,
-                  mb: 0.5,
-                }}
-              >
-                Timeline
-              </Typography>
-              {group.briefs.map((b, bi) => (
+              return (
                 <Box
-                  key={b.id}
+                  key={gi}
                   sx={{
                     display: 'flex',
-                    alignItems: 'baseline',
+                    alignItems: 'center',
                     gap: 1,
                     py: 0.5,
-                    borderBottom: bi < group.briefs.length - 1 ? '1px solid #F3F4F6' : 'none',
                   }}
                 >
+                  {/* Signal badge */}
+                  <Box
+                    sx={{
+                      fontSize: '0.55rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      color: gc.text,
+                      backgroundColor: gc.bg,
+                      border: `1.5px solid ${gc.border}`,
+                      borderRadius: '4px',
+                      px: 0.75,
+                      py: 0.2,
+                      lineHeight: 1.3,
+                      flexShrink: 0,
+                      minWidth: 32,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {gc.label}
+                  </Box>
+
+                  {/* Headline + date range */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: '#1A1A1A',
+                        lineHeight: 1.35,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {stripAssetPrefix(leadBrief.headline, symbol)}
+                    </Typography>
+                  </Box>
+
+                  {/* Date */}
                   <Typography
                     sx={{
-                      fontSize: '0.62rem',
+                      fontSize: '0.58rem',
                       color: '#9CA3AF',
                       flexShrink: 0,
-                      minWidth: 56,
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {new Date(b.created_at).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      fontSize: '0.72rem',
-                      color: '#1A1A1A',
-                      fontWeight: bi === 0 ? 600 : 400,
-                      lineHeight: 1.4,
-                      flex: 1,
-                    }}
-                  >
-                    {stripAssetPrefix(b.headline, symbol)}
-                    {b.brief_type === 'signal_change' && (
-                      <Box
-                        component="span"
-                        sx={{
-                          ml: 0.75,
-                          fontSize: '0.55rem',
-                          fontWeight: 700,
-                          color: colors.text,
-                          textTransform: 'uppercase',
-                          verticalAlign: 'middle',
-                        }}
-                      >
-                        Signal change
-                      </Box>
-                    )}
+                    {isFirst
+                      ? `${new Date(group.dateRange[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – Ongoing`
+                      : formatDateRange(group.dateRange[0], group.dateRange[1])}
                   </Typography>
                 </Box>
-              ))}
-            </Box>
-          )}
+              );
+            })}
+          </Box>
         </Box>
       )}
-    </Box>
+    </Card>
   );
 }
