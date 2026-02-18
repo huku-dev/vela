@@ -7,7 +7,7 @@ import type { TradeSource } from '../types';
 type SourceFilter = 'all' | TradeSource;
 
 export default function TrackRecord() {
-  const { trades, loading } = useTrackRecord();
+  const { trades, loading, loadingMore, hasMore, loadMore } = useTrackRecord();
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all');
 
   if (loading) {
@@ -283,6 +283,16 @@ export default function TrackRecord() {
               </Card>
             );
           })}
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="vela-btn vela-btn-ghost"
+              style={{ width: '100%', marginTop: 8, padding: '12px 0' }}
+            >
+              {loadingMore ? 'Loading…' : 'View more trades'}
+            </button>
+          )}
         </div>
       )}
     </div>

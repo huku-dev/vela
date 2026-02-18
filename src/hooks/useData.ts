@@ -189,10 +189,21 @@ export function useAssetDetail(assetId: string) {
   return { asset, signal, brief, recentBriefs, priceData, signalLookup, loading };
 }
 
+const PAGE_SIZE = 50;
+
 export function useTrackRecord() {
   const [trades, setTrades] = useState<(PaperTrade & { asset_symbol?: string })[]>([]);
   const [stats, setStats] = useState<PaperTradeStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  const mapTrades = (data: (PaperTrade & { assets?: { symbol: string } })[]) =>
+    data.map(t => ({
+      ...t,
+      source: t.source || ('live' as const),
+      asset_symbol: t.assets?.symbol,
+    }));
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -201,22 +212,32 @@ export function useTrackRecord() {
           .from('paper_trades')
           .select('*, assets(symbol)')
           .order('opened_at', { ascending: false })
-          .limit(50),
+          .limit(PAGE_SIZE + 1),
         supabase.from('paper_trade_stats').select('*'),
       ]);
 
-      setTrades(
-        (tradesRes.data || []).map((t: PaperTrade & { assets?: { symbol: string } }) => ({
-          ...t,
-          source: t.source || 'live',
-          asset_symbol: t.assets?.symbol,
-        }))
-      );
+      const rows = tradesRes.data || [];
+      setHasMore(rows.length > PAGE_SIZE);
+      setTrades(mapTrades(rows.slice(0, PAGE_SIZE)));
       setStats(statsRes.data || []);
       setLoading(false);
     };
     fetchAll();
   }, []);
 
-  return { trades, stats, loading };
+  const loadMore = useCallback(async () => {
+    setLoadingMore(true);
+    const res = await supabase
+      .from('paper_trades')
+      .select('*, assets(symbol)')
+      .order('opened_at', { ascending: false })
+      .range(trades.length, trades.length + PAGE_SIZE);
+
+    const rows = res.data || [];
+    setHasMore(rows.length === PAGE_SIZE + 1);
+    setTrades(prev => [...prev, ...mapTrades(rows.slice(0, PAGE_SIZE))]);
+    setLoadingMore(false);
+  }, [trades.length]);
+
+  return { trades, stats, loading, loadingMore, hasMore, loadMore };
 }
