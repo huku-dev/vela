@@ -67,7 +67,7 @@ export interface PaperTrade {
     type: string;
     suggested_action: string;
   }> | null;
-  created_at: string;
+  opened_at: string;
   closed_at: string | null;
 }
 

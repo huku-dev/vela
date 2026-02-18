@@ -641,7 +641,8 @@ function IndicatorRow({
                 letterSpacing: '-0.01em',
               }}
             >
-              {deltaDisplay.arrow}{deltaDisplay.text}
+              {deltaDisplay.arrow}
+              {deltaDisplay.text}
             </Box>
           )}
           <Typography
@@ -822,9 +823,7 @@ function SignalHistoryCard({
         onClick={() => hasHistory && setExpanded(!expanded)}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <SectionLabel sx={{ mb: 0 }}>
-            Key Signal — {signalTitles[signalColor]}
-          </SectionLabel>
+          <SectionLabel sx={{ mb: 0 }}>Key Signal — {signalTitles[signalColor]}</SectionLabel>
           {hasHistory && (
             <ExpandMoreIcon
               sx={{

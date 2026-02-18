@@ -200,7 +200,7 @@ export function useTrackRecord() {
         supabase
           .from('paper_trades')
           .select('*, assets(symbol)')
-          .order('created_at', { ascending: false })
+          .order('opened_at', { ascending: false })
           .limit(50),
         supabase.from('paper_trade_stats').select('*'),
       ]);

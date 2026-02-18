@@ -268,7 +268,7 @@ export default function TrackRecord() {
                   className="vela-body-sm vela-text-muted"
                   style={{ marginTop: 6, fontSize: '0.62rem' }}
                 >
-                  {new Date(trade.created_at).toLocaleDateString(undefined, {
+                  {new Date(trade.opened_at).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
