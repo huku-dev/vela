@@ -3,3 +3,12 @@ node_modules/
 dist/
 .DS_Store
 .notion-config.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Reference docs (archived to Notion)
+SESSION_SUMMARY.txt
+Vela_Best_Practices_Analysis.docx
+notion-growth-marketing-playbook.md
