@@ -194,10 +194,7 @@ export function groupBriefsBySignalState(
       type: hasSignalChange ? 'signal_change' : 'continuation',
       signalColor: currentColor,
       briefs: currentBriefs,
-      dateRange: [
-        currentBriefs[currentBriefs.length - 1].created_at,
-        currentBriefs[0].created_at,
-      ],
+      dateRange: [currentBriefs[currentBriefs.length - 1].created_at, currentBriefs[0].created_at],
     });
   }
 

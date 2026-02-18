@@ -39,7 +39,9 @@ const signalBg: Record<SignalColor, string> = {
 export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
-  const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading } = useAssetDetail(assetId!);
+  const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading } = useAssetDetail(
+    assetId!
+  );
 
   if (loading && !asset) {
     return (
@@ -348,7 +350,15 @@ export default function AssetDetail() {
                           ? 'Weak'
                           : 'Oversold';
                 const rsiColor =
-                  rsi >= 70 ? '#DC2626' : rsi >= 60 ? '#15803D' : rsi >= 40 ? '#6B7280' : rsi >= 30 ? '#92400E' : '#DC2626';
+                  rsi >= 70
+                    ? '#DC2626'
+                    : rsi >= 60
+                      ? '#15803D'
+                      : rsi >= 40
+                        ? '#6B7280'
+                        : rsi >= 30
+                          ? '#92400E'
+                          : '#DC2626';
 
                 const adxLabel =
                   adx >= 50
@@ -693,7 +703,10 @@ function TriggerCard({
 }
 
 /* ── Signal color mapping for group borders & badges ── */
-const groupColorMap: Record<SignalColor, { border: string; bg: string; text: string; label: string }> = {
+const groupColorMap: Record<
+  SignalColor,
+  { border: string; bg: string; text: string; label: string }
+> = {
   green: { border: '#15803D', bg: '#DCFCE7', text: '#15803D', label: 'Buy' },
   red: { border: '#DC2626', bg: '#FEE2E2', text: '#DC2626', label: 'Sell' },
   grey: { border: '#6B7280', bg: '#DBEAFE', text: '#6B7280', label: 'Wait' },
@@ -858,8 +871,7 @@ function RecentUpdateGroup({
                     alignItems: 'baseline',
                     gap: 1,
                     py: 0.5,
-                    borderBottom:
-                      bi < group.briefs.length - 1 ? '1px solid #F3F4F6' : 'none',
+                    borderBottom: bi < group.briefs.length - 1 ? '1px solid #F3F4F6' : 'none',
                   }}
                 >
                   <Typography
