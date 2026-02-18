@@ -150,7 +150,7 @@ IMPROVED_CONFIG = {
     # If total unrealized P&L across all positions drops below threshold,
     # close everything. Applied in multi-asset mode only.
     "portfolio_circuit_breaker": True,
-    "circuit_breaker_pct": -15.0,  # close all if portfolio drawdown > 15%
+    "circuit_breaker_pct": -10.0,  # close all if portfolio drawdown > 10%
     # ── NEW: RSI Bollinger Band complementary signal ──
     # Mean-reversion signal for choppy/ranging markets
     # COMPLEMENTARY ONLY — does not override EMA cross signals
@@ -1403,6 +1403,135 @@ def print_comparison(
     print(f"  {'─' * 72}")
 
 
+def apply_circuit_breaker(
+    all_asset_trades: dict[str, list[dict]],
+    all_asset_dfs: dict[str, pd.DataFrame],
+    config: dict,
+    position_size: float = POSITION_SIZE_USD,
+) -> dict[str, list[dict]]:
+    """
+    Portfolio-level drawdown circuit breaker (post-processing pass).
+
+    After running each asset's simulation independently, this function
+    walks through all dates chronologically and checks the aggregate
+    unrealized P&L across all open positions. If it breaches the
+    threshold, force-closes everything.
+
+    Args:
+        all_asset_trades: {coingecko_id: [trade, ...]} from individual simulations
+        all_asset_dfs: {coingecko_id: indicator DataFrame} for price lookups
+        config: signal config with circuit_breaker_pct
+        position_size: USD per position
+
+    Returns:
+        Modified all_asset_trades dict with circuit breaker closures injected.
+    """
+    if not config.get("portfolio_circuit_breaker", False):
+        return all_asset_trades
+
+    threshold_pct = config.get("circuit_breaker_pct", -10.0)
+
+    # Collect all unique dates across all assets
+    all_dates: set = set()
+    for cg_id, df in all_asset_dfs.items():
+        all_dates.update(df.index.tolist())
+    all_dates_sorted = sorted(all_dates)
+
+    # Build a timeline of open positions from each asset's trades
+    # For each asset, track what's open and when it opened/closed
+    tripped = False
+    trip_date = None
+
+    for date in all_dates_sorted:
+        if tripped:
+            break
+
+        # Calculate aggregate unrealized P&L on this date
+        total_unrealized_pct = 0.0
+        open_positions = []  # (cg_id, trade, unrealized_pct, remaining_frac)
+
+        for cg_id, trades in all_asset_trades.items():
+            df = all_asset_dfs.get(cg_id)
+            if df is None or date not in df.index:
+                continue
+
+            current_price = df.loc[date]["close"]
+
+            for t in trades:
+                direction = t.get("direction", "long")
+                if direction == "trim" or direction.startswith("bb_"):
+                    continue  # skip trims and BB trades for circuit breaker calc
+
+                entry_date_str = t.get("entry_date", "")
+                exit_date_str = t.get("exit_date") or "9999-12-31"
+
+                try:
+                    entry_dt = datetime.strptime(entry_date_str, "%Y-%m-%d").date()
+                    exit_dt = datetime.strptime(exit_date_str, "%Y-%m-%d").date()
+                except (ValueError, TypeError):
+                    continue
+
+                # Is this trade open on this date?
+                if entry_dt <= date <= exit_dt:
+                    entry_price = t["entry_price"]
+                    remaining = t.get("remaining_pct", 100) / 100.0
+
+                    if direction == "long":
+                        unrealized = ((current_price - entry_price) / entry_price) * 100
+                    elif direction == "short":
+                        unrealized = ((entry_price - current_price) / entry_price) * 100
+                    else:
+                        continue
+
+                    weighted = unrealized * remaining
+                    total_unrealized_pct += weighted
+                    open_positions.append((cg_id, t, unrealized, remaining))
+
+        # Check circuit breaker
+        if open_positions and total_unrealized_pct <= threshold_pct:
+            tripped = True
+            trip_date = date
+            num_positions = len(open_positions)
+            print(f"\n  🚨 CIRCUIT BREAKER TRIPPED on {date}!")
+            print(f"     Aggregate unrealized: {total_unrealized_pct:+.1f}% (threshold: {threshold_pct}%)")
+            print(f"     Force-closing {num_positions} positions:")
+
+            # Force-close all open EMA positions
+            for cg_id, trade, unrealized, remaining in open_positions:
+                df = all_asset_dfs[cg_id]
+                if date not in df.index:
+                    continue
+                row = df.loc[date]
+                current_price = row["close"]
+                direction = trade.get("direction", "long")
+                entry_price = trade["entry_price"]
+
+                if direction == "long":
+                    pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
+                else:
+                    pnl_pct = round(((entry_price - current_price) / entry_price) * 100, 2)
+
+                pnl_usd = round(remaining * pnl_pct / 100 * position_size, 2)
+
+                print(f"       {cg_id}: {direction.upper()} {pnl_pct:+.1f}% ${pnl_usd:+,.0f}")
+
+                # Modify the trade in-place: set exit date and mark closed
+                trade["exit_date"] = str(date)
+                trade["exit_price"] = round(current_price, 2)
+                trade["exit_signal_color"] = "red" if direction == "long" else "green"
+                trade["exit_signal_reason"] = f"circuit_breaker ({total_unrealized_pct:+.1f}%)"
+                trade["pnl_pct"] = pnl_pct
+                trade["pnl_usd"] = pnl_usd
+                trade["remaining_pct"] = round(remaining * 100, 1)
+                trade["status"] = "closed"
+                trade["exit_indicators"] = _snapshot_indicators(row)
+
+    if not tripped:
+        print(f"\n  ✅ Circuit breaker ({threshold_pct}%) never tripped")
+
+    return all_asset_trades
+
+
 def run_comparison(assets: list[dict], days: int) -> None:
     """Run A/B comparison: current config vs improved config on same price data."""
     config_a = SIGNAL_CONFIG
@@ -1457,10 +1586,10 @@ def run_comparison(assets: list[dict], days: int) -> None:
             print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
             time.sleep(CG_SLEEP_SECONDS)
 
-    all_metrics_a: list[dict] = []
-    all_metrics_b: list[dict] = []
-    all_trades_a: list[dict] = []
-    all_trades_b: list[dict] = []
+    # Per-asset trades and indicator DataFrames (needed for circuit breaker)
+    per_asset_trades_a: dict[str, list[dict]] = {}
+    per_asset_trades_b: dict[str, list[dict]] = {}
+    per_asset_dfs: dict[str, pd.DataFrame] = {}
 
     for i, asset in enumerate(assets):
         cg_id = asset["coingecko_id"]
@@ -1471,47 +1600,63 @@ def run_comparison(assets: list[dict], days: int) -> None:
         print(f"  [{i + 1}/{len(assets)}] Fetching {symbol} ({cg_id})...")
         print(f"{'─' * 74}")
 
-        # Fetch price data ONCE (reuse BTC data if already fetched)
-        if cg_id == "bitcoin" and btc_df_for_crash is not None:
-            # We already have BTC raw data — re-fetch to get the raw version
-            df_raw = fetch_historical_ohlc(cg_id, days)
-        else:
-            df_raw = fetch_historical_ohlc(cg_id, days)
+        # Fetch price data ONCE
+        df_raw = fetch_historical_ohlc(cg_id, days)
+
+        # Store indicator DataFrame for circuit breaker price lookups
+        df_indicators = calculate_indicators(df_raw.copy(), config=config_b)
+        per_asset_dfs[cg_id] = df_indicators
 
         # Run both configs on same data
-        # Config A (current): no BTC crash filter, no enhanced features
         print(f"  Running {config_a['name']}...")
         trades_a = run_backtest(
             cg_id, a_id, days, dry_run=True, config=config_a,
             df_cached=df_raw, quiet=True, btc_df=None,
         )
-        # Config B (enhanced): with BTC crash filter and all new features
         print(f"  Running {config_b['name']}...")
         trades_b = run_backtest(
             cg_id, a_id, days, dry_run=True, config=config_b,
             df_cached=df_raw, quiet=True, btc_df=btc_df_for_crash,
         )
 
-        metrics_a = extract_metrics(trades_a)
-        metrics_b = extract_metrics(trades_b)
-
-        all_metrics_a.append(metrics_a)
-        all_metrics_b.append(metrics_b)
-        all_trades_a.extend(trades_a)
-        all_trades_b.extend(trades_b)
-
-        print_comparison(f"{symbol} ({cg_id})", metrics_a, metrics_b, config_a, config_b)
-
-        # Print individual trade logs for both configs
-        print(f"\n  {config_a['name']} trades:")
-        _print_trade_log(trades_a)
-        print(f"\n  {config_b['name']} trades:")
-        _print_trade_log(trades_b)
+        per_asset_trades_a[cg_id] = trades_a
+        per_asset_trades_b[cg_id] = trades_b
 
         # Rate limit
         if i < len(assets) - 1:
             print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
             time.sleep(CG_SLEEP_SECONDS)
+
+    # ── Apply portfolio circuit breaker (config B only) ──
+    if config_b.get("portfolio_circuit_breaker", False) and len(assets) > 1:
+        print(f"\n{'─' * 74}")
+        print(f"  Portfolio Circuit Breaker Check ({config_b['name']})")
+        print(f"{'─' * 74}")
+        per_asset_trades_b = apply_circuit_breaker(
+            per_asset_trades_b, per_asset_dfs, config_b, position_size=POSITION_SIZE_USD
+        )
+
+    # ── Per-asset comparison (after circuit breaker) ──
+    all_metrics_a: list[dict] = []
+    all_metrics_b: list[dict] = []
+
+    for asset in assets:
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+        trades_a = per_asset_trades_a[cg_id]
+        trades_b = per_asset_trades_b[cg_id]
+
+        metrics_a = extract_metrics(trades_a)
+        metrics_b = extract_metrics(trades_b)
+        all_metrics_a.append(metrics_a)
+        all_metrics_b.append(metrics_b)
+
+        print_comparison(f"{symbol} ({cg_id})", metrics_a, metrics_b, config_a, config_b)
+
+        print(f"\n  {config_a['name']} trades:")
+        _print_trade_log(trades_a)
+        print(f"\n  {config_b['name']} trades:")
+        _print_trade_log(trades_b)
 
     # ── Aggregate comparison ──
     agg_a = _aggregate_metrics(all_metrics_a)
