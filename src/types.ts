@@ -82,6 +82,21 @@ export interface PriceData {
   change24h: number;
 }
 
+/**
+ * A group of consecutive briefs sharing the same signal state.
+ * Used by Recent Updates to collapse repetitive daily updates.
+ */
+export interface BriefGroup {
+  /** 'signal_change' = this group starts with a signal flip; 'continuation' = same signal */
+  type: 'signal_change' | 'continuation';
+  /** Signal color during this group (green/red/grey) — null if unknown */
+  signalColor: SignalColor | null;
+  /** The briefs in this group, newest-first */
+  briefs: Brief[];
+  /** Date range as [oldest, newest] ISO strings */
+  dateRange: [string, string];
+}
+
 export interface AssetDashboard {
   asset: Asset;
   signal: Signal | null;

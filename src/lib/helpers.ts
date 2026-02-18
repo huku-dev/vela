@@ -1,3 +1,5 @@
+import type { Brief, BriefGroup, SignalColor } from '../types';
+
 /**
  * Breaks a block of text into paragraphs of ~2-3 sentences each,
  * to improve readability (addresses the "wall of text" feedback).
@@ -27,6 +29,23 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   }
 
   return paragraphs;
+}
+
+/**
+ * Strips redundant asset name/symbol prefix from brief headlines.
+ * e.g. "HYPE: no clear direction" → "No clear direction"
+ */
+export function stripAssetPrefix(headline: string, symbol: string): string {
+  if (!headline || !symbol) return headline;
+
+  // Match patterns like "HYPE: ...", "HYPE - ...", "Bitcoin: ..."
+  const regex = new RegExp(`^${symbol}\\s*[:–—-]\\s*`, 'i');
+  const stripped = headline.replace(regex, '');
+
+  if (stripped === headline) return headline;
+
+  // Capitalize first letter of remaining text
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
 }
 
 /**
@@ -65,6 +84,42 @@ export function formatPrice(price: number | null | undefined): string {
 }
 
 /**
+ * Splits text into segments, highlighting dollar amounts with styled spans.
+ * Returns an array of strings and objects: { type: 'price', value: string }
+ * so the caller can render them with appropriate styling.
+ */
+export interface PriceSegment {
+  type: 'text' | 'price';
+  value: string;
+}
+
+export function parsePriceSegments(text: string): PriceSegment[] {
+  if (!text) return [];
+
+  const priceRegex = /\$[\d,]+(?:\.\d+)?/g;
+  const segments: PriceSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = priceRegex.exec(text)) !== null) {
+    // Add text before the price
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+    }
+    // Add the price
+    segments.push({ type: 'price', value: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', value: text.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+/**
  * Friendly indicator labels — spells out abbreviations for clarity.
  */
 export const indicatorLabels: Record<string, string> = {
@@ -74,3 +129,77 @@ export const indicatorLabels: Record<string, string> = {
   sma_50_daily: '50-Day Average (SMA 50)',
   adx_4h: 'Trend Strength (ADX)',
 };
+
+/**
+ * Groups an array of briefs (newest-first) by signal state.
+ *
+ * Briefs with the same signal color are grouped together. A new group
+ * only starts when the signal color actually changes (regardless of
+ * brief_type). This avoids showing separate cards for the same signal.
+ *
+ * If the signal lookup is empty (no signal_ids matched), all briefs
+ * are placed in a single group using `fallbackColor`.
+ *
+ * @param briefs — ordered newest-first (as returned by Supabase)
+ * @param signalLookup — maps signal_id → SignalColor (from the signals table)
+ * @param fallbackColor — color to use when lookup misses (e.g. current signal color)
+ * @returns BriefGroup[] — ordered newest-first
+ */
+export function groupBriefsBySignalState(
+  briefs: Brief[],
+  signalLookup: Record<string, SignalColor>,
+  fallbackColor: SignalColor = 'grey'
+): BriefGroup[] {
+  if (!briefs.length) return [];
+
+  // Resolve each brief's signal color
+  const resolvedBriefs = briefs.map(b => ({
+    brief: b,
+    color: (b.signal_id ? signalLookup[b.signal_id] : null) ?? fallbackColor,
+  }));
+
+  const groups: BriefGroup[] = [];
+  let currentColor = resolvedBriefs[0].color;
+  let currentBriefs: Brief[] = [resolvedBriefs[0].brief];
+  // Track whether any brief in the group is a signal_change
+  let hasSignalChange = resolvedBriefs[0].brief.brief_type === 'signal_change';
+
+  for (let i = 1; i < resolvedBriefs.length; i++) {
+    const { brief, color } = resolvedBriefs[i];
+
+    if (color !== currentColor) {
+      // Color changed — flush current group
+      groups.push({
+        type: hasSignalChange ? 'signal_change' : 'continuation',
+        signalColor: currentColor,
+        briefs: currentBriefs,
+        dateRange: [
+          currentBriefs[currentBriefs.length - 1].created_at,
+          currentBriefs[0].created_at,
+        ],
+      });
+      currentBriefs = [brief];
+      currentColor = color;
+      hasSignalChange = brief.brief_type === 'signal_change';
+    } else {
+      // Same color — add to group
+      currentBriefs.push(brief);
+      if (brief.brief_type === 'signal_change') hasSignalChange = true;
+    }
+  }
+
+  // Flush remaining
+  if (currentBriefs.length > 0) {
+    groups.push({
+      type: hasSignalChange ? 'signal_change' : 'continuation',
+      signalColor: currentColor,
+      briefs: currentBriefs,
+      dateRange: [
+        currentBriefs[currentBriefs.length - 1].created_at,
+        currentBriefs[0].created_at,
+      ],
+    });
+  }
+
+  return groups;
+}

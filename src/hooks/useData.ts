@@ -115,6 +115,7 @@ export function useAssetDetail(assetId: string) {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [recentBriefs, setRecentBriefs] = useState<Brief[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [signalLookup, setSignalLookup] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -130,7 +131,7 @@ export function useAssetDetail(assetId: string) {
     }
 
     const fetchDetail = async () => {
-      const [assetRes, signalRes, briefRes, briefsRes] = await Promise.all([
+      const [assetRes, signalRes, briefRes, briefsRes, signalsHistoryRes] = await Promise.all([
         supabase.from('assets').select('*').eq('id', assetId).single(),
         supabase
           .from('signals')
@@ -151,7 +152,14 @@ export function useAssetDetail(assetId: string) {
           .eq('asset_id', assetId)
           .neq('brief_type', 'daily_digest')
           .order('created_at', { ascending: false })
-          .limit(10),
+          .limit(20),
+        // Fetch recent signals for this asset — used to build signal_id → color lookup
+        supabase
+          .from('signals')
+          .select('id, signal_color')
+          .eq('asset_id', assetId)
+          .order('timestamp', { ascending: false })
+          .limit(20),
       ]);
 
       const assetData = assetRes.data;
@@ -159,6 +167,13 @@ export function useAssetDetail(assetId: string) {
       setSignal(signalRes.data?.[0] || null);
       setBrief(briefRes.data?.[0] || null);
       setRecentBriefs(briefsRes.data || []);
+
+      // Build signal lookup map for brief grouping
+      const signalMap: Record<string, string> = {};
+      for (const s of signalsHistoryRes.data || []) {
+        signalMap[s.id] = s.signal_color;
+      }
+      setSignalLookup(signalMap);
 
       if (assetData?.coingecko_id) {
         const prices = await fetchLivePrices([assetData.coingecko_id]);
@@ -171,7 +186,7 @@ export function useAssetDetail(assetId: string) {
     fetchDetail();
   }, [assetId]);
 
-  return { asset, signal, brief, recentBriefs, priceData, loading };
+  return { asset, signal, brief, recentBriefs, priceData, signalLookup, loading };
 }
 
 export function useTrackRecord() {

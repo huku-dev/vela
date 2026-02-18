@@ -7,7 +7,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
 import SignalChip from './SignalChip';
 import PriceArrow from './PriceArrow';
-import { getCoinIcon, formatPrice } from '../lib/helpers';
+import { getCoinIcon, formatPrice, stripAssetPrefix } from '../lib/helpers';
 import type { AssetDashboard } from '../types';
 
 interface SignalCardProps {
@@ -76,7 +76,7 @@ export default function SignalCard({ data }: SignalCardProps) {
             </Box>
 
             {/* Price + arrow */}
-            <Box sx={{ textAlign: 'right' }}>
+            <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
               <Typography
                 sx={{
                   fontFamily: '"JetBrains Mono", monospace',
@@ -91,11 +91,12 @@ export default function SignalCard({ data }: SignalCardProps) {
               {priceData?.change24h != null && (
                 <Box
                   sx={{
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     gap: 0.5,
                     justifyContent: 'flex-end',
                     mt: 0.25,
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   <PriceArrow change24h={priceData.change24h} />
@@ -106,6 +107,7 @@ export default function SignalCard({ data }: SignalCardProps) {
                       fontSize: '0.65rem',
                       color: priceData.change24h >= 0 ? '#15803D' : '#DC2626',
                       lineHeight: 1,
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {Math.abs(priceData.change24h).toFixed(1)}%
@@ -141,7 +143,7 @@ export default function SignalCard({ data }: SignalCardProps) {
                 borderTop: '2px solid #E5E7EB',
               }}
             >
-              {brief.headline}
+              {stripAssetPrefix(brief.headline, asset.symbol)}
             </Typography>
           )}
         </CardContent>

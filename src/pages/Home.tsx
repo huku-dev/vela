@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -5,11 +6,15 @@ import CardContent from '@mui/material/CardContent';
 import CircularProgress from '@mui/material/CircularProgress';
 import SignalCard from '../components/SignalCard';
 import EmptyState from '../components/EmptyState';
+import VelaLogo from '../components/VelaLogo';
 import { useDashboard } from '../hooks/useData';
 import { breakIntoParagraphs } from '../lib/helpers';
 
+const DIGEST_COLLAPSED_HEIGHT = 96; // ~4 lines at 0.85rem with 1.7 line-height
+
 export default function Home() {
   const { data, digest, loading, error, lastUpdated } = useDashboard();
+  const [digestExpanded, setDigestExpanded] = useState(false);
 
   if (loading) {
     return (
@@ -44,7 +49,7 @@ export default function Home() {
     <Box sx={{ p: 2, pb: 10, maxWidth: 600, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ mb: 2.5, mt: 1 }}>
-        <Typography variant="h4">Vela</Typography>
+        <VelaLogo variant="full" size={32} />
         {lastUpdated && (
           <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', mt: 0.5 }}>
             Updates every 15 mins ·{' '}
@@ -56,11 +61,13 @@ export default function Home() {
       {/* Daily Digest — at top, with paragraph breaks */}
       {digest && (
         <Card
+          onClick={() => setDigestExpanded(!digestExpanded)}
           sx={{
             mb: 2.5,
             backgroundColor: '#EDE9FE',
             border: '2.5px solid #1A1A1A',
             boxShadow: '4px 4px 0px #1A1A1A',
+            cursor: 'pointer',
           }}
         >
           <CardContent sx={{ p: 2.5 }}>
@@ -92,20 +99,56 @@ export default function Home() {
               Daily Digest
             </Typography>
 
-            {/* Paragraphed text */}
-            {digestParagraphs.map((para, i) => (
+            {/* Paragraphed text — truncated with "View more" */}
+            <Box
+              sx={{
+                position: 'relative',
+                maxHeight: digestExpanded ? 'none' : `${DIGEST_COLLAPSED_HEIGHT}px`,
+                overflow: 'hidden',
+                transition: 'max-height 0.3s ease',
+              }}
+            >
+              {digestParagraphs.map((para, i) => (
+                <Typography
+                  key={i}
+                  sx={{
+                    fontSize: '0.85rem',
+                    color: '#374151',
+                    lineHeight: 1.7,
+                    mb: i < digestParagraphs.length - 1 ? 1.25 : 0,
+                  }}
+                >
+                  {para}
+                </Typography>
+              ))}
+              {!digestExpanded && (
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 40,
+                    background: 'linear-gradient(transparent, #EDE9FE)',
+                  }}
+                />
+              )}
+            </Box>
+            {digestParagraphs.length > 1 && (
               <Typography
-                key={i}
+                onClick={() => setDigestExpanded(!digestExpanded)}
                 sx={{
-                  fontSize: '0.85rem',
-                  color: '#374151',
-                  lineHeight: 1.7,
-                  mb: i < digestParagraphs.length - 1 ? 1.25 : 0,
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#6B7280',
+                  mt: 1,
+                  cursor: 'pointer',
+                  '&:hover': { color: '#1A1A1A' },
                 }}
               >
-                {para}
+                {digestExpanded ? 'Show less' : 'View more'}
               </Typography>
-            ))}
+            )}
           </CardContent>
         </Card>
       )}
