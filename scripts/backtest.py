@@ -1936,6 +1936,8 @@ def main():
     parser.add_argument("--days", type=int, default=365, help="Lookback period in days (default: 365)")
     parser.add_argument("--dry-run", action="store_true", help="Print trades without writing to Supabase")
     parser.add_argument("--compare", action="store_true", help="A/B test: current config vs improved config")
+    parser.add_argument("--notify", action="store_true",
+                        help="Send Telegram/email notifications for signal changes")
     parser.add_argument("--stress-test", type=str, metavar="YYYY-MM-DD",
                         help="Analyze open positions on a specific date (black swan analysis)")
     args = parser.parse_args()
@@ -2042,6 +2044,59 @@ def main():
             print(f"    TRIMS: {len(trims)} partial profit-takes")
             print(f"    USD P&L: ${total_pnl_usd:+,.0f} (trims: ${trim_pnl_usd:+,.0f}, closes: ${total_pnl_usd - trim_pnl_usd:+,.0f})")
             print(f"{'=' * 60}")
+
+        # ── Notifications (only with --notify flag) ──
+        if args.notify:
+            _dispatch_notifications(assets, all_trades)
+
+
+def _dispatch_notifications(
+    assets: list[dict], all_trades: list[dict]
+) -> None:
+    """Send notifications for the latest signal per asset.
+
+    Looks at the most recent trade for each asset and sends a notification
+    if a trade was opened or closed today. Intended for scheduled runs
+    (e.g., daily cron), not historical backtests.
+    """
+    from notify import notify_signal_change
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    print(f"\n  [notify] Checking for today's signal changes ({today})...")
+
+    for asset in assets:
+        asset_trades = [t for t in all_trades if t.get("asset_id") == asset["id"]]
+        if not asset_trades:
+            continue
+
+        # Find the most recent trade (by entry date)
+        latest = max(asset_trades, key=lambda t: t.get("entry_date", ""))
+        entry_date = latest.get("entry_date", "")
+
+        # Only notify if the trade was opened today
+        if entry_date.startswith(today):
+            direction = latest.get("direction", "long")
+            # Map trade direction to signal color
+            if direction in ("long", "bb_long"):
+                signal_color = "green"
+            elif direction in ("short", "bb_short"):
+                signal_color = "red"
+            else:
+                signal_color = "grey"
+
+            headline = (
+                f"{asset['symbol']} signal changed — "
+                f"{'buying pressure building' if signal_color == 'green' else 'selling pressure increasing' if signal_color == 'red' else 'no clear direction'}"
+            )
+            price = latest.get("entry_price")
+            notify_signal_change(
+                asset_symbol=asset["symbol"],
+                signal_color=signal_color,
+                headline=headline,
+                price=price,
+            )
+        else:
+            print(f"  [notify] {asset['symbol']}: no new signal today (latest entry: {entry_date})")
 
 
 if __name__ == "__main__":
