@@ -1,7 +1,9 @@
 """
 Vela Notification Dispatch
 ──────────────────────────
-Sends signal-change and daily-digest alerts via Telegram and Email (Resend).
+Sends condensed signal-change and daily-digest alerts via Telegram and Email
+(Resend) with links back to the product for the full brief.
+
 Importable from any Python script in the Vela pipeline.
 
 Environment variables (read from ../.env):
@@ -15,6 +17,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import requests
 
@@ -42,21 +45,41 @@ TELEGRAM_CHAT_ID = _env.get("TELEGRAM_CHAT_ID", "")
 RESEND_API_KEY = _env.get("RESEND_API_KEY", "")
 NOTIFICATION_EMAIL = _env.get("NOTIFICATION_EMAIL", "")
 
+# ── Configuration ────────────────────────────────────────────────────────
+
+# TODO: Replace with production URL before go-live
+APP_BASE_URL = "http://localhost:5173"
+
+# Telegram inline keyboard buttons require HTTPS URLs — skip buttons for localhost
+_USE_INLINE_BUTTONS = APP_BASE_URL.startswith("https://")
+
+# ── Constants ────────────────────────────────────────────────────────────
+
+_EMOJI = {"green": "🟢", "red": "🔴", "grey": "⚪"}
+_LABEL = {"green": "BUY", "red": "SELL", "grey": "WAIT"}
+_ACCENT = {"green": "#00D084", "red": "#FF4757", "grey": "#EBEBEB"}
+
 # ── Telegram ────────────────────────────────────────────────────────────
 
 
-def send_telegram(message: str) -> bool:
-    """Send a Markdown message via Telegram Bot API. Returns True on success."""
+def _send_telegram_with_buttons(
+    message: str, buttons: list[list[dict[str, str]]] | None = None
+) -> bool:
+    """Send a Markdown message with optional inline keyboard buttons."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("  [notify] Telegram not configured, skipping")
         return False
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {
+    payload: dict[str, Any] = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
         "parse_mode": "Markdown",
     }
+
+    if buttons:
+        payload["reply_markup"] = {"inline_keyboard": buttons}
+
     try:
         resp = requests.post(url, json=payload, timeout=10)
         if resp.status_code == 200:
@@ -67,6 +90,11 @@ def send_telegram(message: str) -> bool:
     except Exception as e:
         print(f"  [notify] Telegram exception: {e}")
         return False
+
+
+def send_telegram(message: str) -> bool:
+    """Send a Markdown message via Telegram Bot API. Returns True on success."""
+    return _send_telegram_with_buttons(message)
 
 
 # ── Email (Resend) ──────────────────────────────────────────────────────
@@ -101,20 +129,17 @@ def send_email(subject: str, body_html: str) -> bool:
         return False
 
 
-# ── Message formatting ──────────────────────────────────────────────────
-
-_EMOJI = {"green": "🟢", "red": "🔴", "grey": "⚪"}
-_LABEL = {"green": "BUY", "red": "SELL", "grey": "WAIT"}
+# ── Signal change formatting (condensed + links + accept/decline) ───────
 
 
 def format_signal_telegram(
     asset_symbol: str,
+    asset_id: str,
     signal_color: str,
     headline: str,
-    summary: str = "",
     price: float | None = None,
 ) -> str:
-    """Format a signal change as a Telegram Markdown message."""
+    """Format a condensed signal-change Telegram message with product link."""
     emoji = _EMOJI.get(signal_color, "⚪")
     label = _LABEL.get(signal_color, "WAIT")
     price_str = f" at ${price:,.0f}" if price else ""
@@ -123,64 +148,111 @@ def format_signal_telegram(
         f"{emoji} *{asset_symbol}: {label}*{price_str}",
         "",
         headline,
+        "",
+        f"[View full brief →]({APP_BASE_URL}/{asset_id})",
     ]
-    if summary:
-        lines += ["", summary]
-    lines += ["", "_Vela — Always watching_"]
     return "\n".join(lines)
+
+
+def _signal_telegram_buttons(
+    asset_id: str, signal_color: str
+) -> list[list[dict[str, str]]]:
+    """Build inline keyboard buttons for accept/decline on actionable signals."""
+    if signal_color == "grey":
+        return [[{"text": "View full brief", "url": f"{APP_BASE_URL}/{asset_id}"}]]
+
+    label = _LABEL.get(signal_color, "WAIT")
+    return [
+        [
+            {
+                "text": f"✅ Accept {label}",
+                "callback_data": f"accept_{asset_id}_{signal_color}",
+            },
+            {
+                "text": "❌ Decline",
+                "callback_data": f"decline_{asset_id}_{signal_color}",
+            },
+        ],
+        [{"text": "View full brief", "url": f"{APP_BASE_URL}/{asset_id}"}],
+    ]
 
 
 def format_signal_email(
     asset_symbol: str,
+    asset_id: str,
     signal_color: str,
     headline: str,
-    summary: str = "",
     price: float | None = None,
 ) -> tuple[str, str]:
-    """Return (subject, html_body) for a signal change email."""
+    """Return (subject, html_body) for a condensed signal-change email with CTA buttons."""
     label = _LABEL.get(signal_color, "WAIT")
+    accent = _ACCENT.get(signal_color, "#EBEBEB")
     price_str = f" at ${price:,.0f}" if price else ""
-
-    color_map = {"green": "#00D084", "red": "#FF4757", "grey": "#EBEBEB"}
-    accent = color_map.get(signal_color, "#EBEBEB")
+    brief_url = f"{APP_BASE_URL}/{asset_id}"
 
     subject = f"Vela: {asset_symbol} → {label}{price_str}"
+
+    # Accept/decline buttons only for actionable signals (BUY or SELL)
+    action_buttons = ""
+    if signal_color != "grey":
+        text_color = "#0A0A0A" if signal_color == "grey" else "#FFFFFF"
+        action_buttons = f"""
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="{brief_url}?action=accept&signal={signal_color}" style="display: inline-block; background: {accent}; color: {text_color}; padding: 12px 28px; border: 3px solid #0A0A0A; text-decoration: none; font-weight: 700; font-size: 14px; margin-right: 12px;">✅ ACCEPT {label}</a>
+      <a href="{brief_url}?action=decline&signal={signal_color}" style="display: inline-block; background: #FFFBF5; color: #0A0A0A; padding: 12px 28px; border: 3px solid #0A0A0A; text-decoration: none; font-weight: 700; font-size: 14px;">❌ DECLINE</a>
+    </div>"""
+
     html = f"""\
 <div style="font-family: Inter, -apple-system, sans-serif; max-width: 480px; margin: 0 auto; background: #FFFBF5; padding: 32px; border: 3px solid #0A0A0A;">
   <div style="border-left: 4px solid {accent}; padding-left: 16px; margin-bottom: 24px;">
     <h2 style="margin: 0 0 4px; color: #0A0A0A; font-size: 20px;">{asset_symbol}: {label}{price_str}</h2>
   </div>
-  <p style="font-size: 16px; line-height: 1.6; color: #0A0A0A; margin: 0 0 12px;">{headline}</p>
-  {"<p style='font-size: 14px; line-height: 1.6; color: #6B7280; margin: 0 0 12px;'>" + summary + "</p>" if summary else ""}
+  <p style="font-size: 16px; line-height: 1.6; color: #0A0A0A; margin: 0 0 16px;">{headline}</p>
+  {action_buttons}
+  <div style="text-align: center; margin: 16px 0;">
+    <a href="{brief_url}" style="color: #0A0A0A; font-size: 14px; font-weight: 600;">View full brief →</a>
+  </div>
   <hr style="border: none; border-top: 2px solid #EBEBEB; margin: 24px 0;">
   <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Always watching the markets for you</p>
 </div>"""
     return subject, html
 
 
+# ── Daily digest formatting (condensed + link) ──────────────────────────
+
+
 def format_digest_telegram(headline: str, summary: str) -> str:
-    """Format a daily digest as a Telegram Markdown message."""
+    """Format a condensed daily digest Telegram message with product link."""
     today = datetime.now(timezone.utc).strftime("%b %d")
+
+    # Truncate summary to ~150 chars for condensed view
+    truncated = summary[:147] + "..." if len(summary) > 150 else summary
+
     lines = [
         f"📰 *Vela Daily Digest — {today}*",
         "",
-        headline,
+        truncated,
+        "",
+        f"[Read full digest →]({APP_BASE_URL})",
     ]
-    if summary:
-        lines += ["", summary]
-    lines += ["", "_Vela — Always watching_"]
     return "\n".join(lines)
 
 
 def format_digest_email(headline: str, summary: str) -> tuple[str, str]:
-    """Return (subject, html_body) for a daily digest email."""
+    """Return (subject, html_body) for a condensed daily digest email."""
     today = datetime.now(timezone.utc).strftime("%b %d")
+
+    # Truncate for email preview — full version on the product
+    truncated = summary[:197] + "..." if len(summary) > 200 else summary
+
     subject = f"Vela Daily Digest — {today}"
     html = f"""\
 <div style="font-family: Inter, -apple-system, sans-serif; max-width: 480px; margin: 0 auto; background: #FFFBF5; padding: 32px; border: 3px solid #0A0A0A;">
   <h2 style="margin: 0 0 16px; color: #0A0A0A; font-size: 20px;">📰 Daily Digest — {today}</h2>
-  <p style="font-size: 16px; line-height: 1.6; color: #0A0A0A; margin: 0 0 12px;">{headline}</p>
-  {"<p style='font-size: 14px; line-height: 1.6; color: #6B7280; margin: 0 0 12px;'>" + summary + "</p>" if summary else ""}
+  <p style="font-size: 14px; line-height: 1.6; color: #0A0A0A; margin: 0 0 16px;">{truncated}</p>
+  <div style="text-align: center; margin: 24px 0;">
+    <a href="{APP_BASE_URL}" style="display: inline-block; background: #0A0A0A; color: #FFFBF5; padding: 12px 28px; border: 3px solid #0A0A0A; text-decoration: none; font-weight: 700; font-size: 14px;">Read full digest →</a>
+  </div>
   <hr style="border: none; border-top: 2px solid #EBEBEB; margin: 24px 0;">
   <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Always watching the markets for you</p>
 </div>"""
@@ -192,18 +264,24 @@ def format_digest_email(headline: str, summary: str) -> tuple[str, str]:
 
 def notify_signal_change(
     asset_symbol: str,
+    asset_id: str,
     signal_color: str,
     headline: str,
     summary: str = "",
     price: float | None = None,
 ) -> None:
-    """Dispatch a signal-change notification across all configured channels."""
+    """Dispatch a condensed signal-change notification with accept/decline buttons."""
     print(f"  [notify] Signal change: {asset_symbol} → {_LABEL.get(signal_color, '?')}")
 
-    tg_msg = format_signal_telegram(asset_symbol, signal_color, headline, summary, price)
-    send_telegram(tg_msg)
+    # Telegram: condensed message + inline accept/decline buttons (HTTPS only)
+    tg_msg = format_signal_telegram(asset_symbol, asset_id, signal_color, headline, price)
+    tg_buttons = _signal_telegram_buttons(asset_id, signal_color) if _USE_INLINE_BUTTONS else None
+    _send_telegram_with_buttons(tg_msg, tg_buttons)
 
-    subject, html = format_signal_email(asset_symbol, signal_color, headline, summary, price)
+    # Email: condensed + accept/decline CTA buttons
+    subject, html = format_signal_email(
+        asset_symbol, asset_id, signal_color, headline, price
+    )
     send_email(subject, html)
 
 
@@ -212,7 +290,8 @@ def notify_daily_digest(headline: str, summary: str = "") -> None:
     print("  [notify] Daily digest")
 
     tg_msg = format_digest_telegram(headline, summary)
-    send_telegram(tg_msg)
+    tg_buttons = [[{"text": "Read full digest", "url": APP_BASE_URL}]] if _USE_INLINE_BUTTONS else None
+    _send_telegram_with_buttons(tg_msg, tg_buttons)
 
     subject, html = format_digest_email(headline, summary)
     send_email(subject, html)
@@ -229,9 +308,10 @@ if __name__ == "__main__":
         print("Email:", "configured" if RESEND_API_KEY else "not configured")
         print()
 
-        # Test signal change
+        # Test signal change (with accept/decline buttons)
         notify_signal_change(
             asset_symbol="BTC",
+            asset_id="bitcoin",
             signal_color="green",
             headline="Price broke above $95,000 — trend is turning up",
             summary="Strong buying pressure building across all timeframes.",
@@ -239,7 +319,7 @@ if __name__ == "__main__":
         )
         print()
 
-        # Test daily digest
+        # Test daily digest (condensed + link)
         notify_daily_digest(
             headline="Markets steady as Bitcoin holds $95K support",
             summary="ETH and HYPE showing mixed signals. No major changes today.",

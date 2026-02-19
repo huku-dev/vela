@@ -1,0 +1,470 @@
+{
+  "synced_at": "2026-02-19T16:04:20.064751+00:00",
+  "source": "notion",
+  "database_id": "30c8414f-7d9b-81e8-88a3-c603ee63faeb",
+  "templates": [
+    {
+      "id": "30c8414f-7d9b-8120-a901-d03a8ad76562",
+      "name": "Daily Digest — Email",
+      "type": "Daily Digest",
+      "channels": [
+        "Email"
+      ],
+      "status": "Active",
+      "signal": "All",
+      "last_edited": "2026-02-19T15:53:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Subject Line",
+            "items": [
+              {
+                "type": "code",
+                "content": "Vela Daily Digest — {date}",
+                "language": "plain text"
+              }
+            ]
+          },
+          {
+            "heading": "Email Body",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Same neobrutalist card layout as signal emails:"
+              },
+              {
+                "type": "bullet",
+                "content": "Header: \"📰 Daily Digest — {date}\""
+              },
+              {
+                "type": "bullet",
+                "content": "Body: {summary_truncated} — first 200 characters of digest"
+              },
+              {
+                "type": "bullet",
+                "content": "CTA button: \"Read full digest →\" (black background, cream text)"
+              },
+              {
+                "type": "bullet",
+                "content": "Brand footer: \"Vela — Always watching the markets for you\""
+              }
+            ]
+          },
+          {
+            "heading": "Notes",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Email shows 200 chars (vs 150 for Telegram) since email has more visual space. The CTA should be the most prominent element — goal is click-through to the product."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-8147-ac53-d1a538b83888",
+      "name": "Signal Change — WAIT (Telegram)",
+      "type": "Signal Change",
+      "channels": [
+        "Telegram"
+      ],
+      "status": "Active",
+      "signal": "WAIT (grey)",
+      "last_edited": "2026-02-19T15:52:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Message Format",
+            "items": [
+              {
+                "type": "code",
+                "content": "⚪ *{asset_symbol}: WAIT* at ${price}\n\n{headline}\n\n[View full brief →]({app_url}/{asset_id})",
+                "language": "markdown"
+              }
+            ]
+          },
+          {
+            "heading": "Inline Buttons",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Row 1: View full brief → (no accept/decline — WAIT is not actionable)"
+              }
+            ]
+          },
+          {
+            "heading": "Notes",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "WAIT signals don't have accept/decline buttons since they aren't actionable. The message just links to the full brief for context."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-815b-ad9e-c78c19ceb3b1",
+      "name": "Configuration & Pre-Launch Checklist",
+      "type": "System",
+      "channels": [
+        "Telegram",
+        "Email"
+      ],
+      "status": "Active",
+      "signal": "All",
+      "last_edited": "2026-02-19T15:53:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Environment Variables",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "TELEGRAM_BOT_TOKEN — Bot API token from @BotFather"
+              },
+              {
+                "type": "bullet",
+                "content": "TELEGRAM_CHAT_ID — Target chat ID (currently: 950571987)"
+              },
+              {
+                "type": "bullet",
+                "content": "RESEND_API_KEY — Resend.com API key"
+              },
+              {
+                "type": "bullet",
+                "content": "NOTIFICATION_EMAIL — Recipient email (currently: henry.uku@gmail.com)"
+              }
+            ]
+          },
+          {
+            "heading": "Pre-Launch TODO",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "[ ] Replace APP_BASE_URL in notify.ts (Edge Function) with production URL"
+              },
+              {
+                "type": "bullet",
+                "content": "[ ] Replace APP_BASE_URL in notify.py (Python) with production URL"
+              },
+              {
+                "type": "bullet",
+                "content": "[ ] Set up Resend custom domain (replace onboarding@resend.dev with signals@vela.app)"
+              },
+              {
+                "type": "bullet",
+                "content": "[ ] Set up Telegram webhook for accept/decline callback handling"
+              },
+              {
+                "type": "bullet",
+                "content": "[ ] Build frontend handler for ?action=accept/decline query params"
+              },
+              {
+                "type": "bullet",
+                "content": "[ ] Test inline buttons with production HTTPS URL"
+              }
+            ]
+          },
+          {
+            "heading": "Where Notifications Are Sent From",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "Live signals: Supabase Edge Function (run-signals) → notify.ts"
+              },
+              {
+                "type": "bullet",
+                "content": "Backtest/dev: Python script (backtest.py --notify) → notify.py"
+              },
+              {
+                "type": "bullet",
+                "content": "Both modules mirror the same templates and logic"
+              }
+            ]
+          },
+          {
+            "heading": "Callback Data Format (Accept/Decline)",
+            "items": [
+              {
+                "type": "code",
+                "content": "Telegram callback_data:\n  accept_{asset_id}_{signal_color}   e.g. accept_bitcoin_green\n  decline_{asset_id}_{signal_color}  e.g. decline_bitcoin_green\n\nEmail query params:\n  ?action=accept&signal={signal_color}\n  ?action=decline&signal={signal_color}",
+                "language": "plain text"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-816b-a0c1-f5c8c30a05ff",
+      "name": "Signal Change — Email",
+      "type": "Signal Change",
+      "channels": [
+        "Email"
+      ],
+      "status": "Active",
+      "signal": "All",
+      "last_edited": "2026-02-19T15:52:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Subject Line",
+            "items": [
+              {
+                "type": "code",
+                "content": "Vela: {asset_symbol} → {label} at ${price}",
+                "language": "plain text"
+              }
+            ]
+          },
+          {
+            "heading": "Email Body",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Neobrutalist card layout (cream #FFFBF5 background, 3px black border, Inter font):"
+              },
+              {
+                "type": "bullet",
+                "content": "Accent-colored left border (green for BUY, red for SELL, grey for WAIT)"
+              },
+              {
+                "type": "bullet",
+                "content": "Header: \"{asset_symbol}: {label} at ${price}\""
+              },
+              {
+                "type": "bullet",
+                "content": "Body: {headline} — one-line Plain English summary"
+              },
+              {
+                "type": "bullet",
+                "content": "CTA buttons (BUY/SELL only): ✅ ACCEPT {label} | ❌ DECLINE"
+              },
+              {
+                "type": "bullet",
+                "content": "Footer link: \"View full brief →\""
+              },
+              {
+                "type": "bullet",
+                "content": "Brand footer: \"Vela — Always watching the markets for you\""
+              }
+            ]
+          },
+          {
+            "heading": "Accept/Decline Button URLs",
+            "items": [
+              {
+                "type": "code",
+                "content": "Accept: {app_url}/{asset_id}?action=accept&signal={signal_color}\nDecline: {app_url}/{asset_id}?action=decline&signal={signal_color}",
+                "language": "plain text"
+              }
+            ]
+          },
+          {
+            "heading": "Color System",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "BUY accent: #00D084 (green) — white text on button"
+              },
+              {
+                "type": "bullet",
+                "content": "SELL accent: #FF4757 (red) — white text on button"
+              },
+              {
+                "type": "bullet",
+                "content": "WAIT accent: #EBEBEB (grey) — no action buttons"
+              },
+              {
+                "type": "bullet",
+                "content": "Decline button: cream background, black text, black border"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-81a6-88c2-fef45d8654bf",
+      "name": "Signal Change — SELL (Telegram)",
+      "type": "Signal Change",
+      "channels": [
+        "Telegram"
+      ],
+      "status": "Active",
+      "signal": "SELL (red)",
+      "last_edited": "2026-02-19T15:52:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Message Format",
+            "items": [
+              {
+                "type": "code",
+                "content": "🔴 *{asset_symbol}: SELL* at ${price}\n\n{headline}\n\n[View full brief →]({app_url}/{asset_id})",
+                "language": "markdown"
+              }
+            ]
+          },
+          {
+            "heading": "Inline Buttons",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Row 1: ✅ Accept SELL | ❌ Decline"
+              },
+              {
+                "type": "paragraph",
+                "content": "Row 2: View full brief → (links to product)"
+              }
+            ]
+          },
+          {
+            "heading": "Notes",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Identical structure to BUY but with red emoji and SELL label. Headlines should explain WHY the signal changed — e.g. \"Selling pressure increasing as price drops below $90,000\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-81b5-b616-ce363225e9a9",
+      "name": "Signal Change — BUY (Telegram)",
+      "type": "Signal Change",
+      "channels": [
+        "Telegram"
+      ],
+      "status": "Active",
+      "signal": "BUY (green)",
+      "last_edited": "2026-02-19T15:52:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Message Format",
+            "items": [
+              {
+                "type": "code",
+                "content": "🟢 *{asset_symbol}: BUY* at ${price}\n\n{headline}\n\n[View full brief →]({app_url}/{asset_id})",
+                "language": "markdown"
+              }
+            ]
+          },
+          {
+            "heading": "Inline Buttons",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Row 1: ✅ Accept BUY | ❌ Decline"
+              },
+              {
+                "type": "paragraph",
+                "content": "Row 2: View full brief → (links to product)"
+              }
+            ]
+          },
+          {
+            "heading": "Variables",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "{asset_symbol} — e.g. BTC, ETH, HYPE"
+              },
+              {
+                "type": "bullet",
+                "content": "{price} — current price, formatted with commas, no decimals"
+              },
+              {
+                "type": "bullet",
+                "content": "{headline} — one-line Plain English summary from the brief"
+              },
+              {
+                "type": "bullet",
+                "content": "{asset_id} — Supabase asset ID (used in product URL)"
+              },
+              {
+                "type": "bullet",
+                "content": "{app_url} — product base URL (currently localhost, will be production)"
+              }
+            ]
+          },
+          {
+            "heading": "Notes",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Keep the headline under 100 characters. Should be Plain English per the Three Pillars — no jargon like EMA or RSI. Example: \"Price broke above $95,000 — trend is turning up\""
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "30c8414f-7d9b-81ce-89de-d6a32b1c52c6",
+      "name": "Daily Digest — Telegram",
+      "type": "Daily Digest",
+      "channels": [
+        "Telegram"
+      ],
+      "status": "Active",
+      "signal": "All",
+      "last_edited": "2026-02-19T15:52:00.000Z",
+      "content": {
+        "sections": [
+          {
+            "heading": "Message Format",
+            "items": [
+              {
+                "type": "code",
+                "content": "📰 *Vela Daily Digest — {date}*\n\n{summary_truncated}\n\n[Read full digest →]({app_url})",
+                "language": "markdown"
+              }
+            ]
+          },
+          {
+            "heading": "Inline Buttons",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "Row 1: Read full digest → (links to product home)"
+              }
+            ]
+          },
+          {
+            "heading": "Variables",
+            "items": [
+              {
+                "type": "bullet",
+                "content": "{date} — formatted as \"Feb 19\" (short month + day)"
+              },
+              {
+                "type": "bullet",
+                "content": "{summary_truncated} — first 150 characters of the digest summary, with \"...\" if truncated"
+              },
+              {
+                "type": "bullet",
+                "content": "{app_url} — product base URL"
+              }
+            ]
+          },
+          {
+            "heading": "Notes",
+            "items": [
+              {
+                "type": "paragraph",
+                "content": "The digest is intentionally condensed — the full version lives on the product. Goal is to drive users back to the app, not deliver everything via Telegram."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

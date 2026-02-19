@@ -2091,6 +2091,7 @@ def _dispatch_notifications(
             price = latest.get("entry_price")
             notify_signal_change(
                 asset_symbol=asset["symbol"],
+                asset_id=asset["id"],
                 signal_color=signal_color,
                 headline=headline,
                 price=price,
