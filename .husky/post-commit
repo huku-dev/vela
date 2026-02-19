@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Auto-update Notion changelog from commit
+python3 scripts/git_to_notion.py
+
+exit 0
