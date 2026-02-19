@@ -83,7 +83,7 @@ export function formatPercentChange(change: number): string {
 export function calculateUnrealizedPnL(
   entryPrice: number,
   currentPrice: number,
-  direction: 'long' | 'short',
+  direction: 'long' | 'short'
 ): number {
   if (entryPrice <= 0 || currentPrice <= 0) {
     throw new Error('Prices must be positive numbers');
@@ -120,7 +120,7 @@ export function pctToDollar(pnlPct: number, positionSize: number): number {
  */
 export function aggregateTradeStats(
   closedTrades: { pnl_pct: number }[],
-  positionSize: number,
+  positionSize: number
 ): { totalClosed: number; totalDollarPnl: number; avgPnlPct: number } {
   const totalClosed = closedTrades.length;
   if (totalClosed === 0) {
@@ -129,7 +129,7 @@ export function aggregateTradeStats(
 
   const totalDollarPnl = closedTrades.reduce(
     (sum, t) => sum + pctToDollar(t.pnl_pct, positionSize),
-    0,
+    0
   );
 
   const avgPnlPct =

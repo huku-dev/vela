@@ -47,18 +47,16 @@ export default function TrackRecord() {
   const assetFiltered =
     assetFilter === 'all' ? trades : trades.filter(t => t.asset_id === assetFilter);
   const filteredTrades =
-    statusFilter === 'all'
-      ? assetFiltered
-      : assetFiltered.filter(t => t.status === statusFilter);
+    statusFilter === 'all' ? assetFiltered : assetFiltered.filter(t => t.status === statusFilter);
 
   const filteredClosed = assetFiltered.filter(
-    (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null,
+    (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null
   );
   const filteredOpen = assetFiltered.filter(t => t.status === 'open');
 
   const { totalClosed, totalDollarPnl, avgPnlPct } = aggregateTradeStats(
     filteredClosed,
-    DEFAULT_POSITION_SIZE,
+    DEFAULT_POSITION_SIZE
   );
 
   // ── Build unique asset list for filter ──
@@ -219,9 +217,7 @@ export default function TrackRecord() {
                 coingeckoId={trade.asset_coingecko_id}
                 formatDuration={formatDuration}
                 expanded={expandedTradeId === trade.id}
-                onToggle={() =>
-                  setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                }
+                onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
                 onViewBrief={() => navigate(`/asset/${trade.asset_id}`)}
               />
             ) : (
@@ -230,11 +226,9 @@ export default function TrackRecord() {
                 trade={trade}
                 coingeckoId={trade.asset_coingecko_id}
                 expanded={expandedTradeId === trade.id}
-                onToggle={() =>
-                  setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                }
+                onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
               />
-            ),
+            )
           )}
 
           {hasMore && (
@@ -398,10 +392,7 @@ function OpenTradeCard({
           }}
         >
           {/* Position line items */}
-          <DetailRow
-            label="Position size"
-            value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
-          />
+          <DetailRow label="Position size" value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`} />
           <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
           {currentPrice != null && (
             <DetailRow label="Current price" value={formatPrice(currentPrice)} />
@@ -486,7 +477,8 @@ function ClosedTradeCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const dollarPnl = trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
+  const dollarPnl =
+    trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
 
@@ -520,7 +512,8 @@ function ClosedTradeCard({
                 style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
               >
                 {directionLabel(trade.direction)}
-                {trade.direction === 'trim' && trade.trim_pct != null && ` (${trade.trim_pct}%)`} · Closed
+                {trade.direction === 'trim' && trade.trim_pct != null && ` (${trade.trim_pct}%)`} ·
+                Closed
               </p>
             </div>
           </div>
@@ -602,14 +595,11 @@ function ClosedTradeCard({
           }}
         >
           {/* Position line items */}
-          <DetailRow
-            label="Position size"
-            value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
-          />
+          <DetailRow label="Position size" value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`} />
           {trade.trim_pct != null && (
             <DetailRow
               label="Trimmed"
-              value={`${trade.trim_pct}% of position · $${Math.round(DEFAULT_POSITION_SIZE * trade.trim_pct / 100).toLocaleString()}`}
+              value={`${trade.trim_pct}% of position · $${Math.round((DEFAULT_POSITION_SIZE * trade.trim_pct) / 100).toLocaleString()}`}
             />
           )}
           <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />

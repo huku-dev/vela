@@ -209,12 +209,7 @@ describe('pctToDollar - TRUST CRITICAL', () => {
 
 describe('aggregateTradeStats - TRUST CRITICAL', () => {
   it('calculates stats from mixed wins and losses', () => {
-    const trades = [
-      { pnl_pct: 10 },
-      { pnl_pct: -5 },
-      { pnl_pct: 20 },
-      { pnl_pct: -3 },
-    ];
+    const trades = [{ pnl_pct: 10 }, { pnl_pct: -5 }, { pnl_pct: 20 }, { pnl_pct: -3 }];
     const stats = aggregateTradeStats(trades, 1000);
     expect(stats.totalClosed).toBe(4);
     expect(stats.avgPnlPct).toBe(5.5); // (10 - 5 + 20 - 3) / 4 = 5.5
@@ -224,14 +219,14 @@ describe('aggregateTradeStats - TRUST CRITICAL', () => {
   it('CRITICAL: real backtest data — mixed shorts and longs', () => {
     // Simulates actual backtest trades from Vela
     const trades = [
-      { pnl_pct: 150.3 },  // HYPE long win
-      { pnl_pct: -7.1 },   // HYPE long loss
-      { pnl_pct: 21.7 },   // HYPE short win
-      { pnl_pct: -2.3 },   // HYPE short loss
-      { pnl_pct: -3.3 },   // ETH long loss
-      { pnl_pct: 52.5 },   // ETH trim (short side)
-      { pnl_pct: -4.5 },   // BTC long loss
-      { pnl_pct: -8.8 },   // BTC short loss
+      { pnl_pct: 150.3 }, // HYPE long win
+      { pnl_pct: -7.1 }, // HYPE long loss
+      { pnl_pct: 21.7 }, // HYPE short win
+      { pnl_pct: -2.3 }, // HYPE short loss
+      { pnl_pct: -3.3 }, // ETH long loss
+      { pnl_pct: 52.5 }, // ETH trim (short side)
+      { pnl_pct: -4.5 }, // BTC long loss
+      { pnl_pct: -8.8 }, // BTC short loss
     ];
     const stats = aggregateTradeStats(trades, 1000);
     expect(stats.totalClosed).toBe(8);
