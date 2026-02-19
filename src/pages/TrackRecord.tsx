@@ -94,11 +94,7 @@ export default function TrackRecord() {
           value={totalClosed === 0 ? '—' : `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
           variant={avgPnlPct >= 0 ? 'mint' : 'peach'}
           valueColor={
-            totalClosed === 0
-              ? undefined
-              : avgPnlPct >= 0
-                ? 'var(--green-dark)'
-                : 'var(--red-dark)'
+            totalClosed === 0 ? undefined : avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'
           }
         />
         <StatCard
@@ -204,9 +200,7 @@ export default function TrackRecord() {
               coingeckoId={trade.asset_coingecko_id}
               formatDuration={formatDuration}
               expanded={expandedTradeId === trade.id}
-              onToggle={() =>
-                setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-              }
+              onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
               onViewBrief={() => navigate(`/asset/${trade.asset_id}`)}
             />
           ))}
@@ -218,9 +212,7 @@ export default function TrackRecord() {
               trade={trade}
               coingeckoId={trade.asset_coingecko_id}
               expanded={expandedTradeId === trade.id}
-              onToggle={() =>
-                setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-              }
+              onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
             />
           ))}
 
@@ -332,7 +324,10 @@ function OpenTradeCard({
                     margin: 0,
                   }}
                 >
-                  {unrealizedDollar >= 0 ? '+' : ''}${Math.abs(unrealizedDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {unrealizedDollar >= 0 ? '+' : ''}$
+                  {Math.abs(unrealizedDollar).toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}
                 </p>
               )}
             </div>
@@ -511,7 +506,8 @@ function ClosedTradeCard({
                     margin: 0,
                   }}
                 >
-                  {dollarPnl >= 0 ? '+' : ''}${Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {dollarPnl >= 0 ? '+' : ''}$
+                  {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </p>
               )}
             </div>
@@ -572,10 +568,7 @@ function ClosedTradeCard({
               <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
                 Duration
               </span>
-              <span
-                className="vela-body-sm"
-                style={{ fontFamily: 'var(--type-mono-base-font)' }}
-              >
+              <span className="vela-body-sm" style={{ fontFamily: 'var(--type-mono-base-font)' }}>
                 {formatHoldingPeriod(trade.opened_at, trade.closed_at)}
               </span>
             </div>
@@ -592,10 +585,7 @@ function ClosedTradeCard({
             <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
               Position size
             </span>
-            <span
-              className="vela-body-sm"
-              style={{ fontFamily: 'var(--type-mono-base-font)' }}
-            >
+            <span className="vela-body-sm" style={{ fontFamily: 'var(--type-mono-base-font)' }}>
               ${DEFAULT_POSITION_SIZE.toLocaleString()}
             </span>
           </div>
