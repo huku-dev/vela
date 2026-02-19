@@ -49,7 +49,8 @@
       "Bash(npx supabase:*)",
       "Bash(supabase secrets set:*)",
       "Bash(supabase functions deploy:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(git -C /Users/henry/crypto-agent-frontend log --oneline --all)"
     ]
   }
 }

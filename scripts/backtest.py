@@ -171,6 +171,117 @@ IMPROVED_CONFIG = {
 
 
 # ---------------------------------------------------------------------------
+# Confidence tier system for leverage decisions
+# ---------------------------------------------------------------------------
+
+# Leverage config for each scenario
+LEVERAGE_CONFIGS = {
+    "spot_only": {
+        "name": "Spot Only (1x)",
+        "tier_a_leverage": 1.0,
+        "tier_b_leverage": 1.0,
+        "tier_c_leverage": 1.0,
+        "bb_leverage": 1.0,
+    },
+    "tiered": {
+        "name": "Confidence-Tiered (1-3x)",
+        "tier_a_leverage": 3.0,  # High conviction: 3x
+        "tier_b_leverage": 1.0,  # Standard: spot
+        "tier_c_leverage": 0.5,  # Weak: half size
+        "bb_leverage": 0.5,      # BB trades always half size
+        # Failsafes
+        "max_portfolio_leverage": 3.0,
+        "leveraged_stop_mult": 0.5,  # Tighter stop on leveraged trades (1× ATR instead of 2×)
+    },
+    "flat_2x": {
+        "name": "Flat 2x Leverage",
+        "tier_a_leverage": 2.0,
+        "tier_b_leverage": 2.0,
+        "tier_c_leverage": 2.0,
+        "bb_leverage": 1.0,      # BB still half (2x * 0.5 = 1x)
+    },
+}
+
+
+def compute_confidence_tier(
+    row: pd.Series,
+    direction: str,
+    config: dict = IMPROVED_CONFIG,
+) -> str:
+    """
+    Evaluate signal confidence based on indicator alignment at entry.
+
+    Tier A (High Conviction): All filters pass strongly
+      - ADX > 25 (strong trend, not just above threshold)
+      - Volume ratio > 1.2 (above-average volume)
+      - ATR below median (low volatility = tighter risk)
+      - RSI in sweet spot (not near extremes of allowed range)
+
+    Tier B (Standard): Normal signal, all filters pass
+      - Standard GREEN/RED signal conditions met
+
+    Tier C (Weak): Signal barely passes
+      - ADX 20-22 (just above threshold)
+      - OR volume ratio < 1.0 (below average)
+      - OR RSI near boundary of allowed range
+
+    Returns: 'A', 'B', or 'C'
+    """
+    adx = row.get("adx", 0)
+    volume_ratio = row.get("volume_ratio", 1.0)
+    atr_pct = row.get("atr_pct", float("nan"))
+    rsi = row.get("rsi_14", 50)
+
+    # Count "strong" indicators
+    strong_signals = 0
+    weak_signals = 0
+
+    # ADX strength
+    if adx >= 25:
+        strong_signals += 1
+    elif adx < 22:
+        weak_signals += 1
+
+    # Volume strength
+    if not pd.isna(volume_ratio):
+        if volume_ratio >= 1.2:
+            strong_signals += 1
+        elif volume_ratio < 1.0:
+            weak_signals += 1
+
+    # ATR (volatility) — low ATR is favorable for leverage
+    if not pd.isna(atr_pct):
+        if atr_pct < 3.0:  # Low volatility
+            strong_signals += 1
+        elif atr_pct > 5.0:  # High volatility
+            weak_signals += 1
+
+    # RSI position within allowed range
+    if direction == "long":
+        rsi_min, rsi_max = config["rsi_long_entry_min"], config["rsi_long_entry_max"]
+        rsi_mid = (rsi_min + rsi_max) / 2
+        if abs(rsi - rsi_mid) < 8:  # Near center of range
+            strong_signals += 1
+        elif rsi < rsi_min + 3 or rsi > rsi_max - 3:  # Near edges
+            weak_signals += 1
+    else:  # short
+        rsi_min, rsi_max = config["rsi_short_entry_min"], config["rsi_short_entry_max"]
+        rsi_mid = (rsi_min + rsi_max) / 2
+        if abs(rsi - rsi_mid) < 8:
+            strong_signals += 1
+        elif rsi < rsi_min + 3 or rsi > rsi_max - 3:
+            weak_signals += 1
+
+    # Determine tier
+    if strong_signals >= 3 and weak_signals == 0:
+        return "A"
+    elif weak_signals >= 2:
+        return "C"
+    else:
+        return "B"
+
+
+# ---------------------------------------------------------------------------
 # 1. Fetch historical OHLC from CoinGecko
 # ---------------------------------------------------------------------------
 
@@ -1785,6 +1896,773 @@ def _aggregate_metrics(metrics_list: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Compounding portfolio simulation
+# ---------------------------------------------------------------------------
+
+
+def simulate_compounding_single_pool(
+    all_asset_trades: dict[str, list[dict]],
+    starting_capital: float = 1000.0,
+) -> dict:
+    """
+    Simulate a single capital pool that compounds across all assets.
+
+    Walks through all trades chronologically. When a trade opens, the full
+    available capital is deployed. When capital is locked in an open trade,
+    new signals on other assets are skipped. Dollar P&L compounds — gains
+    increase future position sizes, losses decrease them.
+
+    Returns a dict with:
+      - trades: list of trades with recalculated pnl_usd and position_size
+      - final_capital: ending capital
+      - peak_capital: high-water mark
+      - max_drawdown_pct: worst peak-to-trough drawdown
+      - skipped_trades: number of trades skipped due to capital being deployed
+    """
+    # Collect all entry events and exit events, sort by date
+    events: list[dict] = []
+
+    for cg_id, trades in all_asset_trades.items():
+        for t in trades:
+            # Skip trims and BB trades for the single-pool sim —
+            # they represent partial actions on a position already tracked
+            direction = t.get("direction", "long")
+            if direction == "trim" or direction.startswith("bb_"):
+                continue
+
+            events.append({
+                "cg_id": cg_id,
+                "trade": t,
+                "entry_date": t.get("entry_date", ""),
+                "exit_date": t.get("exit_date") or "9999-12-31",
+                "pnl_pct": t.get("pnl_pct", 0),
+                "remaining_pct": t.get("remaining_pct", 100),
+                "status": t.get("status", "closed"),
+                "direction": direction,
+            })
+
+    # Sort by entry date (ties broken by exit date — closed first)
+    events.sort(key=lambda e: (e["entry_date"], e["exit_date"]))
+
+    capital = starting_capital
+    peak_capital = starting_capital
+    max_drawdown_pct = 0.0
+    deployed_until: str | None = None  # date string when capital frees up
+    deployed_cg_id: str | None = None
+
+    result_trades: list[dict] = []
+    skipped = 0
+
+    # Also track trims that happen during a deployed trade
+    # We need to apply trim P&L to capital when they occur
+    all_trims: list[dict] = []
+    for cg_id, trades in all_asset_trades.items():
+        for t in trades:
+            if t.get("direction") == "trim":
+                all_trims.append({"cg_id": cg_id, "trade": t})
+    all_trims.sort(key=lambda x: x["trade"].get("exit_date", ""))
+
+    for event in events:
+        entry_date = event["entry_date"]
+        exit_date = event["exit_date"]
+        trade = event["trade"]
+
+        # Check if capital is available (previous trade has exited)
+        if deployed_until is not None and entry_date < deployed_until:
+            skipped += 1
+            continue
+
+        # Capital is available — deploy it
+        position_size = capital
+        pnl_pct = event["pnl_pct"]
+        remaining_frac = event["remaining_pct"] / 100.0
+
+        # Compute dollar P&L on the full position at closing
+        # (remaining_frac accounts for trims already taken)
+        pnl_usd = round(remaining_frac * pnl_pct / 100 * position_size, 2)
+
+        # Also compute trim P&L that happened during this trade
+        trim_pnl = 0.0
+        if event["status"] == "closed" or event["status"] == "open":
+            for trim_info in all_trims:
+                trim = trim_info["trade"]
+                if trim_info["cg_id"] != event["cg_id"]:
+                    continue
+                if trim.get("entry_date") != event["entry_date"]:
+                    continue
+                trim_frac = trim.get("trim_pct", 0) / 100.0
+                trim_return = trim.get("pnl_pct", 0)
+                trim_pnl += round(trim_frac * trim_return / 100 * position_size, 2)
+
+        total_trade_pnl = pnl_usd + trim_pnl
+
+        result_trades.append({
+            **trade,
+            "position_size": round(position_size, 2),
+            "pnl_usd_compound": round(total_trade_pnl, 2),
+            "capital_before": round(capital, 2),
+        })
+
+        if event["status"] == "closed":
+            capital += total_trade_pnl
+            capital = round(capital, 2)
+
+            # Track drawdown
+            if capital > peak_capital:
+                peak_capital = capital
+            drawdown = ((peak_capital - capital) / peak_capital) * 100
+            if drawdown > max_drawdown_pct:
+                max_drawdown_pct = drawdown
+
+            deployed_until = None
+            deployed_cg_id = None
+        else:
+            # Trade is still open — capital remains deployed
+            deployed_until = "9999-12-31"
+            deployed_cg_id = event["cg_id"]
+
+    return {
+        "trades": result_trades,
+        "final_capital": round(capital, 2),
+        "starting_capital": starting_capital,
+        "peak_capital": round(peak_capital, 2),
+        "max_drawdown_pct": round(max_drawdown_pct, 1),
+        "skipped_trades": skipped,
+        "total_return_pct": round(((capital - starting_capital) / starting_capital) * 100, 1),
+    }
+
+
+def simulate_compounding_per_asset(
+    all_asset_trades: dict[str, list[dict]],
+    starting_capital: float = 1000.0,
+) -> dict:
+    """
+    Simulate independent per-asset capital pools that each compound.
+
+    Each asset gets starting_capital / num_assets. Trades compound within
+    each pool independently. No cross-asset capital sharing.
+
+    Returns a dict with:
+      - per_asset: {cg_id: {trades, final_capital, ...}}
+      - total_final_capital: sum of all pools
+      - total_return_pct: overall portfolio return
+    """
+    num_assets = len(all_asset_trades)
+    if num_assets == 0:
+        return {"per_asset": {}, "total_final_capital": starting_capital, "total_return_pct": 0}
+
+    pool_size = round(starting_capital / num_assets, 2)
+    per_asset_results: dict[str, dict] = {}
+
+    for cg_id, trades in all_asset_trades.items():
+        capital = pool_size
+        peak = pool_size
+        max_dd = 0.0
+        result_trades: list[dict] = []
+
+        # Get EMA trades (not trims/BB) sorted by entry date
+        ema_trades = sorted(
+            [t for t in trades if t.get("direction") in ("long", "short")],
+            key=lambda t: t.get("entry_date", ""),
+        )
+        # Index trims by entry_date for lookup
+        trims_by_entry: dict[str, list[dict]] = {}
+        for t in trades:
+            if t.get("direction") == "trim":
+                key = t.get("entry_date", "")
+                trims_by_entry.setdefault(key, []).append(t)
+
+        for trade in ema_trades:
+            position_size = capital
+            pnl_pct = trade.get("pnl_pct", 0)
+            remaining_frac = trade.get("remaining_pct", 100) / 100.0
+
+            # P&L from the close
+            pnl_usd = round(remaining_frac * pnl_pct / 100 * position_size, 2)
+
+            # P&L from trims during this trade
+            trim_pnl = 0.0
+            entry_key = trade.get("entry_date", "")
+            for trim in trims_by_entry.get(entry_key, []):
+                trim_frac = trim.get("trim_pct", 0) / 100.0
+                trim_return = trim.get("pnl_pct", 0)
+                trim_pnl += round(trim_frac * trim_return / 100 * position_size, 2)
+
+            total_pnl = pnl_usd + trim_pnl
+
+            result_trades.append({
+                **trade,
+                "position_size": round(position_size, 2),
+                "pnl_usd_compound": round(total_pnl, 2),
+                "capital_before": round(capital, 2),
+            })
+
+            if trade.get("status") == "closed":
+                capital += total_pnl
+                capital = round(capital, 2)
+                if capital > peak:
+                    peak = capital
+                dd = ((peak - capital) / peak) * 100
+                if dd > max_dd:
+                    max_dd = dd
+
+        per_asset_results[cg_id] = {
+            "trades": result_trades,
+            "starting_capital": pool_size,
+            "final_capital": round(capital, 2),
+            "peak_capital": round(peak, 2),
+            "max_drawdown_pct": round(max_dd, 1),
+            "total_return_pct": round(((capital - pool_size) / pool_size) * 100, 1),
+        }
+
+    total_final = sum(r["final_capital"] for r in per_asset_results.values())
+    return {
+        "per_asset": per_asset_results,
+        "total_final_capital": round(total_final, 2),
+        "starting_capital": starting_capital,
+        "pool_size_per_asset": pool_size,
+        "total_return_pct": round(((total_final - starting_capital) / starting_capital) * 100, 1),
+    }
+
+
+def print_compounding_summary(
+    single_pool: dict,
+    per_asset: dict,
+    asset_names: dict[str, str],
+) -> None:
+    """Print comparison of single-pool vs per-asset compounding models."""
+
+    print(f"\n{'=' * 74}")
+    print(f"  COMPOUNDING PORTFOLIO SIMULATION")
+    print(f"  Starting capital: ${single_pool['starting_capital']:,.0f}")
+    print(f"{'=' * 74}")
+
+    # ── Single Pool ──
+    print(f"\n  {'─' * 70}")
+    print(f"  MODEL A: Single Pool (sequential, cross-asset)")
+    print(f"  {'─' * 70}")
+    print(f"  Starting capital:   ${single_pool['starting_capital']:,.0f}")
+    print(f"  Final capital:      ${single_pool['final_capital']:,.0f}")
+    print(f"  Total return:       {single_pool['total_return_pct']:+.1f}%")
+    print(f"  Peak capital:       ${single_pool['peak_capital']:,.0f}")
+    print(f"  Max drawdown:       {single_pool['max_drawdown_pct']:.1f}%")
+    print(f"  Trades taken:       {len(single_pool['trades'])}")
+    print(f"  Trades skipped:     {single_pool['skipped_trades']} (capital deployed elsewhere)")
+
+    # Trade log for single pool
+    if single_pool["trades"]:
+        print(f"\n  Trade log (compounded):")
+        for t in single_pool["trades"]:
+            direction = t.get("direction", "long")
+            arrow = "LONG " if direction == "long" else "SHORT"
+            pnl_usd = t.get("pnl_usd_compound", 0)
+            pos_size = t.get("position_size", 0)
+            emoji = "✅" if t.get("pnl_pct", 0) >= 0 else "❌"
+            status = t.get("status", "closed")
+            exit_d = t.get("exit_date", "now") or "now"
+            cg_id = ""
+            # Find asset name from the trade
+            for cg, name in asset_names.items():
+                if t.get("entry_price") and any(
+                    tr.get("entry_date") == t.get("entry_date") and tr.get("entry_price") == t.get("entry_price")
+                    for tr in (single_pool.get("_raw_trades", {}).get(cg, []))
+                ):
+                    cg_id = name
+                    break
+            if status == "open":
+                emoji = "📈" if t.get("pnl_pct", 0) >= 0 else "📉"
+            print(
+                f"    {emoji} {arrow} {t['entry_date']} → {exit_d}"
+                f"  |  ${pos_size:,.0f} deployed  |  {t.get('pnl_pct', 0):+.1f}% ${pnl_usd:+,.0f}"
+                f"  |  [{status}]"
+            )
+
+    # ── Per-Asset Pools ──
+    pa = per_asset
+    print(f"\n  {'─' * 70}")
+    print(f"  MODEL B: Per-Asset Pools (${pa['pool_size_per_asset']:,.0f} each × {len(pa['per_asset'])} assets)")
+    print(f"  {'─' * 70}")
+    print(f"  Starting capital:   ${pa['starting_capital']:,.0f}")
+    print(f"  Final capital:      ${pa['total_final_capital']:,.0f}")
+    print(f"  Total return:       {pa['total_return_pct']:+.1f}%")
+
+    for cg_id, result in pa["per_asset"].items():
+        name = asset_names.get(cg_id, cg_id)
+        print(
+            f"    {name:>6}: ${result['starting_capital']:,.0f} → ${result['final_capital']:,.0f}"
+            f"  ({result['total_return_pct']:+.1f}%)"
+            f"  |  max DD: {result['max_drawdown_pct']:.1f}%"
+            f"  |  {len(result['trades'])} trades"
+        )
+
+    # ── Comparison ──
+    sp_return = single_pool["total_return_pct"]
+    pa_return = pa["total_return_pct"]
+    sp_final = single_pool["final_capital"]
+    pa_final = pa["total_final_capital"]
+
+    print(f"\n  {'─' * 70}")
+    print(f"  COMPARISON")
+    print(f"  {'─' * 70}")
+    print(f"  {'Metric':<28} {'Single Pool':>18} {'Per-Asset':>18}")
+    print(f"  {'─' * 70}")
+    print(f"  {'Final capital':<28} ${sp_final:>17,.0f} ${pa_final:>17,.0f}")
+    print(f"  {'Total return':<28} {sp_return:>17.1f}% {pa_return:>17.1f}%")
+    print(f"  {'Max drawdown':<28} {single_pool['max_drawdown_pct']:>17.1f}% {'':>18}")
+    print(f"  {'Trades taken':<28} {len(single_pool['trades']):>18} {sum(len(r['trades']) for r in pa['per_asset'].values()):>18}")
+    print(f"  {'Trades skipped':<28} {single_pool['skipped_trades']:>18} {'0':>18}")
+    print(f"  {'─' * 70}")
+
+    diff = sp_final - pa_final
+    if diff > 0:
+        print(f"\n  → Single pool outperforms by ${diff:,.0f} ({sp_return - pa_return:+.1f}pp)")
+        print(f"    Reason: Compounding wins across assets, but {single_pool['skipped_trades']} trades were skipped.")
+    elif diff < 0:
+        print(f"\n  → Per-asset pools outperform by ${abs(diff):,.0f} ({pa_return - sp_return:+.1f}pp)")
+        print(f"    Reason: Diversification catches more trades ({single_pool['skipped_trades']} were skipped in single pool).")
+    else:
+        print(f"\n  → Both models produced identical results.")
+
+    print(f"\n  Takeaway for product:")
+    print(f"    1. Per-asset allocation lets users capture signals across all assets")
+    print(f"    2. Single pool concentrates capital for bigger compounding on winners")
+    print(f"    3. Offering customizable allocation %s enables both strategies")
+    print(f"{'=' * 74}")
+
+
+def run_compounding_sim(
+    assets: list[dict],
+    days: int,
+    starting_capital: float = 1000.0,
+    config: dict = IMPROVED_CONFIG,
+) -> None:
+    """Run backtest with compounding capital simulation."""
+
+    print("\n" + "=" * 74)
+    print(f"  COMPOUNDING BACKTEST")
+    print(f"  Starting capital: ${starting_capital:,.0f} | Config: {config.get('name', 'default')}")
+    print(f"  Lookback: {days} days | Assets: {', '.join(a['symbol'] for a in assets)}")
+    print("=" * 74)
+
+    # Pre-fetch BTC data for crash filter
+    btc_df_for_crash: pd.DataFrame | None = None
+    if config.get("btc_crash_filter", False):
+        print(f"\n  Pre-fetching BTC data for crash filter...")
+        btc_raw = fetch_historical_ohlc("bitcoin", days)
+        btc_df_for_crash = calculate_indicators(btc_raw, config=config)
+        print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
+        time.sleep(CG_SLEEP_SECONDS)
+
+    # Run per-asset backtests (standard fixed-size — percentages are what matter)
+    all_asset_trades: dict[str, list[dict]] = {}
+    asset_names: dict[str, str] = {}
+
+    for i, asset in enumerate(assets):
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+        asset_names[cg_id] = symbol
+
+        print(f"\n{'─' * 74}")
+        print(f"  [{i + 1}/{len(assets)}] {symbol} ({cg_id})")
+        print(f"{'─' * 74}")
+
+        is_btc = cg_id == "bitcoin"
+        trades = run_backtest(
+            cg_id, asset["id"], days,
+            dry_run=True, config=config,
+            quiet=False, btc_df=None if is_btc else btc_df_for_crash,
+        )
+        all_asset_trades[cg_id] = trades
+
+        if i < len(assets) - 1:
+            print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
+            time.sleep(CG_SLEEP_SECONDS)
+
+    # Run both compounding models
+    single_pool = simulate_compounding_single_pool(all_asset_trades, starting_capital)
+    per_asset = simulate_compounding_per_asset(all_asset_trades, starting_capital)
+
+    # Print comparison
+    print_compounding_summary(single_pool, per_asset, asset_names)
+
+
+# ---------------------------------------------------------------------------
+# Leverage simulation
+# ---------------------------------------------------------------------------
+
+
+def simulate_leverage_scenario(
+    all_asset_trades: dict[str, list[dict]],
+    all_asset_dfs: dict[str, pd.DataFrame],
+    leverage_config: dict,
+    signal_config: dict = IMPROVED_CONFIG,
+    starting_capital: float = 1000.0,
+) -> dict:
+    """
+    Simulate compounding portfolio with leverage applied per confidence tier.
+
+    Uses single-pool sequential model. Each trade gets a confidence tier
+    (A/B/C) based on indicator alignment at entry, which determines leverage.
+
+    Liquidation check: if leveraged loss exceeds position value, the trade
+    is treated as a liquidation (100% loss of deployed capital).
+
+    Args:
+        all_asset_trades: {cg_id: [trade_dicts]} from standard backtest
+        all_asset_dfs: {cg_id: indicator DataFrame} for confidence tier lookups
+        leverage_config: leverage multipliers per tier
+        signal_config: signal config (for RSI range boundaries in tier calc)
+        starting_capital: initial capital
+
+    Returns dict with trades, final capital, stats, and per-trade tier/leverage info.
+    """
+    # Collect EMA trades (no trims/BB handled separately)
+    events: list[dict] = []
+    for cg_id, trades in all_asset_trades.items():
+        for t in trades:
+            direction = t.get("direction", "long")
+            if direction == "trim" or direction.startswith("bb_"):
+                continue
+            events.append({
+                "cg_id": cg_id,
+                "trade": t,
+                "entry_date": t.get("entry_date", ""),
+                "exit_date": t.get("exit_date") or "9999-12-31",
+                "pnl_pct": t.get("pnl_pct", 0),
+                "remaining_pct": t.get("remaining_pct", 100),
+                "status": t.get("status", "closed"),
+                "direction": direction,
+            })
+
+    events.sort(key=lambda e: (e["entry_date"], e["exit_date"]))
+
+    capital = starting_capital
+    peak_capital = starting_capital
+    max_drawdown_pct = 0.0
+    deployed_until: str | None = None
+
+    result_trades: list[dict] = []
+    skipped = 0
+    liquidations = 0
+    tier_counts = {"A": 0, "B": 0, "C": 0}
+
+    # Index trims by (cg_id, entry_date) for P&L inclusion
+    all_trims_by_key: dict[tuple[str, str], list[dict]] = {}
+    for cg_id, trades in all_asset_trades.items():
+        for t in trades:
+            if t.get("direction") == "trim":
+                key = (cg_id, t.get("entry_date", ""))
+                all_trims_by_key.setdefault(key, []).append(t)
+
+    for event in events:
+        entry_date = event["entry_date"]
+        trade = event["trade"]
+        cg_id = event["cg_id"]
+        direction = event["direction"]
+
+        if deployed_until is not None and entry_date < deployed_until:
+            skipped += 1
+            continue
+
+        # Look up the entry row in the indicator DataFrame for tier assessment
+        df = all_asset_dfs.get(cg_id)
+        tier = "B"  # default
+        if df is not None:
+            try:
+                entry_dt = datetime.strptime(entry_date, "%Y-%m-%d").date()
+                if entry_dt in df.index:
+                    row = df.loc[entry_dt]
+                    tier = compute_confidence_tier(row, direction, config=signal_config)
+            except (ValueError, TypeError, KeyError):
+                pass
+
+        tier_counts[tier] += 1
+
+        # Determine leverage for this tier
+        if tier == "A":
+            leverage = leverage_config.get("tier_a_leverage", 1.0)
+        elif tier == "C":
+            leverage = leverage_config.get("tier_c_leverage", 1.0)
+        else:
+            leverage = leverage_config.get("tier_b_leverage", 1.0)
+
+        position_size = capital
+        effective_exposure = position_size * leverage
+
+        # Compute base P&L (% return)
+        pnl_pct = event["pnl_pct"]
+        remaining_frac = event["remaining_pct"] / 100.0
+
+        # Leveraged P&L: percentage * leverage
+        leveraged_pnl_pct = pnl_pct * leverage
+
+        # Check for liquidation: if leveraged loss exceeds 100%, it's a wipeout
+        is_liquidated = False
+        if leveraged_pnl_pct * remaining_frac <= -100:
+            is_liquidated = True
+            liquidations += 1
+            pnl_usd = -position_size  # Total loss of deployed capital
+        else:
+            pnl_usd = round(remaining_frac * leveraged_pnl_pct / 100 * position_size, 2)
+
+        # Trim P&L (also leveraged)
+        trim_pnl = 0.0
+        trim_key = (cg_id, event["entry_date"])
+        for trim in all_trims_by_key.get(trim_key, []):
+            trim_frac = trim.get("trim_pct", 0) / 100.0
+            trim_return = trim.get("pnl_pct", 0) * leverage
+            trim_pnl += round(trim_frac * trim_return / 100 * position_size, 2)
+
+        total_trade_pnl = pnl_usd + trim_pnl if not is_liquidated else pnl_usd
+
+        result_trades.append({
+            **trade,
+            "tier": tier,
+            "leverage": leverage,
+            "position_size": round(position_size, 2),
+            "effective_exposure": round(effective_exposure, 2),
+            "pnl_pct_leveraged": round(leveraged_pnl_pct, 2),
+            "pnl_usd_leveraged": round(total_trade_pnl, 2),
+            "capital_before": round(capital, 2),
+            "liquidated": is_liquidated,
+        })
+
+        if event["status"] == "closed":
+            capital += total_trade_pnl
+            capital = max(capital, 0)  # Can't go negative
+            capital = round(capital, 2)
+
+            if capital > peak_capital:
+                peak_capital = capital
+            if peak_capital > 0:
+                drawdown = ((peak_capital - capital) / peak_capital) * 100
+                if drawdown > max_drawdown_pct:
+                    max_drawdown_pct = drawdown
+
+            deployed_until = None
+        else:
+            deployed_until = "9999-12-31"
+
+    return {
+        "name": leverage_config.get("name", "Unknown"),
+        "trades": result_trades,
+        "starting_capital": starting_capital,
+        "final_capital": round(capital, 2),
+        "peak_capital": round(peak_capital, 2),
+        "max_drawdown_pct": round(max_drawdown_pct, 1),
+        "skipped_trades": skipped,
+        "liquidations": liquidations,
+        "tier_counts": tier_counts,
+        "total_return_pct": round(((capital - starting_capital) / starting_capital) * 100, 1) if starting_capital > 0 else 0,
+    }
+
+
+def print_leverage_comparison(
+    scenarios: list[dict],
+    asset_names: dict[str, str],
+) -> None:
+    """Print side-by-side comparison of leverage scenarios."""
+
+    print(f"\n{'=' * 80}")
+    print(f"  LEVERAGE SCENARIO COMPARISON")
+    print(f"  Starting capital: ${scenarios[0]['starting_capital']:,.0f}")
+    print(f"{'=' * 80}")
+
+    # ── Per-scenario detail ──
+    for sc in scenarios:
+        print(f"\n  {'─' * 76}")
+        print(f"  {sc['name']}")
+        print(f"  {'─' * 76}")
+        print(f"  Final capital:     ${sc['final_capital']:,.0f}  ({sc['total_return_pct']:+.1f}%)")
+        print(f"  Peak capital:      ${sc['peak_capital']:,.0f}")
+        print(f"  Max drawdown:      {sc['max_drawdown_pct']:.1f}%")
+        print(f"  Trades taken:      {len(sc['trades'])} ({sc['skipped_trades']} skipped)")
+        if sc["liquidations"] > 0:
+            print(f"  ⚠️  LIQUIDATIONS:   {sc['liquidations']}")
+        tc = sc["tier_counts"]
+        if any(v > 0 for v in tc.values()):
+            print(f"  Confidence tiers:  A={tc['A']}  B={tc['B']}  C={tc['C']}")
+
+        # Trade log
+        print(f"\n  Trade log:")
+        for t in sc["trades"]:
+            direction = t.get("direction", "long")
+            arrow = "LONG " if direction == "long" else "SHORT"
+            tier = t.get("tier", "?")
+            leverage = t.get("leverage", 1.0)
+            pos_size = t.get("position_size", 0)
+            pnl_usd = t.get("pnl_usd_leveraged", 0)
+            pnl_pct = t.get("pnl_pct_leveraged", 0)
+            exit_d = t.get("exit_date", "now") or "now"
+            is_liq = t.get("liquidated", False)
+            status = t.get("status", "closed")
+
+            if is_liq:
+                emoji = "💀"
+            elif status == "open":
+                emoji = "📈" if pnl_pct >= 0 else "📉"
+            else:
+                emoji = "✅" if pnl_pct >= 0 else "❌"
+
+            lev_tag = f" {leverage:.0f}x" if leverage != 1.0 else "  1x"
+            liq_tag = " LIQUIDATED" if is_liq else ""
+            print(
+                f"    {emoji} {arrow} [{tier}]{lev_tag} {t['entry_date']} → {exit_d}"
+                f"  |  ${pos_size:,.0f} deployed  |  {pnl_pct:+.1f}% ${pnl_usd:+,.0f}"
+                f"  [{status}]{liq_tag}"
+            )
+
+    # ── Side-by-side comparison table ──
+    print(f"\n  {'=' * 80}")
+    print(f"  SUMMARY COMPARISON")
+    print(f"  {'=' * 80}")
+
+    # Header
+    header = f"  {'Metric':<28}"
+    for sc in scenarios:
+        header += f" {sc['name']:>16}"
+    print(header)
+    print(f"  {'─' * 80}")
+
+    # Rows
+    row_def = [
+        ("Final capital", lambda sc: f"${sc['final_capital']:>15,.0f}"),
+        ("Total return", lambda sc: f"{sc['total_return_pct']:>15.1f}%"),
+        ("Peak capital", lambda sc: f"${sc['peak_capital']:>15,.0f}"),
+        ("Max drawdown", lambda sc: f"{sc['max_drawdown_pct']:>15.1f}%"),
+        ("Trades taken", lambda sc: f"{len(sc['trades']):>16}"),
+        ("Liquidations", lambda sc: f"{sc['liquidations']:>16}"),
+    ]
+
+    for label, fn in row_def:
+        row = f"  {label:<28}"
+        for sc in scenarios:
+            row += f" {fn(sc)}"
+        print(row)
+
+    print(f"  {'─' * 80}")
+
+    # Risk-adjusted return (Calmar-like: return / max drawdown)
+    print(f"\n  Risk-adjusted analysis:")
+    for sc in scenarios:
+        dd = sc["max_drawdown_pct"]
+        ret = sc["total_return_pct"]
+        calmar = ret / dd if dd > 0 else float("inf")
+        print(
+            f"    {sc['name']:>30}: return/drawdown = {calmar:.2f}"
+            f"  ({ret:+.1f}% / {dd:.1f}% DD)"
+        )
+
+    # Verdict
+    print(f"\n  {'─' * 80}")
+    best = max(scenarios, key=lambda sc: sc["final_capital"])
+    safest = min(scenarios, key=lambda sc: sc["max_drawdown_pct"])
+    best_risk_adj = max(
+        scenarios,
+        key=lambda sc: (sc["total_return_pct"] / sc["max_drawdown_pct"])
+        if sc["max_drawdown_pct"] > 0 else float("inf"),
+    )
+
+    print(f"  Best absolute return:      {best['name']} (${best['final_capital']:,.0f})")
+    print(f"  Lowest risk (drawdown):    {safest['name']} ({safest['max_drawdown_pct']:.1f}% DD)")
+    print(f"  Best risk-adjusted:        {best_risk_adj['name']}")
+
+    # Warn about liquidations
+    total_liqs = sum(sc["liquidations"] for sc in scenarios)
+    if total_liqs > 0:
+        print(f"\n  ⚠️  WARNING: {total_liqs} liquidation(s) occurred across scenarios.")
+        print(f"     Liquidation = 100% loss of deployed capital on a single trade.")
+        print(f"     This is the #1 reason retail traders blow up with leverage.")
+
+    has_tiered = any("Tiered" in sc["name"] for sc in scenarios)
+    if has_tiered:
+        tiered = next(sc for sc in scenarios if "Tiered" in sc["name"])
+        flat = next((sc for sc in scenarios if "Flat" in sc["name"]), None)
+        spot = next((sc for sc in scenarios if "Spot" in sc["name"]), None)
+
+        print(f"\n  Takeaway:")
+        if flat and tiered["final_capital"] > flat["final_capital"]:
+            print(f"    Tiered leverage beats flat leverage — confidence-based sizing works.")
+        if flat and tiered["max_drawdown_pct"] < flat["max_drawdown_pct"]:
+            print(f"    Tiered leverage has lower drawdown — selective amplification is safer.")
+        if spot and tiered["final_capital"] > spot["final_capital"]:
+            edge = tiered["final_capital"] - spot["final_capital"]
+            print(f"    Tiered leverage adds ${edge:,.0f} vs spot — worth the complexity.")
+        if spot and tiered["max_drawdown_pct"] > spot["max_drawdown_pct"] * 1.5:
+            print(f"    But drawdown risk is significantly higher — needs clear user warnings.")
+
+    print(f"{'=' * 80}")
+
+
+def run_leverage_sim(
+    assets: list[dict],
+    days: int,
+    starting_capital: float = 1000.0,
+    config: dict = IMPROVED_CONFIG,
+) -> None:
+    """Run all 3 leverage scenarios and compare results."""
+
+    print("\n" + "=" * 80)
+    print(f"  LEVERAGE BACKTEST SIMULATION")
+    print(f"  Starting capital: ${starting_capital:,.0f} | Config: {config.get('name', 'default')}")
+    print(f"  Lookback: {days} days | Assets: {', '.join(a['symbol'] for a in assets)}")
+    print(f"  Scenarios: {', '.join(lc['name'] for lc in LEVERAGE_CONFIGS.values())}")
+    print("=" * 80)
+
+    # Pre-fetch BTC data for crash filter
+    btc_df_for_crash: pd.DataFrame | None = None
+    if config.get("btc_crash_filter", False):
+        print(f"\n  Pre-fetching BTC data for crash filter...")
+        btc_raw = fetch_historical_ohlc("bitcoin", days)
+        btc_df_for_crash = calculate_indicators(btc_raw, config=config)
+        print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
+        time.sleep(CG_SLEEP_SECONDS)
+
+    # Run per-asset backtests
+    all_asset_trades: dict[str, list[dict]] = {}
+    all_asset_dfs: dict[str, pd.DataFrame] = {}
+    asset_names: dict[str, str] = {}
+
+    for i, asset in enumerate(assets):
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+        asset_names[cg_id] = symbol
+
+        print(f"\n{'─' * 80}")
+        print(f"  [{i + 1}/{len(assets)}] {symbol} ({cg_id})")
+        print(f"{'─' * 80}")
+
+        df_raw = fetch_historical_ohlc(cg_id, days)
+        df_indicators = calculate_indicators(df_raw.copy(), config=config)
+        all_asset_dfs[cg_id] = df_indicators
+
+        is_btc = cg_id == "bitcoin"
+        trades = run_backtest(
+            cg_id, asset["id"], days,
+            dry_run=True, config=config,
+            quiet=True, btc_df=None if is_btc else btc_df_for_crash,
+        )
+        all_asset_trades[cg_id] = trades
+        print(f"  {len(trades)} trades generated")
+
+        if i < len(assets) - 1:
+            print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
+            time.sleep(CG_SLEEP_SECONDS)
+
+    # Run all 3 scenarios
+    scenarios: list[dict] = []
+    for key, lev_config in LEVERAGE_CONFIGS.items():
+        result = simulate_leverage_scenario(
+            all_asset_trades, all_asset_dfs, lev_config,
+            signal_config=config, starting_capital=starting_capital,
+        )
+        scenarios.append(result)
+
+    # Print comparison
+    print_leverage_comparison(scenarios, asset_names)
+
+
+# ---------------------------------------------------------------------------
 # Stress test: black swan event analysis
 # ---------------------------------------------------------------------------
 
@@ -1940,7 +2818,41 @@ def main():
                         help="Send Telegram/email notifications for signal changes")
     parser.add_argument("--stress-test", type=str, metavar="YYYY-MM-DD",
                         help="Analyze open positions on a specific date (black swan analysis)")
+    parser.add_argument("--compound", action="store_true",
+                        help="Run compounding capital simulation (single pool + per-asset pools)")
+    parser.add_argument("--leverage", action="store_true",
+                        help="Run leverage scenario comparison (spot vs tiered vs flat 2x)")
+    parser.add_argument("--capital", type=float, default=1000.0,
+                        help="Starting capital for compounding/leverage simulation (default: $1,000)")
     args = parser.parse_args()
+
+    # ── Leverage simulation mode ──
+    if args.leverage:
+        assets = fetch_assets()
+        if args.asset:
+            asset = next((a for a in assets if a["coingecko_id"] == args.asset), None)
+            if not asset:
+                asset = {"id": "unknown", "symbol": args.asset.upper(), "coingecko_id": args.asset}
+            assets = [asset]
+        if not assets:
+            print("  No assets found.")
+            sys.exit(1)
+        run_leverage_sim(assets, args.days, starting_capital=args.capital)
+        return
+
+    # ── Compounding simulation mode ──
+    if args.compound:
+        assets = fetch_assets()
+        if args.asset:
+            asset = next((a for a in assets if a["coingecko_id"] == args.asset), None)
+            if not asset:
+                asset = {"id": "unknown", "symbol": args.asset.upper(), "coingecko_id": args.asset}
+            assets = [asset]
+        if not assets:
+            print("  No assets found.")
+            sys.exit(1)
+        run_compounding_sim(assets, args.days, starting_capital=args.capital)
+        return
 
     # ── Stress test mode ──
     if args.stress_test:
