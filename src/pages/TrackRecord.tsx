@@ -4,14 +4,34 @@ import { Card, Badge, LoadingSpinner, PageHeader } from '../components/VelaCompo
 import EmptyState from '../components/EmptyState';
 import { useTrackRecord, DEFAULT_POSITION_SIZE } from '../hooks/useData';
 import { getCoinIcon, formatPrice } from '../lib/helpers';
-import type { PaperTrade } from '../types';
+import {
+  calculateUnrealizedPnL,
+  pctToDollar,
+  aggregateTradeStats,
+  formatDurationMs,
+} from '../utils/calculations';
+import type { PaperTrade, TradeDirection } from '../types';
 
 type AssetFilter = 'all' | string; // 'all' or asset_id
+
+/** Map raw direction to user-facing label */
+function directionLabel(d: TradeDirection | null | undefined): string {
+  if (!d) return 'Long';
+  if (d === 'short' || d === 'bb_short') return 'Short';
+  if (d === 'trim') return 'Trim';
+  return 'Long';
+}
+
+/** Is this a short-side trade? */
+function isShortTrade(d: TradeDirection | null | undefined): boolean {
+  return d === 'short' || d === 'bb_short';
+}
 
 export default function TrackRecord() {
   const { trades, livePrices, assetMap, loading, loadingMore, hasMore, loadMore } =
     useTrackRecord();
   const [assetFilter, setAssetFilter] = useState<AssetFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -24,20 +44,22 @@ export default function TrackRecord() {
   }
 
   // ── Filter trades ──
-  const filteredTrades =
+  const assetFiltered =
     assetFilter === 'all' ? trades : trades.filter(t => t.asset_id === assetFilter);
+  const filteredTrades =
+    statusFilter === 'all'
+      ? assetFiltered
+      : assetFiltered.filter(t => t.status === statusFilter);
 
-  const filteredClosed = filteredTrades.filter(t => t.status === 'closed' && t.pnl_pct != null);
-  const filteredOpen = filteredTrades.filter(t => t.status === 'open');
-  const totalClosed = filteredClosed.length;
-
-  const totalDollarPnl = filteredClosed.reduce(
-    (sum, t) => sum + (t.pnl_pct! / 100) * DEFAULT_POSITION_SIZE,
-    0
+  const filteredClosed = assetFiltered.filter(
+    (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null,
   );
+  const filteredOpen = assetFiltered.filter(t => t.status === 'open');
 
-  const avgPnlPct =
-    totalClosed > 0 ? filteredClosed.reduce((sum, t) => sum + t.pnl_pct!, 0) / totalClosed : 0;
+  const { totalClosed, totalDollarPnl, avgPnlPct } = aggregateTradeStats(
+    filteredClosed,
+    DEFAULT_POSITION_SIZE,
+  );
 
   // ── Build unique asset list for filter ──
   const uniqueAssets = [...new Set(trades.map(t => t.asset_id))]
@@ -55,15 +77,8 @@ export default function TrackRecord() {
   };
 
   // ── Helper: format duration ──
-  const formatDuration = (openedAt: string): string => {
-    const ms = Date.now() - new Date(openedAt).getTime();
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    if (days > 0) return `${days}d ${remainingHours}h`;
-    if (hours > 0) return `${hours}h`;
-    return '<1h';
-  };
+  const formatDuration = (openedAt: string): string =>
+    formatDurationMs(Date.now() - new Date(openedAt).getTime());
 
   return (
     <div
@@ -88,7 +103,11 @@ export default function TrackRecord() {
           marginBottom: 'var(--space-6)',
         }}
       >
-        <StatCard label="Trades" value={String(totalClosed)} variant="sky" />
+        <StatCard
+          label="Trades"
+          value={String(filteredClosed.length + filteredOpen.length)}
+          variant="sky"
+        />
         <StatCard
           label="Avg Return"
           value={totalClosed === 0 ? '—' : `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
@@ -126,7 +145,7 @@ export default function TrackRecord() {
               paddingLeft: 'var(--space-1)',
             }}
           >
-            Sort by
+            Filter
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
             <button
@@ -161,60 +180,62 @@ export default function TrackRecord() {
               );
             })}
           </div>
-          <p
-            className="vela-label"
-            style={{
-              color: 'var(--gray-400)',
-              marginTop: 'var(--space-1)',
-              paddingLeft: 'var(--space-1)',
-              fontSize: '0.6rem',
-            }}
-          >
-            CRYPTO
-          </p>
         </div>
       )}
 
-      {/* ── Trade History ── */}
-      <p
-        className="vela-label"
+      {/* ── Status Filter ── */}
+      <div
         style={{
-          color: 'var(--gray-500)',
-          marginBottom: 'var(--space-2)',
-          paddingLeft: 'var(--space-1)',
+          display: 'flex',
+          gap: 'var(--space-2)',
+          marginBottom: 'var(--space-4)',
         }}
       >
-        Trade History
-      </p>
+        {(['all', 'open', 'closed'] as const).map(status => (
+          <button
+            key={status}
+            onClick={() => setStatusFilter(status)}
+            className={`vela-btn vela-btn-sm ${statusFilter === status ? 'vela-btn-primary' : 'vela-btn-ghost'}`}
+          >
+            {status === 'all'
+              ? `All (${assetFiltered.length})`
+              : status === 'open'
+                ? `Open (${filteredOpen.length})`
+                : `Closed (${filteredClosed.length})`}
+          </button>
+        ))}
+      </div>
 
       {filteredTrades.length === 0 ? (
         <EmptyState type="no-trades" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {/* Open trades first */}
-          {filteredOpen.map(trade => (
-            <OpenTradeCard
-              key={trade.id}
-              trade={trade}
-              currentPrice={getLivePrice(trade.asset_coingecko_id)}
-              coingeckoId={trade.asset_coingecko_id}
-              formatDuration={formatDuration}
-              expanded={expandedTradeId === trade.id}
-              onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
-              onViewBrief={() => navigate(`/asset/${trade.asset_id}`)}
-            />
-          ))}
-
-          {/* Closed trades */}
-          {filteredClosed.map(trade => (
-            <ClosedTradeCard
-              key={trade.id}
-              trade={trade}
-              coingeckoId={trade.asset_coingecko_id}
-              expanded={expandedTradeId === trade.id}
-              onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
-            />
-          ))}
+          {filteredTrades.map(trade =>
+            trade.status === 'open' ? (
+              <OpenTradeCard
+                key={trade.id}
+                trade={trade}
+                currentPrice={getLivePrice(trade.asset_coingecko_id)}
+                coingeckoId={trade.asset_coingecko_id}
+                formatDuration={formatDuration}
+                expanded={expandedTradeId === trade.id}
+                onToggle={() =>
+                  setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
+                }
+                onViewBrief={() => navigate(`/asset/${trade.asset_id}`)}
+              />
+            ) : (
+              <ClosedTradeCard
+                key={trade.id}
+                trade={trade}
+                coingeckoId={trade.asset_coingecko_id}
+                expanded={expandedTradeId === trade.id}
+                onToggle={() =>
+                  setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
+                }
+              />
+            ),
+          )}
 
           {hasMore && (
             <button
@@ -251,10 +272,13 @@ function OpenTradeCard({
   onToggle: () => void;
   onViewBrief: () => void;
 }) {
+  const short = isShortTrade(trade.direction);
   const unrealizedPct =
-    currentPrice != null ? ((currentPrice - trade.entry_price) / trade.entry_price) * 100 : null;
+    currentPrice != null
+      ? calculateUnrealizedPnL(trade.entry_price, currentPrice, short ? 'short' : 'long')
+      : null;
   const unrealizedDollar =
-    unrealizedPct != null ? (unrealizedPct / 100) * DEFAULT_POSITION_SIZE : null;
+    unrealizedPct != null ? pctToDollar(unrealizedPct, DEFAULT_POSITION_SIZE) : null;
 
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
@@ -263,7 +287,7 @@ function OpenTradeCard({
     <Card
       compact
       style={{
-        borderLeft: '4px solid var(--green-primary)',
+        borderLeft: `4px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
         cursor: 'pointer',
       }}
     >
@@ -294,7 +318,7 @@ function OpenTradeCard({
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
               >
-                Long · Open {formatDuration(trade.opened_at)}
+                {directionLabel(trade.direction)} · Open {formatDuration(trade.opened_at)}
               </p>
             </div>
           </div>
@@ -324,10 +348,11 @@ function OpenTradeCard({
                     margin: 0,
                   }}
                 >
-                  {unrealizedDollar >= 0 ? '+' : ''}$
+                  {unrealizedDollar >= 0 ? '+' : '-'}$
                   {Math.abs(unrealizedDollar).toLocaleString(undefined, {
                     maximumFractionDigits: 0,
-                  })}
+                  })}{' '}
+                  {unrealizedDollar >= 0 ? 'profit' : 'loss'}
                 </p>
               )}
             </div>
@@ -372,9 +397,27 @@ function OpenTradeCard({
             borderTop: '2px solid var(--gray-200)',
           }}
         >
+          {/* Position line items */}
+          <DetailRow
+            label="Position size"
+            value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
+          />
+          <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
+          {currentPrice != null && (
+            <DetailRow label="Current price" value={formatPrice(currentPrice)} />
+          )}
+          <DetailRow label="Duration" value={formatDuration(trade.opened_at)} />
+          {unrealizedPct != null && unrealizedDollar != null && (
+            <DetailRow
+              label="Unrealized P&L"
+              value={`${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(1)}% · ${unrealizedDollar >= 0 ? '+' : '-'}$${Math.abs(unrealizedDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${unrealizedPct >= 0 ? 'profit' : 'loss'}`}
+              valueColor={unrealizedPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
+            />
+          )}
+
           {/* Yellow events */}
           {trade.yellow_events && trade.yellow_events.length > 0 && (
-            <div style={{ marginBottom: 'var(--space-3)' }}>
+            <div style={{ marginTop: 'var(--space-2)' }}>
               <p
                 className="vela-label"
                 style={{
@@ -420,9 +463,9 @@ function OpenTradeCard({
               onViewBrief();
             }}
             className="vela-btn vela-btn-sm vela-btn-ghost"
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginTop: 'var(--space-2)' }}
           >
-            View Full Brief
+            View Asset Brief
           </button>
         </div>
       )}
@@ -443,7 +486,7 @@ function ClosedTradeCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const dollarPnl = trade.pnl_pct != null ? (trade.pnl_pct / 100) * DEFAULT_POSITION_SIZE : null;
+  const dollarPnl = trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
 
@@ -476,7 +519,8 @@ function ClosedTradeCard({
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
               >
-                Long · Closed
+                {directionLabel(trade.direction)}
+                {trade.direction === 'trim' && trade.trim_pct != null && ` (${trade.trim_pct}%)`} · Closed
               </p>
             </div>
           </div>
@@ -506,8 +550,9 @@ function ClosedTradeCard({
                     margin: 0,
                   }}
                 >
-                  {dollarPnl >= 0 ? '+' : ''}$
-                  {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {dollarPnl >= 0 ? '+' : '-'}$
+                  {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+                  {dollarPnl >= 0 ? 'profit' : 'loss'}
                 </p>
               )}
             </div>
@@ -556,39 +601,34 @@ function ClosedTradeCard({
             borderTop: '2px solid var(--gray-200)',
           }}
         >
-          {/* Duration */}
-          {trade.opened_at && trade.closed_at && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: 'var(--space-2)',
-              }}
-            >
-              <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
-                Duration
-              </span>
-              <span className="vela-body-sm" style={{ fontFamily: 'var(--type-mono-base-font)' }}>
-                {formatHoldingPeriod(trade.opened_at, trade.closed_at)}
-              </span>
-            </div>
+          {/* Position line items */}
+          <DetailRow
+            label="Position size"
+            value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
+          />
+          {trade.trim_pct != null && (
+            <DetailRow
+              label="Trimmed"
+              value={`${trade.trim_pct}% of position · $${Math.round(DEFAULT_POSITION_SIZE * trade.trim_pct / 100).toLocaleString()}`}
+            />
           )}
-
-          {/* Position size */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginBottom: 'var(--space-2)',
-            }}
-          >
-            <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
-              Position size
-            </span>
-            <span className="vela-body-sm" style={{ fontFamily: 'var(--type-mono-base-font)' }}>
-              ${DEFAULT_POSITION_SIZE.toLocaleString()}
-            </span>
-          </div>
+          <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
+          {trade.exit_price != null && (
+            <DetailRow label="Exit price" value={formatPrice(trade.exit_price)} />
+          )}
+          {trade.opened_at && trade.closed_at && (
+            <DetailRow
+              label="Duration"
+              value={formatHoldingPeriod(trade.opened_at, trade.closed_at)}
+            />
+          )}
+          {trade.pnl_pct != null && dollarPnl != null && (
+            <DetailRow
+              label="Realized P&L"
+              value={`${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}% · ${dollarPnl >= 0 ? '+' : '-'}$${Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${trade.pnl_pct >= 0 ? 'profit' : 'loss'}`}
+              valueColor={trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
+            />
+          )}
 
           {/* Yellow events */}
           {trade.yellow_events && trade.yellow_events.length > 0 && (
@@ -638,6 +678,40 @@ function ClosedTradeCard({
 }
 
 // ── Shared Sub-Components ──
+
+function DetailRow({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginBottom: 'var(--space-2)',
+      }}
+    >
+      <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
+        {label}
+      </span>
+      <span
+        className="vela-body-sm"
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          color: valueColor || undefined,
+          fontWeight: valueColor ? 600 : undefined,
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function AssetIcon({
   iconUrl,
@@ -724,11 +798,5 @@ function StatCard({
 }
 
 function formatHoldingPeriod(openedAt: string, closedAt: string): string {
-  const ms = new Date(closedAt).getTime() - new Date(openedAt).getTime();
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  if (days > 0) return `${days}d ${remainingHours}h`;
-  if (hours > 0) return `${hours}h`;
-  return '<1h';
+  return formatDurationMs(new Date(closedAt).getTime() - new Date(openedAt).getTime());
 }

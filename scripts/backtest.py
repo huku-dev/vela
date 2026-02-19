@@ -1115,6 +1115,22 @@ def _snapshot_indicators(row: pd.Series) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def clear_backtest_trades(asset_id: str | None = None) -> None:
+    """Delete backtest trades from Supabase. If asset_id given, only clear that asset."""
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+    }
+    url = f"{SUPABASE_URL}/rest/v1/paper_trades?source=eq.backtest"
+    if asset_id:
+        url += f"&asset_id=eq.{asset_id}"
+    resp = requests.delete(url, headers=headers, timeout=10)
+    if resp.status_code in (200, 204):
+        print(f"  🗑️  Cleared backtest trades{f' for {asset_id}' if asset_id else ''}")
+    else:
+        print(f"  ⚠️  Failed to clear trades: {resp.status_code} — {resp.text}")
+
+
 def write_to_supabase(
     trades: list[dict],
     asset_id: str,
@@ -1173,6 +1189,8 @@ def write_to_supabase(
             "opened_at": f"{trade['entry_date']}T00:00:00Z",
             "closed_at": f"{trade['exit_date']}T00:00:00Z" if trade.get("exit_date") else None,
             "source": "backtest",
+            "direction": trade.get("direction", "long"),
+            "trim_pct": trade.get("trim_pct"),
         }
 
         resp = requests.post(
@@ -2824,6 +2842,8 @@ def main():
                         help="Run leverage scenario comparison (spot vs tiered vs flat 2x)")
     parser.add_argument("--capital", type=float, default=1000.0,
                         help="Starting capital for compounding/leverage simulation (default: $1,000)")
+    parser.add_argument("--clear", action="store_true",
+                        help="Delete existing backtest trades before writing new ones")
     args = parser.parse_args()
 
     # ── Leverage simulation mode ──
@@ -2897,6 +2917,18 @@ def main():
           f"Volume: {'ON' if cfg.get('volume_confirm') else 'OFF'} | "
           f"ATR stop: {'ON' if cfg.get('atr_stop_loss') else 'OFF'}")
     print("=" * 60)
+
+    # ── Clear existing backtest trades if requested ──
+    if args.clear and not args.dry_run:
+        assets_for_clear = fetch_assets()
+        if args.asset:
+            asset_match = next((a for a in assets_for_clear if a["coingecko_id"] == args.asset), None)
+            if asset_match:
+                clear_backtest_trades(asset_match["id"])
+            else:
+                print(f"  ⚠️  Asset '{args.asset}' not found — skipping clear")
+        else:
+            clear_backtest_trades()
 
     if args.asset:
         # Single asset mode — use provided CoinGecko ID

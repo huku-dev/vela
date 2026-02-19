@@ -73,6 +73,88 @@ export function formatPercentChange(change: number): string {
 }
 
 /**
+ * Calculate unrealized P&L percentage for an open position, accounting for direction.
+ * TRUST-CRITICAL: Shorts profit when price falls, longs profit when price rises.
+ * @param entryPrice - Price when position was opened
+ * @param currentPrice - Current live price
+ * @param direction - Trade direction ('long' or 'short')
+ * @returns Unrealized P&L as a percentage (e.g., 52.5 for +52.5%)
+ */
+export function calculateUnrealizedPnL(
+  entryPrice: number,
+  currentPrice: number,
+  direction: 'long' | 'short',
+): number {
+  if (entryPrice <= 0 || currentPrice <= 0) {
+    throw new Error('Prices must be positive numbers');
+  }
+
+  const raw =
+    direction === 'short'
+      ? ((entryPrice - currentPrice) / entryPrice) * 100
+      : ((currentPrice - entryPrice) / entryPrice) * 100;
+
+  return Math.round(raw * 10) / 10;
+}
+
+/**
+ * Convert a P&L percentage to a dollar amount given a position size.
+ * TRUST-CRITICAL: This is the core formula used in stats and per-trade display.
+ * @param pnlPct - Profit/loss percentage (e.g., 52.5 for +52.5%)
+ * @param positionSize - Dollar position size (e.g., 1000)
+ * @returns Dollar P&L, rounded to 2 decimal places
+ */
+export function pctToDollar(pnlPct: number, positionSize: number): number {
+  if (positionSize <= 0) {
+    throw new Error('Position size must be positive');
+  }
+  return Math.round((pnlPct / 100) * positionSize * 100) / 100;
+}
+
+/**
+ * Aggregate trade stats from a list of closed trades.
+ * TRUST-CRITICAL: These numbers are displayed prominently on the Your Trades page.
+ * @param closedTrades - Array of objects with pnl_pct (non-null)
+ * @param positionSize - Dollar position size per trade
+ * @returns Aggregated stats: totalClosed, totalDollarPnl, avgPnlPct
+ */
+export function aggregateTradeStats(
+  closedTrades: { pnl_pct: number }[],
+  positionSize: number,
+): { totalClosed: number; totalDollarPnl: number; avgPnlPct: number } {
+  const totalClosed = closedTrades.length;
+  if (totalClosed === 0) {
+    return { totalClosed: 0, totalDollarPnl: 0, avgPnlPct: 0 };
+  }
+
+  const totalDollarPnl = closedTrades.reduce(
+    (sum, t) => sum + pctToDollar(t.pnl_pct, positionSize),
+    0,
+  );
+
+  const avgPnlPct =
+    Math.round((closedTrades.reduce((sum, t) => sum + t.pnl_pct, 0) / totalClosed) * 10) / 10;
+
+  return { totalClosed, totalDollarPnl, avgPnlPct };
+}
+
+/**
+ * Format a time duration from milliseconds into human-readable form.
+ * Used for both open trade durations and closed trade holding periods.
+ * @param ms - Duration in milliseconds
+ * @returns Human-readable string (e.g., "3d 14h", "6h", "<1h")
+ */
+export function formatDurationMs(ms: number): string {
+  if (ms < 0) return '<1h';
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  if (days > 0) return `${days}d ${remainingHours}h`;
+  if (hours > 0) return `${hours}h`;
+  return '<1h';
+}
+
+/**
  * Check if price data is stale (>5 minutes old)
  * @param timestamp - ISO timestamp string or Date object
  * @returns true if data is stale (older than 5 minutes)

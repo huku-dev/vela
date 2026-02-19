@@ -50,6 +50,7 @@ export interface Brief {
 }
 
 export type TradeSource = 'live' | 'backtest';
+export type TradeDirection = 'long' | 'short' | 'trim' | 'bb_long' | 'bb_short';
 
 export interface PaperTrade {
   id: string;
@@ -61,6 +62,8 @@ export interface PaperTrade {
   pnl_pct: number | null;
   status: TradeStatus;
   source: TradeSource;
+  direction: TradeDirection | null;
+  trim_pct: number | null;
   yellow_events: Array<{
     timestamp: string;
     rsi: number;
