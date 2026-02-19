@@ -191,18 +191,30 @@ export function useAssetDetail(assetId: string) {
 
 const PAGE_SIZE = 50;
 
+export interface TradeAssetInfo {
+  symbol: string;
+  coingecko_id: string;
+}
+
 export function useTrackRecord() {
-  const [trades, setTrades] = useState<(PaperTrade & { asset_symbol?: string })[]>([]);
+  const [trades, setTrades] = useState<
+    (PaperTrade & { asset_symbol?: string; asset_coingecko_id?: string })[]
+  >([]);
   const [stats, setStats] = useState<PaperTradeStats[]>([]);
+  const [livePrices, setLivePrices] = useState<Record<string, PriceData>>({});
+  const [assetMap, setAssetMap] = useState<Record<string, TradeAssetInfo>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
-  const mapTrades = (data: (PaperTrade & { assets?: { symbol: string } })[]) =>
+  const mapTrades = (
+    data: (PaperTrade & { assets?: { symbol: string; coingecko_id: string } })[]
+  ) =>
     data.map(t => ({
       ...t,
       source: t.source || ('live' as const),
       asset_symbol: t.assets?.symbol,
+      asset_coingecko_id: t.assets?.coingecko_id,
     }));
 
   useEffect(() => {
@@ -210,7 +222,7 @@ export function useTrackRecord() {
       const [tradesRes, statsRes] = await Promise.all([
         supabase
           .from('paper_trades')
-          .select('*, assets(symbol)')
+          .select('*, assets(symbol, coingecko_id)')
           .order('opened_at', { ascending: false })
           .limit(PAGE_SIZE + 1),
         supabase.from('paper_trade_stats').select('*'),
@@ -218,8 +230,29 @@ export function useTrackRecord() {
 
       const rows = tradesRes.data || [];
       setHasMore(rows.length > PAGE_SIZE);
-      setTrades(mapTrades(rows.slice(0, PAGE_SIZE)));
+      const mapped = mapTrades(rows.slice(0, PAGE_SIZE));
+      setTrades(mapped);
       setStats(statsRes.data || []);
+
+      // Build asset map for logos
+      const aMap: Record<string, TradeAssetInfo> = {};
+      for (const t of mapped) {
+        if (t.asset_symbol && t.asset_coingecko_id) {
+          aMap[t.asset_id] = { symbol: t.asset_symbol, coingecko_id: t.asset_coingecko_id };
+        }
+      }
+      setAssetMap(aMap);
+
+      // Fetch live prices for open trade assets
+      const openAssetIds = [
+        ...new Set(mapped.filter(t => t.status === 'open').map(t => t.asset_coingecko_id)),
+      ].filter(Boolean) as string[];
+
+      if (openAssetIds.length > 0) {
+        const prices = await fetchLivePrices(openAssetIds);
+        setLivePrices(prices);
+      }
+
       setLoading(false);
     };
     fetchAll();
@@ -229,7 +262,7 @@ export function useTrackRecord() {
     setLoadingMore(true);
     const res = await supabase
       .from('paper_trades')
-      .select('*, assets(symbol)')
+      .select('*, assets(symbol, coingecko_id)')
       .order('opened_at', { ascending: false })
       .range(trades.length, trades.length + PAGE_SIZE);
 
@@ -239,5 +272,5 @@ export function useTrackRecord() {
     setLoadingMore(false);
   }, [trades.length]);
 
-  return { trades, stats, loading, loadingMore, hasMore, loadMore };
+  return { trades, stats, livePrices, assetMap, loading, loadingMore, hasMore, loadMore };
 }

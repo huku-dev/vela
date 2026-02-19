@@ -49,7 +49,7 @@ export default function Home() {
     <Box sx={{ p: 2, pb: 10, maxWidth: 600, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ mb: 2.5, mt: 1 }}>
-        <VelaLogo variant="full" size={32} />
+        <VelaLogo variant="full" size={40} />
         {lastUpdated && (
           <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', mt: 0.5 }}>
             Updates every 15 mins ·{' '}
