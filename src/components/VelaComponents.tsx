@@ -29,6 +29,7 @@ interface CardProps {
   children: ReactNode;
   variant?: CardVariant;
   compact?: boolean;
+  tight?: boolean;
   hover?: boolean;
   className?: string;
   onClick?: () => void;
@@ -121,18 +122,19 @@ export function Card({
   children,
   variant = 'default',
   compact = false,
+  tight = false,
   className = '',
   onClick,
   style,
 }: CardProps) {
   const baseClass = 'vela-card';
   const variantClass = variant !== 'default' ? `vela-card-${variant}` : '';
-  const compactClass = compact ? 'vela-card-compact' : '';
+  const paddingClass = tight ? 'vela-card-tight' : compact ? 'vela-card-compact' : '';
   const clickable = onClick ? 'cursor-pointer' : '';
 
   return (
     <div
-      className={`${baseClass} ${variantClass} ${compactClass} ${clickable} ${className}`.trim()}
+      className={`${baseClass} ${variantClass} ${paddingClass} ${clickable} ${className}`.trim()}
       onClick={onClick}
       onKeyDown={
         onClick

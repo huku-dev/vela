@@ -146,6 +146,7 @@
   --color-info: var(--blue-primary);
 
   /* Typography scale */
+  --text-2xs: 0.625rem; /* 10px */
   --text-xs: 0.75rem; /* 12px */
   --text-sm: 0.875rem; /* 14px */
   --text-base: 1rem; /* 16px */
@@ -254,6 +255,11 @@
   --type-heading-lg-size: var(--text-xl);
   --type-heading-lg-weight: var(--weight-semibold);
   --type-heading-lg-line-height: var(--leading-snug);
+
+  --type-heading-base-font: 'Space Grotesk', system-ui, sans-serif;
+  --type-heading-base-size: var(--text-base);
+  --type-heading-base-weight: var(--weight-semibold);
+  --type-heading-base-line-height: var(--leading-snug);
 
   /* Body type - Inter */
   --type-body-lg-font: 'Inter', system-ui, sans-serif;
@@ -473,6 +479,10 @@ body {
   padding: var(--space-4);
 }
 
+.vela-card-tight {
+  padding: var(--space-2) var(--space-3);
+}
+
 /* Nested card fix for visual hierarchy */
 .vela-card .vela-card {
   box-shadow: var(--shadow-xs);
@@ -593,6 +603,13 @@ body {
   line-height: var(--type-heading-lg-line-height);
 }
 
+.vela-heading-base {
+  font-family: var(--type-heading-base-font);
+  font-size: var(--type-heading-base-size);
+  font-weight: var(--type-heading-base-weight);
+  line-height: var(--type-heading-base-line-height);
+}
+
 .vela-body-lg {
   font-family: var(--type-body-lg-font);
   font-size: var(--type-body-lg-size);
@@ -613,6 +630,14 @@ body {
   font-weight: var(--type-label-base-weight);
   line-height: var(--type-label-base-line-height);
   letter-spacing: var(--type-label-base-tracking);
+}
+
+.vela-label-sm {
+  font-family: var(--type-label-sm-font);
+  font-size: var(--type-label-sm-size);
+  font-weight: var(--type-label-sm-weight);
+  line-height: var(--type-label-sm-line-height);
+  letter-spacing: var(--type-label-sm-tracking);
 }
 
 .vela-mono {

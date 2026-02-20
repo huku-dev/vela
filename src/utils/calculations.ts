@@ -155,6 +155,124 @@ export function formatDurationMs(ms: number): string {
 }
 
 /**
+ * Detailed breakdown stats for the Performance Breakdown section.
+ * TRUST-CRITICAL: These numbers inform user decisions about strategy.
+ */
+export interface DetailedTradeStats {
+  wins: number;
+  losses: number;
+  bestTradeDollar: number;
+  bestTradeAsset: string;
+  bestTradeDate: string;
+  worstTradeDollar: number;
+  worstTradeAsset: string;
+  worstTradeDate: string;
+  longCount: number;
+  longWins: number;
+  shortCount: number;
+  shortWins: number;
+  avgDurationMs: number;
+  longestDurationMs: number;
+  shortestDurationMs: number;
+}
+
+/**
+ * Compute detailed trade stats for the Performance Breakdown section.
+ * TRUST-CRITICAL: All financial metrics must be accurate.
+ * @param closedTrades - Array of closed trades with required fields
+ * @param positionSize - Dollar position size per trade
+ * @returns Detailed stats breakdown
+ */
+export function computeDetailedStats(
+  closedTrades: {
+    pnl_pct: number;
+    direction?: string | null;
+    asset_id: string;
+    asset_symbol?: string;
+    closed_at?: string | null;
+    opened_at: string;
+  }[],
+  positionSize: number,
+): DetailedTradeStats {
+  const empty: DetailedTradeStats = {
+    wins: 0,
+    losses: 0,
+    bestTradeDollar: 0,
+    bestTradeAsset: '',
+    bestTradeDate: '',
+    worstTradeDollar: 0,
+    worstTradeAsset: '',
+    worstTradeDate: '',
+    longCount: 0,
+    longWins: 0,
+    shortCount: 0,
+    shortWins: 0,
+    avgDurationMs: 0,
+    longestDurationMs: 0,
+    shortestDurationMs: 0,
+  };
+
+  if (closedTrades.length === 0) return empty;
+
+  // Win/loss counts
+  const wins = closedTrades.filter(t => t.pnl_pct >= 0).length;
+  const losses = closedTrades.length - wins;
+
+  // Best/worst trade by dollar P&L
+  let bestTrade = closedTrades[0];
+  let worstTrade = closedTrades[0];
+  for (const t of closedTrades) {
+    if (t.pnl_pct > bestTrade.pnl_pct) bestTrade = t;
+    if (t.pnl_pct < worstTrade.pnl_pct) worstTrade = t;
+  }
+
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+
+  // Direction breakdown — exclude trims (partial exits, not directional bets)
+  const nonTrimTrades = closedTrades.filter(t => t.direction !== 'trim');
+  const longs = nonTrimTrades.filter(
+    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long',
+  );
+  const shorts = nonTrimTrades.filter(
+    t => t.direction === 'short' || t.direction === 'bb_short',
+  );
+
+  // Duration stats — only trades with both dates
+  const durations = closedTrades
+    .filter(t => t.opened_at && t.closed_at)
+    .map(t => new Date(t.closed_at!).getTime() - new Date(t.opened_at).getTime())
+    .filter(d => d >= 0);
+
+  const avgDurationMs =
+    durations.length > 0 ? Math.round(durations.reduce((s, d) => s + d, 0) / durations.length) : 0;
+  const longestDurationMs = durations.length > 0 ? Math.max(...durations) : 0;
+  const shortestDurationMs = durations.length > 0 ? Math.min(...durations) : 0;
+
+  return {
+    wins,
+    losses,
+    bestTradeDollar: pctToDollar(bestTrade.pnl_pct, positionSize),
+    bestTradeAsset: bestTrade.asset_symbol || bestTrade.asset_id.toUpperCase(),
+    bestTradeDate: formatDate(bestTrade.closed_at),
+    worstTradeDollar: pctToDollar(worstTrade.pnl_pct, positionSize),
+    worstTradeAsset: worstTrade.asset_symbol || worstTrade.asset_id.toUpperCase(),
+    worstTradeDate: formatDate(worstTrade.closed_at),
+    longCount: longs.length,
+    longWins: longs.filter(t => t.pnl_pct >= 0).length,
+    shortCount: shorts.length,
+    shortWins: shorts.filter(t => t.pnl_pct >= 0).length,
+    avgDurationMs,
+    longestDurationMs,
+    shortestDurationMs,
+  };
+}
+
+/**
  * Check if price data is stale (>5 minutes old)
  * @param timestamp - ISO timestamp string or Date object
  * @returns true if data is stale (older than 5 minutes)

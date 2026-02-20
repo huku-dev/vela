@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Card, Badge, LoadingSpinner, PageHeader } from '../components/VelaComponents';
 import EmptyState from '../components/EmptyState';
 import { useTrackRecord, DEFAULT_POSITION_SIZE } from '../hooks/useData';
@@ -8,6 +7,7 @@ import {
   calculateUnrealizedPnL,
   pctToDollar,
   aggregateTradeStats,
+  computeDetailedStats,
   formatDurationMs,
 } from '../utils/calculations';
 import type { PaperTrade, TradeDirection } from '../types';
@@ -33,7 +33,7 @@ export default function TrackRecord() {
   const [assetFilter, setAssetFilter] = useState<AssetFilter>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>('all');
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   if (loading) {
     return (
@@ -56,8 +56,10 @@ export default function TrackRecord() {
 
   const { totalClosed, totalDollarPnl, avgPnlPct } = aggregateTradeStats(
     filteredClosed,
-    DEFAULT_POSITION_SIZE
+    DEFAULT_POSITION_SIZE,
   );
+
+  const detailedStats = computeDetailedStats(filteredClosed, DEFAULT_POSITION_SIZE);
 
   // ── Build unique asset list for filter ──
   const uniqueAssets = [...new Set(trades.map(t => t.asset_id))]
@@ -92,35 +94,24 @@ export default function TrackRecord() {
         subtitle={`Paper trading · $${DEFAULT_POSITION_SIZE.toLocaleString()} position size`}
       />
 
-      {/* ── Stats Overview ── */}
+      {/* ── Stats Overview (2×2 grid) ── */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 'var(--space-3)',
-          marginBottom: 'var(--space-6)',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 'var(--space-2)',
+          marginBottom: 'var(--space-3)',
         }}
       >
+        <StatCard label="Balance" value="$—" subtitle="Coming soon" variant="sky" />
         <StatCard
-          label="Trades"
-          value={String(filteredClosed.length + filteredOpen.length)}
-          variant="sky"
-        />
-        <StatCard
-          label="Avg Return"
-          value={totalClosed === 0 ? '—' : `${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
-          variant={avgPnlPct >= 0 ? 'mint' : 'peach'}
-          valueColor={
-            totalClosed === 0 ? undefined : avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'
-          }
-        />
-        <StatCard
-          label="Net P&L"
+          label="Total P&L"
           value={
             totalClosed === 0
               ? '—'
               : `${totalDollarPnl >= 0 ? '+' : ''}$${Math.abs(totalDollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
           }
+          subtitle={totalClosed > 0 ? `across ${totalClosed} trades` : undefined}
           variant={totalDollarPnl >= 0 ? 'mint' : 'peach'}
           valueColor={
             totalClosed === 0
@@ -130,20 +121,151 @@ export default function TrackRecord() {
                 : 'var(--red-dark)'
           }
         />
+        <StatCard
+          label="Trades"
+          value={String(filteredClosed.length + filteredOpen.length)}
+          variant="default"
+        />
+        <StatCard
+          label="Profitable"
+          value={
+            totalClosed === 0
+              ? '—'
+              : `${detailedStats.wins} of ${totalClosed}`
+          }
+          variant={
+            totalClosed === 0
+              ? 'default'
+              : detailedStats.wins / totalClosed >= 0.5
+                ? 'mint'
+                : 'peach'
+          }
+          valueColor={
+            totalClosed === 0
+              ? undefined
+              : detailedStats.wins / totalClosed >= 0.5
+                ? 'var(--green-dark)'
+                : 'var(--red-dark)'
+          }
+        />
       </div>
+
+      {/* ── Performance Breakdown (collapsible) ── */}
+      {totalClosed > 0 && (
+        <div style={{ marginBottom: 'var(--space-3)' }}>
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="vela-btn vela-btn-ghost"
+            style={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'var(--space-2) var(--space-3)',
+              marginBottom: showBreakdown ? 'var(--space-2)' : 0,
+            }}
+          >
+            <span className="vela-label" style={{ color: 'var(--gray-600)' }}>
+              Performance breakdown
+            </span>
+            <span
+              style={{
+                transform: showBreakdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              ▼
+            </span>
+          </button>
+
+          {showBreakdown && (
+            <Card compact>
+              {/* Returns */}
+              <SectionLabel>Returns</SectionLabel>
+              <DetailRow
+                label="Avg return per trade"
+                value={`${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
+                valueColor={avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
+              />
+              <DetailRow
+                label="Avg trade size"
+                value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
+              />
+              <DetailRow
+                label="Biggest profit"
+                value={
+                  detailedStats.bestTradeDollar >= 0
+                    ? `+$${detailedStats.bestTradeDollar.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.bestTradeAsset}${detailedStats.bestTradeDate ? ` · ${detailedStats.bestTradeDate}` : ''})`
+                    : '—'
+                }
+                valueColor="var(--green-dark)"
+              />
+              <DetailRow
+                label="Biggest loss"
+                value={
+                  detailedStats.worstTradeDollar < 0
+                    ? `-$${Math.abs(detailedStats.worstTradeDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.worstTradeAsset}${detailedStats.worstTradeDate ? ` · ${detailedStats.worstTradeDate}` : ''})`
+                    : '—'
+                }
+                valueColor={detailedStats.worstTradeDollar < 0 ? 'var(--red-dark)' : undefined}
+              />
+
+              {/* By Direction */}
+              {(detailedStats.longCount > 0 || detailedStats.shortCount > 0) && (
+                <>
+                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>By direction</SectionLabel>
+                  {detailedStats.longCount > 0 && (
+                    <DetailRow
+                      label="Long trades"
+                      value={`${detailedStats.longWins} / ${detailedStats.longCount} profitable (${Math.round((detailedStats.longWins / detailedStats.longCount) * 100)}%)`}
+                    />
+                  )}
+                  {detailedStats.shortCount > 0 && (
+                    <DetailRow
+                      label="Short trades"
+                      value={`${detailedStats.shortWins} / ${detailedStats.shortCount} profitable (${Math.round((detailedStats.shortWins / detailedStats.shortCount) * 100)}%)`}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Timing */}
+              {detailedStats.avgDurationMs > 0 && (
+                <>
+                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>Timing</SectionLabel>
+                  <DetailRow
+                    label="Avg holding period"
+                    value={formatDurationMs(detailedStats.avgDurationMs)}
+                  />
+                  <DetailRow
+                    label="Longest trade"
+                    value={formatDurationMs(detailedStats.longestDurationMs)}
+                  />
+                  <DetailRow
+                    label="Shortest trade"
+                    value={formatDurationMs(detailedStats.shortestDurationMs)}
+                  />
+                </>
+              )}
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* ── Sort By Filter ── */}
       {uniqueAssets.length > 1 && (
-        <div style={{ marginBottom: 'var(--space-6)' }}>
+        <div style={{ marginBottom: 'var(--space-3)' }}>
           <p
             className="vela-label"
             style={{
               color: 'var(--gray-500)',
-              marginBottom: 'var(--space-2)',
+              marginBottom: 'var(--space-1)',
               paddingLeft: 'var(--space-1)',
             }}
           >
-            Filter
+            Filters
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
             <button
@@ -186,7 +308,7 @@ export default function TrackRecord() {
         style={{
           display: 'flex',
           gap: 'var(--space-2)',
-          marginBottom: 'var(--space-4)',
+          marginBottom: 'var(--space-3)',
         }}
       >
         {(['all', 'open', 'closed'] as const).map(status => (
@@ -218,7 +340,6 @@ export default function TrackRecord() {
                 formatDuration={formatDuration}
                 expanded={expandedTradeId === trade.id}
                 onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
-                onViewBrief={() => navigate(`/asset/${trade.asset_id}`)}
               />
             ) : (
               <ClosedTradeCard
@@ -256,7 +377,6 @@ function OpenTradeCard({
   formatDuration,
   expanded,
   onToggle,
-  onViewBrief,
 }: {
   trade: PaperTrade & { asset_symbol?: string; asset_coingecko_id?: string };
   currentPrice: number | null;
@@ -264,7 +384,6 @@ function OpenTradeCard({
   formatDuration: (openedAt: string) => string;
   expanded: boolean;
   onToggle: () => void;
-  onViewBrief: () => void;
 }) {
   const short = isShortTrade(trade.direction);
   const unrealizedPct =
@@ -448,16 +567,40 @@ function OpenTradeCard({
             </div>
           )}
 
-          <button
-            onClick={e => {
-              e.stopPropagation();
-              onViewBrief();
+          {/* Exit strategy */}
+          <div
+            style={{
+              marginTop: 'var(--space-2)',
+              padding: 'var(--space-2)',
+              backgroundColor: 'var(--gray-100)',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-1)',
             }}
-            className="vela-btn vela-btn-sm vela-btn-ghost"
-            style={{ width: '100%', marginTop: 'var(--space-2)' }}
           >
-            View Asset Brief
-          </button>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--gray-400)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <p
+              className="vela-body-sm"
+              style={{ color: 'var(--gray-500)', margin: 0 }}
+            >
+              Position closes when signal flips to {short ? 'Buy' : 'Sell'}
+            </p>
+          </div>
         </div>
       )}
     </Card>
@@ -750,22 +893,24 @@ function AssetIcon({
 function StatCard({
   label,
   value,
+  subtitle,
   variant = 'default',
   valueColor,
 }: {
   label: string;
   value: string;
+  subtitle?: string;
   variant?: 'default' | 'sky' | 'mint' | 'peach';
   valueColor?: string;
 }) {
   return (
-    <Card variant={variant} compact>
-      <div style={{ textAlign: 'center', padding: 'var(--space-1) 0' }}>
+    <Card variant={variant} tight>
+      <div style={{ textAlign: 'center' }}>
         <p
           style={{
             fontFamily: 'var(--type-mono-base-font)',
             fontWeight: 800,
-            fontSize: 'var(--text-lg)',
+            fontSize: 'var(--text-base)',
             color: valueColor || 'var(--gray-900)',
             margin: 0,
           }}
@@ -773,17 +918,51 @@ function StatCard({
           {value}
         </p>
         <p
-          className="vela-label"
+          className="vela-label-sm"
           style={{
             color: 'var(--gray-500)',
-            marginTop: 'var(--space-1)',
+            marginTop: 2,
             marginBottom: 0,
           }}
         >
           {label}
         </p>
+        {subtitle && (
+          <p
+            style={{
+              fontFamily: 'var(--type-body-sm-font)',
+              fontSize: 'var(--text-2xs)',
+              color: 'var(--gray-400)',
+              margin: 0,
+              marginTop: 1,
+            }}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
     </Card>
+  );
+}
+
+function SectionLabel({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <p
+      className="vela-label-sm"
+      style={{
+        color: 'var(--gray-400)',
+        marginBottom: 'var(--space-2)',
+        ...style,
+      }}
+    >
+      {children}
+    </p>
   );
 }
 

@@ -5,6 +5,7 @@ import {
   calculateUnrealizedPnL,
   pctToDollar,
   aggregateTradeStats,
+  computeDetailedStats,
   formatDurationMs,
   formatPrice,
   formatPercentChange,
@@ -441,5 +442,163 @@ describe('validateSignalStatusAlignment - TRUST CRITICAL', () => {
     expect(validateSignalStatusAlignment('WAIT', 5.0)).toBe(true);
     expect(validateSignalStatusAlignment('WAIT', -5.0)).toBe(true);
     expect(validateSignalStatusAlignment('WAIT', 0)).toBe(true);
+  });
+});
+
+describe('computeDetailedStats - TRUST CRITICAL', () => {
+  const makeTrade = (
+    pnl_pct: number,
+    direction: string,
+    asset_id: string,
+    opened_at: string,
+    closed_at: string,
+  ) => ({
+    pnl_pct,
+    direction,
+    asset_id,
+    asset_symbol: asset_id.toUpperCase(),
+    opened_at,
+    closed_at,
+  });
+
+  it('returns empty stats for zero trades', () => {
+    const stats = computeDetailedStats([], 1000);
+    expect(stats.wins).toBe(0);
+    expect(stats.losses).toBe(0);
+    expect(stats.longCount).toBe(0);
+    expect(stats.shortCount).toBe(0);
+    expect(stats.avgDurationMs).toBe(0);
+  });
+
+  it('CRITICAL: correctly counts profitable vs unprofitable trades', () => {
+    const trades = [
+      makeTrade(25.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      makeTrade(-5.0, 'long', 'eth', '2025-01-02T00:00:00Z', '2025-01-05T00:00:00Z'),
+      makeTrade(10.0, 'short', 'btc', '2025-02-01T00:00:00Z', '2025-02-15T00:00:00Z'),
+      makeTrade(0.0, 'long', 'hype', '2025-03-01T00:00:00Z', '2025-03-02T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    // 0% counts as profitable (not a loss)
+    expect(stats.wins).toBe(3);
+    expect(stats.losses).toBe(1);
+  });
+
+  it('handles all profitable trades', () => {
+    const trades = [
+      makeTrade(10.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      makeTrade(5.0, 'short', 'eth', '2025-01-02T00:00:00Z', '2025-01-05T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.wins).toBe(2);
+    expect(stats.losses).toBe(0);
+  });
+
+  it('handles all unprofitable trades', () => {
+    const trades = [
+      makeTrade(-10.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      makeTrade(-5.0, 'short', 'eth', '2025-01-02T00:00:00Z', '2025-01-05T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.wins).toBe(0);
+    expect(stats.losses).toBe(2);
+  });
+
+  it('CRITICAL: identifies biggest profit and biggest loss correctly', () => {
+    const trades = [
+      makeTrade(150.3, 'long', 'hype', '2025-04-13T00:00:00Z', '2025-10-13T00:00:00Z'),
+      makeTrade(-8.8, 'long', 'btc', '2025-06-01T00:00:00Z', '2025-06-05T00:00:00Z'),
+      makeTrade(25.0, 'short', 'eth', '2025-07-01T00:00:00Z', '2025-07-15T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.bestTradeDollar).toBe(1503);
+    expect(stats.bestTradeAsset).toBe('HYPE');
+    expect(stats.worstTradeDollar).toBe(-88);
+    expect(stats.worstTradeAsset).toBe('BTC');
+  });
+
+  it('CRITICAL: excludes trims from direction breakdown', () => {
+    const trades = [
+      makeTrade(25.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      makeTrade(52.5, 'trim', 'btc', '2025-01-05T00:00:00Z', '2025-01-08T00:00:00Z'),
+      makeTrade(10.0, 'short', 'eth', '2025-02-01T00:00:00Z', '2025-02-15T00:00:00Z'),
+      makeTrade(100.0, 'trim', 'eth', '2025-02-10T00:00:00Z', '2025-02-12T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    // Trims should NOT appear in long or short counts
+    expect(stats.longCount).toBe(1);
+    expect(stats.shortCount).toBe(1);
+    // But trims still count in wins/losses totals
+    expect(stats.wins).toBe(4);
+    expect(stats.losses).toBe(0);
+  });
+
+  it('handles bb_long and bb_short in direction breakdown', () => {
+    const trades = [
+      makeTrade(5.0, 'bb_long', 'btc', '2025-01-01T00:00:00Z', '2025-01-03T00:00:00Z'),
+      makeTrade(-3.0, 'bb_short', 'btc', '2025-01-05T00:00:00Z', '2025-01-06T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.longCount).toBe(1); // bb_long counts as long
+    expect(stats.shortCount).toBe(1); // bb_short counts as short
+    expect(stats.longWins).toBe(1);
+    expect(stats.shortWins).toBe(0);
+  });
+
+  it('computes duration stats correctly', () => {
+    const trades = [
+      // 9 days
+      makeTrade(10.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      // 3 days
+      makeTrade(-5.0, 'long', 'eth', '2025-01-02T00:00:00Z', '2025-01-05T00:00:00Z'),
+      // 14 days
+      makeTrade(20.0, 'short', 'btc', '2025-02-01T00:00:00Z', '2025-02-15T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+
+    const day = 24 * 60 * 60 * 1000;
+    // Longest: 14 days
+    expect(stats.longestDurationMs).toBe(14 * day);
+    // Shortest: 3 days
+    expect(stats.shortestDurationMs).toBe(3 * day);
+    // Average: (9 + 3 + 14) / 3 ≈ 8.67 days
+    const expectedAvg = Math.round(((9 + 3 + 14) / 3) * day);
+    expect(stats.avgDurationMs).toBe(expectedAvg);
+  });
+
+  it('handles trades with missing closed_at for duration', () => {
+    const trades = [
+      makeTrade(10.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
+      { pnl_pct: 5.0, direction: 'long', asset_id: 'eth', opened_at: '2025-01-02T00:00:00Z', closed_at: null },
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    // Only the first trade should contribute to duration
+    const day = 24 * 60 * 60 * 1000;
+    expect(stats.avgDurationMs).toBe(9 * day);
+    expect(stats.longestDurationMs).toBe(9 * day);
+    expect(stats.shortestDurationMs).toBe(9 * day);
+  });
+
+  it('handles single trade', () => {
+    const trades = [
+      makeTrade(42.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-15T00:00:00Z'),
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.wins).toBe(1);
+    expect(stats.losses).toBe(0);
+    expect(stats.bestTradeDollar).toBe(420);
+    expect(stats.worstTradeDollar).toBe(420); // same trade is both best and worst
+    expect(stats.longCount).toBe(1);
+    expect(stats.longWins).toBe(1);
+    expect(stats.shortCount).toBe(0);
+  });
+
+  it('handles trades with null direction as long', () => {
+    const trades = [
+      { pnl_pct: 10.0, direction: null, asset_id: 'btc', asset_symbol: 'BTC', opened_at: '2025-01-01T00:00:00Z', closed_at: '2025-01-10T00:00:00Z' },
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    // null direction should default to long in direction breakdown
+    expect(stats.longCount).toBe(1);
+    expect(stats.shortCount).toBe(0);
   });
 });
