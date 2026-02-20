@@ -7,8 +7,9 @@ import type { Brief, BriefGroup, SignalColor } from '../types';
 export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): string[] {
   if (!text) return [];
 
-  // Split on sentence boundaries (period + space + capital letter, or end of string)
-  const sentences = text.match(/[^.!?]*[.!?]+[\s]*/g) || [text];
+  // Split on sentence boundaries, but NOT after decimal points in numbers (e.g. "$29.86").
+  // A period only counts as sentence-ending if NOT preceded by a digit followed by digits.
+  const sentences = text.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [text];
 
   const paragraphs: string[] = [];
   let current = '';

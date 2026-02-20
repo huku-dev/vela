@@ -27,8 +27,8 @@ import {
 import type { SignalColor, BriefGroup } from '../types';
 
 const signalTitles: Record<SignalColor, string> = {
-  green: 'Buy Signal',
-  red: 'Exit Signal',
+  green: 'Buy signal',
+  red: 'Exit signal',
   grey: 'Wait',
 };
 
@@ -238,7 +238,7 @@ export default function AssetDetail() {
             {/* Signal Breakdown — as bullet list */}
             {detail.signal_breakdown && Object.keys(detail.signal_breakdown).length > 0 && (
               <Box sx={{ mb: 2 }}>
-                <SubLabel>Technical Analysis</SubLabel>
+                <SubLabel>Technical analysis</SubLabel>
                 <Box component="ul" sx={{ m: 0, pl: 2.5, listStyle: 'disc' }}>
                   {Object.entries(detail.signal_breakdown).map(([key, value]) => (
                     <Box
@@ -267,7 +267,7 @@ export default function AssetDetail() {
             {/* Market Context — with Fear & Greed gauge */}
             {detail.market_context && (
               <Box sx={{ mb: 2 }}>
-                <SubLabel>Market Context</SubLabel>
+                <SubLabel>Market context</SubLabel>
 
                 {/* Fear & Greed gauge if available */}
                 {fearGreedValue != null && (
@@ -344,14 +344,21 @@ export default function AssetDetail() {
                     })()
                   : null;
 
+                // Convert "vs yesterday" → "in the last day", "vs 5 days ago" → "in the last 5 days"
+                const tooltipTimeframe = deltaLabel
+                  ? deltaLabel === 'vs yesterday'
+                    ? 'in the last day'
+                    : `in the last ${deltaLabel.replace('vs ', '').replace(' ago', '')}`
+                  : null;
+
                 // Derive Plain English descriptions
                 const trendLabel =
                   currentPrice > ema9 && currentPrice > ema21
                     ? 'Above short & medium averages'
                     : currentPrice > ema9
-                      ? 'Above short-term, below medium-term average'
+                      ? 'Above short-term but below medium-term average'
                       : currentPrice > ema21
-                        ? 'Below short-term, above medium-term average'
+                        ? 'Below short-term but above medium-term average'
                         : 'Below short & medium averages';
                 const trendColor =
                   currentPrice > ema9 && currentPrice > ema21
@@ -396,23 +403,43 @@ export default function AssetDetail() {
                 const smaColor = currentPrice > sma50 ? '#15803D' : '#DC2626';
                 const smaDist = currentPrice && sma50 ? ((currentPrice - sma50) / sma50) * 100 : 0;
 
+                // Dynamic tooltips — append current value + trend context
+                const smaTooltip = (() => {
+                  const base =
+                    'Compares the current price to its 50-day average. Being above it generally indicates a healthy longer-term trend; being below may signal weakness.';
+                  if (smaDist !== 0) {
+                    const aboveBelow = smaDist > 0 ? 'above' : 'below';
+                    return `${base} Currently ${Math.abs(smaDist).toFixed(1)}% ${aboveBelow} the 50-day average.`;
+                  }
+                  return base;
+                })();
+
+                const rsiTooltip = (() => {
+                  const base =
+                    'Measures buying vs selling pressure on a 0-100 scale. Above 70 means overbought (may pull back), below 30 means oversold (may bounce).';
+                  if (rsiDelta != null && Math.abs(rsiDelta) >= 0.1 && tooltipTimeframe) {
+                    const direction = rsiDelta > 0 ? 'up' : 'down';
+                    return `${base} At ${rsi.toFixed(0)}, it's ${direction} ${Math.abs(rsiDelta).toFixed(1)} ${tooltipTimeframe}.`;
+                  }
+                  return base;
+                })();
+
+                const adxTooltip = (() => {
+                  const base =
+                    'Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways.';
+                  if (adxDelta != null && Math.abs(adxDelta) >= 0.1 && tooltipTimeframe) {
+                    const direction = adxDelta > 0 ? 'up' : 'down';
+                    return `${base} At ${adx.toFixed(0)}, it's ${direction} ${Math.abs(adxDelta).toFixed(1)} ${tooltipTimeframe}.`;
+                  }
+                  return base;
+                })();
+
                 return (
                   <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                    <Box sx={{ mb: 0.5 }}>
                       <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: '#1A1A1A' }}>
-                        Indicators
+                        Momentum indicators
                       </Typography>
-                      {deltaLabel && (
-                        <Typography
-                          sx={{
-                            fontSize: '0.6rem',
-                            color: '#9CA3AF',
-                            fontStyle: 'italic',
-                          }}
-                        >
-                          Trends {deltaLabel}
-                        </Typography>
-                      )}
                     </Box>
                     <Box
                       sx={{
@@ -433,26 +460,24 @@ export default function AssetDetail() {
                       />
 
                       <IndicatorRow
+                        label="Longer-term trend"
+                        description={smaLabel}
+                        color={smaColor}
+                        tooltip={smaTooltip}
+                      />
+
+                      <IndicatorRow
                         label="Momentum"
                         description={`${rsiLabel} (${rsi.toFixed(0)})`}
                         color={rsiColor}
-                        tooltip="Measures buying vs selling pressure on a 0-100 scale. Above 70 means overbought (may pull back), below 30 means oversold (may bounce)."
-                        delta={rsiDelta}
+                        tooltip={rsiTooltip}
                       />
 
                       <IndicatorRow
                         label="Trend strength"
                         description={`${adxLabel} (${adx.toFixed(0)})`}
                         color={adxColor}
-                        tooltip="Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways."
-                        delta={adxDelta}
-                      />
-
-                      <IndicatorRow
-                        label="Longer-term trend"
-                        description={`${smaLabel} (${smaDist >= 0 ? '+' : ''}${smaDist.toFixed(1)}%)`}
-                        color={smaColor}
-                        tooltip="Compares the current price to its 50-day average. Being above it generally indicates a healthy medium-term trend; being below may signal weakness."
+                        tooltip={adxTooltip}
                       />
                     </Box>
                   </Box>
@@ -534,14 +559,27 @@ export default function AssetDetail() {
         </Accordion>
       )}
 
-      {/* Timestamp — use latest brief date (more meaningful than signal creation date) */}
-      {brief && (
+      {/* Timestamp — show signal check recency + brief age */}
+      {(signal || brief) && (
         <Typography sx={{ textAlign: 'center', mt: 3, color: '#9CA3AF', fontSize: '0.68rem' }}>
-          Last updated: {new Date(brief.created_at).toLocaleString()}
+          {signal && <>Signal checked {formatTimeAgo(signal.created_at)}</>}
+          {signal && brief && ' · '}
+          {brief && <>Analysis written {formatTimeAgo(brief.created_at)}</>}
         </Typography>
       )}
     </Box>
   );
+}
+
+function formatTimeAgo(dateStr: string): string {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function SectionLabel({ children, sx = {} }: { children: React.ReactNode; sx?: object }) {
@@ -580,27 +618,13 @@ function IndicatorRow({
   description,
   color,
   tooltip,
-  delta,
 }: {
   label: string;
   description: string;
   color: string;
   tooltip: string;
-  /** Optional numeric delta from oldest → newest brief. Positive = rising, negative = falling. */
-  delta?: number | null;
 }) {
   const [showTip, setShowTip] = React.useState(false);
-
-  // Delta display: arrow + value
-  const deltaDisplay = (() => {
-    if (delta == null || Math.abs(delta) < 0.1) return null;
-    const up = delta > 0;
-    return {
-      arrow: up ? '↑' : '↓',
-      text: `${up ? '+' : ''}${delta.toFixed(1)}`,
-      color: up ? '#15803D' : '#DC2626',
-    };
-  })();
 
   return (
     <Box>
@@ -629,32 +653,15 @@ function IndicatorRow({
             ?
           </Box>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          {deltaDisplay && (
-            <Box
-              component="span"
-              sx={{
-                fontSize: '0.6rem',
-                fontWeight: 700,
-                fontFamily: '"JetBrains Mono", monospace',
-                color: deltaDisplay.color,
-                letterSpacing: '-0.01em',
-              }}
-            >
-              {deltaDisplay.arrow}
-              {deltaDisplay.text}
-            </Box>
-          )}
-          <Typography
-            sx={{
-              fontSize: '0.72rem',
-              fontWeight: 600,
-              color,
-            }}
-          >
-            {description}
-          </Typography>
-        </Box>
+        <Typography
+          sx={{
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            color,
+          }}
+        >
+          {description}
+        </Typography>
       </Box>
       {showTip && (
         <Typography
@@ -861,7 +868,7 @@ function SignalHistoryCard({
               mb: 1,
             }}
           >
-            Signal History
+            Signal history
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {groups.map((group, gi) => {

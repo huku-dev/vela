@@ -96,7 +96,7 @@ export default function Home() {
                 mb: 1.5,
               }}
             >
-              Daily Digest
+              Daily digest
             </Typography>
 
             {/* Paragraphed text — truncated with "View more" */}

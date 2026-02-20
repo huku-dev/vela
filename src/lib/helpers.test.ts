@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPrice, parsePriceSegments } from './helpers';
+import { formatPrice, parsePriceSegments, breakIntoParagraphs } from './helpers';
 
 describe('formatPrice (adaptive decimals) - TRUST CRITICAL', () => {
   it('formats large prices (>=$1000) with no decimals and commas', () => {
@@ -37,6 +37,36 @@ describe('formatPrice (adaptive decimals) - TRUST CRITICAL', () => {
   it('CRITICAL: HYPE-range prices display correctly', () => {
     expect(formatPrice(29.15)).toBe('$29.15');
     expect(formatPrice(30.71)).toBe('$30.71');
+  });
+});
+
+describe('breakIntoParagraphs - TRUST CRITICAL', () => {
+  it('does not split on decimal points in prices like $29.86', () => {
+    const text =
+      'The signal would change if price breaks strongly upward through $29.86 or continues falling below $27.70.';
+    const result = breakIntoParagraphs(text, 2);
+    // Should be a single paragraph — $29.86 must not cause a split
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain('$29.86');
+  });
+
+  it('still splits on real sentence boundaries', () => {
+    const text =
+      'Bitcoin is at $67,000. Ethereum is at $1,950. The market is fearful. Consider waiting.';
+    const result = breakIntoParagraphs(text, 2);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toContain('Ethereum');
+    expect(result[1]).toContain('Consider');
+  });
+
+  it('handles prices at end of sentence correctly', () => {
+    const text =
+      'The price dropped to $29.86. This is significant. A recovery would need momentum.';
+    const result = breakIntoParagraphs(text, 2);
+    // "$29.86." — the period after 86 IS a sentence end (not followed by digit)
+    expect(result).toHaveLength(2);
+    expect(result[0]).toContain('$29.86');
+    expect(result[0]).toContain('significant');
   });
 });
 
