@@ -192,7 +192,7 @@ export function computeDetailedStats(
     closed_at?: string | null;
     opened_at: string;
   }[],
-  positionSize: number,
+  positionSize: number
 ): DetailedTradeStats {
   const empty: DetailedTradeStats = {
     wins: 0,
@@ -236,11 +236,9 @@ export function computeDetailedStats(
   // Direction breakdown — exclude trims (partial exits, not directional bets)
   const nonTrimTrades = closedTrades.filter(t => t.direction !== 'trim');
   const longs = nonTrimTrades.filter(
-    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long',
+    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long'
   );
-  const shorts = nonTrimTrades.filter(
-    t => t.direction === 'short' || t.direction === 'bb_short',
-  );
+  const shorts = nonTrimTrades.filter(t => t.direction === 'short' || t.direction === 'bb_short');
 
   // Duration stats — only trades with both dates
   const durations = closedTrades

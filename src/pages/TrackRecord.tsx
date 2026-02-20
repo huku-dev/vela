@@ -56,7 +56,7 @@ export default function TrackRecord() {
 
   const { totalClosed, totalDollarPnl, avgPnlPct } = aggregateTradeStats(
     filteredClosed,
-    DEFAULT_POSITION_SIZE,
+    DEFAULT_POSITION_SIZE
   );
 
   const detailedStats = computeDetailedStats(filteredClosed, DEFAULT_POSITION_SIZE);
@@ -128,11 +128,7 @@ export default function TrackRecord() {
         />
         <StatCard
           label="Profitable"
-          value={
-            totalClosed === 0
-              ? '—'
-              : `${detailedStats.wins} of ${totalClosed}`
-          }
+          value={totalClosed === 0 ? '—' : `${detailedStats.wins} of ${totalClosed}`}
           variant={
             totalClosed === 0
               ? 'default'
@@ -594,10 +590,7 @@ function OpenTradeCard({
               <line x1="12" y1="16" x2="12" y2="12" />
               <line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
-            <p
-              className="vela-body-sm"
-              style={{ color: 'var(--gray-500)', margin: 0 }}
-            >
+            <p className="vela-body-sm" style={{ color: 'var(--gray-500)', margin: 0 }}>
               Position closes when signal flips to {short ? 'Buy' : 'Sell'}
             </p>
           </div>

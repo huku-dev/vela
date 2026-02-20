@@ -451,7 +451,7 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
     direction: string,
     asset_id: string,
     opened_at: string,
-    closed_at: string,
+    closed_at: string
   ) => ({
     pnl_pct,
     direction,
@@ -568,7 +568,13 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
   it('handles trades with missing closed_at for duration', () => {
     const trades = [
       makeTrade(10.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-10T00:00:00Z'),
-      { pnl_pct: 5.0, direction: 'long', asset_id: 'eth', opened_at: '2025-01-02T00:00:00Z', closed_at: null },
+      {
+        pnl_pct: 5.0,
+        direction: 'long',
+        asset_id: 'eth',
+        opened_at: '2025-01-02T00:00:00Z',
+        closed_at: null,
+      },
     ];
     const stats = computeDetailedStats(trades, 1000);
     // Only the first trade should contribute to duration
@@ -579,9 +585,7 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
   });
 
   it('handles single trade', () => {
-    const trades = [
-      makeTrade(42.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-15T00:00:00Z'),
-    ];
+    const trades = [makeTrade(42.0, 'long', 'btc', '2025-01-01T00:00:00Z', '2025-01-15T00:00:00Z')];
     const stats = computeDetailedStats(trades, 1000);
     expect(stats.wins).toBe(1);
     expect(stats.losses).toBe(0);
@@ -594,7 +598,14 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
 
   it('handles trades with null direction as long', () => {
     const trades = [
-      { pnl_pct: 10.0, direction: null, asset_id: 'btc', asset_symbol: 'BTC', opened_at: '2025-01-01T00:00:00Z', closed_at: '2025-01-10T00:00:00Z' },
+      {
+        pnl_pct: 10.0,
+        direction: null,
+        asset_id: 'btc',
+        asset_symbol: 'BTC',
+        opened_at: '2025-01-01T00:00:00Z',
+        closed_at: '2025-01-10T00:00:00Z',
+      },
     ];
     const stats = computeDetailedStats(trades, 1000);
     // null direction should default to long in direction breakdown
