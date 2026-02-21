@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { createAuthenticatedClient } from '../lib/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -8,6 +8,7 @@ const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exc
 interface AuthUser {
   privyDid: string;
   profileId?: string;
+  email?: string;
 }
 
 export interface AuthState {
@@ -28,19 +29,15 @@ export interface AuthState {
  * The exchanged token is cached client-side (1h TTL, 5-min buffer).
  */
 export function useAuth(): AuthState {
-  const { ready, authenticated, login, logout, getAccessToken } = usePrivy();
+  const { ready, authenticated, login, logout, getAccessToken, user: privyUser } =
+    usePrivy();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(
-    null
-  );
+  const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(null);
 
   // Exchange Privy token for Supabase token
   const exchangeToken = useCallback(async (): Promise<string | null> => {
     // Return cached token if still valid (with 5-min buffer)
-    if (
-      tokenCacheRef.current &&
-      tokenCacheRef.current.expiresAt > Date.now() + 300_000
-    ) {
+    if (tokenCacheRef.current && tokenCacheRef.current.expiresAt > Date.now() + 300_000) {
       return tokenCacheRef.current.token;
     }
 
@@ -71,6 +68,7 @@ export function useAuth(): AuthState {
       setUser({
         privyDid: data.user.privy_did,
         profileId: data.user.profile_id,
+        email: privyUser?.email?.address ?? undefined,
       });
 
       return data.access_token;
@@ -78,7 +76,14 @@ export function useAuth(): AuthState {
       console.error('[useAuth] Token exchange error:', err);
       return null;
     }
-  }, [getAccessToken]);
+  }, [getAccessToken, privyUser?.email?.address]);
+
+  // Trigger token exchange when user authenticates
+  useEffect(() => {
+    if (ready && authenticated) {
+      exchangeToken();
+    }
+  }, [ready, authenticated, exchangeToken]);
 
   // Create authenticated Supabase client (memoized while authenticated)
   const supabaseClient = useMemo(() => {

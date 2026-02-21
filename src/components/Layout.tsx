@@ -11,12 +11,13 @@ import { useAuthContext } from '../contexts/AuthContext';
 const navItems = [
   { label: 'Signals', icon: <ShowChartIcon />, path: '/' },
   { label: 'Your Trades', icon: <BarChartIcon />, path: '/trades' },
+  { label: 'Account', icon: <PersonOutlineIcon />, path: '/account' },
 ];
 
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading, login, logout } = useAuthContext();
+  const { isAuthenticated, isLoading, login } = useAuthContext();
 
   const getNavValue = useCallback(() => {
     const idx = navItems.findIndex(item => item.path === location.pathname);
@@ -38,13 +39,9 @@ export default function Layout() {
         <BottomNavigation
           value={value}
           onChange={(_, newValue) => {
-            // Account button is appended after nav items
-            if (newValue === navItems.length) {
-              if (isAuthenticated) {
-                logout();
-              } else {
-                login();
-              }
+            // Account tab: login if not authenticated, navigate if authenticated
+            if (navItems[newValue]?.path === '/account' && !isAuthenticated) {
+              login();
               return;
             }
             setValue(newValue);
@@ -61,7 +58,15 @@ export default function Layout() {
           {navItems.map(item => (
             <BottomNavigationAction
               key={item.label}
-              label={item.label}
+              label={
+                item.path === '/account'
+                  ? isLoading
+                    ? '...'
+                    : isAuthenticated
+                      ? 'Account'
+                      : 'Log in'
+                  : item.label
+              }
               icon={item.icon}
               sx={{
                 color: '#9CA3AF',
@@ -74,19 +79,6 @@ export default function Layout() {
               }}
             />
           ))}
-          <BottomNavigationAction
-            label={isLoading ? '...' : isAuthenticated ? 'Account' : 'Log in'}
-            icon={<PersonOutlineIcon />}
-            sx={{
-              color: '#9CA3AF',
-              '&.Mui-selected': { color: '#1A1A1A', fontWeight: 700 },
-              '& .MuiBottomNavigationAction-label': {
-                fontSize: '0.65rem',
-                fontWeight: 600,
-                letterSpacing: '0.04em',
-              },
-            }}
-          />
         </BottomNavigation>
       )}
     </Box>

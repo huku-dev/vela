@@ -13,6 +13,7 @@ import { PRIVY_APP_ID, privyConfig } from './lib/privy';
 const Home = lazy(() => import('./pages/Home'));
 const AssetDetail = lazy(() => import('./pages/AssetDetail'));
 const TrackRecord = lazy(() => import('./pages/TrackRecord'));
+const Account = lazy(() => import('./pages/Account'));
 
 function PageLoader() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/asset/:assetId" element={<AssetDetail />} />
                   <Route path="/trades" element={<TrackRecord />} />
+                  <Route path="/account" element={<Account />} />
                 </Route>
               </Routes>
             </Suspense>
