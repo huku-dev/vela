@@ -182,3 +182,124 @@ export interface AuditLogEntry {
   user_agent: string | null;
   created_at: string;
 }
+
+// ── Phase 1: Trading types ──────────────────────────────
+
+export type TradeSide = 'long' | 'short';
+
+export type TradeProposalStatus =
+  | 'pending'
+  | 'approved'
+  | 'declined'
+  | 'auto_approved'
+  | 'expired'
+  | 'executed'
+  | 'failed';
+
+export type ApprovalSource = 'telegram' | 'email' | 'frontend' | 'auto';
+
+export type TradeExecutionStatus =
+  | 'pending'
+  | 'submitted'
+  | 'filled'
+  | 'partially_filled'
+  | 'failed'
+  | 'cancelled';
+
+export type PositionStatus = 'open' | 'closing' | 'closed';
+
+export type WalletEnvironment = 'testnet' | 'mainnet';
+
+export type CircuitBreakerTrigger =
+  | 'daily_loss_limit'
+  | 'position_size_limit'
+  | 'consecutive_losses'
+  | 'rapid_price_drop'
+  | 'max_drawdown'
+  | 'manual_halt';
+
+export interface TradeProposal {
+  id: string;
+  user_id: string;
+  asset_id: string;
+  signal_id: string;
+  side: TradeSide;
+  proposed_size_usd: number;
+  proposed_leverage: number;
+  entry_price_at_proposal: number;
+  status: TradeProposalStatus;
+  approval_source: ApprovalSource | null;
+  approved_at: string | null;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TradeExecution {
+  id: string;
+  trade_proposal_id: string;
+  user_id: string;
+  asset_id: string;
+  side: TradeSide;
+  order_id: string | null;
+  fill_price: number | null;
+  fill_size: number | null;
+  fill_size_usd: number | null;
+  exchange_fee_amount: number;
+  vela_fee_pct: number;
+  vela_fee_amount: number;
+  status: TradeExecutionStatus;
+  error_message: string | null;
+  raw_response: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserWallet {
+  id: string;
+  user_id: string;
+  master_wallet_id: string;
+  master_address: string;
+  agent_wallet_id: string | null;
+  agent_address: string | null;
+  agent_registered: boolean;
+  balance_usdc: number;
+  environment: WalletEnvironment;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Position {
+  id: string;
+  user_id: string;
+  asset_id: string;
+  trade_execution_id: string | null;
+  side: TradeSide;
+  entry_price: number;
+  current_price: number | null;
+  size: number;
+  size_usd: number;
+  leverage: number;
+  unrealized_pnl: number;
+  unrealized_pnl_pct: number;
+  stop_loss_price: number | null;
+  take_profit_price: number | null;
+  status: PositionStatus;
+  closed_at: string | null;
+  closed_pnl: number | null;
+  closed_pnl_pct: number | null;
+  close_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CircuitBreakerEvent {
+  id: string;
+  user_id: string;
+  trigger_type: CircuitBreakerTrigger;
+  asset_id: string | null;
+  details: Record<string, unknown>;
+  resolved: boolean;
+  resolved_at: string | null;
+  created_at: string;
+}

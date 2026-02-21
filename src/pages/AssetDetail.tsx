@@ -1,5 +1,5 @@
-import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
@@ -14,7 +14,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import SignalChip from '../components/SignalChip';
 import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
+import TradeProposalCard from '../components/TradeProposalCard';
 import { useAssetDetail } from '../hooks/useData';
+import { useTrading } from '../hooks/useTrading';
+import { useAuthContext } from '../contexts/AuthContext';
 import {
   breakIntoParagraphs,
   formatPrice,
@@ -41,9 +44,38 @@ const signalBg: Record<SignalColor, string> = {
 export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading } = useAssetDetail(
     assetId!
   );
+  const { isAuthenticated } = useAuthContext();
+  const { proposals, acceptProposal, declineProposal } = useTrading();
+
+  // Email redirect result banner
+  const resultParam = searchParams.get('result');
+  const [actionBanner, setActionBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (resultParam) {
+      if (resultParam === 'approved') {
+        setActionBanner('Trade approved and executing');
+      } else if (resultParam === 'declined') {
+        setActionBanner('Trade proposal declined');
+      }
+      // Clear query params
+      searchParams.delete('result');
+      searchParams.delete('proposal');
+      searchParams.delete('error');
+      setSearchParams(searchParams, { replace: true });
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => setActionBanner(null), 5000);
+    }
+  }, [resultParam, searchParams, setSearchParams]);
+
+  // Get pending proposals for this asset
+  const pendingProposals = isAuthenticated
+    ? proposals.filter(p => p.asset_id === assetId && p.status === 'pending')
+    : [];
 
   if (loading && !asset) {
     return (
@@ -178,6 +210,53 @@ export default function AssetDetail() {
           )}
         </Box>
       </Box>
+
+      {/* Email action result banner */}
+      {actionBanner && (
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: '10px',
+            border: '2px solid #1A1A1A',
+            boxShadow: '3px 3px 0px #1A1A1A',
+            backgroundColor: actionBanner.includes('approved') ? '#DCFCE7' : '#DBEAFE',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
+            {actionBanner.includes('approved') ? '✅' : '❌'} {actionBanner}
+          </Typography>
+          <Box
+            component="button"
+            onClick={() => setActionBanner(null)}
+            sx={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              color: '#6B7280',
+              p: 0,
+            }}
+          >
+            ×
+          </Box>
+        </Box>
+      )}
+
+      {/* Pending trade proposals */}
+      {pendingProposals.map(proposal => (
+        <Box key={proposal.id} sx={{ mb: 2 }}>
+          <TradeProposalCard
+            proposal={proposal}
+            assetSymbol={asset.symbol}
+            onAccept={acceptProposal}
+            onDecline={declineProposal}
+          />
+        </Box>
+      ))}
 
       {/* Tier 1: Key Signal — expandable with signal history */}
       {brief &&

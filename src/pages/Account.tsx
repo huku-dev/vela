@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTrading } from '../hooks/useTrading';
+import type { TradingMode } from '../types';
 
 declare global {
   interface Window {
@@ -200,10 +202,7 @@ function SupportPanel() {
           <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-2)' }}>
             Send feedback or report a bug
           </p>
-          <button
-            className="vela-btn vela-btn-secondary vela-btn-sm"
-            onClick={openFeedbackForm}
-          >
+          <button className="vela-btn vela-btn-secondary vela-btn-sm" onClick={openFeedbackForm}>
             Open feedback form
           </button>
         </div>
@@ -212,8 +211,323 @@ function SupportPanel() {
   );
 }
 
+const MODE_LABELS: Record<TradingMode, string> = {
+  view_only: 'View only',
+  semi_auto: 'Semi-auto',
+  full_auto: 'Full auto',
+};
+
+const MODE_DESCRIPTIONS: Record<TradingMode, string> = {
+  view_only: 'Signals only. No trade proposals or executions.',
+  semi_auto: 'Vela proposes trades. You approve each one before execution.',
+  full_auto: 'Vela executes trades automatically based on your signal preferences.',
+};
+
+function TradingPanel() {
+  const {
+    preferences,
+    wallet,
+    isTradingEnabled,
+    hasWallet,
+    updatePreferences,
+    enableTrading,
+    loading,
+    circuitBreakers,
+  } = useTrading();
+
+  const [saving, setSaving] = useState(false);
+  const [positionSize, setPositionSize] = useState(
+    preferences?.default_position_size_usd?.toString() ?? '100'
+  );
+  const [leverage, setLeverage] = useState(preferences?.max_leverage?.toString() ?? '1');
+  const [stopLoss, setStopLoss] = useState(preferences?.stop_loss_pct?.toString() ?? '5');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Sync form state when preferences load
+  useEffect(() => {
+    if (preferences) {
+      setPositionSize(preferences.default_position_size_usd.toString());
+      setLeverage(preferences.max_leverage.toString());
+      setStopLoss(preferences.stop_loss_pct.toString());
+    }
+  }, [preferences]);
+
+  const handleModeChange = async (mode: TradingMode) => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (mode !== 'view_only' && !hasWallet) {
+        await enableTrading(mode);
+      } else {
+        await updatePreferences({ mode } as Record<string, unknown>);
+      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await updatePreferences({
+        default_position_size_usd: Number(positionSize) || 100,
+        max_leverage: Math.min(Math.max(Number(leverage) || 1, 1), 20),
+        stop_loss_pct: Math.min(Math.max(Number(stopLoss) || 5, 1), 50),
+      } as Record<string, unknown>);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-4)' }}>
+        <p className="vela-body-sm vela-text-muted">Loading trading settings...</p>
+      </div>
+    );
+  }
+
+  const currentMode = preferences?.mode ?? 'view_only';
+
+  return (
+    <div style={{ padding: 'var(--space-4)' }}>
+      {/* Circuit breaker warning */}
+      {circuitBreakers.length > 0 && (
+        <div
+          style={{
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--color-status-sell-bg)',
+            borderRadius: 'var(--radius-sm)',
+            border: '2px solid var(--red-primary)',
+            marginBottom: 'var(--space-4)',
+          }}
+        >
+          <p className="vela-body-sm" style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}>
+            Trading paused — circuit breaker active
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+            {circuitBreakers[0].trigger_type.replace(/_/g, ' ')}. Review your positions.
+          </p>
+        </div>
+      )}
+
+      {/* Trading mode selector */}
+      <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+        TRADING MODE
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+        {(['view_only', 'semi_auto', 'full_auto'] as TradingMode[]).map(mode => (
+          <button
+            key={mode}
+            onClick={() => handleModeChange(mode)}
+            disabled={saving}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              backgroundColor: currentMode === mode ? 'var(--gray-100)' : 'transparent',
+              border: currentMode === mode ? '2px solid var(--black)' : '1px solid var(--gray-200)',
+              borderRadius: 'var(--radius-sm)',
+              cursor: saving ? 'wait' : 'pointer',
+              textAlign: 'left',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              width: '100%',
+              boxShadow: currentMode === mode ? '2px 2px 0 var(--black)' : 'none',
+            }}
+          >
+            {/* Radio indicator */}
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                border: `2px solid ${currentMode === mode ? 'var(--black)' : 'var(--gray-300)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                marginTop: 1,
+              }}
+            >
+              {currentMode === mode && (
+                <div
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--black)',
+                  }}
+                />
+              )}
+            </div>
+            <div>
+              <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+                {MODE_LABELS[mode]}
+              </p>
+              <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
+                {MODE_DESCRIPTIONS[mode]}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Trading settings — only show if trading enabled */}
+      {isTradingEnabled && (
+        <>
+          <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+            POSITION SETTINGS
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+            {/* Position size */}
+            <div>
+              <label htmlFor="position-size" className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+                Default position size (USD)
+              </label>
+              <input
+                id="position-size"
+                type="number"
+                value={positionSize}
+                onChange={e => setPositionSize(e.target.value)}
+                min={10}
+                max={10000}
+                style={{
+                  width: '100%',
+                  padding: 'var(--space-2) var(--space-3)',
+                  border: '2px solid var(--gray-300)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontSize: 14,
+                  boxSizing: 'border-box',
+                }}
+              />
+              <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+                Amount in USDC per trade
+              </p>
+            </div>
+
+            {/* Max leverage */}
+            <div>
+              <label className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+                Max leverage: {leverage}x
+              </label>
+              <input
+                type="range"
+                value={leverage}
+                onChange={e => setLeverage(e.target.value)}
+                min={1}
+                max={20}
+                step={1}
+                style={{ width: '100%' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span className="vela-body-sm vela-text-muted">1x</span>
+                <span className="vela-body-sm vela-text-muted">20x</span>
+              </div>
+            </div>
+
+            {/* Stop-loss */}
+            <div>
+              <label htmlFor="stop-loss" className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+                Stop-loss percentage
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <input
+                  id="stop-loss"
+                  type="number"
+                  value={stopLoss}
+                  onChange={e => setStopLoss(e.target.value)}
+                  min={1}
+                  max={50}
+                  style={{
+                    width: 80,
+                    padding: 'var(--space-2) var(--space-3)',
+                    border: '2px solid var(--gray-300)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    fontSize: 14,
+                    textAlign: 'center',
+                  }}
+                />
+                <span className="vela-body-sm">%</span>
+              </div>
+              <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+                Automatically close position if it drops below this threshold
+              </p>
+            </div>
+          </div>
+
+          <button
+            className="vela-btn vela-btn-primary vela-btn-sm"
+            onClick={handleSaveSettings}
+            disabled={saving}
+            style={{ width: '100%' }}
+          >
+            {saving ? 'Saving...' : 'Save settings'}
+          </button>
+        </>
+      )}
+
+      {/* Wallet info */}
+      {hasWallet && wallet && (
+        <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--gray-200)' }}>
+          <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+            TRADING WALLET
+          </p>
+          <div
+            style={{
+              padding: 'var(--space-3)',
+              backgroundColor: 'var(--gray-50)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--gray-200)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
+              <span className="vela-body-sm vela-text-muted">Balance</span>
+              <span className="vela-body-sm" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+                ${wallet.balance_usdc.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span className="vela-body-sm vela-text-muted">Environment</span>
+              <span className="vela-label-sm" style={{ color: 'var(--color-text-muted)' }}>
+                {wallet.environment === 'testnet' ? 'Testnet' : 'Mainnet'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status messages */}
+      {error && (
+        <p className="vela-body-sm" style={{ color: 'var(--color-error)', marginTop: 'var(--space-2)' }}>
+          {error}
+        </p>
+      )}
+      {success && (
+        <p className="vela-body-sm" style={{ color: 'var(--green-dark)', marginTop: 'var(--space-2)' }}>
+          Settings saved
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Account() {
   const { isAuthenticated, user, logout, login } = useAuthContext();
+  const { preferences, isTradingEnabled } = useTrading();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   // Load Tally widget script for feedback popup
@@ -227,7 +541,7 @@ export default function Account() {
   }, []);
 
   const toggleSection = (section: string) => {
-    setExpandedSection((prev) => (prev === section ? null : section));
+    setExpandedSection(prev => (prev === section ? null : section));
   };
 
   if (!isAuthenticated) {
@@ -342,11 +656,18 @@ export default function Account() {
             >
               <p
                 className="vela-body-sm"
-                style={{ fontWeight: 600, color: 'var(--color-error)', marginBottom: 'var(--space-1)' }}
+                style={{
+                  fontWeight: 600,
+                  color: 'var(--color-error)',
+                  marginBottom: 'var(--space-1)',
+                }}
               >
                 Delete account
               </p>
-              <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+              <p
+                className="vela-body-sm vela-text-muted"
+                style={{ marginBottom: 'var(--space-3)' }}
+              >
                 Permanently delete your account and all associated data.
               </p>
               <button
@@ -372,6 +693,22 @@ export default function Account() {
         {expandedSection === 'wallet' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
             <WalletPanel address={user?.walletAddress} />
+          </div>
+        )}
+
+        <SettingsItem
+          label="Trading"
+          value={
+            isTradingEnabled
+              ? MODE_LABELS[preferences?.mode ?? 'view_only']
+              : 'View only'
+          }
+          onClick={() => toggleSection('trading')}
+          expanded={expandedSection === 'trading'}
+        />
+        {expandedSection === 'trading' && (
+          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
+            <TradingPanel />
           </div>
         )}
 

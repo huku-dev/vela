@@ -88,9 +88,7 @@ export function useAuth(): AuthState {
   // Sync wallet address reactively (Privy creates embedded wallets async after login)
   useEffect(() => {
     if (authenticated && privyUser?.wallet?.address) {
-      setUser((prev) =>
-        prev ? { ...prev, walletAddress: privyUser.wallet?.address } : null,
-      );
+      setUser(prev => (prev ? { ...prev, walletAddress: privyUser.wallet?.address } : null));
     }
   }, [authenticated, privyUser?.wallet?.address]);
 
