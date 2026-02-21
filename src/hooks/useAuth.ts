@@ -9,6 +9,7 @@ interface AuthUser {
   privyDid: string;
   profileId?: string;
   email?: string;
+  walletAddress?: string;
 }
 
 export interface AuthState {
@@ -29,8 +30,7 @@ export interface AuthState {
  * The exchanged token is cached client-side (1h TTL, 5-min buffer).
  */
 export function useAuth(): AuthState {
-  const { ready, authenticated, login, logout, getAccessToken, user: privyUser } =
-    usePrivy();
+  const { ready, authenticated, login, logout, getAccessToken, user: privyUser } = usePrivy();
   const [user, setUser] = useState<AuthUser | null>(null);
   const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(null);
 
@@ -84,6 +84,15 @@ export function useAuth(): AuthState {
       exchangeToken();
     }
   }, [ready, authenticated, exchangeToken]);
+
+  // Sync wallet address reactively (Privy creates embedded wallets async after login)
+  useEffect(() => {
+    if (authenticated && privyUser?.wallet?.address) {
+      setUser((prev) =>
+        prev ? { ...prev, walletAddress: privyUser.wallet?.address } : null,
+      );
+    }
+  }, [authenticated, privyUser?.wallet?.address]);
 
   // Create authenticated Supabase client (memoized while authenticated)
   const supabaseClient = useMemo(() => {
