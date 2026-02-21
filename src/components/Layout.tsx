@@ -5,6 +5,8 @@ import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import { useAuthContext } from '../contexts/AuthContext';
 
 const navItems = [
   { label: 'Signals', icon: <ShowChartIcon />, path: '/' },
@@ -14,6 +16,7 @@ const navItems = [
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, isLoading, login, logout } = useAuthContext();
 
   const getNavValue = useCallback(() => {
     const idx = navItems.findIndex(item => item.path === location.pathname);
@@ -35,6 +38,15 @@ export default function Layout() {
         <BottomNavigation
           value={value}
           onChange={(_, newValue) => {
+            // Account button is appended after nav items
+            if (newValue === navItems.length) {
+              if (isAuthenticated) {
+                logout();
+              } else {
+                login();
+              }
+              return;
+            }
             setValue(newValue);
             navigate(navItems[newValue].path);
           }}
@@ -62,6 +74,19 @@ export default function Layout() {
               }}
             />
           ))}
+          <BottomNavigationAction
+            label={isLoading ? '...' : isAuthenticated ? 'Account' : 'Log in'}
+            icon={<PersonOutlineIcon />}
+            sx={{
+              color: '#9CA3AF',
+              '&.Mui-selected': { color: '#1A1A1A', fontWeight: 700 },
+              '& .MuiBottomNavigationAction-label': {
+                fontSize: '0.65rem',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+              },
+            }}
+          />
         </BottomNavigation>
       )}
     </Box>

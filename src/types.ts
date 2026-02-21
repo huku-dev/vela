@@ -109,3 +109,64 @@ export interface AssetDashboard {
   brief: Brief | null;
   priceData: PriceData | null;
 }
+
+// ── Phase 0: Auth & Subscription types ──────────────────
+
+export type TradingMode = 'semi_auto' | 'full_auto' | 'view_only';
+export type SubscriptionTier = 'free' | 'standard' | 'premium';
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing';
+
+export interface Profile {
+  id: string;
+  privy_did: string;
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  privy_wallet_address: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserPreferences {
+  id: string;
+  user_id: string;
+  mode: TradingMode;
+  default_position_size_usd: number;
+  max_leverage: number;
+  max_daily_loss_pct: number;
+  max_position_pct: number;
+  stop_loss_pct: number;
+  allowed_assets: string[];
+  notifications_telegram: boolean;
+  notifications_email: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TierConfig {
+  tier: SubscriptionTier;
+  display_name: string;
+  trade_fee_pct: number;
+  max_position_size_usd: number;
+  max_leverage: number;
+  signal_frequency_hours: number;
+  max_active_positions: number;
+  max_assets: number;
+  features: Record<string, boolean>;
+  monthly_price_usd: number;
+  annual_price_usd: number;
+}
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  tier: SubscriptionTier;
+  billing_cycle: 'monthly' | 'annual' | null;
+  status: SubscriptionStatus;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  created_at: string;
+  updated_at: string;
+}

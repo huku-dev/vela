@@ -20,6 +20,7 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
+    "@privy-io/react-auth": "^3.14.1",
     "@supabase/supabase-js": "^2.49.0",
     "agentation": "^2.2.1",
     "react": "^19.0.0",
