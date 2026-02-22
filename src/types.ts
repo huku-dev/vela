@@ -192,6 +192,7 @@ export type TradeProposalStatus =
   | 'approved'
   | 'declined'
   | 'auto_approved'
+  | 'executing'
   | 'expired'
   | 'executed'
   | 'failed';
@@ -218,6 +219,8 @@ export type CircuitBreakerTrigger =
   | 'max_drawdown'
   | 'manual_halt';
 
+export type ProposalType = 'open' | 'close' | 'trim';
+
 export interface TradeProposal {
   id: string;
   user_id: string;
@@ -231,6 +234,9 @@ export interface TradeProposal {
   approval_source: ApprovalSource | null;
   approved_at: string | null;
   expires_at: string;
+  proposal_type: ProposalType;
+  trim_pct: number | null;
+  parent_position_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -251,6 +257,7 @@ export interface TradeExecution {
   status: TradeExecutionStatus;
   error_message: string | null;
   raw_response: Record<string, unknown> | null;
+  is_trim: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -267,6 +274,15 @@ export interface UserWallet {
   environment: WalletEnvironment;
   created_at: string;
   updated_at: string;
+}
+
+export interface TrimHistoryEntry {
+  timestamp: string;
+  trim_pct: number;
+  size_before_usd: number;
+  size_after_usd: number;
+  fill_price: number | null;
+  execution_id: string | null;
 }
 
 export interface Position {
@@ -289,6 +305,8 @@ export interface Position {
   closed_pnl: number | null;
   closed_pnl_pct: number | null;
   close_reason: string | null;
+  trim_history: TrimHistoryEntry[];
+  original_size_usd: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -61,6 +61,8 @@ export default function AssetDetail() {
         setActionBanner('Trade approved and executing');
       } else if (resultParam === 'declined') {
         setActionBanner('Trade proposal declined');
+      } else if (resultParam === 'error') {
+        setActionBanner('Unable to process trade action. The proposal may have expired or already been handled.');
       }
       // Clear query params
       searchParams.delete('result');

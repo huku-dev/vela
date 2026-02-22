@@ -46,6 +46,9 @@ export interface TradingState {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+/** Polling interval for position updates (30 seconds) */
+const POLL_INTERVAL_MS = 30_000;
+
 // ── Hook ──────────────────────────────────────────────
 
 export function useTrading(): TradingState {
@@ -61,6 +64,8 @@ export function useTrading(): TradingState {
   const [error, setError] = useState<string | null>(null);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Guard against concurrent fetches (from polling + Realtime firing simultaneously)
+  const fetchInFlightRef = useRef(false);
 
   // ── Fetch all trading data ──
   const fetchTradingData = useCallback(async () => {
@@ -69,13 +74,17 @@ export function useTrading(): TradingState {
       return;
     }
 
+    // Prevent concurrent fetches — if one is in flight, skip
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+
     try {
       const [proposalsRes, openPosRes, closedPosRes, prefsRes, walletRes, cbRes] =
         await Promise.all([
           supabaseClient
             .from('trade_proposals')
             .select('*')
-            .in('status', ['pending', 'approved', 'auto_approved', 'executed'])
+            .in('status', ['pending', 'approved', 'auto_approved', 'executing', 'executed'])
             .order('created_at', { ascending: false })
             .limit(20),
           supabaseClient
@@ -89,15 +98,8 @@ export function useTrading(): TradingState {
             .eq('status', 'closed')
             .order('closed_at', { ascending: false })
             .limit(20),
-          supabaseClient
-            .from('user_preferences')
-            .select('*')
-            .single(),
-          supabaseClient
-            .from('user_wallets')
-            .select('*')
-            .eq('environment', 'testnet')
-            .limit(1),
+          supabaseClient.from('user_preferences').select('*').single(),
+          supabaseClient.from('user_wallets').select('*').eq('environment', 'testnet').limit(1),
           supabaseClient
             .from('circuit_breaker_events')
             .select('*')
@@ -117,6 +119,7 @@ export function useTrading(): TradingState {
       setError(err instanceof Error ? err.message : 'Failed to load trading data');
     } finally {
       setLoading(false);
+      fetchInFlightRef.current = false;
     }
   }, [supabaseClient, isAuthenticated]);
 
@@ -128,7 +131,7 @@ export function useTrading(): TradingState {
     }
 
     fetchTradingData();
-    intervalRef.current = setInterval(fetchTradingData, 30_000);
+    intervalRef.current = setInterval(fetchTradingData, POLL_INTERVAL_MS);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -150,7 +153,7 @@ export function useTrading(): TradingState {
           filter: `user_id=eq.${user.privyDid}`,
         },
         () => {
-          // Re-fetch on any position change
+          // Re-fetch on any position change (debounced by fetchInFlightRef)
           fetchTradingData();
         }
       )
@@ -171,17 +174,28 @@ export function useTrading(): TradingState {
     return () => {
       channel.unsubscribe();
     };
-  }, [supabaseClient, isAuthenticated, user?.privyDid, fetchTradingData]);
+    // Intentionally stable deps — only re-subscribe when auth state changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabaseClient, isAuthenticated, user?.privyDid]);
 
-  // ── Accept proposal ──
+  // ── Accept proposal (authenticated POST to trade-webhook) ──
   const acceptProposal = useCallback(
     async (proposalId: string) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
-      // Call the trade-webhook endpoint as the frontend source
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) throw new Error('No active session');
+
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend&proposal_id=${proposalId}&action=accept`,
-        { method: 'GET' }
+        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
+        }
       );
 
       if (!res.ok) {
@@ -189,25 +203,30 @@ export function useTrading(): TradingState {
         throw new Error(data.error || 'Failed to accept proposal');
       }
 
-      // Optimistic update
-      setProposals(prev =>
-        prev.map(p => (p.id === proposalId ? { ...p, status: 'approved' as const } : p))
-      );
-
-      // Refetch to get actual state
-      setTimeout(fetchTradingData, 1000);
+      // Refetch server state instead of optimistic update
+      await fetchTradingData();
     },
     [supabaseClient, fetchTradingData]
   );
 
-  // ── Decline proposal ──
+  // ── Decline proposal (authenticated POST to trade-webhook) ──
   const declineProposal = useCallback(
     async (proposalId: string) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) throw new Error('No active session');
+
       const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend&proposal_id=${proposalId}&action=decline`,
-        { method: 'GET' }
+        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
+        }
       );
 
       if (!res.ok) {
@@ -215,12 +234,7 @@ export function useTrading(): TradingState {
         throw new Error(data.error || 'Failed to decline proposal');
       }
 
-      // Optimistic update
-      setProposals(prev =>
-        prev.map(p => (p.id === proposalId ? { ...p, status: 'declined' as const } : p))
-      );
-
-      setTimeout(fetchTradingData, 1000);
+      await fetchTradingData();
     },
     [supabaseClient, fetchTradingData]
   );
@@ -228,12 +242,12 @@ export function useTrading(): TradingState {
   // ── Update preferences ──
   const updatePreferences = useCallback(
     async (updates: Partial<UserPreferences>) => {
-      if (!supabaseClient) throw new Error('Not authenticated');
+      if (!supabaseClient || !user?.privyDid) throw new Error('Not authenticated');
 
       const { error: updateErr } = await supabaseClient
         .from('user_preferences')
         .update(updates)
-        .eq('user_id', user?.privyDid);
+        .eq('user_id', user.privyDid);
 
       if (updateErr) throw new Error(updateErr.message);
 
@@ -247,14 +261,20 @@ export function useTrading(): TradingState {
     async (mode: TradingMode) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session?.access_token) throw new Error('No active session');
+
       // 1. Update mode in preferences
       await updatePreferences({ mode } as Partial<UserPreferences>);
 
-      // 2. Provision wallet if needed (calls Edge Function)
+      // 2. Provision wallet if needed (authenticated call)
       if (!wallet?.agent_registered) {
         const res = await fetch(`${SUPABASE_URL}/functions/v1/provision-wallet`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
         });
 
         if (!res.ok) {
@@ -296,7 +316,5 @@ export function usePendingProposals(assetId: string | undefined) {
 
   if (!assetId) return [];
 
-  return proposals.filter(
-    p => p.asset_id === assetId && p.status === 'pending'
-  );
+  return proposals.filter(p => p.asset_id === assetId && p.status === 'pending');
 }

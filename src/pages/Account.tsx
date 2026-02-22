@@ -312,20 +312,36 @@ function TradingPanel() {
             marginBottom: 'var(--space-4)',
           }}
         >
-          <p className="vela-body-sm" style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}>
+          <p
+            className="vela-body-sm"
+            style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}
+          >
             Trading paused — circuit breaker active
           </p>
-          <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+          >
             {circuitBreakers[0].trigger_type.replace(/_/g, ' ')}. Review your positions.
           </p>
         </div>
       )}
 
       {/* Trading mode selector */}
-      <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+      <p
+        className="vela-label-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+      >
         TRADING MODE
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-4)' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-2)',
+          marginBottom: 'var(--space-4)',
+        }}
+      >
         {(['view_only', 'semi_auto', 'full_auto'] as TradingMode[]).map(mode => (
           <button
             key={mode}
@@ -386,14 +402,28 @@ function TradingPanel() {
       {/* Trading settings — only show if trading enabled */}
       {isTradingEnabled && (
         <>
-          <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+          <p
+            className="vela-label-sm"
+            style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+          >
             POSITION SETTINGS
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-3)',
+              marginBottom: 'var(--space-4)',
+            }}
+          >
             {/* Position size */}
             <div>
-              <label htmlFor="position-size" className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+              <label
+                htmlFor="position-size"
+                className="vela-body-sm"
+                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+              >
                 Default position size (USD)
               </label>
               <input
@@ -413,14 +443,20 @@ function TradingPanel() {
                   boxSizing: 'border-box',
                 }}
               />
-              <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+              <p
+                className="vela-body-sm vela-text-muted"
+                style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+              >
                 Amount in USDC per trade
               </p>
             </div>
 
             {/* Max leverage */}
             <div>
-              <label className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+              <label
+                className="vela-body-sm"
+                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+              >
                 Max leverage: {leverage}x
               </label>
               <input
@@ -440,7 +476,11 @@ function TradingPanel() {
 
             {/* Stop-loss */}
             <div>
-              <label htmlFor="stop-loss" className="vela-body-sm" style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}>
+              <label
+                htmlFor="stop-loss"
+                className="vela-body-sm"
+                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+              >
                 Stop-loss percentage
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -463,7 +503,10 @@ function TradingPanel() {
                 />
                 <span className="vela-body-sm">%</span>
               </div>
-              <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}>
+              <p
+                className="vela-body-sm vela-text-muted"
+                style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+              >
                 Automatically close position if it drops below this threshold
               </p>
             </div>
@@ -482,8 +525,17 @@ function TradingPanel() {
 
       {/* Wallet info */}
       {hasWallet && wallet && (
-        <div style={{ marginTop: 'var(--space-4)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--gray-200)' }}>
-          <p className="vela-label-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}>
+        <div
+          style={{
+            marginTop: 'var(--space-4)',
+            paddingTop: 'var(--space-3)',
+            borderTop: '1px solid var(--gray-200)',
+          }}
+        >
+          <p
+            className="vela-label-sm"
+            style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+          >
             TRADING WALLET
           </p>
           <div
@@ -494,9 +546,18 @@ function TradingPanel() {
               border: '1px solid var(--gray-200)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-1)' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: 'var(--space-1)',
+              }}
+            >
               <span className="vela-body-sm vela-text-muted">Balance</span>
-              <span className="vela-body-sm" style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+              <span
+                className="vela-body-sm"
+                style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}
+              >
                 ${wallet.balance_usdc.toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </div>
@@ -512,12 +573,18 @@ function TradingPanel() {
 
       {/* Status messages */}
       {error && (
-        <p className="vela-body-sm" style={{ color: 'var(--color-error)', marginTop: 'var(--space-2)' }}>
+        <p
+          className="vela-body-sm"
+          style={{ color: 'var(--color-error)', marginTop: 'var(--space-2)' }}
+        >
           {error}
         </p>
       )}
       {success && (
-        <p className="vela-body-sm" style={{ color: 'var(--green-dark)', marginTop: 'var(--space-2)' }}>
+        <p
+          className="vela-body-sm"
+          style={{ color: 'var(--green-dark)', marginTop: 'var(--space-2)' }}
+        >
           Settings saved
         </p>
       )}
@@ -698,11 +765,7 @@ export default function Account() {
 
         <SettingsItem
           label="Trading"
-          value={
-            isTradingEnabled
-              ? MODE_LABELS[preferences?.mode ?? 'view_only']
-              : 'View only'
-          }
+          value={isTradingEnabled ? MODE_LABELS[preferences?.mode ?? 'view_only'] : 'View only'}
           onClick={() => toggleSection('trading')}
           expanded={expandedSection === 'trading'}
         />

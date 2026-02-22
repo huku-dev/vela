@@ -240,6 +240,34 @@ Vela handles financial data — bugs in these areas directly harm user trust:
 - Dark mode rendering
 - Accessibility (ARIA labels, keyboard navigation)
 
+### Adversarial Testing (Required for all financial/trading features)
+Every feature that touches money, positions, or proposals **must** include adversarial tests.
+These go beyond "does it work?" to ask **"can it be exploited?"**
+
+**Naming convention:** `FEATURENAME-ADV:` prefix (e.g., `TRIM-ADV:`, `CLOSE-ADV:`)
+
+**Required attack vectors to test for each new feature:**
+1. **Fund extraction** — Can this be used to steal or inflate balances?
+2. **Race conditions** — What happens if two concurrent actors trigger this?
+3. **Authorization bypass** — Can user A affect user B's data?
+4. **Phantom operations** — Can this act on entities that no longer exist?
+5. **Scope leakage** — Are DB queries scoped to user_id + asset_id?
+6. **Auto-approval abuse** — Does auto-mode still require full_auto + tier check?
+7. **Guard bypass** — Do cooldowns, circuit breakers, and limits apply?
+8. **Accidental amplification** — Can a partial operation accidentally become a full one?
+
+**Two test layers:**
+- **Source-verification tests** (`TRIM:` prefix) — Read source files, assert patterns exist. Fast, catches regressions when code is refactored.
+- **Adversarial tests** (`TRIM-ADV:` prefix) — Verify defense-in-depth: that guards exist at multiple layers, ordering is correct, scoping is tight.
+
+**When to write adversarial tests:**
+- Any new `proposal_type` or trade action
+- Any change to execution, position update, or P&L logic
+- Any change to auto-approval or tier enforcement
+- Any new DB mutation in the trading pipeline
+
+**Threat report required:** Every adversarial test session must produce a written threat report (saved to `docs/threat-reports/`) documenting each threat, its severity, the defense mechanism, and any residual risk. See `docs/threat-reports/TEMPLATE.md` for format.
+
 ### Test File Naming
 ```
 src/components/SignalCard.tsx
@@ -248,9 +276,14 @@ src/components/SignalCard.test.tsx  ← Test file
 
 ### Running Tests
 ```bash
-npm run test           # Run all tests
+# Frontend
+npm run test           # Run all tests (vitest)
 npm run test:watch     # Watch mode during development
 npm run test:coverage  # Generate coverage report (target: >70% on critical paths)
+
+# Backend (Deno)
+deno test --no-check --allow-env --allow-read supabase/functions/_shared/trade-executor.test.ts
+deno test --no-check --allow-env --allow-read --filter "TRIM" ...  # Run subset
 ```
 
 ---

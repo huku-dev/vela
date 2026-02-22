@@ -119,9 +119,7 @@ export default function TrackRecord() {
                 key={pos.id}
                 position={pos}
                 expanded={expandedTradeId === pos.id}
-                onToggle={() =>
-                  setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
-                }
+                onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
               />
             ))}
           </div>
@@ -1044,7 +1042,7 @@ function LivePositionCard({
       style={{
         borderLeft: `4px solid ${isLong ? 'var(--green-primary)' : 'var(--red-primary)'}`,
         cursor: 'pointer',
-        backgroundColor: 'var(--color-status-buy-bg)',
+        backgroundColor: isLong ? 'var(--color-status-buy-bg)' : 'var(--color-status-sell-bg)',
       }}
     >
       <div
@@ -1177,6 +1175,41 @@ function LivePositionCard({
             value={`${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% · ${pnlDollar >= 0 ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pnlPct >= 0 ? 'profit' : 'loss'}`}
             valueColor={pnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
           />
+
+          {/* Trim history */}
+          {position.trim_history && position.trim_history.length > 0 && (
+            <div
+              style={{
+                marginTop: 'var(--space-2)',
+                padding: 'var(--space-2)',
+                backgroundColor: 'rgba(255, 215, 0, 0.08)',
+                borderRadius: 'var(--radius-sm)',
+                borderLeft: '3px solid #FFD700',
+              }}
+            >
+              <span
+                className="vela-label-sm"
+                style={{ color: '#B8860B', display: 'block', marginBottom: 'var(--space-1)' }}
+              >
+                Trimmed {position.trim_history.length}x
+                {position.original_size_usd && (
+                  <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
+                    {' '}(Original: ${position.original_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                  </span>
+                )}
+              </span>
+              {position.trim_history.map((trim, i) => (
+                <span
+                  key={i}
+                  className="vela-body-sm"
+                  style={{ color: 'var(--color-text-muted)', display: 'block' }}
+                >
+                  {trim.trim_pct}% at {trim.fill_price ? formatPrice(trim.fill_price) : '—'}
+                  {' · '}${trim.size_before_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })} → ${trim.size_after_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Position info */}
           <div

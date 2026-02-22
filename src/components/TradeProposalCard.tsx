@@ -25,10 +25,23 @@ export default function TradeProposalCard({
   const [acting, setActing] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';
   const expiresAt = new Date(proposal.expires_at);
   const timeLeft = expiresAt.getTime() - Date.now();
   const expired = timeLeft <= 0;
+
+  // Determine colors and labels based on proposal type
+  const borderColor = isTrim
+    ? '#FFD700'
+    : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
+  const bgColor = isTrim
+    ? 'rgba(255, 215, 0, 0.08)'
+    : isLong ? 'var(--color-status-buy-bg)' : 'var(--color-status-sell-bg)';
+  const badgeColor = isTrim ? '#FFD700' : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
+  const badgeText = isTrim
+    ? `Trim ${proposal.trim_pct}%`
+    : isLong ? 'Long' : 'Short';
 
   const handleAction = async (action: 'accept' | 'decline') => {
     setActing(action);
@@ -86,8 +99,8 @@ export default function TradeProposalCard({
   return (
     <Card
       style={{
-        borderLeft: `4px solid ${isLong ? 'var(--green-primary)' : 'var(--red-primary)'}`,
-        backgroundColor: isLong ? 'var(--color-status-buy-bg)' : 'var(--color-status-sell-bg)',
+        borderLeft: `4px solid ${borderColor}`,
+        backgroundColor: bgColor,
       }}
       compact
     >
@@ -104,8 +117,8 @@ export default function TradeProposalCard({
           <span
             className="vela-label-sm"
             style={{
-              backgroundColor: isLong ? 'var(--green-primary)' : 'var(--red-primary)',
-              color: 'var(--white)',
+              backgroundColor: badgeColor,
+              color: isTrim ? 'var(--black)' : 'var(--white)',
               padding: '2px 8px',
               borderRadius: 'var(--radius-sm)',
               border: '2px solid var(--black)',
@@ -114,7 +127,7 @@ export default function TradeProposalCard({
               letterSpacing: '0.05em',
             }}
           >
-            {isLong ? 'Long' : 'Short'}
+            {badgeText}
           </span>
           <span className="vela-heading-base">{assetSymbol}</span>
         </div>
@@ -139,12 +152,14 @@ export default function TradeProposalCard({
 
       {/* Details */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <DetailRow label="Entry price" value={formatPrice(proposal.entry_price_at_proposal)} />
+        <DetailRow label={isTrim ? "Current price" : "Entry price"} value={formatPrice(proposal.entry_price_at_proposal)} />
         <DetailRow
-          label="Position size"
-          value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          label={isTrim ? "Trim amount" : "Position size"}
+          value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
         />
-        <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />
+        {!isTrim && (
+          <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />
+        )}
       </div>
 
       {/* Error message */}
@@ -174,12 +189,12 @@ export default function TradeProposalCard({
           }}
         >
           <button
-            className="vela-btn vela-btn-buy vela-btn-sm"
+            className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-buy'} vela-btn-sm`}
             onClick={() => handleAction('accept')}
             disabled={acting !== null}
-            style={{ flex: 1 }}
+            style={{ flex: 1, ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }) }}
           >
-            {acting === 'accept' ? 'Approving...' : 'Accept trade'}
+            {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
           </button>
           <button
             className="vela-btn vela-btn-ghost vela-btn-sm"
@@ -202,9 +217,11 @@ export default function TradeProposalCard({
           fontStyle: 'italic',
         }}
       >
-        {isLong
-          ? 'This will open a long position — profit if price goes up.'
-          : 'This will open a short position — profit if price goes down.'}
+        {isTrim
+          ? 'Lock in partial profits while keeping the rest of your position running.'
+          : isLong
+            ? 'This will open a long position — profit if price goes up.'
+            : 'This will open a short position — profit if price goes down.'}
       </p>
     </Card>
   );
