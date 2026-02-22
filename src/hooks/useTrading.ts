@@ -183,20 +183,19 @@ export function useTrading(): TradingState {
     async (proposalId: string) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
       if (!session?.access_token) throw new Error('No active session');
 
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
-        }
-      );
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
+      });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -214,20 +213,19 @@ export function useTrading(): TradingState {
     async (proposalId: string) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
       if (!session?.access_token) throw new Error('No active session');
 
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
-        }
-      );
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
+      });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -261,7 +259,9 @@ export function useTrading(): TradingState {
     async (mode: TradingMode) => {
       if (!supabaseClient) throw new Error('Not authenticated');
 
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
       if (!session?.access_token) throw new Error('No active session');
 
       // 1. Update mode in preferences

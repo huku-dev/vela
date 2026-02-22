@@ -32,16 +32,14 @@ export default function TradeProposalCard({
   const expired = timeLeft <= 0;
 
   // Determine colors and labels based on proposal type
-  const borderColor = isTrim
-    ? '#FFD700'
-    : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
+  const borderColor = isTrim ? '#FFD700' : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
   const bgColor = isTrim
     ? 'rgba(255, 215, 0, 0.08)'
-    : isLong ? 'var(--color-status-buy-bg)' : 'var(--color-status-sell-bg)';
+    : isLong
+      ? 'var(--color-status-buy-bg)'
+      : 'var(--color-status-sell-bg)';
   const badgeColor = isTrim ? '#FFD700' : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
-  const badgeText = isTrim
-    ? `Trim ${proposal.trim_pct}%`
-    : isLong ? 'Long' : 'Short';
+  const badgeText = isTrim ? `Trim ${proposal.trim_pct}%` : isLong ? 'Long' : 'Short';
 
   const handleAction = async (action: 'accept' | 'decline') => {
     setActing(action);
@@ -152,14 +150,15 @@ export default function TradeProposalCard({
 
       {/* Details */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <DetailRow label={isTrim ? "Current price" : "Entry price"} value={formatPrice(proposal.entry_price_at_proposal)} />
         <DetailRow
-          label={isTrim ? "Trim amount" : "Position size"}
+          label={isTrim ? 'Current price' : 'Entry price'}
+          value={formatPrice(proposal.entry_price_at_proposal)}
+        />
+        <DetailRow
+          label={isTrim ? 'Trim amount' : 'Position size'}
           value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
         />
-        {!isTrim && (
-          <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />
-        )}
+        {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
       </div>
 
       {/* Error message */}
@@ -192,7 +191,10 @@ export default function TradeProposalCard({
             className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-buy'} vela-btn-sm`}
             onClick={() => handleAction('accept')}
             disabled={acting !== null}
-            style={{ flex: 1, ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }) }}
+            style={{
+              flex: 1,
+              ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }),
+            }}
           >
             {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
           </button>

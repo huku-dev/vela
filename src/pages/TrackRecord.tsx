@@ -1194,7 +1194,12 @@ function LivePositionCard({
                 Trimmed {position.trim_history.length}x
                 {position.original_size_usd && (
                   <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
-                    {' '}(Original: ${position.original_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                    {' '}
+                    (Original: $
+                    {position.original_size_usd.toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}
+                    )
                   </span>
                 )}
               </span>
@@ -1205,7 +1210,9 @@ function LivePositionCard({
                   style={{ color: 'var(--color-text-muted)', display: 'block' }}
                 >
                   {trim.trim_pct}% at {trim.fill_price ? formatPrice(trim.fill_price) : '—'}
-                  {' · '}${trim.size_before_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })} → ${trim.size_after_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {' · '}$
+                  {trim.size_before_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })} → $
+                  {trim.size_after_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </span>
               ))}
             </div>
