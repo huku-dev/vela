@@ -52,7 +52,7 @@ const POLL_INTERVAL_MS = 30_000;
 // ── Hook ──────────────────────────────────────────────
 
 export function useTrading(): TradingState {
-  const { isAuthenticated, supabaseClient, user } = useAuthContext();
+  const { isAuthenticated, supabaseClient, user, getToken } = useAuthContext();
 
   const [proposals, setProposals] = useState<TradeProposal[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -181,18 +181,14 @@ export function useTrading(): TradingState {
   // ── Accept proposal (authenticated POST to trade-webhook) ──
   const acceptProposal = useCallback(
     async (proposalId: string) => {
-      if (!supabaseClient) throw new Error('Not authenticated');
-
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      if (!session?.access_token) throw new Error('No active session');
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
       });
@@ -205,24 +201,20 @@ export function useTrading(): TradingState {
       // Refetch server state instead of optimistic update
       await fetchTradingData();
     },
-    [supabaseClient, fetchTradingData]
+    [getToken, fetchTradingData]
   );
 
   // ── Decline proposal (authenticated POST to trade-webhook) ──
   const declineProposal = useCallback(
     async (proposalId: string) => {
-      if (!supabaseClient) throw new Error('Not authenticated');
-
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      if (!session?.access_token) throw new Error('No active session');
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
       });
@@ -234,7 +226,7 @@ export function useTrading(): TradingState {
 
       await fetchTradingData();
     },
-    [supabaseClient, fetchTradingData]
+    [getToken, fetchTradingData]
   );
 
   // ── Update preferences ──
@@ -257,12 +249,8 @@ export function useTrading(): TradingState {
   // ── Enable trading ──
   const enableTrading = useCallback(
     async (mode: TradingMode) => {
-      if (!supabaseClient) throw new Error('Not authenticated');
-
-      const {
-        data: { session },
-      } = await supabaseClient.auth.getSession();
-      if (!session?.access_token) throw new Error('No active session');
+      const token = await getToken();
+      if (!token) throw new Error('Not authenticated');
 
       // 1. Update mode in preferences
       await updatePreferences({ mode } as Partial<UserPreferences>);
@@ -273,7 +261,7 @@ export function useTrading(): TradingState {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
@@ -285,7 +273,7 @@ export function useTrading(): TradingState {
 
       await fetchTradingData();
     },
-    [supabaseClient, wallet?.agent_registered, updatePreferences, fetchTradingData]
+    [getToken, wallet?.agent_registered, updatePreferences, fetchTradingData]
   );
 
   return {

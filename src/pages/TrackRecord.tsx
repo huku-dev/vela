@@ -544,10 +544,10 @@ function OpenTradeCard({
           className="vela-body-sm"
           style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
         >
-          {new Date(trade.opened_at).toLocaleDateString(undefined, {
+          {new Date(trade.opened_at).toLocaleDateString('en-GB', {
             month: 'short',
             day: 'numeric',
-            year: 'numeric',
+            year: '2-digit',
           })}
         </p>
       </div>
@@ -762,16 +762,16 @@ function ClosedTradeCard({
           className="vela-body-sm"
           style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
         >
-          {new Date(trade.opened_at).toLocaleDateString(undefined, {
+          {new Date(trade.opened_at).toLocaleDateString('en-GB', {
             month: 'short',
             day: 'numeric',
-            year: 'numeric',
+            year: '2-digit',
           })}
           {trade.closed_at &&
-            ` — ${new Date(trade.closed_at).toLocaleDateString(undefined, {
+            ` — ${new Date(trade.closed_at).toLocaleDateString('en-GB', {
               month: 'short',
               day: 'numeric',
-              year: 'numeric',
+              year: '2-digit',
             })}`}
         </p>
       </div>

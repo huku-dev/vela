@@ -17,6 +17,8 @@ export interface AuthState {
   isLoading: boolean;
   user: AuthUser | null;
   supabaseClient: SupabaseClient | null;
+  /** Get a valid Supabase JWT (cached, auto-refreshes). Use for edge function calls. */
+  getToken: () => Promise<string | null>;
   login: () => void;
   logout: () => Promise<void>;
 }
@@ -103,6 +105,7 @@ export function useAuth(): AuthState {
     isLoading: !ready,
     user,
     supabaseClient,
+    getToken: exchangeToken,
     login,
     logout,
   };

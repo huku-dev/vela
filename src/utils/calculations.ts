@@ -230,7 +230,7 @@ export function computeDetailedStats(
     if (!dateStr) return '';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: '2-digit' });
   };
 
   // Direction breakdown — exclude trims (partial exits, not directional bets)
