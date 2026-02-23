@@ -1149,7 +1149,6 @@ function SignalHistoryCard({
             {groups.map((group, gi) => {
               const gc = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
               const leadBrief = group.briefs[0];
-              const isFirst = gi === 0;
 
               return (
                 <div
@@ -1159,8 +1158,7 @@ function SignalHistoryCard({
                     alignItems: 'flex-start',
                     gap: 'var(--space-2)',
                     padding: 'var(--space-2) 0',
-                    borderBottom:
-                      gi < groups.length - 1 ? '1px solid var(--gray-100)' : 'none',
+                    borderBottom: gi < groups.length - 1 ? '1px solid var(--gray-100)' : 'none',
                   }}
                 >
                   {/* Signal badge */}
@@ -1207,9 +1205,7 @@ function SignalHistoryCard({
                         marginTop: 2,
                       }}
                     >
-                      {isFirst
-                        ? `${new Date(group.dateRange[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – Ongoing`
-                        : formatDateRange(group.dateRange[0], group.dateRange[1])}
+                      {formatDateRange(group.dateRange[0], group.dateRange[1])}
                     </span>
                   </div>
                 </div>
