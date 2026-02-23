@@ -1,9 +1,3 @@
-import Card from '@mui/material/Card';
-import CardActionArea from '@mui/material/CardActionArea';
-import CardContent from '@mui/material/CardContent';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
 import SignalChip from './SignalChip';
 import PriceArrow from './PriceArrow';
@@ -22,132 +16,161 @@ export default function SignalCard({ data }: SignalCardProps) {
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
   return (
-    <Card>
-      <CardActionArea
-        onClick={() => navigate(`/asset/${asset.id}`)}
-        sx={{ '&:hover .chevron': { transform: 'translateX(3px)' } }}
-      >
-        <CardContent sx={{ p: 2.5 }}>
-          {/* Top row */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            {/* Asset icon */}
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                border: '2px solid #1A1A1A',
-                overflow: 'hidden',
-                flexShrink: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#F3F4F6',
-              }}
-            >
-              {iconUrl ? (
-                <img
-                  src={iconUrl}
-                  alt={asset.symbol}
-                  width={36}
-                  height={36}
-                  style={{ objectFit: 'cover', borderRadius: '50%' }}
-                  onError={e => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              ) : (
-                <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#1A1A1A' }}>
-                  {asset.symbol.charAt(0)}
-                </Typography>
-              )}
-            </Box>
-
-            {/* Name */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                sx={{ fontWeight: 700, fontSize: '1rem', color: '#1A1A1A', lineHeight: 1.2 }}
-              >
-                {asset.symbol}
-              </Typography>
-              <Typography sx={{ fontSize: '0.75rem', color: '#6B7280', lineHeight: 1.3 }}>
-                {asset.name}
-              </Typography>
-            </Box>
-
-            {/* Price + arrow */}
-            <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-              <Typography
-                sx={{
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontWeight: 600,
-                  fontSize: '0.95rem',
-                  color: '#1A1A1A',
-                  lineHeight: 1.2,
-                }}
-              >
-                {formatPrice(price)}
-              </Typography>
-              {priceData?.change24h != null && (
-                <Box
-                  sx={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 0.5,
-                    justifyContent: 'flex-end',
-                    mt: 0.25,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <PriceArrow change24h={priceData.change24h} />
-                  <Typography
-                    sx={{
-                      fontFamily: '"JetBrains Mono", monospace',
-                      fontWeight: 600,
-                      fontSize: '0.65rem',
-                      color: priceData.change24h >= 0 ? '#15803D' : '#DC2626',
-                      lineHeight: 1,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {Math.abs(priceData.change24h).toFixed(1)}%
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-
-            {/* Signal chip */}
-            <SignalChip color={signal?.signal_color || 'grey'} size="small" />
-
-            {/* Chevron */}
-            <ChevronRightIcon
-              className="chevron"
-              sx={{
-                color: '#9CA3AF',
-                fontSize: '1.2rem',
-                transition: 'transform 0.15s ease',
-                flexShrink: 0,
+    <div
+      className="vela-card"
+      onClick={() => navigate(`/asset/${asset.id}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(`/asset/${asset.id}`);
+        }
+      }}
+      style={{ cursor: 'pointer' }}
+    >
+      {/* Top row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+        {/* Asset icon */}
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: 'var(--border-medium) solid var(--color-border-default)',
+            overflow: 'hidden',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'var(--gray-100)',
+          }}
+        >
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt={asset.symbol}
+              width={36}
+              height={36}
+              style={{ objectFit: 'cover', borderRadius: '50%' }}
+              onError={e => {
+                (e.target as HTMLImageElement).style.display = 'none';
               }}
             />
-          </Box>
-
-          {/* Headline */}
-          {brief?.headline && (
-            <Typography
-              sx={{
-                fontSize: '0.82rem',
-                color: '#6B7280',
-                lineHeight: 1.5,
-                mt: 1.5,
-                pt: 1.5,
-                borderTop: '2px solid #E5E7EB',
+          ) : (
+            <span
+              style={{
+                fontWeight: 800,
+                fontSize: 'var(--text-base)',
+                color: 'var(--color-text-primary)',
               }}
             >
-              {stripAssetPrefix(brief.headline, asset.symbol)}
-            </Typography>
+              {asset.symbol.charAt(0)}
+            </span>
           )}
-        </CardContent>
-      </CardActionArea>
-    </Card>
+        </div>
+
+        {/* Name */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span
+            className="vela-heading-base"
+            style={{
+              display: 'block',
+              fontWeight: 'var(--weight-bold)',
+              lineHeight: 1.2,
+            }}
+          >
+            {asset.symbol}
+          </span>
+          <span
+            className="vela-body-sm vela-text-muted"
+            style={{ fontSize: 'var(--text-xs)', lineHeight: 1.3 }}
+          >
+            {asset.name}
+          </span>
+        </div>
+
+        {/* Price + arrow */}
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <span
+            className="vela-mono"
+            style={{
+              fontWeight: 'var(--weight-semibold)',
+              fontSize: '0.95rem',
+              color: 'var(--color-text-primary)',
+              lineHeight: 1.2,
+              display: 'block',
+            }}
+          >
+            {formatPrice(price)}
+          </span>
+          {priceData?.change24h != null && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--space-1)',
+                justifyContent: 'flex-end',
+                marginTop: 2,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <PriceArrow change24h={priceData.change24h} />
+              <span
+                className="vela-mono"
+                style={{
+                  fontWeight: 'var(--weight-semibold)',
+                  fontSize: '0.65rem',
+                  color: priceData.change24h >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                  lineHeight: 1,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {Math.abs(priceData.change24h).toFixed(1)}%
+              </span>
+            </span>
+          )}
+        </div>
+
+        {/* Signal chip */}
+        <SignalChip color={signal?.signal_color || 'grey'} size="small" />
+
+        {/* Chevron */}
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          style={{
+            flexShrink: 0,
+            transition: 'transform var(--motion-fast) var(--motion-ease-out)',
+          }}
+        >
+          <path
+            d="M6 3L11 8L6 13"
+            style={{ stroke: 'var(--gray-400)' }}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      {/* Headline */}
+      {brief?.headline && (
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.5,
+            marginTop: 'var(--space-3)',
+            paddingTop: 'var(--space-3)',
+            borderTop: 'var(--border-medium) solid var(--gray-200)',
+          }}
+        >
+          {stripAssetPrefix(brief.headline, asset.symbol)}
+        </p>
+      )}
+    </div>
   );
 }

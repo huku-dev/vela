@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import CircularProgress from '@mui/material/CircularProgress';
-import IconButton from '@mui/material/IconButton';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Card, Alert, LoadingSpinner } from '../components/VelaComponents';
 import SignalChip from '../components/SignalChip';
 import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
@@ -36,9 +26,9 @@ const signalTitles: Record<SignalColor, string> = {
 };
 
 const signalBg: Record<SignalColor, string> = {
-  green: '#DCFCE7',
-  red: '#FEE2E2',
-  grey: '#DBEAFE',
+  green: 'var(--mint-100)',
+  red: 'var(--red-light)',
+  grey: 'var(--sky-100)',
 };
 
 export default function AssetDetail() {
@@ -83,17 +73,17 @@ export default function AssetDetail() {
 
   if (loading && !asset) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 8 }}>
-        <CircularProgress size={28} sx={{ color: '#1A1A1A' }} />
-      </Box>
+      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-16)' }}>
+        <LoadingSpinner size={28} />
+      </div>
     );
   }
 
   if (!asset) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error">Asset not found</Typography>
-      </Box>
+      <div style={{ padding: 'var(--space-6)' }}>
+        <p style={{ color: 'var(--color-error)' }}>Asset not found</p>
+      </div>
     );
   }
 
@@ -101,7 +91,6 @@ export default function AssetDetail() {
   const change24h = priceData?.change24h;
   const signalColor = signal?.signal_color || 'grey';
   const detail = brief?.detail;
-  const indicators = detail?.indicators;
 
   // Extract fear/greed from market context string if available
   const fearGreedMatch = detail?.market_context?.fear_greed?.match(/(\d+)/);
@@ -116,36 +105,66 @@ export default function AssetDetail() {
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
   return (
-    <Box sx={{ p: 2, pb: 10, maxWidth: 600, mx: 'auto' }}>
+    <div
+      style={{
+        padding: 'var(--space-4)',
+        paddingBottom: 'var(--space-20)',
+        maxWidth: 600,
+        margin: '0 auto',
+      }}
+    >
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3, mt: 1 }}>
-        <IconButton
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          marginBottom: 'var(--space-6)',
+          marginTop: 'var(--space-2)',
+        }}
+      >
+        <button
           onClick={() => navigate('/')}
-          sx={{
-            border: '2px solid #1A1A1A',
-            borderRadius: '8px',
-            boxShadow: '2px 2px 0px #1A1A1A',
+          aria-label="Go back"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'var(--border-medium) solid var(--color-border-default)',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: 'var(--shadow-xs)',
             width: 36,
             height: 36,
-            '&:active': { transform: 'translate(1px, 1px)', boxShadow: '1px 1px 0px #1A1A1A' },
+            background: 'var(--color-bg-surface)',
+            cursor: 'pointer',
+            transition:
+              'transform var(--motion-fast) var(--motion-ease-out), box-shadow var(--motion-fast) var(--motion-ease-out)',
           }}
         >
-          <ArrowBackIcon sx={{ fontSize: '1rem', color: '#1A1A1A' }} />
-        </IconButton>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path
+              d="M9 2L4 7L9 12"
+              style={{ stroke: 'var(--color-text-primary)' }}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
 
         {/* Asset icon */}
-        <Box
-          sx={{
+        <div
+          style={{
             width: 44,
             height: 44,
             borderRadius: '50%',
-            border: '2px solid #1A1A1A',
+            border: 'var(--border-medium) solid var(--color-border-default)',
             overflow: 'hidden',
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#F3F4F6',
+            backgroundColor: 'var(--gray-100)',
           }}
         >
           {iconUrl ? (
@@ -160,106 +179,94 @@ export default function AssetDetail() {
               }}
             />
           ) : (
-            <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: '#1A1A1A' }}>
+            <span
+              style={{
+                fontWeight: 800,
+                fontSize: 'var(--text-base)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
               {asset.symbol.charAt(0)}
-            </Typography>
+            </span>
           )}
-        </Box>
+        </div>
 
-        <Box sx={{ flex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="h5">{asset.symbol}</Typography>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <h1 className="vela-heading-xl" style={{ fontSize: 'var(--text-xl)' }}>
+              {asset.symbol}
+            </h1>
             <SignalChip color={signalColor} size="small" />
-          </Box>
-          <Typography sx={{ fontSize: '0.75rem', color: '#6B7280' }}>{asset.name}</Typography>
-        </Box>
+          </div>
+          <span className="vela-body-sm vela-text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+            {asset.name}
+          </span>
+        </div>
 
-        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-          <Typography
-            sx={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontWeight: 700,
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <span
+            className="vela-mono"
+            style={{
+              fontWeight: 'var(--weight-bold)',
               fontSize: '1.1rem',
-              color: '#1A1A1A',
+              color: 'var(--color-text-primary)',
               lineHeight: 1.2,
+              display: 'block',
             }}
           >
             {formatPrice(price)}
-          </Typography>
+          </span>
           {change24h != null && (
-            <Box
-              sx={{
+            <span
+              style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 0.5,
+                gap: 'var(--space-1)',
                 justifyContent: 'flex-end',
-                mt: 0.25,
+                marginTop: 2,
                 whiteSpace: 'nowrap',
               }}
             >
               <PriceArrow change24h={change24h} />
-              <Typography
-                sx={{
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontWeight: 600,
+              <span
+                className="vela-mono"
+                style={{
+                  fontWeight: 'var(--weight-semibold)',
                   fontSize: '0.7rem',
-                  color: change24h >= 0 ? '#15803D' : '#DC2626',
+                  color: change24h >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   lineHeight: 1,
                   whiteSpace: 'nowrap',
                 }}
               >
                 {Math.abs(change24h).toFixed(1)}% 24h
-              </Typography>
-            </Box>
+              </span>
+            </span>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Email action result banner */}
       {actionBanner && (
-        <Box
-          sx={{
-            mb: 2,
-            p: 2,
-            borderRadius: '10px',
-            border: '2px solid #1A1A1A',
-            boxShadow: '3px 3px 0px #1A1A1A',
-            backgroundColor: actionBanner.includes('approved') ? '#DCFCE7' : '#DBEAFE',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Typography sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-            {actionBanner.includes('approved') ? '✅' : '❌'} {actionBanner}
-          </Typography>
-          <Box
-            component="button"
-            onClick={() => setActionBanner(null)}
-            sx={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              color: '#6B7280',
-              p: 0,
-            }}
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <Alert
+            variant={actionBanner.includes('approved') ? 'success' : 'info'}
+            onDismiss={() => setActionBanner(null)}
           >
-            ×
-          </Box>
-        </Box>
+            {actionBanner.includes('approved') ? '✅' : '❌'} {actionBanner}
+          </Alert>
+        </div>
       )}
 
       {/* Pending trade proposals */}
       {pendingProposals.map(proposal => (
-        <Box key={proposal.id} sx={{ mb: 2 }}>
+        <div key={proposal.id} style={{ marginBottom: 'var(--space-4)' }}>
           <TradeProposalCard
             proposal={proposal}
             assetSymbol={asset.symbol}
             onAccept={acceptProposal}
             onDecline={declineProposal}
           />
-        </Box>
+        </div>
       ))}
 
       {/* Tier 1: Key Signal — expandable with signal history */}
@@ -288,371 +295,466 @@ export default function AssetDetail() {
 
       {/* Tier 2: What's happening — with paragraph breaks */}
       {summaryParagraphs.length > 0 && (
-        <Card sx={{ mb: 2 }}>
-          <CardContent sx={{ p: 2.5 }}>
-            <SectionLabel>What&apos;s happening</SectionLabel>
-            {summaryParagraphs.map((para, i) => (
-              <Typography
-                key={i}
-                sx={{
-                  fontSize: '0.88rem',
-                  color: '#374151',
-                  lineHeight: 1.7,
-                  mb: i < summaryParagraphs.length - 1 ? 1.25 : 0,
-                }}
-              >
-                {para}
-              </Typography>
-            ))}
-          </CardContent>
+        <Card style={{ marginBottom: 'var(--space-4)' }}>
+          <SectionLabel>What&apos;s happening</SectionLabel>
+          {summaryParagraphs.map((para, i) => (
+            <p
+              key={i}
+              className="vela-body-sm"
+              style={{
+                color: 'var(--color-text-secondary)',
+                lineHeight: 1.7,
+                marginBottom: i < summaryParagraphs.length - 1 ? 'var(--space-3)' : 0,
+              }}
+            >
+              {para}
+            </p>
+          ))}
         </Card>
       )}
 
-      {/* Tier 3: Why we think this — collapsible, with bullet points */}
+      {/* Tier 3: Why we think this — collapsible */}
       {detail && (
-        <Accordion sx={{ mb: 2 }}>
-          <AccordionSummary
-            expandIcon={<ExpandMoreIcon sx={{ color: '#1A1A1A' }} />}
-            sx={{ px: 2.5, minHeight: 48, '& .MuiAccordionSummary-content': { my: 1 } }}
-          >
-            <SectionLabel sx={{ mb: 0 }}>Why we think this</SectionLabel>
-          </AccordionSummary>
-          <AccordionDetails sx={{ px: 2.5, pt: 0, pb: 2.5 }}>
-            {/* Signal Breakdown — as bullet list */}
-            {detail.signal_breakdown && Object.keys(detail.signal_breakdown).length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <SubLabel>Technical analysis</SubLabel>
-                <Box component="ul" sx={{ m: 0, pl: 2.5, listStyle: 'disc' }}>
-                  {Object.entries(detail.signal_breakdown).map(([key, value]) => (
-                    <Box
-                      component="li"
-                      key={key}
-                      sx={{
-                        fontSize: '0.82rem',
-                        color: '#374151',
-                        mb: 0.75,
-                        lineHeight: 1.6,
-                        '&::marker': { color: '#1A1A1A' },
-                      }}
-                    >
-                      {(() => {
-                        const t = plainEnglish(value as string);
-                        return t.charAt(0).toUpperCase() + t.slice(1);
-                      })()}
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            <Divider />
-
-            {/* Market Context — with Fear & Greed gauge */}
-            {detail.market_context && (
-              <Box sx={{ mb: 2 }}>
-                <SubLabel>Market context</SubLabel>
-
-                {/* Fear & Greed gauge if available */}
-                {fearGreedValue != null && (
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      my: 2,
-                      p: 1.5,
-                      border: '2.5px solid #1A1A1A',
-                      borderRadius: '10px',
-                      boxShadow: '3px 3px 0px #1A1A1A',
-                      backgroundColor: '#FAFAFA',
-                    }}
-                  >
-                    <FearGreedGauge value={fearGreedValue} label={fearGreedLabel} />
-                  </Box>
-                )}
-
-                {/* Other context items as bullets */}
-                <Box component="ul" sx={{ m: 0, pl: 2.5, listStyle: 'disc' }}>
-                  {Object.entries(detail.market_context).map(([key, value]) => (
-                    <Box
-                      component="li"
-                      key={key}
-                      sx={{
-                        fontSize: '0.82rem',
-                        color: '#374151',
-                        mb: 0.5,
-                        lineHeight: 1.6,
-                        '&::marker': { color: '#1A1A1A' },
-                      }}
-                    >
-                      {(() => {
-                        const t = value as string;
-                        return t.charAt(0).toUpperCase() + t.slice(1);
-                      })()}
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            <Divider />
-
-            {/* Indicators — Plain English, relative to price */}
-            {indicators &&
-              (() => {
-                const currentPrice = price ?? 0;
-                const ema9 = indicators.ema_9;
-                const ema21 = indicators.ema_21;
-                const rsi = indicators.rsi_14;
-                const adx = indicators.adx_4h;
-                const sma50 = indicators.sma_50_daily;
-
-                // Find oldest brief with indicators for delta comparison
-                const oldestWithIndicators = [...recentBriefs]
-                  .reverse()
-                  .find(b => b.detail?.indicators && b.id !== brief?.id);
-                const oldInd = oldestWithIndicators?.detail?.indicators;
-
-                // Compute deltas (current - oldest)
-                const rsiDelta = oldInd ? rsi - oldInd.rsi_14 : null;
-                const adxDelta = oldInd ? adx - oldInd.adx_4h : null;
-
-                // Compute timeframe label for delta context
-                const deltaLabel = oldestWithIndicators
-                  ? (() => {
-                      const diffMs =
-                        new Date(brief!.created_at).getTime() -
-                        new Date(oldestWithIndicators.created_at).getTime();
-                      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-                      return diffDays <= 1 ? 'vs yesterday' : `vs ${diffDays} days ago`;
-                    })()
-                  : null;
-
-                // Convert "vs yesterday" → "in the last day", "vs 5 days ago" → "in the last 5 days"
-                const tooltipTimeframe = deltaLabel
-                  ? deltaLabel === 'vs yesterday'
-                    ? 'in the last day'
-                    : `in the last ${deltaLabel.replace('vs ', '').replace(' ago', '')}`
-                  : null;
-
-                // Derive Plain English descriptions
-                const trendLabel =
-                  currentPrice > ema9 && currentPrice > ema21
-                    ? 'Above short & medium averages'
-                    : currentPrice > ema9
-                      ? 'Above short-term but below medium-term average'
-                      : currentPrice > ema21
-                        ? 'Below short-term but above medium-term average'
-                        : 'Below short & medium averages';
-                const trendColor =
-                  currentPrice > ema9 && currentPrice > ema21
-                    ? '#15803D'
-                    : currentPrice < ema9 && currentPrice < ema21
-                      ? '#DC2626'
-                      : '#92400E';
-
-                const rsiLabel =
-                  rsi >= 70
-                    ? 'Overbought'
-                    : rsi >= 60
-                      ? 'Strong'
-                      : rsi >= 40
-                        ? 'Neutral'
-                        : rsi >= 30
-                          ? 'Weak'
-                          : 'Oversold';
-                const rsiColor =
-                  rsi >= 70
-                    ? '#DC2626'
-                    : rsi >= 60
-                      ? '#15803D'
-                      : rsi >= 40
-                        ? '#6B7280'
-                        : rsi >= 30
-                          ? '#92400E'
-                          : '#DC2626';
-
-                const adxLabel =
-                  adx >= 50
-                    ? 'Very strong trend'
-                    : adx >= 25
-                      ? 'Trending'
-                      : adx >= 15
-                        ? 'Weak trend'
-                        : 'No clear trend';
-                const adxColor = adx >= 25 ? '#15803D' : adx >= 15 ? '#92400E' : '#6B7280';
-
-                const smaLabel =
-                  currentPrice > sma50 ? 'Above 50-day average' : 'Below 50-day average';
-                const smaColor = currentPrice > sma50 ? '#15803D' : '#DC2626';
-                const smaDist = currentPrice && sma50 ? ((currentPrice - sma50) / sma50) * 100 : 0;
-
-                // Dynamic tooltips — append current value + trend context
-                const smaTooltip = (() => {
-                  const base =
-                    'Compares the current price to its 50-day average. Being above it generally indicates a healthy longer-term trend; being below may signal weakness.';
-                  if (smaDist !== 0) {
-                    const aboveBelow = smaDist > 0 ? 'above' : 'below';
-                    return `${base} Currently ${Math.abs(smaDist).toFixed(1)}% ${aboveBelow} the 50-day average.`;
-                  }
-                  return base;
-                })();
-
-                const rsiTooltip = (() => {
-                  const base =
-                    'Measures buying vs selling pressure on a 0-100 scale. Above 70 means overbought (may pull back), below 30 means oversold (may bounce).';
-                  if (rsiDelta != null && Math.abs(rsiDelta) >= 0.1 && tooltipTimeframe) {
-                    const direction = rsiDelta > 0 ? 'up' : 'down';
-                    return `${base} At ${rsi.toFixed(0)}, it's ${direction} ${Math.abs(rsiDelta).toFixed(1)} ${tooltipTimeframe}.`;
-                  }
-                  return base;
-                })();
-
-                const adxTooltip = (() => {
-                  const base =
-                    'Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways.';
-                  if (adxDelta != null && Math.abs(adxDelta) >= 0.1 && tooltipTimeframe) {
-                    const direction = adxDelta > 0 ? 'up' : 'down';
-                    return `${base} At ${adx.toFixed(0)}, it's ${direction} ${Math.abs(adxDelta).toFixed(1)} ${tooltipTimeframe}.`;
-                  }
-                  return base;
-                })();
-
-                return (
-                  <Box sx={{ mb: 2 }}>
-                    <Box sx={{ mb: 0.5 }}>
-                      <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: '#1A1A1A' }}>
-                        Momentum indicators
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        p: 1.5,
-                        backgroundColor: '#F9FAFB',
-                        border: '1.5px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    >
-                      <IndicatorRow
-                        label="Short-term trend"
-                        description={trendLabel}
-                        color={trendColor}
-                        tooltip="Compares the current price to its 9-day and 21-day moving averages. When price is above both, the short-term trend is up."
-                      />
-
-                      <IndicatorRow
-                        label="Longer-term trend"
-                        description={smaLabel}
-                        color={smaColor}
-                        tooltip={smaTooltip}
-                      />
-
-                      <IndicatorRow
-                        label="Momentum"
-                        description={`${rsiLabel} (${rsi.toFixed(0)})`}
-                        color={rsiColor}
-                        tooltip={rsiTooltip}
-                      />
-
-                      <IndicatorRow
-                        label="Trend strength"
-                        description={`${adxLabel} (${adx.toFixed(0)})`}
-                        color={adxColor}
-                        tooltip={adxTooltip}
-                      />
-                    </Box>
-                  </Box>
-                );
-              })()}
-
-            {/* Price level triggers — context-aware based on current price */}
-            {indicators &&
-              (() => {
-                const cp = price ?? 0;
-                const bullLevel = Math.max(indicators.ema_9, indicators.ema_21);
-                const bearLevel = indicators.sma_50_daily;
-                const aboveBull = cp > bullLevel;
-                const belowBear = cp < bearLevel;
-
-                return (
-                  <Box>
-                    <SubLabel>Key price levels to watch</SubLabel>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <TriggerCard
-                        direction="bullish"
-                        level={formatPrice(bullLevel)}
-                        active={aboveBull}
-                        label={
-                          aboveBull
-                            ? 'Price is above short-term averages — maintaining this with rising momentum could shift towards Buy'
-                            : 'A sustained break above short-term averages with rising momentum could shift the signal towards Buy'
-                        }
-                      />
-                      <TriggerCard
-                        direction="bearish"
-                        level={formatPrice(bearLevel)}
-                        active={belowBear}
-                        label={
-                          belowBear
-                            ? `Price is already ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level — continued weakness here adds bearish pressure`
-                            : 'A break below the 50-day average would signal meaningful bearish pressure and could trigger a Sell'
-                        }
-                      />
-                    </Box>
-                    {detail.what_would_change && (
-                      <Typography
-                        sx={{
-                          fontSize: '0.75rem',
-                          color: '#6B7280',
-                          lineHeight: 1.6,
-                          mt: 1.5,
-                          fontStyle: 'italic',
-                        }}
-                      >
-                        {parsePriceSegments(plainEnglish(detail.what_would_change)).map((seg, i) =>
-                          seg.type === 'price' ? (
-                            <Box
-                              component="span"
-                              key={i}
-                              sx={{
-                                fontFamily: '"JetBrains Mono", monospace',
-                                fontWeight: 600,
-                                fontStyle: 'normal',
-                                color: '#1A1A1A',
-                                backgroundColor: '#F3F4F6',
-                                borderRadius: '4px',
-                                px: 0.5,
-                                py: 0.1,
-                              }}
-                            >
-                              {seg.value}
-                            </Box>
-                          ) : (
-                            <React.Fragment key={i}>{seg.value}</React.Fragment>
-                          )
-                        )}
-                      </Typography>
-                    )}
-                  </Box>
-                );
-              })()}
-          </AccordionDetails>
-        </Accordion>
+        <WhyWeThinkThis
+          detail={detail}
+          brief={brief}
+          recentBriefs={recentBriefs}
+          price={price}
+          fearGreedValue={fearGreedValue}
+          fearGreedLabel={fearGreedLabel}
+        />
       )}
 
       {/* Timestamp — show signal check recency + brief age */}
       {(signal || brief) && (
-        <Typography sx={{ textAlign: 'center', mt: 3, color: '#9CA3AF', fontSize: '0.68rem' }}>
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontSize: '0.68rem' }}
+        >
           {signal && <>Signal checked {formatTimeAgo(signal.created_at)}</>}
           {signal && brief && ' · '}
           {brief && <>Analysis written {formatTimeAgo(brief.created_at)}</>}
-        </Typography>
+        </p>
       )}
-    </Box>
+    </div>
   );
 }
+
+// ── Collapsible "Why we think this" section (replaces MUI Accordion) ──
+
+function WhyWeThinkThis({
+  detail,
+  brief,
+  recentBriefs,
+  price,
+  fearGreedValue,
+  fearGreedLabel,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  detail: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brief: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recentBriefs: any[];
+  price: number | undefined | null;
+  fearGreedValue: number | null;
+  fearGreedLabel: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const indicators = detail?.indicators;
+
+  return (
+    <div
+      className="vela-card"
+      style={{ marginBottom: 'var(--space-4)', padding: 0, overflow: 'hidden' }}
+    >
+      {/* Collapsible header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          width: '100%',
+          padding: 'var(--space-4) var(--space-5)',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          minHeight: 48,
+        }}
+      >
+        <SectionLabel style={{ marginBottom: 0 }}>Why we think this</SectionLabel>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          style={{
+            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform var(--motion-normal) var(--motion-ease-out)',
+          }}
+        >
+          <path
+            d="M3 6L8 11L13 6"
+            style={{ stroke: 'var(--color-text-primary)' }}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {/* Collapsible content */}
+      {expanded && (
+        <div style={{ padding: '0 var(--space-5) var(--space-5)' }}>
+          {/* Signal Breakdown — as bullet list */}
+          {detail.signal_breakdown && Object.keys(detail.signal_breakdown).length > 0 && (
+            <div style={{ marginBottom: 'var(--space-4)' }}>
+              <SubLabel>Technical analysis</SubLabel>
+              <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+                {Object.entries(detail.signal_breakdown).map(([key, value]) => (
+                  <li
+                    key={key}
+                    className="vela-body-sm"
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                      marginBottom: 'var(--space-2)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {(() => {
+                      const t = plainEnglish(value as string);
+                      return t.charAt(0).toUpperCase() + t.slice(1);
+                    })()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <Divider />
+
+          {/* Market Context — with Fear & Greed gauge */}
+          {detail.market_context && (
+            <div style={{ marginBottom: 'var(--space-4)' }}>
+              <SubLabel>Market context</SubLabel>
+
+              {fearGreedValue != null && (
+                <div
+                  className="vela-card"
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    margin: 'var(--space-4) 0',
+                    padding: 'var(--space-3)',
+                    backgroundColor: 'var(--gray-50)',
+                  }}
+                >
+                  <FearGreedGauge value={fearGreedValue} label={fearGreedLabel} />
+                </div>
+              )}
+
+              <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+                {Object.entries(detail.market_context).map(([key, value]) => (
+                  <li
+                    key={key}
+                    className="vela-body-sm"
+                    style={{
+                      color: 'var(--color-text-secondary)',
+                      marginBottom: 'var(--space-1)',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {(() => {
+                      const t = value as string;
+                      return t.charAt(0).toUpperCase() + t.slice(1);
+                    })()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <Divider />
+
+          {/* Indicators — Plain English */}
+          {indicators && (
+            <IndicatorsSection
+              indicators={indicators}
+              price={price}
+              brief={brief}
+              recentBriefs={recentBriefs}
+            />
+          )}
+
+          {/* Price level triggers */}
+          {indicators && detail && (
+            <PriceLevelTriggers indicators={indicators} price={price} detail={detail} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Indicators Section ──
+
+function IndicatorsSection({
+  indicators,
+  price,
+  brief,
+  recentBriefs,
+}: {
+  indicators: {
+    ema_9: number;
+    ema_21: number;
+    rsi_14: number;
+    adx_4h: number;
+    sma_50_daily: number;
+  };
+  price: number | undefined | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  brief: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  recentBriefs: any[];
+}) {
+  const currentPrice = price ?? 0;
+  const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } =
+    indicators;
+
+  // Find oldest brief with indicators for delta comparison
+  const oldestWithIndicators = [...recentBriefs]
+    .reverse()
+    .find(b => b.detail?.indicators && b.id !== brief?.id);
+  const oldInd = oldestWithIndicators?.detail?.indicators;
+
+  const rsiDelta = oldInd ? rsi - oldInd.rsi_14 : null;
+  const adxDelta = oldInd ? adx - oldInd.adx_4h : null;
+
+  const deltaLabel = oldestWithIndicators
+    ? (() => {
+        const diffMs =
+          new Date(brief!.created_at).getTime() -
+          new Date(oldestWithIndicators.created_at).getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        return diffDays <= 1 ? 'vs yesterday' : `vs ${diffDays} days ago`;
+      })()
+    : null;
+
+  const tooltipTimeframe = deltaLabel
+    ? deltaLabel === 'vs yesterday'
+      ? 'in the last day'
+      : `in the last ${deltaLabel.replace('vs ', '').replace(' ago', '')}`
+    : null;
+
+  const trendLabel =
+    currentPrice > ema9 && currentPrice > ema21
+      ? 'Above short & medium averages'
+      : currentPrice > ema9
+        ? 'Above short-term but below medium-term average'
+        : currentPrice > ema21
+          ? 'Below short-term but above medium-term average'
+          : 'Below short & medium averages';
+  const trendColor =
+    currentPrice > ema9 && currentPrice > ema21
+      ? 'var(--green-dark)'
+      : currentPrice < ema9 && currentPrice < ema21
+        ? 'var(--red-dark)'
+        : 'var(--amber-dark)';
+
+  const rsiLabel =
+    rsi >= 70
+      ? 'Overbought'
+      : rsi >= 60
+        ? 'Strong'
+        : rsi >= 40
+          ? 'Neutral'
+          : rsi >= 30
+            ? 'Weak'
+            : 'Oversold';
+  const rsiColor =
+    rsi >= 70
+      ? 'var(--red-dark)'
+      : rsi >= 60
+        ? 'var(--green-dark)'
+        : rsi >= 40
+          ? 'var(--color-text-muted)'
+          : rsi >= 30
+            ? 'var(--amber-dark)'
+            : 'var(--red-dark)';
+
+  const adxLabel =
+    adx >= 50
+      ? 'Very strong trend'
+      : adx >= 25
+        ? 'Trending'
+        : adx >= 15
+          ? 'Weak trend'
+          : 'No clear trend';
+  const adxColor =
+    adx >= 25 ? 'var(--green-dark)' : adx >= 15 ? 'var(--amber-dark)' : 'var(--color-text-muted)';
+
+  const smaLabel = currentPrice > sma50 ? 'Above 50-day average' : 'Below 50-day average';
+  const smaColor = currentPrice > sma50 ? 'var(--green-dark)' : 'var(--red-dark)';
+  const smaDist = currentPrice && sma50 ? ((currentPrice - sma50) / sma50) * 100 : 0;
+
+  const smaTooltip = (() => {
+    const base =
+      'Compares the current price to its 50-day average. Being above it generally indicates a healthy longer-term trend; being below may signal weakness.';
+    if (smaDist !== 0) {
+      const aboveBelow = smaDist > 0 ? 'above' : 'below';
+      return `${base} Currently ${Math.abs(smaDist).toFixed(1)}% ${aboveBelow} the 50-day average.`;
+    }
+    return base;
+  })();
+
+  const rsiTooltip = (() => {
+    const base =
+      'Measures buying vs selling pressure on a 0-100 scale. Above 70 means overbought (may pull back), below 30 means oversold (may bounce).';
+    if (rsiDelta != null && Math.abs(rsiDelta) >= 0.1 && tooltipTimeframe) {
+      const direction = rsiDelta > 0 ? 'up' : 'down';
+      return `${base} At ${rsi.toFixed(0)}, it's ${direction} ${Math.abs(rsiDelta).toFixed(1)} ${tooltipTimeframe}.`;
+    }
+    return base;
+  })();
+
+  const adxTooltip = (() => {
+    const base =
+      'Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways.';
+    if (adxDelta != null && Math.abs(adxDelta) >= 0.1 && tooltipTimeframe) {
+      const direction = adxDelta > 0 ? 'up' : 'down';
+      return `${base} At ${adx.toFixed(0)}, it's ${direction} ${Math.abs(adxDelta).toFixed(1)} ${tooltipTimeframe}.`;
+    }
+    return base;
+  })();
+
+  return (
+    <div style={{ marginBottom: 'var(--space-4)' }}>
+      <div style={{ marginBottom: 'var(--space-1)' }}>
+        <span className="vela-label-sm" style={{ color: 'var(--color-text-primary)' }}>
+          Momentum indicators
+        </span>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          padding: 'var(--space-3)',
+          backgroundColor: 'var(--gray-50)',
+          border: '1.5px solid var(--gray-200)',
+          borderRadius: 'var(--radius-sm)',
+        }}
+      >
+        <IndicatorRow
+          label="Short-term trend"
+          description={trendLabel}
+          color={trendColor}
+          tooltip="Compares the current price to its 9-day and 21-day moving averages. When price is above both, the short-term trend is up."
+        />
+        <IndicatorRow
+          label="Longer-term trend"
+          description={smaLabel}
+          color={smaColor}
+          tooltip={smaTooltip}
+        />
+        <IndicatorRow
+          label="Momentum"
+          description={`${rsiLabel} (${rsi.toFixed(0)})`}
+          color={rsiColor}
+          tooltip={rsiTooltip}
+        />
+        <IndicatorRow
+          label="Trend strength"
+          description={`${adxLabel} (${adx.toFixed(0)})`}
+          color={adxColor}
+          tooltip={adxTooltip}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Price Level Triggers ──
+
+function PriceLevelTriggers({
+  indicators,
+  price,
+  detail,
+}: {
+  indicators: { ema_9: number; ema_21: number; sma_50_daily: number };
+  price: number | undefined | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  detail: any;
+}) {
+  const cp = price ?? 0;
+  const bullLevel = Math.max(indicators.ema_9, indicators.ema_21);
+  const bearLevel = indicators.sma_50_daily;
+  const aboveBull = cp > bullLevel;
+  const belowBear = cp < bearLevel;
+
+  return (
+    <div>
+      <SubLabel>Key price levels to watch</SubLabel>
+      <div className="vela-stack" style={{ gap: 'var(--space-2)' }}>
+        <TriggerCard
+          direction="bullish"
+          level={formatPrice(bullLevel)}
+          active={aboveBull}
+          label={
+            aboveBull
+              ? 'Price is above short-term averages — maintaining this with rising momentum could shift towards Buy'
+              : 'A sustained break above short-term averages with rising momentum could shift the signal towards Buy'
+          }
+        />
+        <TriggerCard
+          direction="bearish"
+          level={formatPrice(bearLevel)}
+          active={belowBear}
+          label={
+            belowBear
+              ? `Price is already ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level — continued weakness here adds bearish pressure`
+              : 'A break below the 50-day average would signal meaningful bearish pressure and could trigger a Sell'
+          }
+        />
+      </div>
+      {detail.what_would_change && (
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.6,
+            marginTop: 'var(--space-3)',
+            fontStyle: 'italic',
+          }}
+        >
+          {parsePriceSegments(plainEnglish(detail.what_would_change)).map((seg, i) =>
+            seg.type === 'price' ? (
+              <span
+                key={i}
+                className="vela-mono"
+                style={{
+                  fontWeight: 'var(--weight-semibold)',
+                  fontStyle: 'normal',
+                  color: 'var(--color-text-primary)',
+                  backgroundColor: 'var(--gray-100)',
+                  borderRadius: '4px',
+                  padding: '0 var(--space-1)',
+                }}
+              >
+                {seg.value}
+              </span>
+            ) : (
+              <React.Fragment key={i}>{seg.value}</React.Fragment>
+            )
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── Helper Components ──
 
 function formatTimeAgo(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();
@@ -665,35 +767,52 @@ function formatTimeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function SectionLabel({ children, sx = {} }: { children: React.ReactNode; sx?: object }) {
+function SectionLabel({
+  children,
+  style = {},
+}: {
+  children: React.ReactNode;
+  style?: React.CSSProperties;
+}) {
   return (
-    <Typography
-      sx={{
-        fontWeight: 800,
-        fontSize: '0.7rem',
-        letterSpacing: '0.12em',
+    <span
+      className="vela-label-sm vela-text-muted"
+      style={{
         textTransform: 'uppercase',
-        color: '#6B7280',
         display: 'block',
-        mb: 1,
-        ...sx,
+        marginBottom: 'var(--space-2)',
+        ...style,
       }}
     >
       {children}
-    </Typography>
+    </span>
   );
 }
 
 function SubLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Typography sx={{ fontWeight: 700, fontSize: '0.72rem', color: '#1A1A1A', mb: 0.5 }}>
+    <span
+      className="vela-label-sm"
+      style={{
+        color: 'var(--color-text-primary)',
+        display: 'block',
+        marginBottom: 'var(--space-1)',
+      }}
+    >
       {children}
-    </Typography>
+    </span>
   );
 }
 
 function Divider() {
-  return <Box sx={{ borderTop: '2px solid #E5E7EB', my: 1.5 }} />;
+  return (
+    <div
+      style={{
+        borderTop: 'var(--border-medium) solid var(--gray-200)',
+        margin: 'var(--space-3) 0',
+      }}
+    />
+  );
 }
 
 function IndicatorRow({
@@ -710,58 +829,68 @@ function IndicatorRow({
   const [showTip, setShowTip] = React.useState(false);
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <Typography sx={{ fontSize: '0.72rem', color: '#6B7280' }}>{label}</Typography>
-          <Box
-            component="span"
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+          <span
+            className="vela-body-sm"
+            style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}
+          >
+            {label}
+          </span>
+          <span
             onClick={() => setShowTip(!showTip)}
-            sx={{
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => {
+              if (e.key === 'Enter') setShowTip(!showTip);
+            }}
+            style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               width: 14,
               height: 14,
               borderRadius: '50%',
-              border: '1px solid #D1D5DB',
+              border: '1px solid var(--gray-300)',
               fontSize: '0.55rem',
               fontWeight: 700,
-              color: '#9CA3AF',
+              color: 'var(--gray-400)',
               cursor: 'pointer',
               flexShrink: 0,
-              '&:hover': { borderColor: '#6B7280', color: '#6B7280' },
             }}
           >
             ?
-          </Box>
-        </Box>
-        <Typography
-          sx={{
+          </span>
+        </div>
+        <span
+          className="vela-body-sm"
+          style={{
             fontSize: '0.72rem',
-            fontWeight: 600,
+            fontWeight: 'var(--weight-semibold)',
             color,
           }}
         >
           {description}
-        </Typography>
-      </Box>
+        </span>
+      </div>
       {showTip && (
-        <Typography
-          sx={{
+        <p
+          className="vela-body-sm"
+          style={{
             fontSize: '0.65rem',
-            color: '#6B7280',
-            backgroundColor: '#F3F4F6',
-            borderRadius: '6px',
-            p: 0.75,
-            mt: 0.5,
+            color: 'var(--color-text-muted)',
+            backgroundColor: 'var(--gray-100)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-2)',
+            marginTop: 'var(--space-1)',
             lineHeight: 1.5,
           }}
         >
           {tooltip}
-        </Typography>
+        </p>
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -774,87 +903,106 @@ function TriggerCard({
   direction: 'bullish' | 'bearish';
   level: string;
   label: string;
-  /** true = price has already crossed this level */
   active?: boolean;
 }) {
   const isBull = direction === 'bullish';
-  const color = isBull ? '#15803D' : '#DC2626';
-  const bg = isBull ? '#DCFCE7' : '#FEE2E2';
+  const color = isBull ? 'var(--green-dark)' : 'var(--red-dark)';
+  const bg = isBull ? 'var(--green-light)' : 'var(--red-light)';
 
   return (
-    <Box
-      sx={{
+    <div
+      style={{
         display: 'flex',
-        gap: 1.5,
+        gap: 'var(--space-3)',
         alignItems: 'flex-start',
-        p: 1.5,
-        borderRadius: '10px',
-        border: '2px solid #1A1A1A',
-        boxShadow: '3px 3px 0px #1A1A1A',
+        padding: 'var(--space-3)',
+        borderRadius: 'var(--radius-md)',
+        border: 'var(--border-medium) solid var(--color-border-default)',
+        boxShadow: 'var(--shadow-sm)',
         backgroundColor: bg,
       }}
     >
-      {/* Neobrutalist direction icon — matches PriceArrow style */}
-      <Box
-        sx={{
+      {/* Direction icon */}
+      <div
+        style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
           width: 28,
           height: 28,
-          borderRadius: '6px',
-          border: '2px solid #1A1A1A',
-          backgroundColor: '#FFFFFF',
+          borderRadius: 'var(--radius-sm)',
+          border: 'var(--border-medium) solid var(--color-border-default)',
+          backgroundColor: 'var(--white)',
           flexShrink: 0,
-          mt: 0.25,
+          marginTop: 2,
         }}
       >
         <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
           {isBull ? (
-            <polygon points="6,0 12,10 0,10" fill={color} stroke="#1A1A1A" strokeWidth="1" />
+            <polygon
+              points="6,0 12,10 0,10"
+              style={{ fill: color }}
+              stroke="#1A1A1A"
+              strokeWidth="1"
+            />
           ) : (
-            <polygon points="6,10 12,0 0,0" fill={color} stroke="#1A1A1A" strokeWidth="1" />
+            <polygon
+              points="6,10 12,0 0,0"
+              style={{ fill: color }}
+              stroke="#1A1A1A"
+              strokeWidth="1"
+            />
           )}
         </svg>
-      </Box>
-      <Box sx={{ flex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
-          <Typography
-            sx={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontWeight: 700,
+      </div>
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            marginBottom: 2,
+          }}
+        >
+          <span
+            className="vela-mono"
+            style={{
+              fontWeight: 'var(--weight-bold)',
               fontSize: '0.88rem',
-              color: '#1A1A1A',
+              color: 'var(--color-text-primary)',
             }}
           >
             {level}
-          </Typography>
+          </span>
           {active && (
-            <Box
-              component="span"
-              sx={{
-                fontSize: '0.58rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+            <span
+              className="vela-label-sm"
+              style={{
                 color,
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--white)',
                 border: `1.5px solid ${color}`,
                 borderRadius: '4px',
-                px: 0.75,
-                py: 0.15,
+                padding: '1px var(--space-2)',
                 lineHeight: 1.4,
+                fontSize: '0.58rem',
               }}
             >
               {isBull ? 'Above' : 'Below'}
-            </Box>
+            </span>
           )}
-        </Box>
-        <Typography sx={{ fontSize: '0.72rem', color: '#374151', lineHeight: 1.5 }}>
+        </div>
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-secondary)',
+            lineHeight: 1.5,
+            fontSize: '0.72rem',
+          }}
+        >
           {label}
-        </Typography>
-      </Box>
-    </Box>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -863,9 +1011,24 @@ const groupColorMap: Record<
   SignalColor,
   { border: string; bg: string; text: string; label: string }
 > = {
-  green: { border: '#15803D', bg: '#DCFCE7', text: '#15803D', label: 'Buy' },
-  red: { border: '#DC2626', bg: '#FEE2E2', text: '#DC2626', label: 'Sell' },
-  grey: { border: '#6B7280', bg: '#DBEAFE', text: '#6B7280', label: 'Wait' },
+  green: {
+    border: 'var(--green-dark)',
+    bg: 'var(--green-light)',
+    text: 'var(--green-dark)',
+    label: 'Buy',
+  },
+  red: {
+    border: 'var(--red-dark)',
+    bg: 'var(--red-light)',
+    text: 'var(--red-dark)',
+    label: 'Sell',
+  },
+  grey: {
+    border: 'var(--color-text-muted)',
+    bg: 'var(--sky-100)',
+    text: 'var(--color-text-muted)',
+    label: 'Wait',
+  },
 };
 
 function formatDateRange(start: string, end: string): string {
@@ -881,8 +1044,6 @@ function formatDateRange(start: string, end: string): string {
 
 /**
  * Key Signal card with expandable signal history.
- * Shows the current signal status + bold headline always visible.
- * Expands to reveal a compact timeline of previous signal states.
  */
 function SignalHistoryCard({
   signalColor,
@@ -900,78 +1061,112 @@ function SignalHistoryCard({
   const [expanded, setExpanded] = React.useState(false);
 
   return (
-    <Card
-      sx={{
-        mb: 2,
+    <div
+      className="vela-card"
+      style={{
+        marginBottom: 'var(--space-4)',
         backgroundColor: signalBg[signalColor],
         cursor: hasHistory ? 'pointer' : 'default',
+        padding: 0,
       }}
     >
       {/* Always-visible: signal title + bold headline */}
-      <CardContent
-        sx={{ p: 2.5, pb: hasHistory ? 1.5 : 2.5, '&:last-child': { pb: hasHistory ? 1.5 : 2.5 } }}
+      <div
+        role={hasHistory ? 'button' : undefined}
+        tabIndex={hasHistory ? 0 : undefined}
         onClick={() => hasHistory && setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if (hasHistory && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+        style={{
+          padding: 'var(--space-5)',
+          paddingBottom: hasHistory ? 'var(--space-3)' : 'var(--space-5)',
+          cursor: hasHistory ? 'pointer' : 'default',
+        }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <SectionLabel sx={{ mb: 0 }}>Key Signal — {signalTitles[signalColor]}</SectionLabel>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <SectionLabel style={{ marginBottom: 0 }}>
+            Key Signal — {signalTitles[signalColor]}
+          </SectionLabel>
           {hasHistory && (
-            <ExpandMoreIcon
-              sx={{
-                fontSize: '1.1rem',
-                color: '#9CA3AF',
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{
                 transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s',
+                transition: 'transform var(--motion-normal) var(--motion-ease-out)',
               }}
-            />
+            >
+              <path
+                d="M3 6L8 11L13 6"
+                style={{ stroke: 'var(--gray-400)' }}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           )}
-        </Box>
-        <Typography
-          sx={{
-            mt: 1,
-            fontWeight: 700,
+        </div>
+        <p
+          className="vela-heading-base"
+          style={{
+            marginTop: 'var(--space-2)',
+            fontWeight: 'var(--weight-bold)',
             fontSize: '0.92rem',
-            color: '#1A1A1A',
+            color: 'var(--color-text-primary)',
             lineHeight: 1.45,
           }}
         >
           {headline}
-        </Typography>
-      </CardContent>
+        </p>
+      </div>
 
       {/* Expandable: signal history timeline */}
       {expanded && hasHistory && (
-        <Box sx={{ borderTop: '1.5px solid rgba(0,0,0,0.08)', px: 2.5, pt: 1.5, pb: 2 }}>
-          <Typography
-            sx={{
-              fontWeight: 700,
-              fontSize: '0.62rem',
-              letterSpacing: '0.1em',
+        <div
+          style={{
+            borderTop: '1.5px solid rgba(0,0,0,0.08)',
+            padding: 'var(--space-3) var(--space-5) var(--space-4)',
+          }}
+        >
+          <span
+            className="vela-label-sm"
+            style={{
               textTransform: 'uppercase',
-              color: '#6B7280',
-              mb: 1,
+              color: 'var(--color-text-muted)',
+              display: 'block',
+              marginBottom: 'var(--space-2)',
+              fontSize: '0.62rem',
             }}
           >
             Signal history
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          </span>
+          <div className="vela-stack" style={{ gap: 'var(--space-2)' }}>
             {groups.map((group, gi) => {
-              const gc = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
+              const gc = group.signalColor
+                ? groupColorMap[group.signalColor]
+                : groupColorMap.grey;
               const leadBrief = group.briefs[0];
               const isFirst = gi === 0;
 
               return (
-                <Box
+                <div
                   key={gi}
-                  sx={{
+                  style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 1,
-                    py: 0.5,
+                    gap: 'var(--space-2)',
+                    padding: 'var(--space-1) 0',
                   }}
                 >
                   {/* Signal badge */}
-                  <Box
-                    sx={{
+                  <span
+                    style={{
                       fontSize: '0.55rem',
                       fontWeight: 800,
                       textTransform: 'uppercase',
@@ -980,8 +1175,7 @@ function SignalHistoryCard({
                       backgroundColor: gc.bg,
                       border: `1.5px solid ${gc.border}`,
                       borderRadius: '4px',
-                      px: 0.75,
-                      py: 0.2,
+                      padding: '2px var(--space-2)',
                       lineHeight: 1.3,
                       flexShrink: 0,
                       minWidth: 32,
@@ -989,30 +1183,33 @@ function SignalHistoryCard({
                     }}
                   >
                     {gc.label}
-                  </Box>
+                  </span>
 
-                  {/* Headline + date range */}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography
-                      sx={{
-                        fontSize: '0.72rem',
-                        fontWeight: 600,
-                        color: '#1A1A1A',
+                  {/* Headline */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span
+                      className="vela-body-sm"
+                      style={{
+                        fontWeight: 'var(--weight-semibold)',
+                        color: 'var(--color-text-primary)',
                         lineHeight: 1.35,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        display: 'block',
+                        fontSize: '0.72rem',
                       }}
                     >
                       {stripAssetPrefix(leadBrief.headline, symbol)}
-                    </Typography>
-                  </Box>
+                    </span>
+                  </div>
 
                   {/* Date */}
-                  <Typography
-                    sx={{
+                  <span
+                    className="vela-body-sm"
+                    style={{
                       fontSize: '0.58rem',
-                      color: '#9CA3AF',
+                      color: 'var(--gray-400)',
                       flexShrink: 0,
                       whiteSpace: 'nowrap',
                     }}
@@ -1020,13 +1217,13 @@ function SignalHistoryCard({
                     {isFirst
                       ? `${new Date(group.dateRange[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – Ongoing`
                       : formatDateRange(group.dateRange[0], group.dateRange[1])}
-                  </Typography>
-                </Box>
+                  </span>
+                </div>
               );
             })}
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

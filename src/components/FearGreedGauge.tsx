@@ -1,6 +1,3 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-
 interface FearGreedGaugeProps {
   value: number; // 0-100
   label: string; // e.g. "Extreme Fear"
@@ -20,7 +17,7 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
   const needleY = 70 - 44.8 * Math.sin((needleAngle * Math.PI) / 180);
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
       <svg width="140" height="80" viewBox="0 0 140 80">
         {/* Arc segments - scaled 1.4x, thicker strokes */}
         <path
@@ -65,29 +62,26 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
         {/* Center dot - larger */}
         <circle cx="70" cy="70" r="5" fill="#1A1A1A" />
       </svg>
-      <Typography
-        sx={{
-          fontFamily: '"JetBrains Mono", monospace',
-          fontWeight: 700,
+      <span
+        className="vela-mono"
+        style={{
+          fontWeight: 'var(--weight-bold)',
           fontSize: '0.9rem',
-          color: '#1A1A1A',
+          color: 'var(--color-text-primary)',
           lineHeight: 1,
         }}
       >
         {clampedValue}
-      </Typography>
-      <Typography
-        sx={{
-          fontWeight: 700,
-          fontSize: '0.65rem',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: '#6B7280',
+      </span>
+      <span
+        className="vela-label-sm"
+        style={{
+          color: 'var(--color-text-muted)',
           lineHeight: 1,
         }}
       >
         {label}
-      </Typography>
-    </Box>
+      </span>
+    </div>
   );
 }

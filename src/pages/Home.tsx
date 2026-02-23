@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CircularProgress from '@mui/material/CircularProgress';
+import { Card, LoadingSpinner } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
 import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
@@ -18,27 +14,27 @@ export default function Home() {
 
   if (loading) {
     return (
-      <Box
-        sx={{
+      <div
+        style={{
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          pt: 10,
+          paddingTop: 'var(--space-20)',
           flexDirection: 'column',
-          gap: 2,
+          gap: 'var(--space-4)',
         }}
       >
-        <CircularProgress size={28} sx={{ color: '#1A1A1A' }} />
-        <Typography sx={{ fontSize: '0.8rem', color: '#6B7280' }}>Loading signals...</Typography>
-      </Box>
+        <LoadingSpinner size={28} />
+        <span className="vela-body-sm vela-text-muted">Loading signals...</span>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ p: 2, maxWidth: 600, mx: 'auto' }}>
+      <div style={{ padding: 'var(--space-4)', maxWidth: 600, margin: '0 auto' }}>
         <EmptyState type="loading-error" message={error} />
-      </Box>
+      </div>
     );
   }
 
@@ -46,137 +42,139 @@ export default function Home() {
   const digestParagraphs = breakIntoParagraphs(digestText, 2);
 
   return (
-    <Box sx={{ p: 2, pb: 10, maxWidth: 600, mx: 'auto' }}>
+    <div
+      style={{
+        padding: 'var(--space-4)',
+        paddingBottom: 'var(--space-20)',
+        maxWidth: 600,
+        margin: '0 auto',
+      }}
+    >
       {/* Header */}
-      <Box sx={{ mb: 2.5, mt: 1 }}>
+      <div style={{ marginBottom: 'var(--space-5)', marginTop: 'var(--space-2)' }}>
         <VelaLogo variant="full" size={40} />
         {lastUpdated && (
-          <Typography sx={{ fontSize: '0.7rem', color: '#9CA3AF', mt: 0.5 }}>
+          <span
+            className="vela-body-sm vela-text-muted"
+            style={{
+              fontSize: 'var(--text-xs)',
+              display: 'block',
+              marginTop: 'var(--space-1)',
+            }}
+          >
             Updates every 15 mins ·{' '}
             {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-          </Typography>
+          </span>
         )}
-      </Box>
+      </div>
 
       {/* Daily Digest — at top, with paragraph breaks */}
       {digest && (
         <Card
+          variant="lavender"
           onClick={() => setDigestExpanded(!digestExpanded)}
-          sx={{
-            mb: 2.5,
-            backgroundColor: '#EDE9FE',
-            border: '2.5px solid #1A1A1A',
-            boxShadow: '4px 4px 0px #1A1A1A',
-            cursor: 'pointer',
-          }}
+          style={{ marginBottom: 'var(--space-5)', cursor: 'pointer' }}
         >
-          <CardContent sx={{ p: 2.5 }}>
-            {/* Date as prominent header */}
-            <Typography
-              sx={{
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                color: '#1A1A1A',
-                mb: 0.5,
-              }}
-            >
-              {new Date(digest.created_at).toLocaleDateString(undefined, {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Typography>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: '0.65rem',
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-                color: '#6B7280',
-                mb: 1.5,
-              }}
-            >
-              Daily digest
-            </Typography>
+          {/* Date as prominent header */}
+          <p
+            style={{
+              fontFamily: 'var(--type-heading-base-font)',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              color: 'var(--color-text-primary)',
+              marginBottom: 'var(--space-1)',
+            }}
+          >
+            {new Date(digest.created_at).toLocaleDateString(undefined, {
+              weekday: 'long',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+          <span
+            className="vela-label-sm vela-text-muted"
+            style={{
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: 'var(--space-3)',
+            }}
+          >
+            Daily digest
+          </span>
 
-            {/* Paragraphed text — truncated with "View more" */}
-            <Box
-              sx={{
-                position: 'relative',
-                maxHeight: digestExpanded ? 'none' : `${DIGEST_COLLAPSED_HEIGHT}px`,
-                overflow: 'hidden',
-                transition: 'max-height 0.3s ease',
-              }}
-            >
-              {digestParagraphs.map((para, i) => (
-                <Typography
-                  key={i}
-                  sx={{
-                    fontSize: '0.85rem',
-                    color: '#374151',
-                    lineHeight: 1.7,
-                    mb: i < digestParagraphs.length - 1 ? 1.25 : 0,
-                  }}
-                >
-                  {para}
-                </Typography>
-              ))}
-              {!digestExpanded && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 40,
-                    background: 'linear-gradient(transparent, #EDE9FE)',
-                  }}
-                />
-              )}
-            </Box>
-            {digestParagraphs.length > 1 && (
-              <Typography
-                onClick={() => setDigestExpanded(!digestExpanded)}
-                sx={{
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  color: '#6B7280',
-                  mt: 1,
-                  cursor: 'pointer',
-                  '&:hover': { color: '#1A1A1A' },
+          {/* Paragraphed text — truncated with "View more" */}
+          <div
+            style={{
+              position: 'relative',
+              maxHeight: digestExpanded ? 'none' : `${DIGEST_COLLAPSED_HEIGHT}px`,
+              overflow: 'hidden',
+              transition: 'max-height var(--motion-slow) var(--motion-ease-in-out)',
+            }}
+          >
+            {digestParagraphs.map((para, i) => (
+              <p
+                key={i}
+                className="vela-body-sm"
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  lineHeight: 1.7,
+                  marginBottom: i < digestParagraphs.length - 1 ? 'var(--space-3)' : 0,
                 }}
               >
-                {digestExpanded ? 'Show less' : 'View more'}
-              </Typography>
+                {para}
+              </p>
+            ))}
+            {!digestExpanded && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 40,
+                  background: 'linear-gradient(transparent, var(--lavender-50))',
+                }}
+              />
             )}
-          </CardContent>
+          </div>
+          {digestParagraphs.length > 1 && (
+            <span
+              className="vela-label-sm"
+              style={{
+                color: 'var(--color-text-muted)',
+                marginTop: 'var(--space-2)',
+                cursor: 'pointer',
+                display: 'block',
+              }}
+            >
+              {digestExpanded ? 'Show less' : 'View more'}
+            </span>
+          )}
         </Card>
       )}
 
       {/* Signals section */}
-      <Typography
-        sx={{
-          fontWeight: 800,
-          fontSize: '0.7rem',
-          letterSpacing: '0.12em',
+      <span
+        className="vela-label-sm vela-text-muted"
+        style={{
           textTransform: 'uppercase',
-          color: '#6B7280',
-          mb: 1.5,
-          px: 0.5,
+          display: 'block',
+          marginBottom: 'var(--space-3)',
+          paddingLeft: 'var(--space-1)',
         }}
       >
         Signals
-      </Typography>
+      </span>
 
       {data.length === 0 ? (
         <EmptyState type="no-signals" />
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
           {data.map(item => (
             <SignalCard key={item.asset.id} data={item} />
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
