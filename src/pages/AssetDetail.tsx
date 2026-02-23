@@ -1156,9 +1156,11 @@ function SignalHistoryCard({
                   key={gi}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: 'var(--space-2)',
-                    padding: 'var(--space-1) 0',
+                    padding: 'var(--space-2) 0',
+                    borderBottom:
+                      gi < groups.length - 1 ? '1px solid var(--gray-100)' : 'none',
                   }}
                 >
                   {/* Signal badge */}
@@ -1177,44 +1179,39 @@ function SignalHistoryCard({
                       flexShrink: 0,
                       minWidth: 32,
                       textAlign: 'center',
+                      marginTop: 2,
                     }}
                   >
                     {gc.label}
                   </span>
 
-                  {/* Headline */}
+                  {/* Headline + date stacked */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span
                       className="vela-body-sm"
                       style={{
                         fontWeight: 'var(--weight-semibold)',
                         color: 'var(--color-text-primary)',
-                        lineHeight: 1.35,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        lineHeight: 1.4,
                         display: 'block',
                         fontSize: '0.72rem',
                       }}
                     >
                       {stripAssetPrefix(leadBrief.headline, symbol)}
                     </span>
+                    <span
+                      style={{
+                        fontSize: '0.58rem',
+                        color: 'var(--gray-400)',
+                        display: 'block',
+                        marginTop: 2,
+                      }}
+                    >
+                      {isFirst
+                        ? `${new Date(group.dateRange[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – Ongoing`
+                        : formatDateRange(group.dateRange[0], group.dateRange[1])}
+                    </span>
                   </div>
-
-                  {/* Date */}
-                  <span
-                    className="vela-body-sm"
-                    style={{
-                      fontSize: '0.58rem',
-                      color: 'var(--gray-400)',
-                      flexShrink: 0,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {isFirst
-                      ? `${new Date(group.dateRange[0]).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – Ongoing`
-                      : formatDateRange(group.dateRange[0], group.dateRange[1])}
-                  </span>
                 </div>
               );
             })}
