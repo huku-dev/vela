@@ -64,13 +64,26 @@ _env = load_env()
 SUPABASE_URL = _env.get("VITE_SUPABASE_URL", "")
 SUPABASE_KEY = _env.get("VITE_SUPABASE_ANON_KEY", "")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    sys.exit("ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env")
+def _require_supabase_keys() -> None:
+    """Validate Supabase keys are present. Called in main(), not at import time."""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        sys.exit("ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env")
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
 # CoinGecko free-tier rate limit: ~10-30 calls/min. We add a generous sleep.
 CG_SLEEP_SECONDS = 6
+
+# Hyperliquid API (primary data source — real OHLCV, no 365-day cap)
+HYPERLIQUID_INFO_URL = "https://api.hyperliquid.xyz/info"
+HL_SLEEP_SECONDS = 2  # generous rate limit (1,200 weight/min)
+
+# Symbol mapping: CoinGecko ID → Hyperliquid perpetual symbol
+ASSETS_HL = {
+    "bitcoin": "BTC",
+    "ethereum": "ETH",
+    "hyperliquid": "HYPE",
+}
 
 # Default position size for P&L calculations (matches frontend DEFAULT_POSITION_SIZE)
 POSITION_SIZE_USD = 1000
@@ -167,6 +180,221 @@ IMPROVED_CONFIG = {
     # After a BB stop-loss, wait N days before opening another BB in same direction
     # Prevents back-to-back losses during strong directional moves (e.g. ETH May 2025)
     "rsi_bb_cooldown_days": 3,
+}
+
+# ---------------------------------------------------------------------------
+# V4 proposed configs — Signal Integrity Framework backtests
+# Each isolates a single change for A/B comparison, plus a combined variant.
+# ---------------------------------------------------------------------------
+
+# Change 2: Confirmation-based entry gates
+# Require 2 consecutive green/red signals before opening a NEW position.
+# Filters out whipsaws — if a cross doesn't persist for 2 cycles, it's noise.
+V4_CONFIRMATION_ONLY = {
+    **IMPROVED_CONFIG,
+    "name": "V4a: +Confirmation Gates",
+    "confirmation_bars": 2,  # consecutive green/red signals required before entry
+}
+
+# Change 3: RSI velocity detection
+# Detect rapid RSI moves (≥15 points in one cycle) as early warnings.
+# Catches the MOVE toward extremes, not the extreme itself.
+V4_RSI_VELOCITY_ONLY = {
+    **IMPROVED_CONFIG,
+    "name": "V4b: +RSI Velocity",
+    "rsi_velocity_enabled": True,
+    "rsi_velocity_threshold": 15,     # RSI change of ≥15 points in one bar
+    "rsi_velocity_action": "warn",    # "warn" = yellow event, "close" = override
+}
+
+# Combined: both changes together (ATR protection already in Enhanced v3)
+V4_COMBINED = {
+    **IMPROVED_CONFIG,
+    "name": "V4c: Combined",
+    "confirmation_bars": 2,
+    "rsi_velocity_enabled": True,
+    "rsi_velocity_threshold": 15,
+    "rsi_velocity_action": "warn",
+}
+
+# Conservative: stricter thresholds
+V4_CONSERVATIVE = {
+    **IMPROVED_CONFIG,
+    "name": "V4d: Conservative",
+    "confirmation_bars": 3,
+    "rsi_velocity_enabled": True,
+    "rsi_velocity_threshold": 10,
+    "rsi_velocity_action": "close",   # force-close instead of just warning
+}
+
+# ---------------------------------------------------------------------------
+# V5 trade velocity strategies — increase trade frequency with quality trades
+# Each strategy is independently toggleable; combinations tested via named variants.
+# ---------------------------------------------------------------------------
+
+# V5 base: disables old BB (replaced by new strategies), all new strategies off by default
+V5_BASE = {
+    **IMPROVED_CONFIG,
+    "name": "V5 Base",
+    "rsi_bb_complementary": False,  # Disable old BB (replaced by improved strategies)
+
+    # Strategy 1: Profit-Taking Ladder — trim at milestones (locks in gains progressively)
+    "profit_ladder_enabled": False,
+    "profit_ladder_levels": [15, 25, 35],          # % profit thresholds
+    "profit_ladder_fractions": [0.10, 0.10, 0.10],  # fraction of original to trim at each level
+
+    # Strategy 2: Pullback Re-entry — add to winners on dips to EMA support
+    "pullback_reentry": False,
+    "pullback_ema_buffer_pct": 0.5,   # price within 0.5% of EMA-9
+    "pullback_min_profit_pct": 5.0,   # position must be +5% in profit
+    "pullback_add_frac": 0.25,        # add 25% of original position size
+    "pullback_max_adds": 2,           # max 2 pullback adds per position
+
+    # Strategy 3: DCA Scaling — build positions gradually across multiple bars
+    "dca_enabled": False,
+    "dca_tranches": [0.25, 0.25, 0.25, 0.25],  # 4 tranches, 25% each
+    "dca_interval_bars": 2,            # fill next tranche every 2 bars
+    "dca_max_adverse_pct": 3.0,        # cancel if price moves >3% against
+
+    # Strategy 4: Improved BB (BB2) — tighter bands, shorter hold, tighter stop
+    "bb_improved": False,
+    "bb_improved_lookback": 10,        # BB window (vs 20 for old BB)
+    "bb_improved_std_mult": 1.5,       # tighter bands (vs 2.0) = more signals
+    "bb_improved_hold_days": 2,        # shorter hold (vs 3) = less trend risk
+    "bb_improved_stop_pct": 3.0,       # tighter stop (vs 5%) = cut losers faster
+    "bb_improved_position_mult": 0.3,  # smaller position (vs 0.5×) = less drag when wrong
+    "bb_improved_cooldown_days": 2,    # shorter cooldown (vs 3)
+}
+
+# V5a: Profit-Taking Ladder only
+V5A_LADDER = {
+    **V5_BASE,
+    "name": "V5a: Profit Ladder",
+    "profit_ladder_enabled": True,
+}
+
+# V5b: Pullback Re-entry only
+V5B_PULLBACK = {
+    **V5_BASE,
+    "name": "V5b: Pullback Re-entry",
+    "pullback_reentry": True,
+}
+
+# V5c: DCA Scaling only
+V5C_DCA = {
+    **V5_BASE,
+    "name": "V5c: DCA Scaling",
+    "dca_enabled": True,
+}
+
+# V5d: Improved BB only (BB2)
+V5D_BB_IMPROVED = {
+    **V5_BASE,
+    "name": "V5d: Improved BB",
+    "bb_improved": True,
+}
+
+# V5e: Ladder + Pullback (recommended combo — both act on winning positions)
+V5E_LADDER_PULLBACK = {
+    **V5_BASE,
+    "name": "V5e: Ladder + Pullback",
+    "profit_ladder_enabled": True,
+    "pullback_reentry": True,
+}
+
+# V5f: Full suite — Ladder + Pullback + BB2
+V5F_FULL_SUITE = {
+    **V5_BASE,
+    "name": "V5f: Full Suite",
+    "profit_ladder_enabled": True,
+    "pullback_reentry": True,
+    "bb_improved": True,
+}
+
+# V5g: Ladder + DCA + Pullback (no BB)
+V5G_NO_BB = {
+    **V5_BASE,
+    "name": "V5g: Ladder+DCA+Pullback",
+    "profit_ladder_enabled": True,
+    "pullback_reentry": True,
+    "dca_enabled": True,
+}
+
+# V5h: Ladder + DCA (no pullback, no BB2) — data-driven winner combo
+V5H_LADDER_DCA = {
+    **V5_BASE,
+    "name": "V5h: Ladder + DCA",
+    "profit_ladder_enabled": True,
+    "dca_enabled": True,
+}
+
+# ---------------------------------------------------------------------------
+# V6: Short Profit Capture variants
+# The signal engine correctly identifies short opportunities (8 of 15 went
+# 6-48% in-the-money) but fails to capture profits. V6 tests three exit
+# improvement strategies: trailing stop, aggressive ladder, and both combined.
+# All three also disable short re-entries (-$305 aggregate, zero upside).
+# ---------------------------------------------------------------------------
+
+# V6a: Trailing stop for shorts — close if profit retraces from peak
+V6A_TRAILING_STOP = {
+    **V5F_FULL_SUITE,
+    "name": "V6a: Trailing Stop",
+    "trailing_stop_short": True,
+    "trailing_stop_activation_pct": 5.0,  # Start trailing after 5% profit
+    "trailing_stop_trail_pct": 2.5,       # Close if retraces 2.5% from peak
+    "pullback_reentry_short": False,      # Disable short re-entries
+}
+
+# EXPERIMENTAL — not adopted, kept for reference only.
+# V6b: Aggressive ladder for shorts — more levels, bigger trims, earlier start
+V6B_AGGRESSIVE_LADDER = {
+    **V5F_FULL_SUITE,
+    "name": "V6b: Aggressive Ladder",
+    "short_ladder_levels": [5, 10, 15, 20, 30],
+    "short_ladder_fractions": [0.15, 0.15, 0.20, 0.15, 0.15],  # 80% trimmed by +30%
+    "pullback_reentry_short": False,
+}
+
+# EXPERIMENTAL — not adopted, kept for reference only.
+# V6c: Combined — trailing stop + aggressive ladder (belt and suspenders)
+V6C_COMBINED = {
+    **V5F_FULL_SUITE,
+    "name": "V6c: Trailing + Aggressive Ladder",
+    "trailing_stop_short": True,
+    "trailing_stop_activation_pct": 5.0,
+    "trailing_stop_trail_pct": 2.5,
+    "short_ladder_levels": [5, 10, 15, 20, 30],
+    "short_ladder_fractions": [0.15, 0.15, 0.20, 0.15, 0.15],
+    "pullback_reentry_short": False,
+}
+
+# ---------------------------------------------------------------------------
+# V6 ADOPTED BASELINE — V6a trailing stop is the production strategy.
+# V6b (Aggressive Ladder) and V6c (Combined) remain experimental.
+# ---------------------------------------------------------------------------
+V6_ADOPTED = {**V6A_TRAILING_STOP, "name": "V6 Adopted (Trailing Stop)"}
+
+# Registry for CLI --config-a / --config-b selection
+NAMED_CONFIGS = {
+    "current": SIGNAL_CONFIG,
+    "improved": IMPROVED_CONFIG,
+    "v4a_confirmation": V4_CONFIRMATION_ONLY,
+    "v4b_rsi_velocity": V4_RSI_VELOCITY_ONLY,
+    "v4c_combined": V4_COMBINED,
+    "v4d_conservative": V4_CONSERVATIVE,
+    "v5a_ladder": V5A_LADDER,
+    "v5b_pullback": V5B_PULLBACK,
+    "v5c_dca": V5C_DCA,
+    "v5d_bb_improved": V5D_BB_IMPROVED,
+    "v5e_ladder_pullback": V5E_LADDER_PULLBACK,
+    "v5f_full_suite": V5F_FULL_SUITE,
+    "v5g_no_bb": V5G_NO_BB,
+    "v5h_ladder_dca": V5H_LADDER_DCA,
+    "v6a_trailing_stop": V6A_TRAILING_STOP,
+    "v6b_aggressive_ladder": V6B_AGGRESSIVE_LADDER,
+    "v6c_combined": V6C_COMBINED,
+    "adopted": V6_ADOPTED,
 }
 
 
@@ -349,6 +577,121 @@ def fetch_historical_ohlc(coingecko_id: str, days: int = 180) -> pd.DataFrame:
     return df
 
 
+def fetch_historical_ohlc_hyperliquid(coingecko_id: str, days: int = 365) -> pd.DataFrame:
+    """
+    Fetch daily OHLC data from Hyperliquid's candleSnapshot API.
+
+    Primary data source for Vela backtests. Returns real OHLCV data (not
+    approximated from close like CoinGecko), which improves ADX/ATR accuracy.
+
+    Max 5,000 candles per request. For longer periods, paginates automatically.
+    No authentication required.
+    """
+    symbol = ASSETS_HL.get(coingecko_id)
+    if symbol is None:
+        raise ValueError(
+            f"No Hyperliquid symbol mapping for '{coingecko_id}'. "
+            f"Known: {list(ASSETS_HL.keys())}"
+        )
+
+    end_ms = int(time.time() * 1000)
+    start_ms = end_ms - (days * 24 * 60 * 60 * 1000)
+
+    print(f"  Fetching {days} days of price data for '{symbol}' from Hyperliquid...")
+
+    all_candles = []
+    current_start = start_ms
+
+    while current_start < end_ms:
+        payload = {
+            "type": "candleSnapshot",
+            "req": {
+                "coin": symbol,
+                "interval": "1d",
+                "startTime": current_start,
+                "endTime": end_ms,
+            },
+        }
+
+        for attempt in range(3):
+            try:
+                resp = requests.post(HYPERLIQUID_INFO_URL, json=payload, timeout=30)
+                if resp.status_code == 429:
+                    wait = 10 * (attempt + 1)
+                    print(f"  ⚠️  Rate limited. Waiting {wait}s ({attempt + 1}/3)...")
+                    time.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                break
+            except requests.exceptions.RequestException as e:
+                if attempt == 2:
+                    raise RuntimeError(f"Hyperliquid API failed after 3 retries for {symbol}: {e}")
+                time.sleep(5)
+        else:
+            raise RuntimeError(f"Hyperliquid rate limit exceeded for {symbol}")
+
+        candles = resp.json()
+        if not candles:
+            break
+
+        all_candles.extend(candles)
+
+        # If we got fewer than 5000 candles, we've reached the end
+        if len(candles) < 5000:
+            break
+
+        # Paginate: move start past the last candle we received
+        last_close_ms = candles[-1].get("T", candles[-1].get("t", 0))
+        if last_close_ms <= current_start:
+            break  # prevent infinite loop
+        current_start = last_close_ms + 1
+        time.sleep(HL_SLEEP_SECONDS)
+
+    if not all_candles:
+        raise ValueError(f"No candle data returned from Hyperliquid for {symbol}")
+
+    # Parse Hyperliquid response: {t, T, s, i, o, c, h, l, v, n}
+    rows = []
+    for c in all_candles:
+        rows.append({
+            "timestamp_ms": c["t"],  # open time in ms
+            "open": float(c["o"]),
+            "high": float(c["h"]),
+            "low": float(c["l"]),
+            "close": float(c["c"]),
+            "volume": float(c["v"]),
+        })
+
+    df = pd.DataFrame(rows)
+    df["date"] = pd.to_datetime(df["timestamp_ms"], unit="ms", utc=True).dt.date
+    df = df.drop_duplicates(subset="date", keep="last")
+    df = df.set_index("date").sort_index()
+    df = df.drop(columns=["timestamp_ms"])
+
+    # Trim to requested date range
+    from datetime import date as date_type
+    cutoff = date_type.fromtimestamp(start_ms / 1000)
+    df = df[df.index >= cutoff]
+
+    print(f"  Got {len(df)} daily candles ({df.index[0]} to {df.index[-1]}) [Hyperliquid]")
+    return df
+
+
+def fetch_ohlc(coingecko_id: str, days: int = 365, source: str = "hyperliquid") -> pd.DataFrame:
+    """
+    Unified data fetcher. Hyperliquid is primary, CoinGecko is fallback.
+    """
+    if source == "hyperliquid":
+        try:
+            return fetch_historical_ohlc_hyperliquid(coingecko_id, days)
+        except Exception as e:
+            print(f"  ⚠️  Hyperliquid fetch failed: {e}")
+            print(f"  Falling back to CoinGecko...")
+            return fetch_historical_ohlc(coingecko_id, min(days, 365))
+    else:
+        return fetch_historical_ohlc(coingecko_id, days)
+
+
 # ---------------------------------------------------------------------------
 # 2. Calculate technical indicators
 # ---------------------------------------------------------------------------
@@ -442,6 +785,19 @@ def calculate_indicators(df: pd.DataFrame, config: dict = SIGNAL_CONFIG) -> pd.D
     df["rsi_bb_lower"] = rsi_sma - 2 * rsi_std
     df["rsi_below_bb"] = df["rsi_14"] < df["rsi_bb_lower"]
     df["rsi_above_bb"] = df["rsi_14"] > df["rsi_bb_upper"]
+
+    # --- BB2: Improved RSI Bollinger Bands (tighter, for V5 strategy 4) ---
+    bb2_lookback = config.get("bb_improved_lookback", 10)
+    bb2_std_mult = config.get("bb_improved_std_mult", 1.5)
+    rsi_sma2 = df["rsi_14"].rolling(window=bb2_lookback, min_periods=bb2_lookback).mean()
+    rsi_std2 = df["rsi_14"].rolling(window=bb2_lookback, min_periods=bb2_lookback).std()
+    df["rsi_bb2_upper"] = rsi_sma2 + bb2_std_mult * rsi_std2
+    df["rsi_bb2_lower"] = rsi_sma2 - bb2_std_mult * rsi_std2
+    df["rsi_below_bb2"] = df["rsi_14"] < df["rsi_bb2_lower"]
+    df["rsi_above_bb2"] = df["rsi_14"] > df["rsi_bb2_upper"]
+
+    # --- RSI velocity (bar-to-bar change) for rapid-move detection ---
+    df["rsi_delta"] = df["rsi_14"].diff()  # positive = RSI rising, negative = falling
 
     # --- EMA 9/21 crossover detection ---
     df["ema_crossed_up"] = (df["ema_9"] > df["ema_21"]) & (
@@ -746,9 +1102,79 @@ def simulate_trades(
     bb_long_cooldown_until: int = -1  # bar index until which BB longs are blocked
     bb_short_cooldown_until: int = -1  # bar index until which BB shorts are blocked
 
+    # Confirmation-based entry gates: track bars since cross where direction holds
+    confirmation_bars = config.get("confirmation_bars", 0)  # 0 = disabled
+    consecutive_green: int = 0
+    consecutive_red: int = 0
+    pending_green_entry: dict | None = None  # indicator snapshot from cross bar
+    pending_red_entry: dict | None = None
+
+    # RSI velocity detection
+    rsi_velocity_enabled = config.get("rsi_velocity_enabled", False)
+    rsi_velocity_threshold = config.get("rsi_velocity_threshold", 15)
+    rsi_velocity_action = config.get("rsi_velocity_action", "warn")  # "warn" or "close"
+
     # BTC crash filter setup
     btc_crash_enabled = config.get("btc_crash_filter", False) and not is_btc and btc_df is not None
     btc_crash_threshold = config.get("btc_crash_threshold", -5.0)
+
+    # ── V5 Strategy 1: Profit-Taking Ladder ──
+    profit_ladder_enabled = config.get("profit_ladder_enabled", False)
+    profit_ladder_levels = config.get("profit_ladder_levels", [15, 25, 35])
+    profit_ladder_fractions = config.get("profit_ladder_fractions", [0.10, 0.10, 0.10])
+    ladder_trims_long: list[int] = []   # indices of executed ladder levels for current long
+    ladder_trims_short: list[int] = []  # indices of executed ladder levels for current short
+
+    # ── V5 Strategy 2: Pullback Re-entry ──
+    pullback_reentry_enabled = config.get("pullback_reentry", False)
+    pullback_ema_buffer_pct = config.get("pullback_ema_buffer_pct", 0.5)
+    pullback_min_profit_pct = config.get("pullback_min_profit_pct", 5.0)
+    pullback_add_frac = config.get("pullback_add_frac", 0.25)
+    pullback_max_adds = config.get("pullback_max_adds", 2)
+    reentry_pieces_long: list[dict] = []   # each: {entry_price, entry_date, frac, entry_indicators}
+    reentry_pieces_short: list[dict] = []
+    pullback_adds_long: int = 0   # how many pullback adds done on current long
+    pullback_adds_short: int = 0
+
+    # ── V5 Strategy 3: DCA Scaling ──
+    dca_enabled = config.get("dca_enabled", False)
+    dca_tranches = config.get("dca_tranches", [0.25, 0.25, 0.25, 0.25])
+    dca_interval_bars = config.get("dca_interval_bars", 2)
+    dca_max_adverse_pct = config.get("dca_max_adverse_pct", 3.0)
+    dca_active_long: bool = False
+    dca_active_short: bool = False
+    dca_tranche_idx_long: int = 0
+    dca_tranche_idx_short: int = 0
+    dca_last_fill_bar_long: int = -999
+    dca_last_fill_bar_short: int = -999
+    dca_first_entry_price_long: float = 0.0
+    dca_first_entry_price_short: float = 0.0
+
+    # ── V5 Strategy 4: Improved BB (BB2) ──
+    bb2_enabled = config.get("bb_improved", False)
+    bb2_hold_days = config.get("bb_improved_hold_days", 2)
+    bb2_stop_pct = config.get("bb_improved_stop_pct", 3.0)
+    bb2_position_mult = config.get("bb_improved_position_mult", 0.3)
+    bb2_cooldown_days = config.get("bb_improved_cooldown_days", 2)
+    bb2_open_long: dict | None = None
+    bb2_open_short: dict | None = None
+    bb2_long_bars: int = 0
+    bb2_short_bars: int = 0
+    bb2_long_cooldown_until: int = -1
+    bb2_short_cooldown_until: int = -1
+
+    # ── V6: Short Profit Capture ──
+    trailing_stop_short = config.get("trailing_stop_short", False)
+    trailing_stop_activation = config.get("trailing_stop_activation_pct", 5.0)
+    trailing_stop_trail = config.get("trailing_stop_trail_pct", 2.5)
+    short_peak_profit: float = 0.0  # Best profit % seen during current short
+
+    # Per-direction ladder config (shorts can have different levels/fractions)
+    short_ladder_levels = config.get("short_ladder_levels", profit_ladder_levels)
+    short_ladder_fractions = config.get("short_ladder_fractions", profit_ladder_fractions)
+
+    # Per-direction re-entry gate (can disable short re-entries independently)
+    pullback_reentry_short_enabled = config.get("pullback_reentry_short", pullback_reentry_enabled)
 
     for bar_idx, (date, row) in enumerate(df.iterrows()):
         price = row["close"]
@@ -784,9 +1210,98 @@ def simulate_trades(
             row, open_trade=open_long, config=config, bar_index=bar_idx
         )
 
-        # ── Yellow events: partial trim on open LONG positions ──
+        # Also check short position for ATR stop-loss (mirrors long stop-loss above)
+        # Without this, shorts have NO stop-loss protection — they only close on
+        # opposing EMA crossover, which can take months and produce >100% losses.
+        if open_short is not None and color != "green":
+            short_color, short_reason = evaluate_signal(
+                row, open_trade=open_short, config=config, bar_index=bar_idx
+            )
+            if short_color == "green" and short_reason in ("atr_stop_loss", "stop_loss"):
+                color, reason = short_color, short_reason
 
-        if open_long is not None and long_remaining_frac > 0.1:
+        # ── V6: Trailing stop for shorts ──
+        # Tracks peak profit and closes if profit retraces beyond trail distance.
+        # Works alongside ATR stop: ATR stop fires on absolute loss from entry,
+        # trailing stop fires on retrace from peak profit.
+        if trailing_stop_short and open_short is not None and color != "green":
+            entry_price = open_short["entry_price"]
+            current_profit = ((entry_price - price) / entry_price) * 100
+            # Update peak profit tracker
+            if current_profit > short_peak_profit:
+                short_peak_profit = current_profit
+            # Close if activated and retraced beyond trail distance
+            if (short_peak_profit >= trailing_stop_activation
+                    and (short_peak_profit - current_profit) >= trailing_stop_trail):
+                color, reason = "green", "trailing_stop"
+
+        # ── V5 Strategy 1: Profit-Taking Ladder ──
+        # Trim at milestone profit levels (e.g., +15%, +25%, +35%)
+        # Sets trimmed_this_bar to prevent conflicting actions on same bar
+        trimmed_this_bar = False
+
+        if profit_ladder_enabled and open_long is not None and long_remaining_frac > 0.1:
+            entry_price = open_long["entry_price"]
+            profit_pct = ((price - entry_price) / entry_price) * 100
+            for lvl_idx, (level, frac) in enumerate(zip(profit_ladder_levels, profit_ladder_fractions)):
+                if lvl_idx not in ladder_trims_long and profit_pct >= level:
+                    trim_of_original = min(frac, long_remaining_frac)
+                    if trim_of_original > 0.01:
+                        trim_usd = round(trim_of_original * position_size * profit_pct / 100, 2)
+                        trades.append({
+                            "direction": "trim",
+                            "entry_date": open_long["entry_date"],
+                            "entry_price": open_long["entry_price"],
+                            "entry_signal_color": "green",
+                            "entry_signal_reason": "ema_cross_up",
+                            "entry_indicators": open_long["entry_indicators"],
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "exit_signal_color": "green",
+                            "exit_signal_reason": f"ladder_{level}pct",
+                            "pnl_pct": round(profit_pct, 2),
+                            "pnl_usd": trim_usd,
+                            "trim_pct": round(trim_of_original * 100, 1),
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                        long_remaining_frac -= trim_of_original
+                        ladder_trims_long.append(lvl_idx)
+                        trimmed_this_bar = True
+
+        if profit_ladder_enabled and open_short is not None and short_remaining_frac > 0.1:
+            entry_price = open_short["entry_price"]
+            profit_pct = ((entry_price - price) / entry_price) * 100
+            for lvl_idx, (level, frac) in enumerate(zip(short_ladder_levels, short_ladder_fractions)):
+                if lvl_idx not in ladder_trims_short and profit_pct >= level:
+                    trim_of_original = min(frac, short_remaining_frac)
+                    if trim_of_original > 0.01:
+                        trim_usd = round(trim_of_original * position_size * profit_pct / 100, 2)
+                        trades.append({
+                            "direction": "trim",
+                            "entry_date": open_short["entry_date"],
+                            "entry_price": open_short["entry_price"],
+                            "entry_signal_color": "red",
+                            "entry_signal_reason": "ema_cross_down",
+                            "entry_indicators": open_short["entry_indicators"],
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "exit_signal_color": "green",
+                            "exit_signal_reason": f"ladder_{level}pct",
+                            "pnl_pct": round(profit_pct, 2),
+                            "pnl_usd": trim_usd,
+                            "trim_pct": round(trim_of_original * 100, 1),
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                        short_remaining_frac -= trim_of_original
+                        ladder_trims_short.append(lvl_idx)
+                        trimmed_this_bar = True
+
+        # ── Yellow events: partial trim on open LONG positions ──
+        # Skip if ladder already trimmed this bar (avoid contradictory signals)
+
+        if open_long is not None and long_remaining_frac > 0.1 and not trimmed_this_bar:
             yellow_event = check_yellow_events(rsi14, direction="long", config=config)
             if yellow_event is not None:
                 entry_price = open_long["entry_price"]
@@ -829,7 +1344,7 @@ def simulate_trades(
 
         # ── Yellow events: partial cover on open SHORT positions ──
 
-        if open_short is not None and short_remaining_frac > 0.1:
+        if open_short is not None and short_remaining_frac > 0.1 and not trimmed_this_bar:
             yellow_event = check_yellow_events(rsi14, direction="short", config=config)
             if yellow_event is not None:
                 entry_price = open_short["entry_price"]
@@ -867,6 +1382,105 @@ def simulate_trades(
                     })
                     short_remaining_frac -= trim_of_original
 
+        # ── RSI velocity detection: rapid move toward extremes ──
+        # Catches the MOVE, not the extreme — e.g. RSI 55→72 in one cycle
+        # Skip if ladder already trimmed this bar
+        if rsi_velocity_enabled and not trimmed_this_bar:
+            rsi_delta = row.get("rsi_delta", 0)
+            if not pd.isna(rsi_delta) and abs(rsi_delta) >= rsi_velocity_threshold:
+                # RSI surging upward (toward overbought) — warn/close open longs
+                if rsi_delta > 0 and rsi14 > 60 and open_long is not None and long_remaining_frac > 0.1:
+                    if rsi_velocity_action == "close":
+                        # Force close the long position
+                        entry_price = open_long["entry_price"]
+                        pnl_pct = round(((price - entry_price) / entry_price) * 100, 2)
+                        pnl_usd = round(long_remaining_frac * pnl_pct / 100 * position_size, 2)
+                        trades.append({
+                            **open_long,
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "exit_signal_color": "yellow",
+                            "exit_signal_reason": f"rsi_velocity ({rsi_delta:+.0f})",
+                            "pnl_pct": pnl_pct,
+                            "pnl_usd": pnl_usd,
+                            "remaining_pct": round(long_remaining_frac * 100, 1),
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                        open_long = None
+                        long_remaining_frac = 1.0
+                    else:
+                        # Warn = generate trim (same as yellow event trim)
+                        entry_price = open_long["entry_price"]
+                        pnl_pct_at_trim = round(((price - entry_price) / entry_price) * 100, 2)
+                        trim_frac = min(0.25, long_remaining_frac)  # trim 25%
+                        if trim_frac > 0.05:
+                            trim_usd = round(trim_frac * position_size * pnl_pct_at_trim / 100, 2)
+                            trades.append({
+                                "direction": "trim",
+                                "entry_date": open_long["entry_date"],
+                                "entry_price": open_long["entry_price"],
+                                "entry_signal_color": "green",
+                                "entry_signal_reason": "ema_cross_up",
+                                "entry_indicators": open_long["entry_indicators"],
+                                "exit_date": str(date),
+                                "exit_price": round(price, 2),
+                                "exit_signal_color": "yellow",
+                                "exit_signal_reason": f"rsi_velocity ({rsi_delta:+.0f})",
+                                "pnl_pct": pnl_pct_at_trim,
+                                "pnl_usd": trim_usd,
+                                "trim_pct": round(trim_frac * 100, 1),
+                                "status": "closed",
+                                "exit_indicators": _snapshot_indicators(row),
+                            })
+                            long_remaining_frac -= trim_frac
+
+                # RSI plunging downward (toward oversold) — warn/close open shorts
+                if rsi_delta < 0 and rsi14 < 40 and open_short is not None and short_remaining_frac > 0.1:
+                    if rsi_velocity_action == "close":
+                        entry_price = open_short["entry_price"]
+                        pnl_pct = round(((entry_price - price) / entry_price) * 100, 2)
+                        pnl_usd = round(short_remaining_frac * pnl_pct / 100 * position_size, 2)
+                        trades.append({
+                            **open_short,
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "exit_signal_color": "yellow",
+                            "exit_signal_reason": f"rsi_velocity ({rsi_delta:+.0f})",
+                            "pnl_pct": pnl_pct,
+                            "pnl_usd": pnl_usd,
+                            "remaining_pct": round(short_remaining_frac * 100, 1),
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                        open_short = None
+                        short_remaining_frac = 1.0
+                        short_peak_profit = 0.0
+                    else:
+                        entry_price = open_short["entry_price"]
+                        pnl_pct_at_trim = round(((entry_price - price) / entry_price) * 100, 2)
+                        trim_frac = min(0.25, short_remaining_frac)
+                        if trim_frac > 0.05:
+                            trim_usd = round(trim_frac * position_size * pnl_pct_at_trim / 100, 2)
+                            trades.append({
+                                "direction": "trim",
+                                "entry_date": open_short["entry_date"],
+                                "entry_price": open_short["entry_price"],
+                                "entry_signal_color": "red",
+                                "entry_signal_reason": "ema_cross_down",
+                                "entry_indicators": open_short["entry_indicators"],
+                                "exit_date": str(date),
+                                "exit_price": round(price, 2),
+                                "exit_signal_color": "yellow",
+                                "exit_signal_reason": f"rsi_velocity ({rsi_delta:+.0f})",
+                                "pnl_pct": pnl_pct_at_trim,
+                                "pnl_usd": trim_usd,
+                                "trim_pct": round(trim_frac * 100, 1),
+                                "status": "closed",
+                                "exit_indicators": _snapshot_indicators(row),
+                            })
+                            short_remaining_frac -= trim_frac
+
         # ── Close existing positions on opposing signals ──
 
         # Close LONG on red signal (including stop-loss, trend-break)
@@ -887,8 +1501,33 @@ def simulate_trades(
                 "status": "closed",
                 "exit_indicators": _snapshot_indicators(row),
             })
+            # Close all pullback re-entry pieces simultaneously
+            for piece in reentry_pieces_long:
+                piece_pnl_pct = round(((price - piece["entry_price"]) / piece["entry_price"]) * 100, 2)
+                piece_pnl_usd = round(piece["frac"] * piece_pnl_pct / 100 * position_size, 2)
+                trades.append({
+                    "direction": "reentry",
+                    "entry_date": piece["entry_date"],
+                    "entry_price": piece["entry_price"],
+                    "entry_signal_color": "green",
+                    "entry_signal_reason": "pullback_reentry",
+                    "entry_indicators": piece["entry_indicators"],
+                    "exit_date": str(date),
+                    "exit_price": round(price, 2),
+                    "exit_signal_color": "red",
+                    "exit_signal_reason": reason,
+                    "pnl_pct": piece_pnl_pct,
+                    "pnl_usd": piece_pnl_usd,
+                    "status": "closed",
+                    "exit_indicators": _snapshot_indicators(row),
+                })
             open_long = None
             long_remaining_frac = 1.0
+            ladder_trims_long = []
+            reentry_pieces_long = []
+            pullback_adds_long = 0
+            dca_active_long = False
+            dca_tranche_idx_long = 0
 
         # Close SHORT on green signal
         if open_short is not None and color == "green":
@@ -908,34 +1547,316 @@ def simulate_trades(
                 "status": "closed",
                 "exit_indicators": _snapshot_indicators(row),
             })
+            # Close all pullback re-entry pieces simultaneously
+            for piece in reentry_pieces_short:
+                piece_pnl_pct = round(((piece["entry_price"] - price) / piece["entry_price"]) * 100, 2)
+                piece_pnl_usd = round(piece["frac"] * piece_pnl_pct / 100 * position_size, 2)
+                trades.append({
+                    "direction": "reentry",
+                    "entry_date": piece["entry_date"],
+                    "entry_price": piece["entry_price"],
+                    "entry_signal_color": "red",
+                    "entry_signal_reason": "pullback_reentry",
+                    "entry_indicators": piece["entry_indicators"],
+                    "exit_date": str(date),
+                    "exit_price": round(price, 2),
+                    "exit_signal_color": "green",
+                    "exit_signal_reason": reason,
+                    "pnl_pct": piece_pnl_pct,
+                    "pnl_usd": piece_pnl_usd,
+                    "status": "closed",
+                    "exit_indicators": _snapshot_indicators(row),
+                })
             open_short = None
             short_remaining_frac = 1.0
+            ladder_trims_short = []
+            reentry_pieces_short = []
+            pullback_adds_short = 0
+            dca_active_short = False
+            dca_tranche_idx_short = 0
+            short_peak_profit = 0.0
 
-        # ── Open new positions ──
+        # ── Confirmation gate: track bars since cross where direction holds ──
+        # After an EMA cross, count consecutive bars where EMA-9 stays in the
+        # crossed direction (above EMA-21 for bullish, below for bearish).
+        # Only enter after the cross persists for N bars — filters whipsaws.
+        ema9 = row["ema_9"]
+        ema21 = row["ema_21"]
 
-        if color == "green" and reason == "ema_cross_up" and open_long is None:
-            open_long = {
-                "direction": "long",
-                "entry_date": str(date),
-                "entry_price": round(price, 2),
-                "entry_signal_color": "green",
-                "entry_signal_reason": reason,
-                "entry_indicators": _snapshot_indicators(row),
-                "entry_bar_index": bar_idx,
-            }
-            long_remaining_frac = 1.0
+        if color == "green" and reason == "ema_cross_up":
+            # Fresh bullish cross — start counting
+            consecutive_green = 1
+            consecutive_red = 0
+            pending_green_entry = _snapshot_indicators(row)
+        elif consecutive_green > 0 and ema9 > ema21:
+            # EMA-9 still above EMA-21 — cross is holding, increment
+            consecutive_green += 1
+        elif consecutive_green > 0:
+            # EMA-9 fell back below — cross failed confirmation
+            consecutive_green = 0
+            pending_green_entry = None
 
-        if color == "red" and reason == "ema_cross_down" and open_short is None:
-            open_short = {
-                "direction": "short",
-                "entry_date": str(date),
-                "entry_price": round(price, 2),
-                "entry_signal_color": "red",
-                "entry_signal_reason": reason,
-                "entry_indicators": _snapshot_indicators(row),
-                "entry_bar_index": bar_idx,
-            }
-            short_remaining_frac = 1.0
+        if color == "red" and reason == "ema_cross_down":
+            consecutive_red = 1
+            consecutive_green = 0
+            pending_red_entry = _snapshot_indicators(row)
+        elif consecutive_red > 0 and ema9 < ema21:
+            consecutive_red += 1
+        elif consecutive_red > 0:
+            consecutive_red = 0
+            pending_red_entry = None
+
+        # ── Open new positions (with optional confirmation gate + DCA) ──
+
+        if open_long is None and consecutive_green > 0:
+            # Check if we have enough confirmation bars OR gate is disabled
+            if confirmation_bars <= 0 or consecutive_green >= confirmation_bars:
+                # Only enter on the actual cross bar if no gate, or on confirmation bar
+                if confirmation_bars <= 0 and not (color == "green" and reason == "ema_cross_up"):
+                    pass  # Without gate, only enter on cross bar itself
+                else:
+                    # DCA: first tranche only (if DCA enabled)
+                    if dca_enabled:
+                        first_frac = dca_tranches[0] if dca_tranches else 1.0
+                        open_long = {
+                            "direction": "long",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "green",
+                            "entry_signal_reason": "ema_cross_up_confirmed" if confirmation_bars > 0 else reason,
+                            "entry_indicators": _snapshot_indicators(row),
+                            "entry_bar_index": bar_idx,
+                        }
+                        long_remaining_frac = first_frac
+                        dca_active_long = True
+                        dca_tranche_idx_long = 1  # next tranche to fill
+                        dca_last_fill_bar_long = bar_idx
+                        dca_first_entry_price_long = price
+                        # Log DCA first fill as informational trade
+                        trades.append({
+                            "direction": "dca_entry",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "green",
+                            "entry_signal_reason": f"dca_tranche_1_of_{len(dca_tranches)}",
+                            "entry_indicators": _snapshot_indicators(row),
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "pnl_pct": 0.0,
+                            "pnl_usd": 0.0,
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                    else:
+                        open_long = {
+                            "direction": "long",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "green",
+                            "entry_signal_reason": "ema_cross_up_confirmed" if confirmation_bars > 0 else reason,
+                            "entry_indicators": _snapshot_indicators(row),
+                            "entry_bar_index": bar_idx,
+                        }
+                        long_remaining_frac = 1.0
+                    consecutive_green = 0  # Reset after entry
+
+        if open_short is None and consecutive_red > 0:
+            if confirmation_bars <= 0 or consecutive_red >= confirmation_bars:
+                if confirmation_bars <= 0 and not (color == "red" and reason == "ema_cross_down"):
+                    pass
+                else:
+                    if dca_enabled:
+                        first_frac = dca_tranches[0] if dca_tranches else 1.0
+                        open_short = {
+                            "direction": "short",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "red",
+                            "entry_signal_reason": "ema_cross_down_confirmed" if confirmation_bars > 0 else reason,
+                            "entry_indicators": _snapshot_indicators(row),
+                            "entry_bar_index": bar_idx,
+                        }
+                        short_remaining_frac = first_frac
+                        short_peak_profit = 0.0
+                        dca_active_short = True
+                        dca_tranche_idx_short = 1
+                        dca_last_fill_bar_short = bar_idx
+                        dca_first_entry_price_short = price
+                        trades.append({
+                            "direction": "dca_entry",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "red",
+                            "entry_signal_reason": f"dca_tranche_1_of_{len(dca_tranches)}",
+                            "entry_indicators": _snapshot_indicators(row),
+                            "exit_date": str(date),
+                            "exit_price": round(price, 2),
+                            "pnl_pct": 0.0,
+                            "pnl_usd": 0.0,
+                            "status": "closed",
+                            "exit_indicators": _snapshot_indicators(row),
+                        })
+                    else:
+                        open_short = {
+                            "direction": "short",
+                            "entry_date": str(date),
+                            "entry_price": round(price, 2),
+                            "entry_signal_color": "red",
+                            "entry_signal_reason": "ema_cross_down_confirmed" if confirmation_bars > 0 else reason,
+                            "entry_indicators": _snapshot_indicators(row),
+                            "entry_bar_index": bar_idx,
+                        }
+                        short_remaining_frac = 1.0
+                        short_peak_profit = 0.0
+                    consecutive_red = 0  # Reset after entry
+
+        # ── V5 Strategy 3: DCA Tranche Fill ──
+        # Fill subsequent tranches if DCA is active, signal holds, and interval met
+        if dca_enabled and not trimmed_this_bar:
+            ema9 = row["ema_9"]
+            ema21 = row["ema_21"]
+
+            # DCA long: fill next tranche
+            if (dca_active_long and open_long is not None
+                    and dca_tranche_idx_long < len(dca_tranches)
+                    and bar_idx - dca_last_fill_bar_long >= dca_interval_bars):
+                # Check signal still holds (EMA-9 > EMA-21) and adverse move within limit
+                adverse_pct = ((dca_first_entry_price_long - price) / dca_first_entry_price_long) * 100
+                if ema9 > ema21 and adverse_pct <= dca_max_adverse_pct:
+                    tranche_frac = dca_tranches[dca_tranche_idx_long]
+                    # Update entry price to VWAP of all tranches
+                    old_total = long_remaining_frac * open_long["entry_price"]
+                    new_total = old_total + tranche_frac * price
+                    long_remaining_frac += tranche_frac
+                    open_long["entry_price"] = round(new_total / long_remaining_frac, 2)
+                    dca_tranche_idx_long += 1
+                    dca_last_fill_bar_long = bar_idx
+                    # Log DCA fill
+                    trades.append({
+                        "direction": "dca_entry",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "green",
+                        "entry_signal_reason": f"dca_tranche_{dca_tranche_idx_long}_of_{len(dca_tranches)}",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "exit_date": str(date),
+                        "exit_price": round(price, 2),
+                        "pnl_pct": 0.0,
+                        "pnl_usd": 0.0,
+                        "status": "closed",
+                        "exit_indicators": _snapshot_indicators(row),
+                    })
+                    if dca_tranche_idx_long >= len(dca_tranches):
+                        dca_active_long = False  # All tranches filled
+                elif adverse_pct > dca_max_adverse_pct:
+                    dca_active_long = False  # Cancel remaining — too much adverse move
+
+            # DCA short: fill next tranche
+            if (dca_active_short and open_short is not None
+                    and dca_tranche_idx_short < len(dca_tranches)
+                    and bar_idx - dca_last_fill_bar_short >= dca_interval_bars):
+                adverse_pct = ((price - dca_first_entry_price_short) / dca_first_entry_price_short) * 100
+                if ema9 < ema21 and adverse_pct <= dca_max_adverse_pct:
+                    tranche_frac = dca_tranches[dca_tranche_idx_short]
+                    old_total = short_remaining_frac * open_short["entry_price"]
+                    new_total = old_total + tranche_frac * price
+                    short_remaining_frac += tranche_frac
+                    open_short["entry_price"] = round(new_total / short_remaining_frac, 2)
+                    dca_tranche_idx_short += 1
+                    dca_last_fill_bar_short = bar_idx
+                    trades.append({
+                        "direction": "dca_entry",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "red",
+                        "entry_signal_reason": f"dca_tranche_{dca_tranche_idx_short}_of_{len(dca_tranches)}",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "exit_date": str(date),
+                        "exit_price": round(price, 2),
+                        "pnl_pct": 0.0,
+                        "pnl_usd": 0.0,
+                        "status": "closed",
+                        "exit_indicators": _snapshot_indicators(row),
+                    })
+                    if dca_tranche_idx_short >= len(dca_tranches):
+                        dca_active_short = False
+                elif adverse_pct > dca_max_adverse_pct:
+                    dca_active_short = False
+
+        # ── V5 Strategy 2: Pullback Re-entry ──
+        # Add to winning positions when price pulls back to EMA-9 support
+        # Only after DCA is complete (or not active), not on trim bars
+        if pullback_reentry_enabled and not trimmed_this_bar:
+            ema9 = row["ema_9"]
+            ema21 = row["ema_21"]
+
+            # Pullback re-entry for longs
+            if (open_long is not None and not dca_active_long
+                    and pullback_adds_long < pullback_max_adds):
+                entry_price = open_long["entry_price"]
+                profit_pct = ((price - entry_price) / entry_price) * 100
+                ema9_distance_pct = abs((price - ema9) / ema9) * 100
+                trend_intact = ema9 > ema21
+
+                if (profit_pct >= pullback_min_profit_pct
+                        and ema9_distance_pct <= pullback_ema_buffer_pct
+                        and trend_intact):
+                    reentry_pieces_long.append({
+                        "entry_price": round(price, 2),
+                        "entry_date": str(date),
+                        "frac": pullback_add_frac,
+                        "entry_indicators": _snapshot_indicators(row),
+                    })
+                    pullback_adds_long += 1
+                    # Log re-entry as informational trade
+                    trades.append({
+                        "direction": "reentry",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "green",
+                        "entry_signal_reason": "pullback_reentry",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "exit_date": None,
+                        "exit_price": round(price, 2),
+                        "pnl_pct": 0.0,
+                        "pnl_usd": 0.0,
+                        "status": "open",
+                        "exit_indicators": None,
+                    })
+
+            # Pullback re-entry for shorts (gated by per-direction config)
+            if (pullback_reentry_short_enabled and open_short is not None
+                    and not dca_active_short
+                    and pullback_adds_short < pullback_max_adds):
+                entry_price = open_short["entry_price"]
+                profit_pct = ((entry_price - price) / entry_price) * 100
+                ema9_distance_pct = abs((price - ema9) / ema9) * 100
+                trend_intact = ema9 < ema21
+
+                if (profit_pct >= pullback_min_profit_pct
+                        and ema9_distance_pct <= pullback_ema_buffer_pct
+                        and trend_intact):
+                    reentry_pieces_short.append({
+                        "entry_price": round(price, 2),
+                        "entry_date": str(date),
+                        "frac": pullback_add_frac,
+                        "entry_indicators": _snapshot_indicators(row),
+                    })
+                    pullback_adds_short += 1
+                    trades.append({
+                        "direction": "reentry",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "red",
+                        "entry_signal_reason": "pullback_reentry",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "exit_date": None,
+                        "exit_price": round(price, 2),
+                        "pnl_pct": 0.0,
+                        "pnl_usd": 0.0,
+                        "status": "open",
+                        "exit_indicators": None,
+                    })
 
         # ── RSI Bollinger Band complementary trades ──
         # These are independent, short-duration mean-reversion trades
@@ -1030,6 +1951,92 @@ def simulate_trades(
                 }
                 bb_short_bars = 0
 
+        # ── V5 Strategy 4: Improved BB (BB2) trades ──
+        # Independent from EMA, uses tighter bands and shorter hold
+        if bb2_enabled:
+            rsi_below_bb2 = row.get("rsi_below_bb2", False)
+            rsi_above_bb2 = row.get("rsi_above_bb2", False)
+            sma50 = row.get("sma_50", float("nan"))
+
+            # Close existing BB2 trades
+            if bb2_open_long is not None:
+                bb2_long_bars += 1
+                bb2_entry = bb2_open_long["entry_price"]
+                bb2_pnl_pct = round(((price - bb2_entry) / bb2_entry) * 100, 2)
+
+                bb2_stopped = bb2_pnl_pct <= -bb2_stop_pct
+                if bb2_long_bars >= bb2_hold_days or rsi14 > 50 or bb2_stopped:
+                    bb2_pnl_usd = round(bb2_position_mult * bb2_pnl_pct / 100 * position_size, 2)
+                    trades.append({
+                        **bb2_open_long,
+                        "exit_date": str(date),
+                        "exit_price": round(price, 2),
+                        "exit_signal_color": "grey",
+                        "exit_signal_reason": "bb2_stop" if bb2_stopped else ("bb2_expiry" if bb2_long_bars >= bb2_hold_days else "bb2_target"),
+                        "pnl_pct": bb2_pnl_pct,
+                        "pnl_usd": bb2_pnl_usd,
+                        "status": "closed",
+                        "exit_indicators": _snapshot_indicators(row),
+                    })
+                    bb2_open_long = None
+                    if bb2_stopped and bb2_cooldown_days > 0:
+                        bb2_long_cooldown_until = bar_idx + bb2_cooldown_days
+                    bb2_long_bars = 0
+
+            if bb2_open_short is not None:
+                bb2_short_bars += 1
+                bb2_entry = bb2_open_short["entry_price"]
+                bb2_pnl_pct = round(((bb2_entry - price) / bb2_entry) * 100, 2)
+
+                bb2_stopped = bb2_pnl_pct <= -bb2_stop_pct
+                if bb2_short_bars >= bb2_hold_days or rsi14 < 50 or bb2_stopped:
+                    bb2_pnl_usd = round(bb2_position_mult * bb2_pnl_pct / 100 * position_size, 2)
+                    trades.append({
+                        **bb2_open_short,
+                        "exit_date": str(date),
+                        "exit_price": round(price, 2),
+                        "exit_signal_color": "grey",
+                        "exit_signal_reason": "bb2_stop" if bb2_stopped else ("bb2_expiry" if bb2_short_bars >= bb2_hold_days else "bb2_target"),
+                        "pnl_pct": bb2_pnl_pct,
+                        "pnl_usd": bb2_pnl_usd,
+                        "status": "closed",
+                        "exit_indicators": _snapshot_indicators(row),
+                    })
+                    bb2_open_short = None
+                    if bb2_stopped and bb2_cooldown_days > 0:
+                        bb2_short_cooldown_until = bar_idx + bb2_cooldown_days
+                    bb2_short_bars = 0
+
+            # Open new BB2 trades (trend filter: uptrend for longs, downtrend for shorts)
+            bb2_long_ok = not pd.isna(sma50) and price > sma50
+            bb2_short_ok = not pd.isna(sma50) and price < sma50
+
+            if (rsi_below_bb2 and bb2_open_long is None and open_long is None
+                    and bb2_long_ok and bar_idx > bb2_long_cooldown_until):
+                bb2_open_long = {
+                    "direction": "bb2_long",
+                    "entry_date": str(date),
+                    "entry_price": round(price, 2),
+                    "entry_signal_color": "green",
+                    "entry_signal_reason": "rsi_bb2_lower",
+                    "entry_indicators": _snapshot_indicators(row),
+                    "entry_bar_index": bar_idx,
+                }
+                bb2_long_bars = 0
+
+            if (rsi_above_bb2 and bb2_open_short is None and open_short is None
+                    and bb2_short_ok and bar_idx > bb2_short_cooldown_until):
+                bb2_open_short = {
+                    "direction": "bb2_short",
+                    "entry_date": str(date),
+                    "entry_price": round(price, 2),
+                    "entry_signal_color": "red",
+                    "entry_signal_reason": "rsi_bb2_upper",
+                    "entry_indicators": _snapshot_indicators(row),
+                    "entry_bar_index": bar_idx,
+                }
+                bb2_short_bars = 0
+
     # ── Mark still-open trades at end of backtest ──
 
     last_row = df.iloc[-1]
@@ -1086,6 +2093,70 @@ def simulate_trades(
             "exit_price": round(last_price, 2),
             "pnl_pct": bb_pnl_pct,
             "pnl_usd": round(0.5 * bb_pnl_pct / 100 * position_size, 2),
+            "status": "open",
+            "exit_indicators": None,
+        })
+
+    # Close any open BB2 trades at end
+    if bb2_open_long is not None:
+        bb2_entry = bb2_open_long["entry_price"]
+        bb2_pnl_pct = round(((last_price - bb2_entry) / bb2_entry) * 100, 2)
+        trades.append({
+            **bb2_open_long,
+            "exit_date": None,
+            "exit_price": round(last_price, 2),
+            "pnl_pct": bb2_pnl_pct,
+            "pnl_usd": round(bb2_position_mult * bb2_pnl_pct / 100 * position_size, 2),
+            "status": "open",
+            "exit_indicators": None,
+        })
+
+    if bb2_open_short is not None:
+        bb2_entry = bb2_open_short["entry_price"]
+        bb2_pnl_pct = round(((bb2_entry - last_price) / bb2_entry) * 100, 2)
+        trades.append({
+            **bb2_open_short,
+            "exit_date": None,
+            "exit_price": round(last_price, 2),
+            "pnl_pct": bb2_pnl_pct,
+            "pnl_usd": round(bb2_position_mult * bb2_pnl_pct / 100 * position_size, 2),
+            "status": "open",
+            "exit_indicators": None,
+        })
+
+    # Close any open reentry pieces at end
+    for piece in reentry_pieces_long:
+        piece_pnl_pct = round(((last_price - piece["entry_price"]) / piece["entry_price"]) * 100, 2)
+        piece_pnl_usd = round(piece["frac"] * piece_pnl_pct / 100 * position_size, 2)
+        trades.append({
+            "direction": "reentry",
+            "entry_date": piece["entry_date"],
+            "entry_price": piece["entry_price"],
+            "entry_signal_color": "green",
+            "entry_signal_reason": "pullback_reentry",
+            "entry_indicators": piece["entry_indicators"],
+            "exit_date": None,
+            "exit_price": round(last_price, 2),
+            "pnl_pct": piece_pnl_pct,
+            "pnl_usd": piece_pnl_usd,
+            "status": "open",
+            "exit_indicators": None,
+        })
+
+    for piece in reentry_pieces_short:
+        piece_pnl_pct = round(((piece["entry_price"] - last_price) / piece["entry_price"]) * 100, 2)
+        piece_pnl_usd = round(piece["frac"] * piece_pnl_pct / 100 * position_size, 2)
+        trades.append({
+            "direction": "reentry",
+            "entry_date": piece["entry_date"],
+            "entry_price": piece["entry_price"],
+            "entry_signal_color": "red",
+            "entry_signal_reason": "pullback_reentry",
+            "entry_indicators": piece["entry_indicators"],
+            "exit_date": None,
+            "exit_price": round(last_price, 2),
+            "pnl_pct": piece_pnl_pct,
+            "pnl_usd": piece_pnl_usd,
             "status": "open",
             "exit_indicators": None,
         })
@@ -1218,10 +2289,13 @@ def print_summary(trades: list[dict], coingecko_id: str) -> None:
     closed = [t for t in trades if t["status"] == "closed"]
     open_trades = [t for t in trades if t["status"] == "open"]
 
-    # Separate trims, BB trades, and full EMA closes
+    # Separate trims, BB/BB2 trades, reentries, DCA fills, and full EMA closes
     trims = [t for t in closed if t.get("direction") == "trim"]
     bb_trades = [t for t in closed if t.get("direction", "").startswith("bb_")]
-    full_closes = [t for t in closed if t.get("direction") not in ("trim",) and not t.get("direction", "").startswith("bb_")]
+    bb2_trades = [t for t in closed if t.get("direction", "").startswith("bb2_")]
+    reentry_trades = [t for t in closed if t.get("direction") == "reentry"]
+    supplementary_dirs = {"trim", "bb_long", "bb_short", "bb2_long", "bb2_short", "reentry", "dca_entry"}
+    full_closes = [t for t in closed if t.get("direction") not in supplementary_dirs]
 
     if not full_closes and not open_trades and not trims:
         print(f"\n  📊 {coingecko_id}: No trades generated")
@@ -1368,6 +2442,7 @@ def run_backtest(
     df_cached: pd.DataFrame | None = None,
     quiet: bool = False,
     btc_df: pd.DataFrame | None = None,
+    source: str = "hyperliquid",
 ) -> list[dict]:
     """Run the full backtest pipeline for a single asset.
 
@@ -1375,6 +2450,7 @@ def run_backtest(
         df_cached: Pre-fetched price DataFrame (avoids redundant API calls in compare mode)
         quiet: Suppress per-trade output (used in compare mode)
         btc_df: Pre-calculated BTC indicator DataFrame for crash detection on altcoins
+        source: Data source — "hyperliquid" (default, primary) or "coingecko" (fallback)
     """
     is_btc = coingecko_id == "bitcoin"
 
@@ -1382,7 +2458,7 @@ def run_backtest(
     if df_cached is not None:
         df = df_cached.copy()
     else:
-        df = fetch_historical_ohlc(coingecko_id, days)
+        df = fetch_ohlc(coingecko_id, days, source=source)
 
     # 2. Calculate indicators (including EMA cross detection)
     df = calculate_indicators(df, config=config)
@@ -1407,10 +2483,19 @@ def run_backtest(
     shorts = [t for t in trades if t.get("direction") == "short"]
     trims = [t for t in trades if t.get("direction") == "trim"]
     bb_trades = [t for t in trades if t.get("direction", "").startswith("bb_")]
+    bb2_trades = [t for t in trades if t.get("direction", "").startswith("bb2_")]
+    reentries = [t for t in trades if t.get("direction") == "reentry"]
+    dca_fills = [t for t in trades if t.get("direction") == "dca_entry"]
     if not quiet:
         msg = f"  Generated {len(trades)} trades ({len(longs)} long, {len(shorts)} short, {len(trims)} trims"
         if bb_trades:
-            msg += f", {len(bb_trades)} BB complementary"
+            msg += f", {len(bb_trades)} BB"
+        if bb2_trades:
+            msg += f", {len(bb2_trades)} BB2"
+        if reentries:
+            msg += f", {len(reentries)} re-entries"
+        if dca_fills:
+            msg += f", {len(dca_fills)} DCA fills"
         msg += ")"
         print(msg)
 
@@ -1436,20 +2521,30 @@ def extract_metrics(trades: list[dict]) -> dict:
     opens = [t for t in trades if t["status"] == "open"]
     trims = [t for t in closed if t.get("direction") == "trim"]
     bb_trades = [t for t in closed if t.get("direction", "").startswith("bb_")]
-    full_closes = [t for t in closed if t.get("direction") not in ("trim",) and not t.get("direction", "").startswith("bb_")]
+    bb2_trades = [t for t in closed if t.get("direction", "").startswith("bb2_")]
+    reentry_trades = [t for t in closed if t.get("direction") == "reentry"]
+    dca_fills = [t for t in closed if t.get("direction") == "dca_entry"]
+    trailing_stop_closes = [t for t in closed if t.get("exit_signal_reason") == "trailing_stop"]
+    # Supplementary types to exclude from "full closes" (EMA trades only)
+    supplementary_dirs = {"trim", "bb_long", "bb_short", "bb2_long", "bb2_short", "reentry", "dca_entry"}
+    full_closes = [t for t in closed if t.get("direction") not in supplementary_dirs]
     longs = [t for t in full_closes if t.get("direction") == "long"]
     shorts = [t for t in full_closes if t.get("direction") == "short"]
 
     long_wins = [t for t in longs if t["pnl_pct"] >= 0]
     short_wins = [t for t in shorts if t["pnl_pct"] >= 0]
     bb_wins = [t for t in bb_trades if t["pnl_pct"] >= 0]
+    bb2_wins = [t for t in bb2_trades if t["pnl_pct"] >= 0]
+    reentry_wins = [t for t in reentry_trades if t["pnl_pct"] >= 0]
 
     total_pnl_usd = sum(t.get("pnl_usd", 0) for t in closed)
     trim_pnl_usd = sum(t.get("pnl_usd", 0) for t in trims)
     bb_pnl_usd = sum(t.get("pnl_usd", 0) for t in bb_trades)
+    bb2_pnl_usd = sum(t.get("pnl_usd", 0) for t in bb2_trades)
+    reentry_pnl_usd = sum(t.get("pnl_usd", 0) for t in reentry_trades)
     open_pnl_usd = sum(t.get("pnl_usd", 0) for t in opens)
 
-    # Win rate includes EMA trades only (BB trades are supplementary)
+    # Win rate includes EMA trades only (BB/BB2/reentry are supplementary)
     win_rate = (
         (len(long_wins) + len(short_wins)) / len(full_closes) * 100
         if full_closes
@@ -1472,8 +2567,8 @@ def extract_metrics(trades: list[dict]) -> dict:
     all_pnls = [t["pnl_pct"] for t in full_closes]
     max_loss = min(all_pnls) if all_pnls else 0
 
-    # Total trade count (for frequency analysis)
-    total_signals = len(full_closes) + len(bb_trades)
+    # Total trade count (for frequency analysis — all actionable trades)
+    total_signals = len(full_closes) + len(bb_trades) + len(bb2_trades) + len(reentry_trades)
 
     return {
         "full_trades": len(full_closes),
@@ -1481,15 +2576,25 @@ def extract_metrics(trades: list[dict]) -> dict:
         "bb_trades": len(bb_trades),
         "bb_wins": len(bb_wins),
         "bb_pnl_usd": bb_pnl_usd,
+        "bb2_trades": len(bb2_trades),
+        "bb2_wins": len(bb2_wins),
+        "bb2_pnl_usd": bb2_pnl_usd,
+        "reentries": len(reentry_trades),
+        "reentry_wins": len(reentry_wins),
+        "reentry_pnl_usd": reentry_pnl_usd,
+        "dca_fills": len(dca_fills),
         "open_trades": len(opens),
         "longs": len(longs),
         "shorts": len(shorts),
         "long_wins": len(long_wins),
         "short_wins": len(short_wins),
         "win_rate": win_rate,
+        "long_win_rate": len(long_wins) / len(longs) * 100 if longs else 0,
+        "short_win_rate": len(short_wins) / len(shorts) * 100 if shorts else 0,
+        "trailing_stop_closes": len(trailing_stop_closes),
         "total_pnl_usd": total_pnl_usd,
         "trim_pnl_usd": trim_pnl_usd,
-        "close_pnl_usd": total_pnl_usd - trim_pnl_usd - bb_pnl_usd,
+        "close_pnl_usd": total_pnl_usd - trim_pnl_usd - bb_pnl_usd - bb2_pnl_usd - reentry_pnl_usd,
         "open_pnl_usd": open_pnl_usd,
         "avg_duration_days": avg_duration,
         "max_single_loss_pct": max_loss,
@@ -1528,10 +2633,22 @@ def print_comparison(
         ("Trim trades", f"{metrics_a['trims']}", f"{metrics_b['trims']}", None),
         ("BB complementary trades", f"{metrics_a.get('bb_trades', 0)}", f"{metrics_b.get('bb_trades', 0)}",
          delta(metrics_a.get("bb_trades", 0), metrics_b.get("bb_trades", 0), "+.0f")),
+        ("BB2 improved trades", f"{metrics_a.get('bb2_trades', 0)}", f"{metrics_b.get('bb2_trades', 0)}",
+         delta(metrics_a.get("bb2_trades", 0), metrics_b.get("bb2_trades", 0), "+.0f")),
+        ("Re-entries", f"{metrics_a.get('reentries', 0)}", f"{metrics_b.get('reentries', 0)}",
+         delta(metrics_a.get("reentries", 0), metrics_b.get("reentries", 0), "+.0f")),
+        ("DCA fills", f"{metrics_a.get('dca_fills', 0)}", f"{metrics_b.get('dca_fills', 0)}",
+         delta(metrics_a.get("dca_fills", 0), metrics_b.get("dca_fills", 0), "+.0f")),
         ("Total signals", f"{metrics_a.get('total_signals', 0)}", f"{metrics_b.get('total_signals', 0)}",
          delta(metrics_a.get("total_signals", 0), metrics_b.get("total_signals", 0), "+.0f")),
+        ("Trailing stop closes", f"{metrics_a.get('trailing_stop_closes', 0)}", f"{metrics_b.get('trailing_stop_closes', 0)}",
+         delta(metrics_a.get("trailing_stop_closes", 0), metrics_b.get("trailing_stop_closes", 0), "+.0f")),
         ("Win rate (EMA)", f"{metrics_a['win_rate']:.0f}%", f"{metrics_b['win_rate']:.0f}%",
          delta(metrics_a["win_rate"], metrics_b["win_rate"], "+.0f")),
+        ("  Long win rate", f"{metrics_a.get('long_win_rate', 0):.0f}%", f"{metrics_b.get('long_win_rate', 0):.0f}%",
+         delta(metrics_a.get("long_win_rate", 0), metrics_b.get("long_win_rate", 0), "+.0f")),
+        ("  Short win rate", f"{metrics_a.get('short_win_rate', 0):.0f}%", f"{metrics_b.get('short_win_rate', 0):.0f}%",
+         delta(metrics_a.get("short_win_rate", 0), metrics_b.get("short_win_rate", 0), "+.0f")),
         ("Avg duration (days)", f"{metrics_a['avg_duration_days']:.0f}", f"{metrics_b['avg_duration_days']:.0f}",
          delta(metrics_a["avg_duration_days"], metrics_b["avg_duration_days"], "+.0f")),
         ("Max single loss", f"{metrics_a['max_single_loss_pct']:+.1f}%", f"{metrics_b['max_single_loss_pct']:+.1f}%",
@@ -1545,6 +2662,10 @@ def print_comparison(
          delta(metrics_a["trim_pnl_usd"], metrics_b["trim_pnl_usd"], "+,.0f")),
         ("  from BB trades", f"${metrics_a.get('bb_pnl_usd', 0):+,.0f}", f"${metrics_b.get('bb_pnl_usd', 0):+,.0f}",
          delta(metrics_a.get("bb_pnl_usd", 0), metrics_b.get("bb_pnl_usd", 0), "+,.0f")),
+        ("  from BB2 trades", f"${metrics_a.get('bb2_pnl_usd', 0):+,.0f}", f"${metrics_b.get('bb2_pnl_usd', 0):+,.0f}",
+         delta(metrics_a.get("bb2_pnl_usd", 0), metrics_b.get("bb2_pnl_usd", 0), "+,.0f")),
+        ("  from re-entries", f"${metrics_a.get('reentry_pnl_usd', 0):+,.0f}", f"${metrics_b.get('reentry_pnl_usd', 0):+,.0f}",
+         delta(metrics_a.get("reentry_pnl_usd", 0), metrics_b.get("reentry_pnl_usd", 0), "+,.0f")),
         ("USD P&L (open)", f"${metrics_a['open_pnl_usd']:+,.0f}", f"${metrics_b['open_pnl_usd']:+,.0f}",
          delta(metrics_a["open_pnl_usd"], metrics_b["open_pnl_usd"], "+,.0f")),
     ]
@@ -1612,8 +2733,8 @@ def apply_circuit_breaker(
 
             for t in trades:
                 direction = t.get("direction", "long")
-                if direction == "trim" or direction.startswith("bb_"):
-                    continue  # skip trims and BB trades for circuit breaker calc
+                if direction in ("trim", "dca_entry", "reentry") or direction.startswith("bb_") or direction.startswith("bb2_"):
+                    continue  # skip supplementary trades for circuit breaker calc
 
                 entry_date_str = t.get("entry_date", "")
                 exit_date_str = t.get("exit_date") or "9999-12-31"
@@ -1685,10 +2806,213 @@ def apply_circuit_breaker(
     return all_asset_trades
 
 
-def run_comparison(assets: list[dict], days: int) -> None:
-    """Run A/B comparison: current config vs improved config on same price data."""
-    config_a = SIGNAL_CONFIG
-    config_b = IMPROVED_CONFIG
+# ---------------------------------------------------------------------------
+# Volatile period analysis
+# ---------------------------------------------------------------------------
+
+
+def identify_volatile_periods(
+    df: pd.DataFrame, n: int = 5, window_days: int = 7
+) -> list[dict]:
+    """
+    Find the N worst drawdown periods in a price DataFrame.
+
+    Slides a `window_days`-wide window across the data, computes peak-to-trough
+    drawdown in each window, and returns the N worst (non-overlapping) periods.
+
+    Returns list of dicts: [{start_date, end_date, drawdown_pct, lowest_price, peak_price}]
+    """
+    if len(df) < window_days:
+        return []
+
+    close = df["close"]
+    periods: list[dict] = []
+
+    for i in range(len(close) - window_days + 1):
+        window = close.iloc[i: i + window_days]
+        peak = window.max()
+        trough = window.min()
+        drawdown = ((trough - peak) / peak) * 100  # negative number
+
+        periods.append({
+            "start_date": df.index[i],
+            "end_date": df.index[i + window_days - 1],
+            "drawdown_pct": round(drawdown, 2),
+            "peak_price": round(peak, 2),
+            "lowest_price": round(trough, 2),
+        })
+
+    # Sort by worst drawdown (most negative first)
+    periods.sort(key=lambda p: p["drawdown_pct"])
+
+    # Deduplicate overlapping windows — keep worst, skip if overlapping
+    selected: list[dict] = []
+    used_dates: set = set()
+
+    for p in periods:
+        # Check if any date in this period's range is already used
+        start = p["start_date"]
+        end = p["end_date"]
+        overlap = False
+        for used in used_dates:
+            if start <= used <= end:
+                overlap = True
+                break
+        if not overlap:
+            selected.append(p)
+            # Mark all dates in range as used
+            idx = df.index.tolist()
+            for d in idx:
+                if start <= d <= end:
+                    used_dates.add(d)
+        if len(selected) >= n:
+            break
+
+    return selected
+
+
+def measure_period_performance(
+    trades: list[dict], start_date, end_date
+) -> dict:
+    """
+    Measure trade performance within a specific date window.
+
+    Includes trades that were open during any part of the period:
+    - Fully within the period (entry and exit both in range)
+    - Partially overlapping (open before, closed during; or opened during, still open)
+
+    Returns: {trades_active, pnl_usd, trades_closed, trades_opened}
+    """
+    start_str = str(start_date)
+    end_str = str(end_date)
+
+    active_trades = []
+    for t in trades:
+        entry = t.get("entry_date", "")
+        exit_d = t.get("exit_date") or "9999-12-31"
+        direction = t.get("direction", "long")
+
+        # Skip trims for the main P&L calculation (they're partial)
+        if direction == "trim":
+            continue
+
+        # Trade is active during this period if it overlaps
+        if entry <= end_str and exit_d >= start_str:
+            active_trades.append(t)
+
+    # Calculate P&L from trades closed during the period
+    closed_in_period = [
+        t for t in active_trades
+        if t.get("exit_date") and start_str <= t["exit_date"] <= end_str
+        and t["status"] == "closed"
+    ]
+    opened_in_period = [
+        t for t in active_trades
+        if start_str <= t.get("entry_date", "") <= end_str
+    ]
+
+    pnl_usd = sum(t.get("pnl_usd", 0) for t in closed_in_period)
+
+    # Also count trims that happened during the period
+    trims_in_period = [
+        t for t in trades
+        if t.get("direction") == "trim"
+        and t.get("exit_date") and start_str <= t["exit_date"] <= end_str
+    ]
+    trim_pnl = sum(t.get("pnl_usd", 0) for t in trims_in_period)
+
+    return {
+        "trades_active": len(active_trades),
+        "trades_closed": len(closed_in_period),
+        "trades_opened": len(opened_in_period),
+        "trims": len(trims_in_period),
+        "pnl_usd": round(pnl_usd, 2),
+        "trim_pnl_usd": round(trim_pnl, 2),
+        "total_pnl_usd": round(pnl_usd + trim_pnl, 2),
+    }
+
+
+def compute_buy_and_hold(df: pd.DataFrame) -> float:
+    """Compute buy-and-hold return % over the entire DataFrame period."""
+    if len(df) < 2:
+        return 0.0
+    first = df["close"].iloc[0]
+    last = df["close"].iloc[-1]
+    return round(((last - first) / first) * 100, 2)
+
+
+def print_volatile_period_report(
+    periods: list[dict],
+    baseline_trades: list[dict],
+    proposed_trades: list[dict],
+    asset_name: str,
+    baseline_name: str = "Baseline",
+    proposed_name: str = "Proposed",
+) -> None:
+    """Print side-by-side performance during volatile periods."""
+    if not periods:
+        print(f"\n  No volatile periods identified for {asset_name}")
+        return
+
+    print(f"\n  {'─' * 80}")
+    print(f"  VOLATILE PERIOD ANALYSIS: {asset_name}")
+    print(f"  {'─' * 80}")
+    print(f"  {'Period':<22} {'Drawdown':>10} {'':>4} {baseline_name:>16} {proposed_name:>16} {'Delta':>10}")
+    print(f"  {'─' * 80}")
+
+    total_baseline = 0.0
+    total_proposed = 0.0
+
+    for i, period in enumerate(periods):
+        start = period["start_date"]
+        end = period["end_date"]
+        dd = period["drawdown_pct"]
+
+        baseline_perf = measure_period_performance(baseline_trades, start, end)
+        proposed_perf = measure_period_performance(proposed_trades, start, end)
+
+        b_pnl = baseline_perf["total_pnl_usd"]
+        p_pnl = proposed_perf["total_pnl_usd"]
+        delta = p_pnl - b_pnl
+
+        total_baseline += b_pnl
+        total_proposed += p_pnl
+
+        better = "▲" if delta > 0 else ("▼" if delta < 0 else "─")
+        date_str = f"{start} → {end}"
+
+        print(
+            f"  {date_str:<22} {dd:>+9.1f}% {'':>4} ${b_pnl:>+14,.0f} ${p_pnl:>+14,.0f} {better} ${abs(delta):>7,.0f}"
+        )
+
+    print(f"  {'─' * 80}")
+    total_delta = total_proposed - total_baseline
+    better = "▲" if total_delta > 0 else ("▼" if total_delta < 0 else "─")
+    print(
+        f"  {'TOTAL':<22} {'':>10} {'':>4} ${total_baseline:>+14,.0f} ${total_proposed:>+14,.0f} {better} ${abs(total_delta):>7,.0f}"
+    )
+    print(f"  {'─' * 80}")
+
+    if total_delta > 0:
+        print(f"  ✅ Proposed config performed ${total_delta:,.0f} BETTER during volatile periods")
+    elif total_delta < 0:
+        print(f"  ❌ Proposed config performed ${abs(total_delta):,.0f} WORSE during volatile periods")
+    else:
+        print(f"  ─ No difference during volatile periods")
+
+
+def run_comparison(
+    assets: list[dict],
+    days: int,
+    config_a: dict | None = None,
+    config_b: dict | None = None,
+    source: str = "hyperliquid",
+) -> None:
+    """Run A/B comparison on same price data. Defaults to SIGNAL_CONFIG vs IMPROVED_CONFIG."""
+    if config_a is None:
+        config_a = SIGNAL_CONFIG
+    if config_b is None:
+        config_b = IMPROVED_CONFIG
 
     print("\n" + "=" * 74)
     print(f"  A/B COMPARISON: {config_a['name']} vs {config_b['name']}")
@@ -1714,6 +3038,37 @@ def run_comparison(assets: list[dict], days: int) -> None:
         ("rsi_bb_hold_days", "RSI BB hold days"),
         ("rsi_bb_trend_filter", "BB trend filter (SMA-50)"),
         ("rsi_bb_cooldown_days", "BB cooldown after stop"),
+        ("confirmation_bars", "Confirmation gate (bars)"),
+        ("rsi_velocity_enabled", "RSI velocity detection"),
+        ("rsi_velocity_threshold", "RSI velocity threshold"),
+        ("rsi_velocity_action", "RSI velocity action"),
+        # V5 strategy params
+        ("profit_ladder_enabled", "Profit ladder"),
+        ("profit_ladder_levels", "Ladder levels (%)"),
+        ("profit_ladder_fractions", "Ladder fractions"),
+        ("pullback_reentry", "Pullback re-entry"),
+        ("pullback_ema_buffer_pct", "Pullback EMA buffer %"),
+        ("pullback_min_profit_pct", "Pullback min profit %"),
+        ("pullback_add_frac", "Pullback add fraction"),
+        ("pullback_max_adds", "Pullback max adds"),
+        ("dca_enabled", "DCA scaling"),
+        ("dca_tranches", "DCA tranches"),
+        ("dca_interval_bars", "DCA interval (bars)"),
+        ("dca_max_adverse_pct", "DCA max adverse %"),
+        ("bb_improved", "Improved BB (BB2)"),
+        ("bb_improved_lookback", "BB2 lookback"),
+        ("bb_improved_std_mult", "BB2 std multiplier"),
+        ("bb_improved_hold_days", "BB2 hold days"),
+        ("bb_improved_stop_pct", "BB2 stop %"),
+        ("bb_improved_position_mult", "BB2 position mult"),
+        ("bb_improved_cooldown_days", "BB2 cooldown days"),
+        # V6 short profit capture params
+        ("trailing_stop_short", "Trailing stop (shorts)"),
+        ("trailing_stop_activation_pct", "Trail activation %"),
+        ("trailing_stop_trail_pct", "Trail distance %"),
+        ("short_ladder_levels", "Short ladder levels"),
+        ("short_ladder_fractions", "Short ladder fractions"),
+        ("pullback_reentry_short", "Short re-entry enabled"),
     ]
     for key, label in diff_keys:
         va = config_a.get(key, "n/a")
@@ -1729,17 +3084,19 @@ def run_comparison(assets: list[dict], days: int) -> None:
         btc_asset = next((a for a in assets if a["coingecko_id"] == "bitcoin"), None)
         if btc_asset:
             print(f"\n  Pre-fetching BTC data for crash filter...")
-            btc_raw = fetch_historical_ohlc("bitcoin", days)
+            btc_raw = fetch_ohlc("bitcoin", days, source=source)
             btc_df_for_crash = calculate_indicators(btc_raw, config=config_a)
             print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
-            time.sleep(CG_SLEEP_SECONDS)
+            if source == "coingecko":
+                time.sleep(CG_SLEEP_SECONDS)
         else:
             # Fetch BTC separately for the crash filter
             print(f"\n  Pre-fetching BTC data for crash filter (BTC not in asset list)...")
-            btc_raw = fetch_historical_ohlc("bitcoin", days)
+            btc_raw = fetch_ohlc("bitcoin", days, source=source)
             btc_df_for_crash = calculate_indicators(btc_raw, config=config_a)
             print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
-            time.sleep(CG_SLEEP_SECONDS)
+            if source == "coingecko":
+                time.sleep(CG_SLEEP_SECONDS)
 
     # Per-asset trades and indicator DataFrames (needed for circuit breaker)
     per_asset_trades_a: dict[str, list[dict]] = {}
@@ -1756,7 +3113,7 @@ def run_comparison(assets: list[dict], days: int) -> None:
         print(f"{'─' * 74}")
 
         # Fetch price data ONCE
-        df_raw = fetch_historical_ohlc(cg_id, days)
+        df_raw = fetch_ohlc(cg_id, days, source=source)
 
         # Store indicator DataFrame for circuit breaker price lookups
         df_indicators = calculate_indicators(df_raw.copy(), config=config_b)
@@ -1777,8 +3134,8 @@ def run_comparison(assets: list[dict], days: int) -> None:
         per_asset_trades_a[cg_id] = trades_a
         per_asset_trades_b[cg_id] = trades_b
 
-        # Rate limit
-        if i < len(assets) - 1:
+        # Rate limit (only needed for CoinGecko; Hyperliquid is fast with generous limits)
+        if i < len(assets) - 1 and source == "coingecko":
             print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
             time.sleep(CG_SLEEP_SECONDS)
 
@@ -1841,6 +3198,46 @@ def run_comparison(assets: list[dict], days: int) -> None:
         print(f"\n  ❌ Current config outperforms on this data set.")
     print(f"{'=' * 74}")
 
+    # ── Buy-and-hold comparison ──
+    print(f"\n{'=' * 74}")
+    print(f"  BUY-AND-HOLD COMPARISON")
+    print(f"{'=' * 74}")
+    print(f"  {'Asset':<20} {'Buy & Hold':>12} {config_a['name']:>18} {config_b['name']:>18}")
+    print(f"  {'─' * 70}")
+    for asset in assets:
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+        df = per_asset_dfs.get(cg_id)
+        bnh = compute_buy_and_hold(df) if df is not None else 0.0
+        a_pnl = extract_metrics(per_asset_trades_a[cg_id])["total_pnl_usd"]
+        b_pnl = extract_metrics(per_asset_trades_b[cg_id])["total_pnl_usd"]
+        # Convert USD P&L to % of position for fair comparison
+        a_pct = a_pnl / POSITION_SIZE_USD * 100 if POSITION_SIZE_USD else 0
+        b_pct = b_pnl / POSITION_SIZE_USD * 100 if POSITION_SIZE_USD else 0
+        print(f"  {symbol:<20} {bnh:>+11.1f}% {a_pct:>+17.1f}% {b_pct:>+17.1f}%")
+    print(f"{'=' * 74}")
+
+    # ── Volatile period analysis (per asset) ──
+    print(f"\n{'=' * 74}")
+    print(f"  VOLATILE PERIOD ANALYSIS (5 worst drawdowns per asset)")
+    print(f"{'=' * 74}")
+    for asset in assets:
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+        df = per_asset_dfs.get(cg_id)
+        if df is None:
+            continue
+
+        periods = identify_volatile_periods(df, n=5, window_days=7)
+        trades_a = per_asset_trades_a[cg_id]
+        trades_b = per_asset_trades_b[cg_id]
+
+        print_volatile_period_report(
+            periods, trades_a, trades_b, symbol,
+            baseline_name=config_a["name"],
+            proposed_name=config_b["name"],
+        )
+
 
 def _print_trade_log(trades: list[dict]) -> None:
     """Compact trade log for comparison output."""
@@ -1854,7 +3251,22 @@ def _print_trade_log(trades: list[dict]) -> None:
         direction = t.get("direction", "long")
         if direction == "trim":
             trim_pct = t.get("trim_pct", 0)
-            print(f"    🟡 TRIM   {t['exit_date']}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  (trimmed {trim_pct:.0f}%)")
+            reason = t.get("exit_signal_reason", "")
+            ladder_tag = " [ladder]" if "ladder_" in reason else ""
+            print(f"    🟡 TRIM   {t['exit_date']}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  (trimmed {trim_pct:.0f}%{ladder_tag})")
+        elif direction == "dca_entry":
+            reason = t.get("entry_signal_reason", "")
+            print(f"    📊 DCA    {t['entry_date']}  ${t['entry_price']:,.0f}  ({reason})")
+        elif direction == "reentry":
+            emoji = "🔄" if t["pnl_pct"] >= 0 else "🔃"
+            reason = t.get("exit_signal_reason", "")
+            exit_date = t.get("exit_date", "now")
+            print(f"    {emoji} RE-EN {t['entry_date']} → {exit_date}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  ({reason})")
+        elif direction.startswith("bb2_"):
+            bb_dir = "BB2↑" if direction == "bb2_long" else "BB2↓"
+            emoji = "🔵" if t["pnl_pct"] >= 0 else "🔴"
+            reason = t.get("exit_signal_reason", "")
+            print(f"    {emoji} {bb_dir:5s} {t['entry_date']} → {t['exit_date']}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  ({reason})")
         elif direction.startswith("bb_"):
             bb_dir = "BB↑" if direction == "bb_long" else "BB↓"
             emoji = "🔵" if t["pnl_pct"] >= 0 else "🔴"
@@ -1862,18 +3274,30 @@ def _print_trade_log(trades: list[dict]) -> None:
             print(f"    {emoji} {bb_dir:5s} {t['entry_date']} → {t['exit_date']}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  ({reason})")
         else:
             arrow = "LONG " if direction == "long" else "SHORT"
-            emoji = "✅" if t["pnl_pct"] >= 0 else "❌"
             reason = t.get("exit_signal_reason", "")
+            if reason == "trailing_stop":
+                emoji = "🎯"  # Trailing stop — profit captured
+            elif t["pnl_pct"] >= 0:
+                emoji = "✅"
+            else:
+                emoji = "❌"
             remaining = t.get("remaining_pct")
             rem = f" [{remaining:.0f}%rem]" if remaining is not None and remaining < 100 else ""
             print(f"    {emoji} {arrow} {t['entry_date']} → {t['exit_date']}  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  ({reason}){rem}")
 
     for t in opens:
         direction = t.get("direction", "long")
-        if direction.startswith("bb_"):
+        if direction.startswith("bb2_"):
+            bb_dir = "BB2↑" if direction == "bb2_long" else "BB2↓"
+            emoji = "📈" if t["pnl_pct"] >= 0 else "📉"
+            print(f"    {emoji} {bb_dir:5s} {t['entry_date']} → now       {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  (open)")
+        elif direction.startswith("bb_"):
             bb_dir = "BB↑" if direction == "bb_long" else "BB↓"
             emoji = "📈" if t["pnl_pct"] >= 0 else "📉"
             print(f"    {emoji} {bb_dir:5s} {t['entry_date']} → now       {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  (open)")
+        elif direction == "reentry":
+            emoji = "🔄" if t["pnl_pct"] >= 0 else "🔃"
+            print(f"    {emoji} RE-EN {t['entry_date']} → now       {t['pnl_pct']:+.1f}% ${t.get('pnl_usd',0):+,.0f}  (open)")
         else:
             arrow = "LONG " if direction == "long" else "SHORT"
             emoji = "📈" if t["pnl_pct"] >= 0 else "📉"
@@ -1890,6 +3314,13 @@ def _aggregate_metrics(metrics_list: list[dict]) -> dict:
         "bb_trades": sum(m.get("bb_trades", 0) for m in metrics_list),
         "bb_wins": sum(m.get("bb_wins", 0) for m in metrics_list),
         "bb_pnl_usd": sum(m.get("bb_pnl_usd", 0) for m in metrics_list),
+        "bb2_trades": sum(m.get("bb2_trades", 0) for m in metrics_list),
+        "bb2_wins": sum(m.get("bb2_wins", 0) for m in metrics_list),
+        "bb2_pnl_usd": sum(m.get("bb2_pnl_usd", 0) for m in metrics_list),
+        "reentries": sum(m.get("reentries", 0) for m in metrics_list),
+        "reentry_wins": sum(m.get("reentry_wins", 0) for m in metrics_list),
+        "reentry_pnl_usd": sum(m.get("reentry_pnl_usd", 0) for m in metrics_list),
+        "dca_fills": sum(m.get("dca_fills", 0) for m in metrics_list),
         "open_trades": sum(m["open_trades"] for m in metrics_list),
         "longs": sum(m["longs"] for m in metrics_list),
         "shorts": sum(m["shorts"] for m in metrics_list),
@@ -1901,11 +3332,22 @@ def _aggregate_metrics(metrics_list: list[dict]) -> dict:
         "open_pnl_usd": sum(m["open_pnl_usd"] for m in metrics_list),
         "max_single_loss_pct": min(m["max_single_loss_pct"] for m in metrics_list),
         "total_signals": sum(m.get("total_signals", 0) for m in metrics_list),
+        "trailing_stop_closes": sum(m.get("trailing_stop_closes", 0) for m in metrics_list),
     }
     total_full = agg["full_trades"]
     agg["win_rate"] = (
         (agg["long_wins"] + agg["short_wins"]) / total_full * 100
         if total_full > 0
+        else 0
+    )
+    agg["long_win_rate"] = (
+        agg["long_wins"] / agg["longs"] * 100
+        if agg["longs"] > 0
+        else 0
+    )
+    agg["short_win_rate"] = (
+        agg["short_wins"] / agg["shorts"] * 100
+        if agg["shorts"] > 0
         else 0
     )
     durations = [m["avg_duration_days"] for m in metrics_list if m["full_trades"] > 0]
@@ -1942,10 +3384,10 @@ def simulate_compounding_single_pool(
 
     for cg_id, trades in all_asset_trades.items():
         for t in trades:
-            # Skip trims and BB trades for the single-pool sim —
+            # Skip supplementary trades for the single-pool sim —
             # they represent partial actions on a position already tracked
             direction = t.get("direction", "long")
-            if direction == "trim" or direction.startswith("bb_"):
+            if direction in ("trim", "dca_entry", "reentry") or direction.startswith("bb_") or direction.startswith("bb2_"):
                 continue
 
             events.append({
@@ -2253,6 +3695,7 @@ def run_compounding_sim(
     days: int,
     starting_capital: float = 1000.0,
     config: dict = IMPROVED_CONFIG,
+    source: str = "hyperliquid",
 ) -> None:
     """Run backtest with compounding capital simulation."""
 
@@ -2266,10 +3709,9 @@ def run_compounding_sim(
     btc_df_for_crash: pd.DataFrame | None = None
     if config.get("btc_crash_filter", False):
         print(f"\n  Pre-fetching BTC data for crash filter...")
-        btc_raw = fetch_historical_ohlc("bitcoin", days)
+        btc_raw = fetch_ohlc("bitcoin", days, source=source)
         btc_df_for_crash = calculate_indicators(btc_raw, config=config)
         print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
-        time.sleep(CG_SLEEP_SECONDS)
 
     # Run per-asset backtests (standard fixed-size — percentages are what matter)
     all_asset_trades: dict[str, list[dict]] = {}
@@ -2289,10 +3731,11 @@ def run_compounding_sim(
             cg_id, asset["id"], days,
             dry_run=True, config=config,
             quiet=False, btc_df=None if is_btc else btc_df_for_crash,
+            source=source,
         )
         all_asset_trades[cg_id] = trades
 
-        if i < len(assets) - 1:
+        if i < len(assets) - 1 and source == "coingecko":
             print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
             time.sleep(CG_SLEEP_SECONDS)
 
@@ -2339,7 +3782,7 @@ def simulate_leverage_scenario(
     for cg_id, trades in all_asset_trades.items():
         for t in trades:
             direction = t.get("direction", "long")
-            if direction == "trim" or direction.startswith("bb_"):
+            if direction in ("trim", "dca_entry", "reentry") or direction.startswith("bb_") or direction.startswith("bb2_"):
                 continue
             events.append({
                 "cg_id": cg_id,
@@ -2617,6 +4060,7 @@ def run_leverage_sim(
     days: int,
     starting_capital: float = 1000.0,
     config: dict = IMPROVED_CONFIG,
+    source: str = "hyperliquid",
 ) -> None:
     """Run all 3 leverage scenarios and compare results."""
 
@@ -2631,10 +4075,9 @@ def run_leverage_sim(
     btc_df_for_crash: pd.DataFrame | None = None
     if config.get("btc_crash_filter", False):
         print(f"\n  Pre-fetching BTC data for crash filter...")
-        btc_raw = fetch_historical_ohlc("bitcoin", days)
+        btc_raw = fetch_ohlc("bitcoin", days, source=source)
         btc_df_for_crash = calculate_indicators(btc_raw, config=config)
         print(f"  BTC data ready ({len(btc_df_for_crash)} rows)")
-        time.sleep(CG_SLEEP_SECONDS)
 
     # Run per-asset backtests
     all_asset_trades: dict[str, list[dict]] = {}
@@ -2650,7 +4093,7 @@ def run_leverage_sim(
         print(f"  [{i + 1}/{len(assets)}] {symbol} ({cg_id})")
         print(f"{'─' * 80}")
 
-        df_raw = fetch_historical_ohlc(cg_id, days)
+        df_raw = fetch_ohlc(cg_id, days, source=source)
         df_indicators = calculate_indicators(df_raw.copy(), config=config)
         all_asset_dfs[cg_id] = df_indicators
 
@@ -2659,11 +4102,12 @@ def run_leverage_sim(
             cg_id, asset["id"], days,
             dry_run=True, config=config,
             quiet=True, btc_df=None if is_btc else btc_df_for_crash,
+            source=source,
         )
         all_asset_trades[cg_id] = trades
         print(f"  {len(trades)} trades generated")
 
-        if i < len(assets) - 1:
+        if i < len(assets) - 1 and source == "coingecko":
             print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for rate limit...")
             time.sleep(CG_SLEEP_SECONDS)
 
@@ -2685,7 +4129,7 @@ def run_leverage_sim(
 # ---------------------------------------------------------------------------
 
 
-def run_stress_test(assets: list[dict], days: int, event_date: str) -> None:
+def run_stress_test(assets: list[dict], days: int, event_date: str, source: str = "hyperliquid") -> None:
     """Analyze how each config handled a specific date (black swan event).
 
     For each asset × config, shows:
@@ -2717,7 +4161,7 @@ def run_stress_test(assets: list[dict], days: int, event_date: str) -> None:
         print(f"  {symbol} ({cg_id})")
         print(f"{'─' * 74}")
 
-        df_raw = fetch_historical_ohlc(cg_id, days)
+        df_raw = fetch_ohlc(cg_id, days, source=source)
 
         # Get price context around the event
         df_indicators = calculate_indicators(df_raw.copy(), config=SIGNAL_CONFIG)
@@ -2829,9 +4273,17 @@ def run_stress_test(assets: list[dict], days: int, event_date: str) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Vela Backtesting Engine")
     parser.add_argument("--asset", type=str, help="CoinGecko ID (e.g. 'bitcoin')")
-    parser.add_argument("--days", type=int, default=365, help="Lookback period in days (default: 365)")
+    parser.add_argument("--days", type=int, default=730, help="Lookback period in days (default: 730)")
+    parser.add_argument("--source", type=str, default="hyperliquid", choices=["hyperliquid", "coingecko"],
+                        help="Data source (default: hyperliquid — real OHLCV, up to 5000 days)")
     parser.add_argument("--dry-run", action="store_true", help="Print trades without writing to Supabase")
     parser.add_argument("--compare", action="store_true", help="A/B test: current config vs improved config")
+    parser.add_argument("--config-a", type=str, default=None,
+                        help=f"Config A name for --compare (options: {', '.join(NAMED_CONFIGS.keys())})")
+    parser.add_argument("--config-b", type=str, default=None,
+                        help=f"Config B name for --compare (options: {', '.join(NAMED_CONFIGS.keys())})")
+    parser.add_argument("--volatile", action="store_true",
+                        help="Include volatile period analysis in --compare output")
     parser.add_argument("--notify", action="store_true",
                         help="Send Telegram/email notifications for signal changes")
     parser.add_argument("--stress-test", type=str, metavar="YYYY-MM-DD",
@@ -2846,6 +4298,9 @@ def main():
                         help="Delete existing backtest trades before writing new ones")
     args = parser.parse_args()
 
+    # Validate Supabase keys are available (deferred from module-level for testability)
+    _require_supabase_keys()
+
     # ── Leverage simulation mode ──
     if args.leverage:
         assets = fetch_assets()
@@ -2857,7 +4312,8 @@ def main():
         if not assets:
             print("  No assets found.")
             sys.exit(1)
-        run_leverage_sim(assets, args.days, starting_capital=args.capital)
+        lev_config = NAMED_CONFIGS[args.config_a] if args.config_a and args.config_a in NAMED_CONFIGS else IMPROVED_CONFIG
+        run_leverage_sim(assets, args.days, starting_capital=args.capital, config=lev_config, source=args.source)
         return
 
     # ── Compounding simulation mode ──
@@ -2871,7 +4327,8 @@ def main():
         if not assets:
             print("  No assets found.")
             sys.exit(1)
-        run_compounding_sim(assets, args.days, starting_capital=args.capital)
+        comp_config = NAMED_CONFIGS[args.config_a] if args.config_a and args.config_a in NAMED_CONFIGS else IMPROVED_CONFIG
+        run_compounding_sim(assets, args.days, starting_capital=args.capital, config=comp_config, source=args.source)
         return
 
     # ── Stress test mode ──
@@ -2885,7 +4342,7 @@ def main():
         if not assets:
             print("  No assets found.")
             sys.exit(1)
-        run_stress_test(assets, args.days, args.stress_test)
+        run_stress_test(assets, args.days, args.stress_test, source=args.source)
         return
 
     # ── Compare mode ──
@@ -2899,7 +4356,22 @@ def main():
         if not assets:
             print("  No assets found.")
             sys.exit(1)
-        run_comparison(assets, args.days)
+
+        # Resolve config names
+        ca = None
+        cb = None
+        if args.config_a:
+            ca = NAMED_CONFIGS.get(args.config_a)
+            if ca is None:
+                print(f"  ❌ Unknown config-a: '{args.config_a}'. Options: {', '.join(NAMED_CONFIGS.keys())}")
+                sys.exit(1)
+        if args.config_b:
+            cb = NAMED_CONFIGS.get(args.config_b)
+            if cb is None:
+                print(f"  ❌ Unknown config-b: '{args.config_b}'. Options: {', '.join(NAMED_CONFIGS.keys())}")
+                sys.exit(1)
+
+        run_comparison(assets, args.days, config_a=ca, config_b=cb, source=args.source)
         return
 
     # ── Standard mode ──
@@ -2940,7 +4412,7 @@ def main():
                 print(f"  ⚠️  Asset '{args.asset}' not found in Supabase. Use --dry-run or add it first.")
                 sys.exit(1)
 
-        run_backtest(asset["coingecko_id"], asset["id"], args.days, args.dry_run)
+        run_backtest(asset["coingecko_id"], asset["id"], args.days, args.dry_run, source=args.source)
     else:
         # All enabled assets
         assets = fetch_assets()
@@ -2958,14 +4430,15 @@ def main():
 
             try:
                 trades = run_backtest(
-                    asset["coingecko_id"], asset["id"], args.days, args.dry_run
+                    asset["coingecko_id"], asset["id"], args.days, args.dry_run,
+                    source=args.source,
                 )
                 all_trades.extend(trades)
             except Exception as e:
                 print(f"  ❌ Error backtesting {asset['symbol']}: {e}")
 
-            # Rate limit between assets
-            if i < len(assets) - 1:
+            # Rate limit between assets (only needed for CoinGecko)
+            if i < len(assets) - 1 and args.source == "coingecko":
                 print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for CoinGecko rate limit...")
                 time.sleep(CG_SLEEP_SECONDS)
 
