@@ -24,9 +24,36 @@ const navItems = [
     path: '/trades',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        <rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        <rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <rect
+          x="2"
+          y="10"
+          width="4"
+          height="8"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <rect
+          x="8"
+          y="6"
+          width="4"
+          height="12"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
+        <rect
+          x="14"
+          y="2"
+          width="4"
+          height="16"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          fill="none"
+        />
       </svg>
     ),
   },
@@ -78,7 +105,7 @@ export default function Layout() {
             right: 0,
             zIndex: 1000,
             display: 'flex',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
             alignItems: 'center',
             height: 56,
             backgroundColor: 'var(--color-bg-surface)',
@@ -114,6 +141,8 @@ export default function Layout() {
                   justifyContent: 'center',
                   gap: 2,
                   flex: 1,
+                  maxWidth: 168,
+                  minWidth: 80,
                   height: '100%',
                   background: 'none',
                   border: 'none',
