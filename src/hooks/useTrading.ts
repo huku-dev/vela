@@ -229,19 +229,20 @@ export function useTrading(): TradingState {
     [getToken, fetchTradingData]
   );
 
-  // ── Update preferences ──
+  // ── Update preferences (upsert — creates row on first use) ──
   const updatePreferences = useCallback(
     async (updates: Partial<UserPreferences>) => {
       if (!supabaseClient || !user?.privyDid) throw new Error('Not authenticated');
 
-      const { error: updateErr } = await supabaseClient
+      const { data, error: upsertErr } = await supabaseClient
         .from('user_preferences')
-        .update(updates)
-        .eq('user_id', user.privyDid);
+        .upsert({ user_id: user.privyDid, ...updates }, { onConflict: 'user_id' })
+        .select()
+        .single();
 
-      if (updateErr) throw new Error(updateErr.message);
+      if (upsertErr) throw new Error(upsertErr.message);
 
-      setPreferences(prev => (prev ? { ...prev, ...updates } : null));
+      setPreferences(data);
     },
     [supabaseClient, user?.privyDid]
   );

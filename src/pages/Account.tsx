@@ -230,7 +230,6 @@ function TradingPanel() {
     isTradingEnabled,
     hasWallet,
     updatePreferences,
-    enableTrading,
     loading,
     circuitBreakers,
   } = useTrading();
@@ -257,11 +256,7 @@ function TradingPanel() {
     setSaving(true);
     setError(null);
     try {
-      if (mode !== 'view_only' && !hasWallet) {
-        await enableTrading(mode);
-      } else {
-        await updatePreferences({ mode } as Record<string, unknown>);
-      }
+      await updatePreferences({ mode } as Record<string, unknown>);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {
