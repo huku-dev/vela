@@ -17,7 +17,14 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
   const needleY = 70 - 44.8 * Math.sin((needleAngle * Math.PI) / 180);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-1)' }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 'var(--space-1)',
+      }}
+    >
       <svg width="140" height="80" viewBox="0 0 140 80">
         {/* Arc segments - scaled 1.4x, thicker strokes */}
         <path

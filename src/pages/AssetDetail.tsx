@@ -519,8 +519,7 @@ function IndicatorsSection({
   recentBriefs: any[];
 }) {
   const currentPrice = price ?? 0;
-  const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } =
-    indicators;
+  const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
 
   // Find oldest brief with indicators for delta comparison
   const oldestWithIndicators = [...recentBriefs]
@@ -1075,7 +1074,7 @@ function SignalHistoryCard({
         role={hasHistory ? 'button' : undefined}
         tabIndex={hasHistory ? 0 : undefined}
         onClick={() => hasHistory && setExpanded(!expanded)}
-        onKeyDown={(e) => {
+        onKeyDown={e => {
           if (hasHistory && (e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
             setExpanded(!expanded);
@@ -1148,9 +1147,7 @@ function SignalHistoryCard({
           </span>
           <div className="vela-stack" style={{ gap: 'var(--space-2)' }}>
             {groups.map((group, gi) => {
-              const gc = group.signalColor
-                ? groupColorMap[group.signalColor]
-                : groupColorMap.grey;
+              const gc = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
               const leadBrief = group.briefs[0];
               const isFirst = gi === 0;
 
