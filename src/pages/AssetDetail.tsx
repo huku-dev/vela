@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Alert, LoadingSpinner } from '../components/VelaComponents';
 import SignalChip from '../components/SignalChip';
@@ -8,6 +8,7 @@ import TradeProposalCard from '../components/TradeProposalCard';
 import { useAssetDetail } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useBriefRating } from '../hooks/useBriefRating';
 import {
   breakIntoParagraphs,
   formatPrice,
@@ -39,7 +40,7 @@ export default function AssetDetail() {
     assetId!
   );
   const { isAuthenticated } = useAuthContext();
-  const { proposals, acceptProposal, declineProposal } = useTrading();
+  const { proposals, wallet, acceptProposal, declineProposal } = useTrading();
 
   // Email redirect result banner
   const resultParam = searchParams.get('result');
@@ -66,9 +67,13 @@ export default function AssetDetail() {
     }
   }, [resultParam, searchParams, setSearchParams]);
 
-  // Get pending proposals for this asset
+  // Get proposals for this asset — pending (actionable) + recently actioned (status feedback)
   const pendingProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && p.status === 'pending')
+    : [];
+  const IN_FLIGHT_STATUSES = ['approved', 'auto_approved', 'executing', 'executed', 'failed'];
+  const activeProposals = isAuthenticated
+    ? proposals.filter(p => p.asset_id === assetId && IN_FLIGHT_STATUSES.includes(p.status))
     : [];
 
   if (loading && !asset) {
@@ -257,7 +262,7 @@ export default function AssetDetail() {
         </div>
       )}
 
-      {/* Pending trade proposals */}
+      {/* Trade proposals — pending (actionable) + in-flight (status feedback) */}
       {pendingProposals.map(proposal => (
         <div key={proposal.id} style={{ marginBottom: 'var(--space-4)' }}>
           <TradeProposalCard
@@ -265,6 +270,18 @@ export default function AssetDetail() {
             assetSymbol={asset.symbol}
             onAccept={acceptProposal}
             onDecline={declineProposal}
+            walletBalance={wallet?.balance_usdc}
+          />
+        </div>
+      ))}
+      {activeProposals.map(proposal => (
+        <div key={proposal.id} style={{ marginBottom: 'var(--space-4)' }}>
+          <TradeProposalCard
+            proposal={proposal}
+            assetSymbol={asset.symbol}
+            onAccept={acceptProposal}
+            onDecline={declineProposal}
+            walletBalance={wallet?.balance_usdc}
           />
         </div>
       ))}
@@ -313,6 +330,47 @@ export default function AssetDetail() {
         </Card>
       )}
 
+      {/* Events moving markets — only when news events exist */}
+      {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
+        <Card style={{ marginBottom: 'var(--space-4)' }}>
+          <SectionLabel>Events moving markets</SectionLabel>
+          {detail.events_moving_markets.map((event, i) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: i < detail.events_moving_markets!.length - 1 ? 'var(--space-3)' : 0,
+                paddingBottom: i < detail.events_moving_markets!.length - 1 ? 'var(--space-3)' : 0,
+                borderBottom:
+                  i < detail.events_moving_markets!.length - 1
+                    ? '1px solid var(--color-border)'
+                    : 'none',
+              }}
+            >
+              <p
+                className="vela-body-sm"
+                style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}
+              >
+                {event.title}
+              </p>
+              <p
+                className="vela-body-sm"
+                style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}
+              >
+                {event.impact}
+              </p>
+              {event.source && (
+                <p
+                  className="vela-label-sm"
+                  style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}
+                >
+                  {event.source}
+                </p>
+              )}
+            </div>
+          ))}
+        </Card>
+      )}
+
       {/* Tier 3: Why we think this — collapsible */}
       {detail && (
         <WhyWeThinkThis
@@ -324,6 +382,9 @@ export default function AssetDetail() {
           fearGreedLabel={fearGreedLabel}
         />
       )}
+
+      {/* Brief feedback — thumbs up/down */}
+      {isAuthenticated && brief && <BriefFeedback briefId={brief.id} />}
 
       {/* Timestamp — show signal check recency + brief age */}
       {(signal || brief) && (
@@ -754,6 +815,156 @@ function PriceLevelTriggers({
 }
 
 // ── Helper Components ──
+
+// ── Brief feedback — thumbs up/down ──
+
+function BriefFeedback({ briefId }: { briefId: string }) {
+  const { rating, isLoading, isSubmitting, submitRating } = useBriefRating(briefId);
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [showThanks, setShowThanks] = useState(false);
+  const thanksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset local state when briefId changes (new brief = fresh state)
+  useEffect(() => {
+    setShowCommentInput(false);
+    setCommentText('');
+    setShowThanks(false);
+    if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
+  }, [briefId]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
+    };
+  }, []);
+
+  if (isLoading) return null;
+
+  const handleThumbsUp = async () => {
+    if (isSubmitting) return;
+    await submitRating(true);
+    setShowCommentInput(false);
+    setShowThanks(true);
+    thanksTimerRef.current = setTimeout(() => setShowThanks(false), 2000);
+  };
+
+  const handleThumbsDown = async () => {
+    if (isSubmitting) return;
+    await submitRating(false);
+    setShowCommentInput(true);
+  };
+
+  const handleSubmitComment = async () => {
+    if (isSubmitting) return;
+    await submitRating(false, commentText.trim() || undefined);
+    setShowCommentInput(false);
+    setShowThanks(true);
+    thanksTimerRef.current = setTimeout(() => setShowThanks(false), 2000);
+  };
+
+  const thumbSize = 18;
+  const thumbStyle = (active: boolean, color: string): React.CSSProperties => ({
+    fontSize: `${thumbSize}px`,
+    cursor: isSubmitting ? 'default' : 'pointer',
+    opacity: isSubmitting ? 0.5 : 1,
+    filter: active ? 'none' : 'grayscale(100%)',
+    color: active ? color : 'var(--color-text-muted)',
+    background: 'none',
+    border: 'none',
+    padding: 'var(--space-1) var(--space-2)',
+    borderRadius: 'var(--radius-sm)',
+    transition: 'color 0.15s, filter 0.15s',
+  });
+
+  return (
+    <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
+      <p
+        className="vela-label-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+      >
+        Was this analysis helpful?
+      </p>
+
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: 'var(--space-3)',
+          alignItems: 'center',
+        }}
+      >
+        <button
+          onClick={handleThumbsUp}
+          disabled={isSubmitting}
+          style={thumbStyle(rating === true, 'var(--color-signal-buy)')}
+          aria-label="Helpful"
+        >
+          👍
+        </button>
+        <button
+          onClick={handleThumbsDown}
+          disabled={isSubmitting}
+          style={thumbStyle(rating === false, 'var(--color-signal-sell)')}
+          aria-label="Not helpful"
+        >
+          👎
+        </button>
+
+        {showThanks && (
+          <span
+            className="vela-label-sm"
+            style={{ color: 'var(--color-text-muted)', animation: 'fadeIn 0.2s ease-in' }}
+          >
+            Thanks!
+          </span>
+        )}
+      </div>
+
+      {/* Optional comment input on thumbs-down */}
+      {showCommentInput && rating === false && (
+        <div style={{ marginTop: 'var(--space-3)', maxWidth: 320, marginInline: 'auto' }}>
+          <textarea
+            className="vela-body-sm"
+            value={commentText}
+            onChange={e => setCommentText(e.target.value.slice(0, 280))}
+            placeholder="What could be better? (optional)"
+            maxLength={280}
+            rows={2}
+            style={{
+              width: '100%',
+              padding: 'var(--space-2)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--background-primary)',
+              color: 'var(--text-primary)',
+              resize: 'none',
+              fontFamily: 'inherit',
+            }}
+          />
+          <button
+            onClick={handleSubmitComment}
+            disabled={isSubmitting}
+            className="vela-label-sm"
+            style={{
+              marginTop: 'var(--space-2)',
+              padding: 'var(--space-1) var(--space-3)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--background-primary)',
+              color: 'var(--text-primary)',
+              cursor: isSubmitting ? 'default' : 'pointer',
+              opacity: isSubmitting ? 0.5 : 1,
+            }}
+          >
+            Submit
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatTimeAgo(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();

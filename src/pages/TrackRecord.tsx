@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Card, Badge, LoadingSpinner, PageHeader } from '../components/VelaComponents';
 import EmptyState from '../components/EmptyState';
-import { useTrackRecord, DEFAULT_POSITION_SIZE } from '../hooks/useData';
+import { useTrackRecord, DEFAULT_POSITION_SIZE, type EnrichedTrade } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
-import { getCoinIcon, formatPrice } from '../lib/helpers';
+import { getCoinIcon, formatPrice, reasonCodeToPlainEnglish } from '../lib/helpers';
 import {
   calculateUnrealizedPnL,
   pctToDollar,
@@ -12,7 +12,7 @@ import {
   computeDetailedStats,
   formatDurationMs,
 } from '../utils/calculations';
-import type { PaperTrade, TradeDirection, Position } from '../types';
+import type { TradeDirection, Position } from '../types';
 
 type AssetFilter = 'all' | string; // 'all' or asset_id
 
@@ -30,7 +30,7 @@ function isShortTrade(d: TradeDirection | null | undefined): boolean {
 }
 
 export default function TrackRecord() {
-  const { trades, livePrices, assetMap, loading, loadingMore, hasMore, loadMore } =
+  const { trades, bestTrade, livePrices, assetMap, loading, loadingMore, hasMore, loadMore } =
     useTrackRecord();
   const { isAuthenticated } = useAuthContext();
   const { positions } = useTrading();
@@ -95,10 +95,7 @@ export default function TrackRecord() {
         margin: '0 auto',
       }}
     >
-      <PageHeader
-        title="Your Trades"
-        subtitle={`Paper trading · $${DEFAULT_POSITION_SIZE.toLocaleString()} position size`}
-      />
+      <PageHeader title="Vela's Track Record" subtitle="Here's how signals have performed" />
 
       {/* ── Live Positions (authenticated users only) ── */}
       {hasLivePositions && (
@@ -149,160 +146,56 @@ export default function TrackRecord() {
         </div>
       )}
 
-      {/* ── Stats Overview (2×2 grid) ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 'var(--space-2)',
-          marginBottom: 'var(--space-3)',
-        }}
-      >
-        <StatCard label="Balance" value="$—" subtitle="Coming soon" variant="sky" />
-        <StatCard
-          label="Total P&L"
-          value={
-            totalClosed === 0
-              ? '—'
-              : `${totalDollarPnl >= 0 ? '+' : ''}$${Math.abs(totalDollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-          }
-          subtitle={totalClosed > 0 ? `across ${totalClosed} trades` : undefined}
-          variant={totalDollarPnl >= 0 ? 'mint' : 'peach'}
-          valueColor={
-            totalClosed === 0
-              ? undefined
-              : totalDollarPnl >= 0
-                ? 'var(--green-dark)'
-                : 'var(--red-dark)'
-          }
-        />
-        <StatCard
-          label="Trades"
-          value={String(filteredClosed.length + filteredOpen.length)}
-          variant="default"
-        />
-        <StatCard
-          label="Profitable"
-          value={totalClosed === 0 ? '—' : `${detailedStats.wins} of ${totalClosed}`}
-          variant={
-            totalClosed === 0
-              ? 'default'
-              : detailedStats.wins / totalClosed >= 0.5
-                ? 'mint'
-                : 'peach'
-          }
-          valueColor={
-            totalClosed === 0
-              ? undefined
-              : detailedStats.wins / totalClosed >= 0.5
-                ? 'var(--green-dark)'
-                : 'var(--red-dark)'
-          }
-        />
-      </div>
-
-      {/* ── Performance Breakdown (collapsible) ── */}
-      {totalClosed > 0 && (
-        <div style={{ marginBottom: 'var(--space-3)' }}>
-          <button
-            onClick={() => setShowBreakdown(!showBreakdown)}
-            className="vela-btn vela-btn-ghost"
+      {/* ── Narrative Stats ── */}
+      {totalClosed > 0 ? (
+        <Card style={{ marginBottom: 'var(--space-3)' }}>
+          <p
             style={{
-              width: '100%',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: 'var(--space-2) var(--space-3)',
-              marginBottom: showBreakdown ? 'var(--space-2)' : 0,
+              fontFamily: 'var(--type-mono-base-font)',
+              fontWeight: 700,
+              fontSize: 'var(--text-xl)',
+              color: totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+              margin: 0,
+              lineHeight: 1.2,
             }}
           >
-            <span className="vela-label" style={{ color: 'var(--gray-600)' }}>
-              Performance breakdown
-            </span>
-            <span
-              style={{
-                transform: showBreakdown ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s ease',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--gray-400)',
-              }}
-            >
-              ▼
-            </span>
-          </button>
+            {totalDollarPnl >= 0 ? '+' : '-'}$
+            {Math.abs(totalDollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} total{' '}
+            {totalDollarPnl >= 0 ? 'profit' : 'loss'}
+          </p>
+          <p
+            className="vela-body-sm"
+            style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
+          >
+            {totalClosed} trade{totalClosed !== 1 ? 's' : ''} · {detailedStats.wins} profitable
+            {totalClosed > 0 && ` (${Math.round((detailedStats.wins / totalClosed) * 100)}%)`}
+            {filteredOpen.length > 0 && ` · ${filteredOpen.length} open`}
+          </p>
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--gray-400)',
+              margin: 0,
+              marginTop: 'var(--space-2)',
+              fontSize: '0.7rem',
+            }}
+          >
+            Based on ${DEFAULT_POSITION_SIZE.toLocaleString()} per trade. Total is cumulative across
+            all closed trades.
+          </p>
+        </Card>
+      ) : (
+        <Card style={{ marginBottom: 'var(--space-3)' }}>
+          <p className="vela-body-sm" style={{ color: 'var(--gray-500)', margin: 0 }}>
+            No closed trades yet. Signals are running — trades will appear here when positions
+            close.
+          </p>
+        </Card>
+      )}
 
-          {showBreakdown && (
-            <Card compact>
-              {/* Returns */}
-              <SectionLabel>Returns</SectionLabel>
-              <DetailRow
-                label="Avg return per trade"
-                value={`${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
-                valueColor={avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
-              />
-              <DetailRow
-                label="Avg trade size"
-                value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
-              />
-              <DetailRow
-                label="Biggest profit"
-                value={
-                  detailedStats.bestTradeDollar >= 0
-                    ? `+$${detailedStats.bestTradeDollar.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.bestTradeAsset}${detailedStats.bestTradeDate ? ` · ${detailedStats.bestTradeDate}` : ''})`
-                    : '—'
-                }
-                valueColor="var(--green-dark)"
-              />
-              <DetailRow
-                label="Biggest loss"
-                value={
-                  detailedStats.worstTradeDollar < 0
-                    ? `-$${Math.abs(detailedStats.worstTradeDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.worstTradeAsset}${detailedStats.worstTradeDate ? ` · ${detailedStats.worstTradeDate}` : ''})`
-                    : '—'
-                }
-                valueColor={detailedStats.worstTradeDollar < 0 ? 'var(--red-dark)' : undefined}
-              />
-
-              {/* By Direction */}
-              {(detailedStats.longCount > 0 || detailedStats.shortCount > 0) && (
-                <>
-                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>By direction</SectionLabel>
-                  {detailedStats.longCount > 0 && (
-                    <DetailRow
-                      label="Long trades"
-                      value={`${detailedStats.longWins} / ${detailedStats.longCount} profitable (${Math.round((detailedStats.longWins / detailedStats.longCount) * 100)}%)`}
-                    />
-                  )}
-                  {detailedStats.shortCount > 0 && (
-                    <DetailRow
-                      label="Short trades"
-                      value={`${detailedStats.shortWins} / ${detailedStats.shortCount} profitable (${Math.round((detailedStats.shortWins / detailedStats.shortCount) * 100)}%)`}
-                    />
-                  )}
-                </>
-              )}
-
-              {/* Timing */}
-              {detailedStats.avgDurationMs > 0 && (
-                <>
-                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>Timing</SectionLabel>
-                  <DetailRow
-                    label="Avg holding period"
-                    value={formatDurationMs(detailedStats.avgDurationMs)}
-                  />
-                  <DetailRow
-                    label="Longest trade"
-                    value={formatDurationMs(detailedStats.longestDurationMs)}
-                  />
-                  <DetailRow
-                    label="Shortest trade"
-                    value={formatDurationMs(detailedStats.shortestDurationMs)}
-                  />
-                </>
-              )}
-            </Card>
-          )}
-        </div>
+      {/* ── Best Call Hero ── */}
+      {bestTrade && totalClosed >= 3 && (
+        <BestCallCard trade={bestTrade} coingeckoId={assetMap[bestTrade.asset_id]?.coingecko_id} />
       )}
 
       {/* ── Sort By Filter ── */}
@@ -389,6 +282,11 @@ export default function TrackRecord() {
                 currentPrice={getLivePrice(trade.asset_coingecko_id)}
                 coingeckoId={trade.asset_coingecko_id}
                 formatDuration={formatDuration}
+                entryHeadline={
+                  trade.entry_headline ??
+                  reasonCodeToPlainEnglish(trade.entry_reason_code) ??
+                  undefined
+                }
                 expanded={expandedTradeId === trade.id}
                 onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
               />
@@ -397,6 +295,16 @@ export default function TrackRecord() {
                 key={trade.id}
                 trade={trade}
                 coingeckoId={trade.asset_coingecko_id}
+                entryHeadline={
+                  trade.entry_headline ??
+                  reasonCodeToPlainEnglish(trade.entry_reason_code) ??
+                  undefined
+                }
+                exitHeadline={
+                  trade.exit_headline ??
+                  reasonCodeToPlainEnglish(trade.exit_reason_code) ??
+                  undefined
+                }
                 expanded={expandedTradeId === trade.id}
                 onToggle={() => setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)}
               />
@@ -415,6 +323,110 @@ export default function TrackRecord() {
           )}
         </div>
       )}
+
+      {/* ── Performance Breakdown (collapsible, reference data) ── */}
+      {totalClosed > 0 && (
+        <div style={{ marginTop: 'var(--space-4)' }}>
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="vela-btn vela-btn-ghost"
+            style={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: 'var(--space-2) var(--space-3)',
+              marginBottom: showBreakdown ? 'var(--space-2)' : 0,
+            }}
+          >
+            <span className="vela-label" style={{ color: 'var(--gray-600)' }}>
+              Performance breakdown
+            </span>
+            <span
+              style={{
+                transform: showBreakdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s ease',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              &#9660;
+            </span>
+          </button>
+
+          {showBreakdown && (
+            <Card compact>
+              {/* Returns */}
+              <SectionLabel>Returns</SectionLabel>
+              <DetailRow
+                label="Avg return per trade"
+                value={`${avgPnlPct >= 0 ? '+' : ''}${avgPnlPct.toFixed(1)}%`}
+                valueColor={avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
+              />
+              <DetailRow
+                label="Avg trade size"
+                value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`}
+              />
+              <DetailRow
+                label="Biggest profit"
+                value={
+                  detailedStats.bestTradeDollar >= 0
+                    ? `+$${detailedStats.bestTradeDollar.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.bestTradeAsset}${detailedStats.bestTradeDate ? ` · ${detailedStats.bestTradeDate}` : ''})`
+                    : '—'
+                }
+                valueColor="var(--green-dark)"
+              />
+              <DetailRow
+                label="Biggest loss"
+                value={
+                  detailedStats.worstTradeDollar < 0
+                    ? `-$${Math.abs(detailedStats.worstTradeDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${detailedStats.worstTradeAsset}${detailedStats.worstTradeDate ? ` · ${detailedStats.worstTradeDate}` : ''})`
+                    : '—'
+                }
+                valueColor={detailedStats.worstTradeDollar < 0 ? 'var(--red-dark)' : undefined}
+              />
+
+              {/* By Direction */}
+              {(detailedStats.longCount > 0 || detailedStats.shortCount > 0) && (
+                <>
+                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>By direction</SectionLabel>
+                  {detailedStats.longCount > 0 && (
+                    <DetailRow
+                      label="Long trades"
+                      value={`${detailedStats.longWins} / ${detailedStats.longCount} profitable (${Math.round((detailedStats.longWins / detailedStats.longCount) * 100)}%)`}
+                    />
+                  )}
+                  {detailedStats.shortCount > 0 && (
+                    <DetailRow
+                      label="Short trades"
+                      value={`${detailedStats.shortWins} / ${detailedStats.shortCount} profitable (${Math.round((detailedStats.shortWins / detailedStats.shortCount) * 100)}%)`}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Timing */}
+              {detailedStats.avgDurationMs > 0 && (
+                <>
+                  <SectionLabel style={{ marginTop: 'var(--space-3)' }}>Timing</SectionLabel>
+                  <DetailRow
+                    label="Avg holding period"
+                    value={formatDurationMs(detailedStats.avgDurationMs)}
+                  />
+                  <DetailRow
+                    label="Longest trade"
+                    value={formatDurationMs(detailedStats.longestDurationMs)}
+                  />
+                  <DetailRow
+                    label="Shortest trade"
+                    value={formatDurationMs(detailedStats.shortestDurationMs)}
+                  />
+                </>
+              )}
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -426,13 +438,15 @@ function OpenTradeCard({
   currentPrice,
   coingeckoId,
   formatDuration,
+  entryHeadline,
   expanded,
   onToggle,
 }: {
-  trade: PaperTrade & { asset_symbol?: string; asset_coingecko_id?: string };
+  trade: EnrichedTrade;
   currentPrice: number | null;
   coingeckoId: string | undefined;
   formatDuration: (openedAt: string) => string;
+  entryHeadline?: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -524,6 +538,24 @@ function OpenTradeCard({
             <Badge variant="buy">Open</Badge>
           )}
         </div>
+
+        {/* Entry headline */}
+        {entryHeadline && (
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-secondary)',
+              fontStyle: 'italic',
+              margin: 0,
+              marginTop: 'var(--space-2)',
+              paddingLeft: 'var(--space-2)',
+              borderLeft: `2px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
+              lineHeight: 1.4,
+            }}
+          >
+            &ldquo;{entryHeadline}&rdquo;
+          </p>
+        )}
 
         {/* Price row */}
         <p
@@ -660,11 +692,15 @@ function OpenTradeCard({
 function ClosedTradeCard({
   trade,
   coingeckoId,
+  entryHeadline,
+  exitHeadline,
   expanded,
   onToggle,
 }: {
-  trade: PaperTrade & { asset_symbol?: string; asset_coingecko_id?: string };
+  trade: EnrichedTrade;
   coingeckoId: string | undefined;
+  entryHeadline?: string;
+  exitHeadline?: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -743,6 +779,24 @@ function ClosedTradeCard({
           )}
         </div>
 
+        {/* Entry headline (collapsed state) */}
+        {entryHeadline && (
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-secondary)',
+              fontStyle: 'italic',
+              margin: 0,
+              marginTop: 'var(--space-2)',
+              paddingLeft: 'var(--space-2)',
+              borderLeft: `2px solid ${isShortTrade(trade.direction) ? 'var(--red-primary)' : 'var(--green-primary)'}`,
+              lineHeight: 1.4,
+            }}
+          >
+            &ldquo;{entryHeadline}&rdquo;
+          </p>
+        )}
+
         {/* Price row */}
         <p
           className="vela-body-sm"
@@ -811,6 +865,31 @@ function ClosedTradeCard({
             />
           )}
 
+          {/* Exit headline (expanded state) */}
+          {exitHeadline && (
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <p
+                className="vela-label"
+                style={{ color: 'var(--gray-500)', marginBottom: 'var(--space-1)' }}
+              >
+                Exit reason
+              </p>
+              <p
+                className="vela-body-sm"
+                style={{
+                  color: 'var(--color-text-secondary)',
+                  fontStyle: 'italic',
+                  margin: 0,
+                  paddingLeft: 'var(--space-2)',
+                  borderLeft: `2px solid ${isShortTrade(trade.direction) ? 'var(--green-primary)' : 'var(--red-primary)'}`,
+                  lineHeight: 1.4,
+                }}
+              >
+                &ldquo;{exitHeadline}&rdquo;
+              </p>
+            </div>
+          )}
+
           {/* Yellow events */}
           {trade.yellow_events && trade.yellow_events.length > 0 && (
             <div style={{ marginTop: 'var(--space-2)' }}>
@@ -853,6 +932,169 @@ function ClosedTradeCard({
             </div>
           )}
         </div>
+      )}
+    </Card>
+  );
+}
+
+// ── Best Call Hero Card ──
+
+function BestCallCard({
+  trade,
+  coingeckoId,
+}: {
+  trade: EnrichedTrade;
+  coingeckoId: string | undefined;
+}) {
+  const dollarPnl =
+    trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
+  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
+  const short = isShortTrade(trade.direction);
+  const isPositive = (trade.pnl_pct ?? 0) >= 0;
+
+  const entryText =
+    trade.entry_headline ?? reasonCodeToPlainEnglish(trade.entry_reason_code) ?? null;
+  const exitText = trade.exit_headline ?? reasonCodeToPlainEnglish(trade.exit_reason_code) ?? null;
+
+  const holdingPeriod =
+    trade.opened_at && trade.closed_at
+      ? formatDurationMs(new Date(trade.closed_at).getTime() - new Date(trade.opened_at).getTime())
+      : null;
+
+  return (
+    <Card variant={isPositive ? 'mint' : 'peach'} style={{ marginBottom: 'var(--space-3)' }}>
+      {/* Label */}
+      <p
+        className="vela-label"
+        style={{
+          color: 'var(--gray-500)',
+          margin: 0,
+          marginBottom: 'var(--space-2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-1)',
+        }}
+      >
+        <span style={{ fontSize: 'var(--text-sm)' }}>&#9733;</span>
+        Best call
+      </p>
+
+      {/* Asset + direction + P&L */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <AssetIcon iconUrl={iconUrl} symbol={symbol} size={32} />
+          <div>
+            <span className="vela-heading-base" style={{ fontSize: 'var(--text-lg)' }}>
+              {symbol} {directionLabel(trade.direction)}
+            </span>
+          </div>
+        </div>
+
+        {trade.pnl_pct != null && (
+          <div style={{ textAlign: 'right' }}>
+            <p
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontWeight: 700,
+                fontSize: 'var(--text-lg)',
+                color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                lineHeight: 1.2,
+                margin: 0,
+              }}
+            >
+              {isPositive ? '+' : ''}
+              {trade.pnl_pct.toFixed(1)}%
+            </p>
+            {dollarPnl != null && (
+              <p
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontWeight: 600,
+                  fontSize: 'var(--text-sm)',
+                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  margin: 0,
+                }}
+              >
+                {dollarPnl >= 0 ? '+' : '-'}$
+                {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+                {dollarPnl >= 0 ? 'profit' : 'loss'}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Entry headline */}
+      {entryText && (
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-secondary)',
+            fontStyle: 'italic',
+            margin: 0,
+            marginTop: 'var(--space-3)',
+            paddingLeft: 'var(--space-2)',
+            borderLeft: `2px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
+            lineHeight: 1.4,
+          }}
+        >
+          &ldquo;{entryText}&rdquo;
+        </p>
+      )}
+
+      {/* Price + date row */}
+      <p
+        className="vela-body-sm"
+        style={{
+          color: 'var(--gray-600)',
+          fontFamily: 'var(--type-mono-base-font)',
+          marginTop: 'var(--space-3)',
+          marginBottom: 0,
+        }}
+      >
+        Entry {formatPrice(trade.entry_price)}
+        {trade.exit_price != null && ` → Exit ${formatPrice(trade.exit_price)}`}
+      </p>
+      <p
+        className="vela-body-sm"
+        style={{ color: 'var(--gray-400)', marginTop: 'var(--space-1)', marginBottom: 0 }}
+      >
+        {new Date(trade.opened_at).toLocaleDateString('en-GB', {
+          month: 'short',
+          day: 'numeric',
+        })}
+        {trade.closed_at &&
+          ` — ${new Date(trade.closed_at).toLocaleDateString('en-GB', {
+            month: 'short',
+            day: 'numeric',
+            year: '2-digit',
+          })}`}
+        {holdingPeriod && ` · ${holdingPeriod}`}
+      </p>
+
+      {/* Exit headline */}
+      {exitText && (
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-secondary)',
+            fontStyle: 'italic',
+            margin: 0,
+            marginTop: 'var(--space-3)',
+            paddingLeft: 'var(--space-2)',
+            borderLeft: `2px solid ${short ? 'var(--green-primary)' : 'var(--red-primary)'}`,
+            lineHeight: 1.4,
+          }}
+        >
+          &ldquo;{exitText}&rdquo;
+        </p>
       )}
     </Card>
   );
@@ -935,61 +1177,6 @@ function AssetIcon({
         </span>
       )}
     </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  subtitle,
-  variant = 'default',
-  valueColor,
-}: {
-  label: string;
-  value: string;
-  subtitle?: string;
-  variant?: 'default' | 'sky' | 'mint' | 'peach';
-  valueColor?: string;
-}) {
-  return (
-    <Card variant={variant} tight>
-      <div style={{ textAlign: 'center' }}>
-        <p
-          style={{
-            fontFamily: 'var(--type-mono-base-font)',
-            fontWeight: 800,
-            fontSize: 'var(--text-base)',
-            color: valueColor || 'var(--gray-900)',
-            margin: 0,
-          }}
-        >
-          {value}
-        </p>
-        <p
-          className="vela-label-sm"
-          style={{
-            color: 'var(--gray-500)',
-            marginTop: 2,
-            marginBottom: 0,
-          }}
-        >
-          {label}
-        </p>
-        {subtitle && (
-          <p
-            style={{
-              fontFamily: 'var(--type-body-sm-font)',
-              fontSize: 'var(--text-2xs)',
-              color: 'var(--gray-400)',
-              margin: 0,
-              marginTop: 1,
-            }}
-          >
-            {subtitle}
-          </p>
-        )}
-      </div>
-    </Card>
   );
 }
 

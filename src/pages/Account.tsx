@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
+import { useAccountDelete } from '../hooks/useAccountDelete';
+import { LoadingSpinner } from '../components/VelaComponents';
 import type { TradingMode } from '../types';
 
 declare global {
@@ -155,6 +157,216 @@ function WalletPanel({ address }: { address?: string }) {
   );
 }
 
+function BalancePanel() {
+  const { wallet, hasWallet, isTradingEnabled } = useTrading();
+
+  // No wallet / trading not enabled — prompt user
+  if (!isTradingEnabled || !hasWallet || !wallet) {
+    return (
+      <div style={{ padding: 'var(--space-4)' }}>
+        <div
+          style={{
+            padding: 'var(--space-4)',
+            backgroundColor: 'var(--gray-50)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+          }}
+        >
+          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+            Enable trading to see your balance
+          </p>
+          <p className="vela-body-sm vela-text-muted">
+            Set your trading mode to Semi-auto or Full auto to create your wallet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const balance = wallet.balance_usdc;
+  const isTestnet = wallet.environment === 'testnet';
+
+  return (
+    <div style={{ padding: 'var(--space-4)' }}>
+      <p
+        className="vela-label-sm"
+        style={{ marginBottom: 'var(--space-3)', color: 'var(--color-text-muted)' }}
+      >
+        YOUR TRADING BALANCE
+      </p>
+
+      {/* Big balance display */}
+      <div
+        style={{
+          padding: 'var(--space-4)',
+          backgroundColor: 'var(--gray-50)',
+          borderRadius: 'var(--radius-sm)',
+          border: '1px solid var(--gray-200)',
+          marginBottom: 'var(--space-4)',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 28,
+            fontWeight: 700,
+            color: balance > 0 ? 'var(--green-dark)' : 'var(--color-text-primary)',
+            margin: 0,
+            lineHeight: 1.2,
+          }}
+        >
+          $
+          {balance.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </p>
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ margin: 0, marginTop: 'var(--space-1)' }}
+        >
+          USDC {isTestnet && '· Testnet'}
+        </p>
+      </div>
+
+      {/* Fund wallet CTA */}
+      {isTestnet && (
+        <>
+          <a
+            href="https://app.hyperliquid-testnet.xyz/drip"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="vela-btn vela-btn-primary vela-btn-sm"
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'center',
+              textDecoration: 'none',
+              boxSizing: 'border-box',
+            }}
+          >
+            Get test USDC
+          </a>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}
+          >
+            Get free test tokens to try paper trading.
+          </p>
+        </>
+      )}
+
+      {/* Coming soon */}
+      <div
+        style={{
+          marginTop: 'var(--space-4)',
+          paddingTop: 'var(--space-3)',
+          borderTop: '1px solid var(--gray-200)',
+        }}
+      >
+        <p
+          className="vela-label-sm"
+          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+        >
+          COMING SOON
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="vela-body-sm vela-text-muted">Deposit from card</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span className="vela-body-sm vela-text-muted">Withdraw to external wallet</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TreasuryInfo() {
+  const address = import.meta.env.VITE_SAFE_TREASURY_ADDRESS;
+  const [copied, setCopied] = useState(false);
+
+  if (!address) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      style={{
+        padding: 'var(--space-3)',
+        backgroundColor: 'var(--gray-50)',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--gray-200)',
+      }}
+    >
+      <p
+        className="vela-label-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+      >
+        VELA TREASURY
+      </p>
+      <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-2)' }}>
+        Fees are collected to a secure multi-signature wallet.
+      </p>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 12,
+            color: 'var(--color-text-primary)',
+          }}
+        >
+          {truncateAddress(address)}
+        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <button
+            onClick={handleCopy}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 'var(--space-1)',
+              color: copied ? 'var(--color-success)' : 'var(--color-text-muted)',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+          <a
+            href={`https://arbiscan.io/address/${address}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-action-primary)',
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            View on Arbiscan
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SupportPanel() {
   const openFeedbackForm = () => {
     if (window.Tally) {
@@ -206,6 +418,9 @@ function SupportPanel() {
             Open feedback form
           </button>
         </div>
+
+        {/* Treasury transparency */}
+        <TreasuryInfo />
       </div>
     </div>
   );
@@ -224,15 +439,8 @@ const MODE_DESCRIPTIONS: Record<TradingMode, string> = {
 };
 
 function TradingPanel() {
-  const {
-    preferences,
-    wallet,
-    isTradingEnabled,
-    hasWallet,
-    updatePreferences,
-    loading,
-    circuitBreakers,
-  } = useTrading();
+  const { preferences, isTradingEnabled, updatePreferences, loading, circuitBreakers } =
+    useTrading();
 
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
@@ -518,54 +726,6 @@ function TradingPanel() {
         </>
       )}
 
-      {/* Wallet info */}
-      {hasWallet && wallet && (
-        <div
-          style={{
-            marginTop: 'var(--space-4)',
-            paddingTop: 'var(--space-3)',
-            borderTop: '1px solid var(--gray-200)',
-          }}
-        >
-          <p
-            className="vela-label-sm"
-            style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
-          >
-            TRADING WALLET
-          </p>
-          <div
-            style={{
-              padding: 'var(--space-3)',
-              backgroundColor: 'var(--gray-50)',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--gray-200)',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: 'var(--space-1)',
-              }}
-            >
-              <span className="vela-body-sm vela-text-muted">Balance</span>
-              <span
-                className="vela-body-sm"
-                style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}
-              >
-                ${wallet.balance_usdc.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span className="vela-body-sm vela-text-muted">Environment</span>
-              <span className="vela-label-sm" style={{ color: 'var(--color-text-muted)' }}>
-                {wallet.environment === 'testnet' ? 'Testnet' : 'Mainnet'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Status messages */}
       {error && (
         <p
@@ -587,9 +747,351 @@ function TradingPanel() {
   );
 }
 
+// ── Delete Account Flow ──────────────────────────────────────
+
+function DeleteAccountFlow() {
+  const { step, error, deletionScheduledAt, startDelete, proceedToConfirm, confirmDelete, cancel } =
+    useAccountDelete();
+  const [confirmInput, setConfirmInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Autofocus the confirm input when entering confirm step
+  useEffect(() => {
+    if (step === 'confirm') {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [step]);
+
+  // Idle — show the trigger button
+  if (step === 'idle') {
+    return (
+      <div
+        style={{
+          borderTop: '1px solid var(--gray-200)',
+          paddingTop: 'var(--space-4)',
+        }}
+      >
+        <p
+          className="vela-body-sm"
+          style={{ fontWeight: 600, color: 'var(--color-error)', marginBottom: 'var(--space-1)' }}
+        >
+          Delete account
+        </p>
+        <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+          Deactivate your account with a 30-day window to change your mind.
+        </p>
+        <button
+          className="vela-btn vela-btn-sm"
+          onClick={startDelete}
+          style={{
+            backgroundColor: 'var(--color-error)',
+            color: 'var(--white)',
+            border: '2px solid var(--black)',
+          }}
+        >
+          Delete my account
+        </button>
+      </div>
+    );
+  }
+
+  // Warning — explain consequences
+  if (step === 'warning') {
+    return (
+      <div
+        style={{
+          borderTop: '1px solid var(--gray-200)',
+          paddingTop: 'var(--space-4)',
+        }}
+      >
+        <div
+          style={{
+            padding: 'var(--space-4)',
+            backgroundColor: 'var(--red-bg, #fef2f2)',
+            border: '2px solid var(--color-error)',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <p
+            className="vela-label-sm"
+            style={{ color: 'var(--color-error)', marginBottom: 'var(--space-3)' }}
+          >
+            DANGER ZONE
+          </p>
+
+          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-3)' }}>
+            If you delete your account:
+          </p>
+
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: 'var(--space-4)',
+              marginBottom: 'var(--space-4)',
+              listStyle: 'disc',
+            }}
+          >
+            <li className="vela-body-sm" style={{ marginBottom: 'var(--space-1)' }}>
+              You will lose access to your trading wallet through Vela
+            </li>
+            <li className="vela-body-sm" style={{ marginBottom: 'var(--space-1)' }}>
+              All pending trades will be cancelled
+            </li>
+            <li className="vela-body-sm" style={{ marginBottom: 'var(--space-1)' }}>
+              Your signal history and trade record will be deleted after 30 days
+            </li>
+            <li className="vela-body-sm">
+              You will <strong>not</strong> be able to access your wallet through Vela after
+              deletion
+            </li>
+          </ul>
+
+          <p
+            className="vela-body-sm vela-text-secondary"
+            style={{ marginBottom: 'var(--space-4)' }}
+          >
+            You have 30 days to change your mind and reactivate. After that, remaining funds will be
+            swept to treasury and your data permanently deleted.
+          </p>
+
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+            <button className="vela-btn vela-btn-ghost vela-btn-sm" onClick={cancel}>
+              Cancel
+            </button>
+            <button
+              className="vela-btn vela-btn-sm"
+              onClick={proceedToConfirm}
+              style={{
+                backgroundColor: 'var(--color-error)',
+                color: 'var(--white)',
+                border: '2px solid var(--black)',
+              }}
+            >
+              I understand, continue
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Confirm — type DELETE
+  if (step === 'confirm') {
+    const canConfirm = confirmInput === 'DELETE';
+    return (
+      <div
+        style={{
+          borderTop: '1px solid var(--gray-200)',
+          paddingTop: 'var(--space-4)',
+        }}
+      >
+        <div
+          style={{
+            padding: 'var(--space-4)',
+            backgroundColor: 'var(--red-bg, #fef2f2)',
+            border: '2px solid var(--color-error)',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+            Type DELETE to confirm
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+            This will deactivate your account immediately. You will be logged out.
+          </p>
+
+          <input
+            ref={inputRef}
+            type="text"
+            value={confirmInput}
+            onChange={e => setConfirmInput(e.target.value)}
+            placeholder="Type DELETE"
+            aria-label="Type DELETE to confirm account deletion"
+            style={{
+              width: '100%',
+              padding: 'var(--space-3)',
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: 14,
+              fontWeight: 600,
+              border: '2px solid var(--color-error)',
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--white)',
+              color: 'var(--color-text-primary)',
+              marginBottom: 'var(--space-4)',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+            <button
+              className="vela-btn vela-btn-ghost vela-btn-sm"
+              onClick={() => {
+                setConfirmInput('');
+                cancel();
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="vela-btn vela-btn-sm"
+              onClick={confirmDelete}
+              disabled={!canConfirm}
+              style={{
+                backgroundColor: canConfirm ? 'var(--color-error)' : 'var(--gray-300)',
+                color: 'var(--white)',
+                border: '2px solid var(--black)',
+                opacity: canConfirm ? 1 : 0.5,
+                cursor: canConfirm ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Delete my account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Deleting — loading state
+  if (step === 'deleting') {
+    return (
+      <div
+        style={{
+          borderTop: '1px solid var(--gray-200)',
+          paddingTop: 'var(--space-4)',
+        }}
+      >
+        <div
+          style={{
+            padding: 'var(--space-6)',
+            textAlign: 'center',
+            border: '1px solid var(--gray-200)',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <LoadingSpinner size={24} />
+          <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-3)' }}>
+            Deleting your account...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Done — success + auto-logout
+  if (step === 'done') {
+    const deletionDate = deletionScheduledAt
+      ? new Date(deletionScheduledAt).toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : '30 days from now';
+
+    return (
+      <div
+        style={{
+          borderTop: '1px solid var(--gray-200)',
+          paddingTop: 'var(--space-4)',
+        }}
+      >
+        <div
+          style={{
+            padding: 'var(--space-6)',
+            textAlign: 'center',
+            border: '2px solid var(--green-primary, #00D084)',
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--green-bg, #f0fdf4)',
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              backgroundColor: 'var(--green-primary, #00D084)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto var(--space-3)',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path
+                d="M5 10l3.5 3.5L15 7"
+                stroke="white"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <p className="vela-body-base" style={{ fontWeight: 700, marginBottom: 'var(--space-2)' }}>
+            Account deactivated
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-1)' }}>
+            You&apos;ll receive a confirmation email shortly.
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-3)' }}>
+            You have until <strong>{deletionDate}</strong> to reactivate.
+          </p>
+          <p className="vela-body-sm vela-text-muted">Logging you out...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error — retry or cancel
+  return (
+    <div
+      style={{
+        borderTop: '1px solid var(--gray-200)',
+        paddingTop: 'var(--space-4)',
+      }}
+    >
+      <div
+        style={{
+          padding: 'var(--space-4)',
+          border: '2px solid var(--color-error)',
+          borderRadius: 'var(--radius-sm)',
+          backgroundColor: 'var(--red-bg, #fef2f2)',
+        }}
+      >
+        <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-2)' }}>
+          Something went wrong
+        </p>
+        <p
+          className="vela-body-sm vela-text-muted"
+          role="alert"
+          style={{ marginBottom: 'var(--space-4)' }}
+        >
+          {error || 'An unexpected error occurred. Please try again.'}
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+          <button className="vela-btn vela-btn-ghost vela-btn-sm" onClick={cancel}>
+            Cancel
+          </button>
+          <button
+            className="vela-btn vela-btn-sm"
+            onClick={confirmDelete}
+            style={{
+              backgroundColor: 'var(--color-error)',
+              color: 'var(--white)',
+              border: '2px solid var(--black)',
+            }}
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Account() {
   const { isAuthenticated, user, logout, login } = useAuthContext();
-  const { preferences, isTradingEnabled } = useTrading();
+  const { preferences, wallet, isTradingEnabled } = useTrading();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   // Load Tally widget script for feedback popup
@@ -709,40 +1211,8 @@ export default function Account() {
               </span>
             </div>
 
-            {/* Delete account — tucked under personal info */}
-            <div
-              style={{
-                borderTop: '1px solid var(--gray-200)',
-                paddingTop: 'var(--space-4)',
-              }}
-            >
-              <p
-                className="vela-body-sm"
-                style={{
-                  fontWeight: 600,
-                  color: 'var(--color-error)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                Delete account
-              </p>
-              <p
-                className="vela-body-sm vela-text-muted"
-                style={{ marginBottom: 'var(--space-3)' }}
-              >
-                Permanently delete your account and all associated data.
-              </p>
-              <button
-                className="vela-btn vela-btn-sm"
-                style={{
-                  backgroundColor: 'var(--color-error)',
-                  color: 'var(--white)',
-                  border: '2px solid var(--black)',
-                }}
-              >
-                Delete my account
-              </button>
-            </div>
+            {/* Delete account — multi-step flow */}
+            <DeleteAccountFlow />
           </div>
         )}
 
@@ -755,6 +1225,22 @@ export default function Account() {
         {expandedSection === 'wallet' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
             <WalletPanel address={user?.walletAddress} />
+          </div>
+        )}
+
+        <SettingsItem
+          label="Balance"
+          value={
+            wallet
+              ? `$${wallet.balance_usdc.toLocaleString(undefined, { minimumFractionDigits: 2 })} USDC`
+              : '—'
+          }
+          onClick={() => toggleSection('balance')}
+          expanded={expandedSection === 'balance'}
+        />
+        {expandedSection === 'balance' && (
+          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
+            <BalancePanel />
           </div>
         )}
 

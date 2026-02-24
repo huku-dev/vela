@@ -3,6 +3,7 @@ import { Card, LoadingSpinner } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
 import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
+import PendingProposalsBanner from '../components/PendingProposalsBanner';
 import { useDashboard } from '../hooks/useData';
 import { breakIntoParagraphs } from '../lib/helpers';
 
@@ -66,6 +67,11 @@ export default function Home() {
             {lastUpdated.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
           </span>
         )}
+      </div>
+
+      {/* Pending trade proposals banner */}
+      <div style={{ marginBottom: 'var(--space-4)' }}>
+        <PendingProposalsBanner />
       </div>
 
       {/* Daily Digest — at top, with paragraph breaks */}

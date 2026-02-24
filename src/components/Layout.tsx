@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTrading } from '../hooks/useTrading';
 
 const navItems = [
   {
@@ -79,6 +80,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isLoading, login } = useAuthContext();
+  const { proposals } = useTrading();
+  const pendingCount = proposals.filter(p => p.status === 'pending').length;
 
   const getNavValue = useCallback(() => {
     const idx = navItems.findIndex(item => item.path === location.pathname);
@@ -91,7 +94,7 @@ export default function Layout() {
     setValue(getNavValue());
   }, [getNavValue]);
 
-  const showNav = !location.pathname.startsWith('/asset/');
+  const showNav = !location.pathname.startsWith('/asset/') && location.pathname !== '/welcome';
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg-page)' }}>
@@ -153,7 +156,33 @@ export default function Layout() {
                 }}
                 aria-label={itemLabel}
               >
-                {item.icon}
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  {item.icon}
+                  {item.path === '/' && pendingCount > 0 && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -4,
+                        right: -8,
+                        minWidth: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: 'var(--red-primary)',
+                        color: 'var(--white)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        fontFamily: 'Inter, system-ui, sans-serif',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 4px',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                </div>
                 <span
                   style={{
                     fontSize: '0.65rem',
