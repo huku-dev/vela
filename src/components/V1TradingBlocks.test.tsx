@@ -57,7 +57,7 @@ describe('BALANCE-SRC: BalancePanel renders correctly', () => {
 describe('BALANCE-ADV: Balance Panel adversarial checks', () => {
   it('ADV: no hardcoded balance values in BalancePanel', () => {
     // Extract BalancePanel function body
-    const panelStart = accountSrc.indexOf('function BalancePanel()');
+    const panelStart = accountSrc.indexOf('function BalancePanel(');
     const panelEnd = accountSrc.indexOf('function TreasuryInfo()');
     const panelSrc = accountSrc.slice(panelStart, panelEnd);
 
@@ -69,7 +69,7 @@ describe('BALANCE-ADV: Balance Panel adversarial checks', () => {
 
   it('ADV: guard prevents balance display when wallet is null', () => {
     // The guard must return early before accessing wallet properties
-    const panelStart = accountSrc.indexOf('function BalancePanel()');
+    const panelStart = accountSrc.indexOf('function BalancePanel(');
     const guardIndex = accountSrc.indexOf('!isTradingEnabled || !hasWallet || !wallet', panelStart);
     const balanceAccess = accountSrc.indexOf('wallet.balance_usdc', panelStart);
 
@@ -78,7 +78,7 @@ describe('BALANCE-ADV: Balance Panel adversarial checks', () => {
   });
 
   it('ADV: fund wallet link uses target="_blank" with noopener noreferrer', () => {
-    const panelStart = accountSrc.indexOf('function BalancePanel()');
+    const panelStart = accountSrc.indexOf('function BalancePanel(');
     const panelEnd = accountSrc.indexOf('function TreasuryInfo()');
     const panelSrc = accountSrc.slice(panelStart, panelEnd);
 
@@ -317,6 +317,8 @@ describe('ASSET-ADV: AssetDetail proposal rendering adversarial checks', () => {
   });
 
   it('ADV: in-flight statuses are explicitly listed (not a wildcard)', () => {
-    expect(assetDetailSrc).toContain("'approved', 'auto_approved', 'executing', 'executed', 'failed'");
+    expect(assetDetailSrc).toContain(
+      "'approved', 'auto_approved', 'executing', 'executed', 'failed'"
+    );
   });
 });

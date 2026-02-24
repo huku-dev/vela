@@ -157,8 +157,13 @@ function WalletPanel({ address }: { address?: string }) {
   );
 }
 
-function BalancePanel() {
-  const { wallet, hasWallet, isTradingEnabled } = useTrading();
+interface BalancePanelProps {
+  wallet: import('../types').UserWallet | null;
+  hasWallet: boolean;
+  isTradingEnabled: boolean;
+}
+
+function BalancePanel({ wallet, hasWallet, isTradingEnabled }: BalancePanelProps) {
 
   // No wallet / trading not enabled — prompt user
   if (!isTradingEnabled || !hasWallet || !wallet) {
@@ -438,9 +443,21 @@ const MODE_DESCRIPTIONS: Record<TradingMode, string> = {
   full_auto: 'Vela executes trades automatically based on your signal preferences.',
 };
 
-function TradingPanel() {
-  const { preferences, isTradingEnabled, updatePreferences, loading, circuitBreakers } =
-    useTrading();
+interface TradingPanelProps {
+  preferences: import('../types').UserPreferences | null;
+  isTradingEnabled: boolean;
+  updatePreferences: (updates: Partial<import('../types').UserPreferences>) => Promise<void>;
+  loading: boolean;
+  circuitBreakers: import('../types').CircuitBreakerEvent[];
+}
+
+function TradingPanel({
+  preferences,
+  isTradingEnabled,
+  updatePreferences,
+  loading,
+  circuitBreakers,
+}: TradingPanelProps) {
 
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
@@ -1091,7 +1108,15 @@ function DeleteAccountFlow() {
 
 export default function Account() {
   const { isAuthenticated, user, logout, login } = useAuthContext();
-  const { preferences, wallet, isTradingEnabled } = useTrading();
+  const {
+    preferences,
+    wallet,
+    isTradingEnabled,
+    hasWallet,
+    updatePreferences,
+    loading: tradingLoading,
+    circuitBreakers,
+  } = useTrading();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   // Load Tally widget script for feedback popup
@@ -1240,7 +1265,11 @@ export default function Account() {
         />
         {expandedSection === 'balance' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <BalancePanel />
+            <BalancePanel
+              wallet={wallet}
+              hasWallet={hasWallet}
+              isTradingEnabled={isTradingEnabled}
+            />
           </div>
         )}
 
@@ -1252,7 +1281,13 @@ export default function Account() {
         />
         {expandedSection === 'trading' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <TradingPanel />
+            <TradingPanel
+              preferences={preferences}
+              isTradingEnabled={isTradingEnabled}
+              updatePreferences={updatePreferences}
+              loading={tradingLoading}
+              circuitBreakers={circuitBreakers}
+            />
           </div>
         )}
 

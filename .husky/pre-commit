@@ -65,5 +65,28 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ Tests passed"
 
+# 6. Signal Change Review (SCR) gate
+# If signal logic files are modified, warn if no SCR document is in the commit.
+# This is a soft gate (warning, not blocking) — some changes are pure refactors.
+SIGNAL_FILES_CHANGED=$(git diff --cached --name-only | grep -E "(signal-rules|signal-engine|signal-persistence)\.(ts|js)" || true)
+if [ -n "$SIGNAL_FILES_CHANGED" ]; then
+  SCR_FILES=$(git diff --cached --name-only | grep -E "docs/signal-reviews/SCR-" || true)
+  if [ -z "$SCR_FILES" ]; then
+    echo ""
+    echo "⚠️  WARNING: Signal logic files are being modified:"
+    echo "$SIGNAL_FILES_CHANGED" | sed 's/^/   /'
+    echo ""
+    echo "   No SCR document (docs/signal-reviews/SCR-*.md) found in this commit."
+    echo "   Signal logic changes require a Signal Change Review before production."
+    echo "   See: docs/signal-reviews/TEMPLATE.md"
+    echo "   Run: python scripts/validate-signal-change.py --config-name <your_config>"
+    echo ""
+    echo "   Proceeding anyway (soft gate). Add an SCR doc before merging to main."
+    echo ""
+  else
+    echo "✅ SCR document found for signal logic change: $SCR_FILES"
+  fi
+fi
+
 echo ""
 echo "✨ All pre-commit checks passed! Ready to commit."

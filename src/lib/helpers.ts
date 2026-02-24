@@ -230,3 +230,53 @@ export function groupBriefsBySignalState(
 
   return groups;
 }
+
+// ── Signal reason code → plain English (fallback when no brief headline exists) ──
+
+const reasonCodeMap: Record<string, string> = {
+  ema_cross_up: 'Short-term trend crossed above medium-term — momentum shifting up',
+  ema_cross_down: 'Short-term trend crossed below medium-term — momentum shifting down',
+  stop_loss: 'Price dropped below safety threshold',
+  trend_break: 'Underlying trend reversed direction',
+  chop: 'Market choppy with no clear direction',
+  trailing_stop: 'Locked in profit as price reversed',
+  rsi_out_of_range: 'Buying pressure hit extreme levels',
+  trend_disagree: 'Short-term and long-term trends conflicted',
+  anti_whipsaw: 'Signal held steady through market noise',
+  no_change: 'No significant change in conditions',
+};
+
+/**
+ * Maps a signal engine reason code to a plain English sentence.
+ * Returns null for unknown/undefined codes — caller falls back to showing nothing.
+ */
+export function reasonCodeToPlainEnglish(code: string | undefined | null): string | null {
+  if (!code) return null;
+  return reasonCodeMap[code] ?? null;
+}
+
+// ── Cost of delay (signal price vs execution price) ──
+
+/**
+ * Calculates the price difference between when Vela signaled and when the user's
+ * trade actually executed. Direction-aware: for longs, higher execution = cost.
+ * For shorts, lower execution = cost.
+ */
+export function computeCostOfDelay(
+  signalPrice: number,
+  executionPrice: number,
+  side: 'long' | 'short',
+  positionSize: number
+): { delayPct: number; delayDollar: number } {
+  if (signalPrice === 0) return { delayPct: 0, delayDollar: 0 };
+
+  const rawPct =
+    side === 'long'
+      ? ((executionPrice - signalPrice) / signalPrice) * 100
+      : ((signalPrice - executionPrice) / signalPrice) * 100;
+
+  const delayPct = Math.round(rawPct * 100) / 100;
+  const delayDollar = Math.round((rawPct / 100) * positionSize * 100) / 100;
+
+  return { delayPct, delayDollar };
+}

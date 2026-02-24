@@ -196,16 +196,28 @@ export interface TradeAssetInfo {
   coingecko_id: string;
 }
 
+/** Enriched trade with brief headlines and reason codes for storytelling */
+export type EnrichedTrade = PaperTrade & {
+  asset_symbol?: string;
+  asset_coingecko_id?: string;
+  entry_headline?: string;
+  exit_headline?: string;
+  entry_reason_code?: string;
+  exit_reason_code?: string;
+};
+
 export function useTrackRecord() {
-  const [trades, setTrades] = useState<
-    (PaperTrade & { asset_symbol?: string; asset_coingecko_id?: string })[]
-  >([]);
+  const [trades, setTrades] = useState<EnrichedTrade[]>([]);
   const [stats, setStats] = useState<PaperTradeStats[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, PriceData>>({});
   const [assetMap, setAssetMap] = useState<Record<string, TradeAssetInfo>>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
+
+  // Lookup maps persisted across initial + loadMore pages
+  const signalMapRef = useRef<Record<string, { reason_code?: string; signal_color?: string }>>({});
+  const briefMapRef = useRef<Record<string, string>>({});
 
   const mapTrades = (
     data: (PaperTrade & { assets?: { symbol: string; coingecko_id: string } })[]
@@ -216,6 +228,53 @@ export function useTrackRecord() {
       asset_symbol: t.assets?.symbol,
       asset_coingecko_id: t.assets?.coingecko_id,
     }));
+
+  /** Batch-fetch signals + briefs for a set of trades and enrich them */
+  const enrichTrades = async (rawTrades: EnrichedTrade[]): Promise<EnrichedTrade[]> => {
+    const signalIds = [
+      ...new Set([
+        ...rawTrades.map(t => t.entry_signal_id),
+        ...rawTrades.filter(t => t.exit_signal_id).map(t => t.exit_signal_id!),
+      ]),
+    ].filter(Boolean);
+
+    if (signalIds.length === 0) return rawTrades;
+
+    // Only fetch IDs we haven't seen yet
+    const newIds = signalIds.filter(id => !(id in signalMapRef.current));
+
+    if (newIds.length > 0) {
+      const [signalsRes, briefsRes] = await Promise.all([
+        supabase.from('signals').select('id, reason_code, signal_color').in('id', newIds),
+        supabase
+          .from('briefs')
+          .select('signal_id, headline, brief_type')
+          .in('signal_id', newIds)
+          .eq('brief_type', 'signal_change'),
+      ]);
+
+      for (const s of signalsRes.data ?? []) {
+        signalMapRef.current[s.id] = { reason_code: s.reason_code, signal_color: s.signal_color };
+      }
+      for (const b of briefsRes.data ?? []) {
+        if (b.signal_id && !briefMapRef.current[b.signal_id]) {
+          briefMapRef.current[b.signal_id] = b.headline;
+        }
+      }
+    }
+
+    return rawTrades.map(t => ({
+      ...t,
+      entry_headline: briefMapRef.current[t.entry_signal_id] ?? undefined,
+      exit_headline: t.exit_signal_id
+        ? (briefMapRef.current[t.exit_signal_id] ?? undefined)
+        : undefined,
+      entry_reason_code: signalMapRef.current[t.entry_signal_id]?.reason_code ?? undefined,
+      exit_reason_code: t.exit_signal_id
+        ? (signalMapRef.current[t.exit_signal_id]?.reason_code ?? undefined)
+        : undefined,
+    }));
+  };
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -231,7 +290,6 @@ export function useTrackRecord() {
       const rows = tradesRes.data || [];
       setHasMore(rows.length > PAGE_SIZE);
       const mapped = mapTrades(rows.slice(0, PAGE_SIZE));
-      setTrades(mapped);
       setStats(statsRes.data || []);
 
       // Build asset map for logos
@@ -242,6 +300,15 @@ export function useTrackRecord() {
         }
       }
       setAssetMap(aMap);
+
+      // Enrich trades with brief headlines (best-effort, fails silently)
+      try {
+        const enriched = await enrichTrades(mapped);
+        setTrades(enriched);
+      } catch (err) {
+        console.error('[useTrackRecord] enrichment failed:', err);
+        setTrades(mapped);
+      }
 
       // Fetch live prices for open trade assets
       const openAssetIds = [
@@ -268,9 +335,33 @@ export function useTrackRecord() {
 
     const rows = res.data || [];
     setHasMore(rows.length === PAGE_SIZE + 1);
-    setTrades(prev => [...prev, ...mapTrades(rows.slice(0, PAGE_SIZE))]);
+    const mapped = mapTrades(rows.slice(0, PAGE_SIZE));
+
+    try {
+      const enriched = await enrichTrades(mapped);
+      setTrades(prev => [...prev, ...enriched]);
+    } catch {
+      setTrades(prev => [...prev, ...mapped]);
+    }
     setLoadingMore(false);
   }, [trades.length]);
 
-  return { trades, stats, livePrices, assetMap, loading, loadingMore, hasMore, loadMore };
+  // Compute best trade (highest pnl_pct among closed trades)
+  const bestTrade = trades.reduce<EnrichedTrade | null>((best, t) => {
+    if (t.status !== 'closed' || t.pnl_pct == null) return best;
+    if (!best || t.pnl_pct > (best.pnl_pct ?? -Infinity)) return t;
+    return best;
+  }, null);
+
+  return {
+    trades,
+    bestTrade,
+    stats,
+    livePrices,
+    assetMap,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+  };
 }

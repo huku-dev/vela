@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="580" viewBox="0 0 375 580">
+  <rect width="375" height="580" fill="#f5f1e8"/>
+
+  <!-- Header context -->
+  <text x="16" y="36" font-family="system-ui" font-size="20" fill="#1A1A1A">←</text>
+  <circle cx="60" cy="30" r="16" fill="#F7931A"/>
+  <text x="84" y="35" font-family="system-ui" font-weight="700" font-size="18" fill="#1A1A1A">Bitcoin</text>
+
+  <!-- Trade Proposal card -->
+  <rect x="16" y="64" width="343" height="400" rx="16" fill="white" stroke="#1A1A1A" stroke-width="3"/>
+  <rect x="16" y="64" width="343" height="50" rx="16" fill="#1A1A1A"/>
+  <rect x="16" y="98" width="343" height="16" fill="#1A1A1A"/>
+  <text x="32" y="96" font-family="system-ui" font-weight="700" font-size="14" fill="white">TRADE PROPOSAL</text>
+
+  <!-- Direction badge -->
+  <rect x="32" y="130" width="80" height="30" rx="8" fill="#10b981"/>
+  <text x="72" y="150" font-family="system-ui" font-weight="700" font-size="13" fill="white" text-anchor="middle">LONG</text>
+  <text x="120" y="150" font-family="system-ui" font-weight="600" font-size="14" fill="#1A1A1A">BTC at $64,250</text>
+
+  <!-- Trade details -->
+  <line x1="32" y1="170" x2="340" y2="170" stroke="#eee" stroke-width="1"/>
+
+  <text x="32" y="198" font-family="system-ui" font-size="13" fill="#999">Position size</text>
+  <text x="300" y="198" font-family="monospace" font-weight="600" font-size="13" fill="#1A1A1A" text-anchor="end">$500</text>
+
+  <text x="32" y="228" font-family="system-ui" font-size="13" fill="#999">Entry price</text>
+  <text x="300" y="228" font-family="monospace" font-weight="600" font-size="13" fill="#1A1A1A" text-anchor="end">$64,250</text>
+
+  <text x="32" y="258" font-family="system-ui" font-size="13" fill="#999">Stop-loss</text>
+  <text x="300" y="258" font-family="monospace" font-weight="600" font-size="13" fill="#ef4444" text-anchor="end">$60,800 (-5.4%)</text>
+
+  <text x="32" y="288" font-family="system-ui" font-size="13" fill="#999">Confidence</text>
+  <text x="300" y="288" font-family="system-ui" font-weight="600" font-size="13" fill="#10b981" text-anchor="end">Tier A (High)</text>
+
+  <line x1="32" y1="306" x2="340" y2="306" stroke="#eee" stroke-width="1"/>
+
+  <!-- Reason -->
+  <text x="32" y="332" font-family="system-ui" font-weight="600" font-size="11" fill="#666" letter-spacing="0.5">WHY THIS TRADE</text>
+  <text x="32" y="356" font-family="system-ui" font-size="13" fill="#333">Strong trend confirmed with rising</text>
+  <text x="32" y="374" font-family="system-ui" font-size="13" fill="#333">buying pressure. Breakout above</text>
+  <text x="32" y="392" font-family="system-ui" font-size="13" fill="#333">key resistance with healthy volume.</text>
+
+  <!-- Action buttons -->
+  <rect x="32" y="416" width="148" height="36" rx="8" fill="#ef4444" stroke="#1A1A1A" stroke-width="2"/>
+  <text x="106" y="439" font-family="system-ui" font-weight="700" font-size="14" fill="white" text-anchor="middle">Decline</text>
+
+  <rect x="192" y="416" width="148" height="36" rx="8" fill="#10b981" stroke="#1A1A1A" stroke-width="2"/>
+  <text x="266" y="439" font-family="system-ui" font-weight="700" font-size="14" fill="white" text-anchor="middle">Approve</text>
+
+  <!-- Trust message below card -->
+  <rect x="16" y="478" width="343" height="82" rx="12" fill="#f0f4ff" stroke="#1A1A1A" stroke-width="2"/>
+  <text x="32" y="508" font-family="system-ui" font-weight="600" font-size="13" fill="#1A1A1A">You're always in control</text>
+  <text x="32" y="530" font-family="system-ui" font-size="12" fill="#666">Every trade requires your approval. Vela</text>
+  <text x="32" y="546" font-family="system-ui" font-size="12" fill="#666">never trades without your permission.</text>
+</svg>

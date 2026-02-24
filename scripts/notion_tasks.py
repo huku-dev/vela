@@ -51,7 +51,7 @@ def list_tasks(status_filter=None):
             'status': props.get('Status', {}).get('select', {}).get('name', ''),
             'area': props.get('Area', {}).get('select', {}).get('name', ''),
             'priority': props.get('Priority', {}).get('select', {}).get('name', ''),
-            'description': props.get('Description', {}).get('rich_text', [{}])[0].get('text', {}).get('content', ''),
+            'description': (props.get('Description', {}).get('rich_text', []) or [{}])[0].get('text', {}).get('content', '') if props.get('Description', {}).get('rich_text') else '',
             'source': props.get('Source', {}).get('select', {}).get('name', ''),
         }
         tasks.append(task)

@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="375" height="667" viewBox="0 0 375 667">
+  <rect width="375" height="667" fill="#f5f1e8"/>
+  
+  <!-- Header -->
+  <rect x="16" y="16" width="36" height="36" rx="10" fill="#1A1A1A"/>
+  <text x="60" y="42" font-family="system-ui" font-weight="800" font-size="22" fill="#1A1A1A">Vela</text>
+  <text x="16" y="68" font-family="system-ui" font-size="12" fill="#999">Updates every 15 mins</text>
+  
+  <!-- Daily Digest card -->
+  <rect x="16" y="92" width="343" height="140" rx="12" fill="#e8e0f0" stroke="#1A1A1A" stroke-width="2"/>
+  <text x="32" y="120" font-family="system-ui" font-weight="700" font-size="14" fill="#1A1A1A">Monday 24 February</text>
+  <text x="32" y="140" font-family="system-ui" font-weight="600" font-size="11" fill="#666" letter-spacing="0.5">DAILY DIGEST</text>
+  <text x="32" y="168" font-family="system-ui" font-size="13" fill="#333">Markets are showing strong momentum</text>
+  <text x="32" y="186" font-family="system-ui" font-size="13" fill="#333">today with buying pressure building</text>
+  <text x="32" y="204" font-family="system-ui" font-size="13" fill="#666">across major assets...</text>
+  
+  <!-- Signal card 1 - BTC BUY -->
+  <rect x="16" y="256" width="343" height="120" rx="12" fill="white" stroke="#1A1A1A" stroke-width="2"/>
+  <circle cx="52" cy="296" r="20" fill="#F7931A"/>
+  <text x="52" y="301" font-family="system-ui" font-weight="700" font-size="14" fill="white" text-anchor="middle">B</text>
+  <text x="84" y="290" font-family="system-ui" font-weight="700" font-size="16" fill="#1A1A1A">BTC</text>
+  <text x="84" y="308" font-family="system-ui" font-size="12" fill="#999">Bitcoin</text>
+  <text x="220" y="290" font-family="monospace" font-weight="600" font-size="15" fill="#1A1A1A">$64,250</text>
+  <rect x="290" y="278" width="52" height="24" rx="6" fill="#10b981"/>
+  <text x="316" y="295" font-family="system-ui" font-weight="700" font-size="11" fill="white" text-anchor="middle">BUY</text>
+  <text x="32" y="356" font-family="system-ui" font-size="13" fill="#555">Strong trend with rising momentum —</text>
+  
+  <!-- Signal card 2 - ETH SELL -->
+  <rect x="16" y="396" width="343" height="120" rx="12" fill="white" stroke="#1A1A1A" stroke-width="2"/>
+  <circle cx="52" cy="436" r="20" fill="#627EEA"/>
+  <text x="52" y="441" font-family="system-ui" font-weight="700" font-size="14" fill="white" text-anchor="middle">E</text>
+  <text x="84" y="430" font-family="system-ui" font-weight="700" font-size="16" fill="#1A1A1A">ETH</text>
+  <text x="84" y="448" font-family="system-ui" font-size="12" fill="#999">Ethereum</text>
+  <text x="220" y="430" font-family="monospace" font-weight="600" font-size="15" fill="#1A1A1A">$1,820</text>
+  <rect x="290" y="418" width="52" height="24" rx="6" fill="#ef4444"/>
+  <text x="316" y="435" font-family="system-ui" font-weight="700" font-size="11" fill="white" text-anchor="middle">SELL</text>
+  <text x="32" y="496" font-family="system-ui" font-size="13" fill="#555">Weakness building, short opportunity</text>
+  
+  <!-- Signal card 3 - HYPE WAIT -->
+  <rect x="16" y="536" width="343" height="100" rx="12" fill="white" stroke="#1A1A1A" stroke-width="2"/>
+  <circle cx="52" cy="576" r="20" fill="#333"/>
+  <text x="52" y="581" font-family="system-ui" font-weight="700" font-size="12" fill="white" text-anchor="middle">H</text>
+  <text x="84" y="570" font-family="system-ui" font-weight="700" font-size="16" fill="#1A1A1A">HYPE</text>
+  <text x="84" y="588" font-family="system-ui" font-size="12" fill="#999">Hyperliquid</text>
+  <text x="220" y="570" font-family="monospace" font-weight="600" font-size="15" fill="#1A1A1A">$24.50</text>
+  <rect x="280" y="558" width="62" height="24" rx="6" fill="#EBEBEB" stroke="#ccc" stroke-width="1"/>
+  <text x="311" y="575" font-family="system-ui" font-weight="700" font-size="11" fill="#666" text-anchor="middle">WAIT</text>
+</svg>

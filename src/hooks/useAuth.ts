@@ -10,6 +10,8 @@ interface AuthUser {
   profileId?: string;
   email?: string;
   walletAddress?: string;
+  deactivatedAt?: string;
+  deletionScheduledAt?: string;
 }
 
 export interface AuthState {
@@ -71,6 +73,8 @@ export function useAuth(): AuthState {
         privyDid: data.user.privy_did,
         profileId: data.user.profile_id,
         email: privyUser?.email?.address ?? undefined,
+        deactivatedAt: data.user.deactivated_at ?? undefined,
+        deletionScheduledAt: data.user.deletion_scheduled_at ?? undefined,
       });
 
       return data.access_token;
@@ -100,6 +104,14 @@ export function useAuth(): AuthState {
     return createAuthenticatedClient(exchangeToken);
   }, [authenticated, exchangeToken]);
 
+  // Wrap logout to clear onboarding flag — user sees onboarding screens, not dashboard
+  const handleLogout = useCallback(async () => {
+    localStorage.removeItem('vela_onboarded');
+    tokenCacheRef.current = null;
+    setUser(null);
+    await logout();
+  }, [logout]);
+
   return {
     isAuthenticated: ready && authenticated,
     isLoading: !ready,
@@ -107,6 +119,6 @@ export function useAuth(): AuthState {
     supabaseClient,
     getToken: exchangeToken,
     login,
-    logout,
+    logout: handleLogout,
   };
 }

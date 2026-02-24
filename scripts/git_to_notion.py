@@ -17,6 +17,7 @@ with open(config_path, 'r') as f:
 
 NOTION_TOKEN = config['notion_token']
 CHANGELOG_DB_ID = config['changelog_db_id']
+TASKS_DB_ID = config.get('tasks_db_id', '')
 NOTION_VERSION = '2022-06-28'
 
 notion_headers = {
@@ -229,6 +230,74 @@ def create_notion_entry(entry):
     print(f"✅ Changelog entry created: {entry['summary']}")
     return True
 
+def get_open_tasks():
+    """Fetch tasks with status 'Next' or 'In Progress' from Notion."""
+    if not TASKS_DB_ID:
+        return []
+    url = f'https://api.notion.com/v1/databases/{TASKS_DB_ID}/query'
+    data = {
+        'filter': {
+            'or': [
+                {'property': 'Status', 'select': {'equals': 'Next'}},
+                {'property': 'Status', 'select': {'equals': 'In Progress'}},
+            ]
+        }
+    }
+    try:
+        resp = requests.post(url, headers=notion_headers, json=data, timeout=10)
+        if resp.status_code != 200:
+            return []
+        tasks = []
+        for page in resp.json().get('results', []):
+            props = page['properties']
+            title_parts = props.get('Task', {}).get('title', [])
+            name = title_parts[0].get('text', {}).get('content', '') if title_parts else ''
+            if name:
+                tasks.append({'id': page['id'], 'name': name})
+        return tasks
+    except Exception:
+        return []
+
+
+def _tokenize(text):
+    """Split text into lowercase keyword tokens, dropping short/common words."""
+    import re as _re
+    stop = {'the', 'a', 'an', 'and', 'or', 'for', 'to', 'in', 'on', 'of', 'is', 'it', 'with', 'from', 'by', 'as', 'at', 'be', 'no'}
+    return {w for w in _re.findall(r'[a-z0-9]+', text.lower()) if len(w) > 2 and w not in stop}
+
+
+def auto_close_matching_tasks(commit_msg, files):
+    """Mark Notion tasks as Done if the commit clearly addresses them.
+
+    Uses keyword overlap between the commit message (+ changed filenames) and
+    open task names.  Threshold is >=50% of the task's keywords appearing in
+    the commit context, with a minimum of 2 keyword hits to avoid false positives.
+    """
+    tasks = get_open_tasks()
+    if not tasks:
+        return
+
+    commit_tokens = _tokenize(commit_msg + ' ' + ' '.join(files))
+
+    for task in tasks:
+        task_tokens = _tokenize(task['name'])
+        if not task_tokens:
+            continue
+        overlap = task_tokens & commit_tokens
+        ratio = len(overlap) / len(task_tokens)
+        if ratio >= 0.5 and len(overlap) >= 2:
+            url = f"https://api.notion.com/v1/pages/{task['id']}"
+            data = {'properties': {'Status': {'select': {'name': 'Done'}}}}
+            try:
+                resp = requests.patch(url, headers=notion_headers, json=data, timeout=10)
+                if resp.status_code == 200:
+                    print(f"✅ Auto-closed task: {task['name']}")
+                else:
+                    print(f"⚠️  Failed to close task: {task['name']}")
+            except Exception as e:
+                print(f"⚠️  Error closing task {task['name']}: {e}")
+
+
 def main():
     # Check if we're in a git repo
     try:
@@ -263,6 +332,12 @@ def main():
         print(f"🎉 Notion updated!")
     else:
         print("⚠️  Failed to update Notion, but commit succeeded")
+
+    # Auto-close matching tasks (best-effort, never blocks commit)
+    try:
+        auto_close_matching_tasks(commit_msg, files)
+    except Exception as e:
+        print(f"⚠️  Task auto-close skipped: {e}")
 
     sys.exit(0)
 

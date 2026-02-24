@@ -35,6 +35,11 @@ export interface Brief {
   detail: {
     signal_breakdown?: Record<string, string>;
     market_context?: Record<string, string>;
+    events_moving_markets?: Array<{
+      title: string;
+      impact: string;
+      source?: string;
+    }>;
     what_would_change?: string;
     indicators?: {
       ema_9: number;
@@ -83,6 +88,16 @@ export interface PaperTradeStats {
   avg_loss_pct: number | null;
 }
 
+export interface BriefRating {
+  id: string;
+  user_id: string;
+  brief_id: string;
+  rating: boolean;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PriceData {
   price: number;
   change24h: number;
@@ -123,6 +138,8 @@ export interface Profile {
   display_name: string | null;
   avatar_url: string | null;
   privy_wallet_address: string | null;
+  deactivated_at: string | null;
+  deletion_scheduled_at: string | null;
   created_at: string;
   updated_at: string;
 }

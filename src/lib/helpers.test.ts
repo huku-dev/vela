@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { formatPrice, parsePriceSegments, breakIntoParagraphs } from './helpers';
+import {
+  formatPrice,
+  parsePriceSegments,
+  breakIntoParagraphs,
+  reasonCodeToPlainEnglish,
+  computeCostOfDelay,
+} from './helpers';
 
 describe('formatPrice (adaptive decimals) - TRUST CRITICAL', () => {
   it('formats large prices (>=$1000) with no decimals and commas', () => {
@@ -96,5 +102,77 @@ describe('parsePriceSegments', () => {
       { type: 'text', value: 'BTC at ' },
       { type: 'price', value: '$66,940.50' },
     ]);
+  });
+});
+
+// ── reasonCodeToPlainEnglish ──
+
+describe('reasonCodeToPlainEnglish', () => {
+  it('maps known reason codes to plain English strings', () => {
+    expect(reasonCodeToPlainEnglish('ema_cross_up')).toContain('momentum shifting up');
+    expect(reasonCodeToPlainEnglish('ema_cross_down')).toContain('momentum shifting down');
+    expect(reasonCodeToPlainEnglish('stop_loss')).toContain('safety threshold');
+    expect(reasonCodeToPlainEnglish('trend_break')).toContain('reversed direction');
+    expect(reasonCodeToPlainEnglish('chop')).toContain('choppy');
+    expect(reasonCodeToPlainEnglish('trailing_stop')).toContain('profit');
+    expect(reasonCodeToPlainEnglish('rsi_out_of_range')).toContain('extreme');
+    expect(reasonCodeToPlainEnglish('trend_disagree')).toContain('conflicted');
+    expect(reasonCodeToPlainEnglish('anti_whipsaw')).toContain('noise');
+  });
+
+  it('returns null for unknown reason codes', () => {
+    expect(reasonCodeToPlainEnglish('unknown_code')).toBeNull();
+    expect(reasonCodeToPlainEnglish('some_future_reason')).toBeNull();
+  });
+
+  it('returns null for undefined/null input', () => {
+    expect(reasonCodeToPlainEnglish(undefined)).toBeNull();
+    expect(reasonCodeToPlainEnglish(null)).toBeNull();
+  });
+});
+
+// ── computeCostOfDelay — TRUST CRITICAL ──
+
+describe('computeCostOfDelay - TRUST CRITICAL', () => {
+  it('long trade: higher execution price = positive cost (user paid more)', () => {
+    const result = computeCostOfDelay(100, 101, 'long', 1000);
+    expect(result.delayPct).toBe(1);
+    expect(result.delayDollar).toBe(10);
+  });
+
+  it('long trade: lower execution price = negative cost (user got a deal)', () => {
+    const result = computeCostOfDelay(100, 99, 'long', 1000);
+    expect(result.delayPct).toBe(-1);
+    expect(result.delayDollar).toBe(-10);
+  });
+
+  it('short trade: lower execution price = positive cost (user sold lower)', () => {
+    const result = computeCostOfDelay(100, 99, 'short', 1000);
+    expect(result.delayPct).toBe(1);
+    expect(result.delayDollar).toBe(10);
+  });
+
+  it('short trade: higher execution price = negative cost (user got a deal)', () => {
+    const result = computeCostOfDelay(100, 101, 'short', 1000);
+    expect(result.delayPct).toBe(-1);
+    expect(result.delayDollar).toBe(-10);
+  });
+
+  it('zero difference returns zero cost', () => {
+    const result = computeCostOfDelay(50000, 50000, 'long', 1000);
+    expect(result.delayPct).toBe(0);
+    expect(result.delayDollar).toBe(0);
+  });
+
+  it('handles zero signal price without crashing', () => {
+    const result = computeCostOfDelay(0, 100, 'long', 1000);
+    expect(result.delayPct).toBe(0);
+    expect(result.delayDollar).toBe(0);
+  });
+
+  it('rounds to 2 decimal places', () => {
+    const result = computeCostOfDelay(100, 100.33, 'long', 1000);
+    expect(result.delayPct).toBe(0.33);
+    expect(result.delayDollar).toBe(3.3);
   });
 });
