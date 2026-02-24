@@ -298,6 +298,11 @@ export default function AssetDetail() {
                 )
               : [];
           const hasHistory = signalGroups.length > 0;
+          const latestGroupIsNew =
+            hasHistory &&
+            signalGroups[0].type === 'signal_change' &&
+            Date.now() - new Date(signalGroups[0].briefs[0].created_at).getTime() <
+              24 * 60 * 60 * 1000;
 
           return (
             <SignalHistoryCard
@@ -306,6 +311,7 @@ export default function AssetDetail() {
               groups={signalGroups}
               hasHistory={hasHistory}
               symbol={asset.symbol}
+              isNew={latestGroupIsNew}
             />
           );
         })()}
@@ -392,7 +398,7 @@ export default function AssetDetail() {
           className="vela-body-sm vela-text-muted"
           style={{ textAlign: 'center', marginTop: 'var(--space-6)', fontSize: '0.68rem' }}
         >
-          {signal && <>Signal checked {formatTimeAgo(signal.created_at)}</>}
+          {signal && <>Signal last changed {formatTimeAgo(signal.created_at)}</>}
           {signal && brief && ' · '}
           {brief && <>Analysis written {formatTimeAgo(brief.created_at)}</>}
         </p>
@@ -515,23 +521,33 @@ function WhyWeThinkThis({
                 </div>
               )}
 
+              {/* TODO(backend): Improve AI prompt to generate market context about dominance CHANGES rather than absolute values */}
               <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                {Object.entries(detail.market_context).map(([key, value]) => (
-                  <li
-                    key={key}
-                    className="vela-body-sm"
-                    style={{
-                      color: 'var(--color-text-secondary)',
-                      marginBottom: 'var(--space-1)',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {(() => {
-                      const t = value as string;
-                      return t.charAt(0).toUpperCase() + t.slice(1);
-                    })()}
-                  </li>
-                ))}
+                {Object.entries(detail.market_context)
+                  .sort(([keyA], [keyB]) => {
+                    // Push dominance-related keys to end of list
+                    const isDomA = /dominance/i.test(keyA);
+                    const isDomB = /dominance/i.test(keyB);
+                    if (isDomA && !isDomB) return 1;
+                    if (!isDomA && isDomB) return -1;
+                    return 0;
+                  })
+                  .map(([key, value]) => (
+                    <li
+                      key={key}
+                      className="vela-body-sm"
+                      style={{
+                        color: 'var(--color-text-secondary)',
+                        marginBottom: 'var(--space-1)',
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {(() => {
+                        const t = plainEnglish(value as string);
+                        return t.charAt(0).toUpperCase() + t.slice(1);
+                      })()}
+                    </li>
+                  ))}
               </ul>
             </div>
           )}
@@ -624,14 +640,14 @@ function IndicatorsSection({
 
   const rsiLabel =
     rsi >= 70
-      ? 'Overbought'
+      ? 'Overbought \u2014 may pull back'
       : rsi >= 60
-        ? 'Strong'
+        ? 'Strong buying pressure'
         : rsi >= 40
           ? 'Neutral'
           : rsi >= 30
             ? 'Weak'
-            : 'Oversold';
+            : 'Oversold \u2014 potential bounce';
   const rsiColor =
     rsi >= 70
       ? 'var(--red-dark)'
@@ -643,16 +659,30 @@ function IndicatorsSection({
             ? 'var(--amber-dark)'
             : 'var(--red-dark)';
 
+  // ADX is direction-agnostic — cross-reference with EMA trend to give context
+  const isBullishTrend = currentPrice > ema9 && currentPrice > ema21;
+  const isBearishTrend = currentPrice < ema9 && currentPrice < ema21;
+
   const adxLabel =
-    adx >= 50
-      ? 'Very strong trend'
-      : adx >= 25
-        ? 'Trending'
-        : adx >= 15
-          ? 'Weak trend'
-          : 'No clear trend';
+    adx >= 25
+      ? isBullishTrend
+        ? 'Strong uptrend'
+        : isBearishTrend
+          ? 'Strong downtrend'
+          : 'Trending (mixed signals)'
+      : adx >= 15
+        ? 'Weak trend'
+        : 'No clear trend';
   const adxColor =
-    adx >= 25 ? 'var(--green-dark)' : adx >= 15 ? 'var(--amber-dark)' : 'var(--color-text-muted)';
+    adx >= 25
+      ? isBullishTrend
+        ? 'var(--green-dark)'
+        : isBearishTrend
+          ? 'var(--red-dark)'
+          : 'var(--amber-dark)'
+      : adx >= 15
+        ? 'var(--amber-dark)'
+        : 'var(--color-text-muted)';
 
   const smaLabel = currentPrice > sma50 ? 'Above 50-day average' : 'Below 50-day average';
   const smaColor = currentPrice > sma50 ? 'var(--green-dark)' : 'var(--red-dark)';
@@ -680,7 +710,7 @@ function IndicatorsSection({
 
   const adxTooltip = (() => {
     const base =
-      'Measures how strong the current trend is, regardless of direction. Above 25 means a clear trend exists; below 15 means the market is drifting sideways.';
+      'ADX measures trend strength. Combined with price position relative to averages, it tells us if the market is trending strongly up or down. Above 25 means a clear trend; below 15 means the market is drifting sideways.';
     if (adxDelta != null && Math.abs(adxDelta) >= 0.1 && tooltipTimeframe) {
       const direction = adxDelta > 0 ? 'up' : 'down';
       return `${base} At ${adx.toFixed(0)}, it's ${direction} ${Math.abs(adxDelta).toFixed(1)} ${tooltipTimeframe}.`;
@@ -822,23 +852,13 @@ function BriefFeedback({ briefId }: { briefId: string }) {
   const { rating, isLoading, isSubmitting, submitRating } = useBriefRating(briefId);
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [showThanks, setShowThanks] = useState(false);
-  const thanksTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const commentRef = useRef<HTMLDivElement>(null);
 
   // Reset local state when briefId changes (new brief = fresh state)
   useEffect(() => {
     setShowCommentInput(false);
     setCommentText('');
-    setShowThanks(false);
-    if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
   }, [briefId]);
-
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (thanksTimerRef.current) clearTimeout(thanksTimerRef.current);
-    };
-  }, []);
 
   if (isLoading) return null;
 
@@ -846,25 +866,56 @@ function BriefFeedback({ briefId }: { briefId: string }) {
     if (isSubmitting) return;
     await submitRating(true);
     setShowCommentInput(false);
-    setShowThanks(true);
-    thanksTimerRef.current = setTimeout(() => setShowThanks(false), 2000);
   };
 
   const handleThumbsDown = async () => {
     if (isSubmitting) return;
     await submitRating(false);
     setShowCommentInput(true);
+    // Scroll comment box into view after render
+    setTimeout(
+      () => commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+      50
+    );
   };
 
   const handleSubmitComment = async () => {
     if (isSubmitting) return;
     await submitRating(false, commentText.trim() || undefined);
     setShowCommentInput(false);
-    setShowThanks(true);
-    thanksTimerRef.current = setTimeout(() => setShowThanks(false), 2000);
   };
 
   const thumbSize = 18;
+
+  // ── Persistent rated state ──
+  // Once rated, show confirmation that persists until brief changes
+  if (rating !== null && !showCommentInput) {
+    const isPositive = rating === true;
+    return (
+      <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 'var(--space-2)',
+            alignItems: 'center',
+          }}
+        >
+          <span style={{ fontSize: `${thumbSize}px` }}>{isPositive ? '👍' : '👎'}</span>
+          <span
+            className="vela-label-sm"
+            style={{
+              color: isPositive ? 'var(--color-signal-buy)' : 'var(--color-text-muted)',
+            }}
+          >
+            Thanks for your feedback
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Unrated state — show prompt + buttons ──
   const thumbStyle = (active: boolean, color: string): React.CSSProperties => ({
     fontSize: `${thumbSize}px`,
     cursor: isSubmitting ? 'default' : 'pointer',
@@ -911,20 +962,14 @@ function BriefFeedback({ briefId }: { briefId: string }) {
         >
           👎
         </button>
-
-        {showThanks && (
-          <span
-            className="vela-label-sm"
-            style={{ color: 'var(--color-text-muted)', animation: 'fadeIn 0.2s ease-in' }}
-          >
-            Thanks!
-          </span>
-        )}
       </div>
 
-      {/* Optional comment input on thumbs-down */}
+      {/* Comment input after thumbs-down */}
       {showCommentInput && rating === false && (
-        <div style={{ marginTop: 'var(--space-3)', maxWidth: 320, marginInline: 'auto' }}>
+        <div
+          ref={commentRef}
+          style={{ marginTop: 'var(--space-3)', maxWidth: 320, marginInline: 'auto' }}
+        >
           <textarea
             className="vela-body-sm"
             value={commentText}
@@ -943,23 +988,44 @@ function BriefFeedback({ briefId }: { briefId: string }) {
               fontFamily: 'inherit',
             }}
           />
-          <button
-            onClick={handleSubmitComment}
-            disabled={isSubmitting}
-            className="vela-label-sm"
+          <div
             style={{
+              display: 'flex',
+              gap: 'var(--space-2)',
               marginTop: 'var(--space-2)',
-              padding: 'var(--space-1) var(--space-3)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--background-primary)',
-              color: 'var(--text-primary)',
-              cursor: isSubmitting ? 'default' : 'pointer',
-              opacity: isSubmitting ? 0.5 : 1,
+              justifyContent: 'center',
             }}
           >
-            Submit
-          </button>
+            <button
+              onClick={handleSubmitComment}
+              disabled={isSubmitting}
+              className="vela-label-sm"
+              style={{
+                padding: 'var(--space-1) var(--space-3)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--background-primary)',
+                color: 'var(--text-primary)',
+                cursor: isSubmitting ? 'default' : 'pointer',
+                opacity: isSubmitting ? 0.5 : 1,
+              }}
+            >
+              Submit
+            </button>
+            <button
+              onClick={() => setShowCommentInput(false)}
+              className="vela-label-sm"
+              style={{
+                padding: 'var(--space-1) var(--space-3)',
+                border: 'none',
+                background: 'none',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              Skip
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -1261,14 +1327,29 @@ function SignalHistoryCard({
   groups,
   hasHistory,
   symbol,
+  isNew,
 }: {
   signalColor: SignalColor;
   headline: string;
   groups: BriefGroup[];
   hasHistory: boolean;
   symbol: string;
+  isNew?: boolean;
 }) {
   const [expanded, setExpanded] = React.useState(false);
+  const [visibleCount, setVisibleCount] = React.useState(5);
+
+  const GROUPS_INCREMENT = 5;
+  const displayGroups = groups.slice(0, visibleCount);
+  const hasMore = groups.length > visibleCount;
+
+  // NEW badge color matches signal color
+  const newBadgeColors =
+    signalColor === 'green'
+      ? { text: 'var(--green-dark)', bg: 'var(--green-light)', border: 'var(--green-primary)' }
+      : signalColor === 'red'
+        ? { text: 'var(--red-dark)', bg: 'var(--red-light)', border: 'var(--red-primary)' }
+        : { text: 'var(--color-text-primary)', bg: 'var(--gray-100)', border: 'var(--gray-300)' };
 
   return (
     <div
@@ -1301,26 +1382,46 @@ function SignalHistoryCard({
           <SectionLabel style={{ marginBottom: 0 }}>
             Key Signal — {signalTitles[signalColor]}
           </SectionLabel>
-          {hasHistory && (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              style={{
-                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                transition: 'transform var(--motion-normal) var(--motion-ease-out)',
-              }}
-            >
-              <path
-                d="M3 6L8 11L13 6"
-                style={{ stroke: 'var(--gray-400)' }}
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            {isNew && !expanded && (
+              <span
+                style={{
+                  fontSize: '0.55rem',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: newBadgeColors.text,
+                  backgroundColor: newBadgeColors.bg,
+                  border: `1.5px solid ${newBadgeColors.border}`,
+                  borderRadius: '4px',
+                  padding: '1px var(--space-2)',
+                  lineHeight: 1.3,
+                }}
+              >
+                NEW
+              </span>
+            )}
+            {hasHistory && (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{
+                  transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform var(--motion-normal) var(--motion-ease-out)',
+                }}
+              >
+                <path
+                  d="M3 6L8 11L13 6"
+                  style={{ stroke: 'var(--gray-400)' }}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
+          </div>
         </div>
         <p
           className="vela-heading-base"
@@ -1357,9 +1458,11 @@ function SignalHistoryCard({
             Signal history
           </span>
           <div className="vela-stack" style={{ gap: 'var(--space-2)' }}>
-            {groups.map((group, gi) => {
+            {displayGroups.map((group, gi) => {
               const gc = group.signalColor ? groupColorMap[group.signalColor] : groupColorMap.grey;
               const leadBrief = group.briefs[0];
+              const isNewEntry = gi === 0 && isNew;
+              const priceAtSignal = leadBrief.detail?.price_at_brief;
 
               return (
                 <div
@@ -1369,7 +1472,8 @@ function SignalHistoryCard({
                     alignItems: 'flex-start',
                     gap: 'var(--space-2)',
                     padding: 'var(--space-2) 0',
-                    borderBottom: gi < groups.length - 1 ? '1px solid var(--gray-100)' : 'none',
+                    borderBottom:
+                      gi < displayGroups.length - 1 ? '1px solid var(--gray-100)' : 'none',
                   }}
                 >
                   {/* Signal badge */}
@@ -1394,20 +1498,40 @@ function SignalHistoryCard({
                     {gc.label}
                   </span>
 
-                  {/* Headline + date stacked */}
+                  {/* Headline + date + price stacked */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span
-                      className="vela-body-sm"
-                      style={{
-                        fontWeight: 'var(--weight-semibold)',
-                        color: 'var(--color-text-primary)',
-                        lineHeight: 1.4,
-                        display: 'block',
-                        fontSize: '0.72rem',
-                      }}
-                    >
-                      {stripAssetPrefix(leadBrief.headline, symbol)}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span
+                        className="vela-body-sm"
+                        style={{
+                          fontWeight: 'var(--weight-semibold)',
+                          color: 'var(--color-text-primary)',
+                          lineHeight: 1.4,
+                          fontSize: '0.72rem',
+                        }}
+                      >
+                        {stripAssetPrefix(leadBrief.headline, symbol)}
+                      </span>
+                      {isNewEntry && (
+                        <span
+                          style={{
+                            fontSize: '0.5rem',
+                            fontWeight: 800,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                            color: newBadgeColors.text,
+                            backgroundColor: newBadgeColors.bg,
+                            border: `1.5px solid ${newBadgeColors.border}`,
+                            borderRadius: '3px',
+                            padding: '0 4px',
+                            lineHeight: 1.4,
+                            flexShrink: 0,
+                          }}
+                        >
+                          NEW
+                        </span>
+                      )}
+                    </div>
                     <span
                       style={{
                         fontSize: '0.58rem',
@@ -1417,12 +1541,45 @@ function SignalHistoryCard({
                       }}
                     >
                       {formatDateRange(group.dateRange[0], group.dateRange[1])}
+                      {priceAtSignal != null && (
+                        <>
+                          {' \u2014 Signal triggered at '}
+                          <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                            {formatPrice(priceAtSignal)}
+                          </span>
+                        </>
+                      )}
                     </span>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Progressive disclosure — show 5 more at a time */}
+          {hasMore && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setVisibleCount(prev => prev + GROUPS_INCREMENT);
+              }}
+              className="vela-body-sm"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-action-primary)',
+                fontWeight: 600,
+                fontSize: '0.65rem',
+                padding: 'var(--space-2) 0',
+                textAlign: 'center',
+                width: '100%',
+                marginTop: 'var(--space-1)',
+              }}
+            >
+              View more ({Math.min(GROUPS_INCREMENT, groups.length - visibleCount)})
+            </button>
+          )}
         </div>
       )}
     </div>

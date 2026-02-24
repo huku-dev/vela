@@ -126,6 +126,7 @@ export function parsePriceSegments(text: string): PriceSegment[] {
  * consistent with our indicator labels.
  */
 const jargonMap: [RegExp, string][] = [
+  // Specific indicator patterns first
   [/\bEMA\s*\(?9\)?/gi, 'short-term average'],
   [/\bEMA\s*\(?21\)?/gi, 'medium-term average'],
   [/\bSMA\s*\(?50\)?/gi, '50-day average'],
@@ -133,6 +134,18 @@ const jargonMap: [RegExp, string][] = [
   [/\bADX\s*\(?4[hH]\)?/gi, 'trend strength'],
   [/\bcrossover\b/gi, 'cross above'],
   [/\bcrossunder\b/gi, 'cross below'],
+
+  // Contextual phrases (before generic catch-alls to avoid partial matches)
+  [/\boversold\s+levels?\b/gi, 'low buying activity'],
+  [/\boverbought\s+levels?\b/gi, 'high buying activity'],
+  [/\bbullish\s+divergence\b/gi, 'early signs of a turnaround'],
+  [/\bbearish\s+divergence\b/gi, 'early signs of weakness'],
+  [/\bmomentum\s+shift(?:s|ing)\b/gi, 'pressure changing'],
+  [/\bconsolidation\b/gi, 'sideways movement'],
+  [/\bsupport\s+level\b/gi, 'price floor'],
+  [/\bresistance\s+level\b/gi, 'price ceiling'],
+
+  // Generic catch-alls last
   [/\bEMA\b/gi, 'moving average'],
   [/\bSMA\b/gi, 'moving average'],
   [/\bRSI\b/gi, 'buying pressure'],

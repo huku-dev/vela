@@ -3,6 +3,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
 import { LoadingSpinner } from '../components/VelaComponents';
+import TierComparisonSheet from '../components/TierComparisonSheet';
 import type { TradingMode } from '../types';
 
 declare global {
@@ -164,7 +165,6 @@ interface BalancePanelProps {
 }
 
 function BalancePanel({ wallet, hasWallet, isTradingEnabled }: BalancePanelProps) {
-
   // No wallet / trading not enabled — prompt user
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
@@ -458,7 +458,6 @@ function TradingPanel({
   loading,
   circuitBreakers,
 }: TradingPanelProps) {
-
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
     preferences?.default_position_size_usd?.toString() ?? '100'
@@ -1118,6 +1117,7 @@ export default function Account() {
     circuitBreakers,
   } = useTrading();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [showTierSheet, setShowTierSheet] = useState(false);
 
   // Load Tally widget script for feedback popup
   useEffect(() => {
@@ -1205,7 +1205,39 @@ export default function Account() {
           <p className="vela-body-base" style={{ fontWeight: 600 }}>
             {user?.email ?? 'Connected user'}
           </p>
-          <p className="vela-body-sm vela-text-muted">Free tier</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span
+              className="vela-label-sm"
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: 'var(--color-text-muted)',
+                backgroundColor: 'var(--gray-100)',
+                border: '1px solid var(--gray-200)',
+                borderRadius: '3px',
+                padding: '1px 6px',
+              }}
+            >
+              Free
+            </span>
+            <button
+              onClick={() => setShowTierSheet(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--color-action-primary)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: 12,
+                fontWeight: 600,
+                padding: 0,
+              }}
+            >
+              Upgrade
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1325,6 +1357,11 @@ export default function Account() {
       >
         Log out
       </button>
+
+      {/* Tier comparison overlay */}
+      {showTierSheet && (
+        <TierComparisonSheet currentTier="free" onClose={() => setShowTierSheet(false)} />
+      )}
     </div>
   );
 }
