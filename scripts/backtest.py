@@ -375,6 +375,14 @@ V6C_COMBINED = {
 # ---------------------------------------------------------------------------
 V6_ADOPTED = {**V6A_TRAILING_STOP, "name": "V6 Adopted (Trailing Stop)"}
 
+# V6d: Trailing stop for BOTH directions — backtest experiment to determine
+# whether longs also benefit from trailing stop (same 5%/2.5% thresholds).
+V6D_TRAILING_BOTH = {
+    **V6A_TRAILING_STOP,
+    "name": "V6d: Trailing Stop (Both Directions)",
+    "trailing_stop_long": True,
+}
+
 # Registry for CLI --config-a / --config-b selection
 NAMED_CONFIGS = {
     "current": SIGNAL_CONFIG,
@@ -395,6 +403,7 @@ NAMED_CONFIGS = {
     "v6b_aggressive_ladder": V6B_AGGRESSIVE_LADDER,
     "v6c_combined": V6C_COMBINED,
     "adopted": V6_ADOPTED,
+    "v6d_trailing_both": V6D_TRAILING_BOTH,
 }
 
 
@@ -1165,9 +1174,11 @@ def simulate_trades(
 
     # ── V6: Short Profit Capture ──
     trailing_stop_short = config.get("trailing_stop_short", False)
+    trailing_stop_long = config.get("trailing_stop_long", False)
     trailing_stop_activation = config.get("trailing_stop_activation_pct", 5.0)
     trailing_stop_trail = config.get("trailing_stop_trail_pct", 2.5)
     short_peak_profit: float = 0.0  # Best profit % seen during current short
+    long_peak_profit: float = 0.0   # Best profit % seen during current long
 
     # Per-direction ladder config (shorts can have different levels/fractions)
     short_ladder_levels = config.get("short_ladder_levels", profit_ladder_levels)
@@ -1202,6 +1213,7 @@ def simulate_trades(
                     })
                     open_long = None
                     long_remaining_frac = 1.0
+                    long_peak_profit = 0.0
                     # Don't open new position on crash day — skip to next bar
                     continue
 
@@ -1234,6 +1246,18 @@ def simulate_trades(
             if (short_peak_profit >= trailing_stop_activation
                     and (short_peak_profit - current_profit) >= trailing_stop_trail):
                 color, reason = "green", "trailing_stop"
+
+        # ── V6d: Trailing stop for longs ──
+        # Same logic as short trailing stop, but for long positions.
+        # Closes long if profit retraces from peak.
+        if trailing_stop_long and open_long is not None and color != "red":
+            entry_price = open_long["entry_price"]
+            current_profit = ((price - entry_price) / entry_price) * 100
+            if current_profit > long_peak_profit:
+                long_peak_profit = current_profit
+            if (long_peak_profit >= trailing_stop_activation
+                    and (long_peak_profit - current_profit) >= trailing_stop_trail):
+                color, reason = "red", "trailing_stop"
 
         # ── V5 Strategy 1: Profit-Taking Ladder ──
         # Trim at milestone profit levels (e.g., +15%, +25%, +35%)
@@ -1409,6 +1433,7 @@ def simulate_trades(
                         })
                         open_long = None
                         long_remaining_frac = 1.0
+                        long_peak_profit = 0.0
                     else:
                         # Warn = generate trim (same as yellow event trim)
                         entry_price = open_long["entry_price"]
@@ -1523,6 +1548,7 @@ def simulate_trades(
                 })
             open_long = None
             long_remaining_frac = 1.0
+            long_peak_profit = 0.0
             ladder_trims_long = []
             reentry_pieces_long = []
             pullback_adds_long = 0
@@ -1628,6 +1654,7 @@ def simulate_trades(
                             "entry_bar_index": bar_idx,
                         }
                         long_remaining_frac = first_frac
+                        long_peak_profit = 0.0
                         dca_active_long = True
                         dca_tranche_idx_long = 1  # next tranche to fill
                         dca_last_fill_bar_long = bar_idx
@@ -1658,6 +1685,7 @@ def simulate_trades(
                             "entry_bar_index": bar_idx,
                         }
                         long_remaining_frac = 1.0
+                        long_peak_profit = 0.0
                     consecutive_green = 0  # Reset after entry
 
         if open_short is None and consecutive_red > 0:
@@ -3064,6 +3092,7 @@ def run_comparison(
         ("bb_improved_cooldown_days", "BB2 cooldown days"),
         # V6 short profit capture params
         ("trailing_stop_short", "Trailing stop (shorts)"),
+        ("trailing_stop_long", "Trailing stop (longs)"),
         ("trailing_stop_activation_pct", "Trail activation %"),
         ("trailing_stop_trail_pct", "Trail distance %"),
         ("short_ladder_levels", "Short ladder levels"),
