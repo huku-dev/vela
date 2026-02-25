@@ -118,6 +118,10 @@ describe('reasonCodeToPlainEnglish', () => {
     expect(reasonCodeToPlainEnglish('rsi_out_of_range')).toContain('extreme');
     expect(reasonCodeToPlainEnglish('trend_disagree')).toContain('conflicted');
     expect(reasonCodeToPlainEnglish('anti_whipsaw')).toContain('noise');
+    expect(reasonCodeToPlainEnglish('profit_ladder')).toContain('milestone');
+    expect(reasonCodeToPlainEnglish('bb2_expiry')).toContain('time limit');
+    expect(reasonCodeToPlainEnglish('bb2_target')).toContain('profit target');
+    expect(reasonCodeToPlainEnglish('bb2_stop')).toContain('safety stop');
   });
 
   it('returns null for unknown reason codes', () => {
