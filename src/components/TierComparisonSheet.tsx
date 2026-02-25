@@ -5,14 +5,45 @@ import { TIER_DEFINITIONS, COMPARISON_FEATURES } from '../lib/tier-definitions';
 interface TierComparisonSheetProps {
   currentTier: SubscriptionTier;
   onClose: () => void;
+  /** Called when the user clicks an upgrade/downgrade CTA. Redirect handled by caller. */
+  onStartCheckout?: (
+    tier: 'standard' | 'premium',
+    billingCycle: 'monthly' | 'annual'
+  ) => Promise<void>;
 }
 
 /**
  * Full-screen overlay showing tier comparison with annual/monthly toggle.
  * Follows the Vela neobrutalist design system.
  */
-export default function TierComparisonSheet({ currentTier, onClose }: TierComparisonSheetProps) {
+export default function TierComparisonSheet({
+  currentTier,
+  onClose,
+  onStartCheckout,
+}: TierComparisonSheetProps) {
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
+  const [checkingOutTier, setCheckingOutTier] = useState<SubscriptionTier | null>(null);
+
+  const TIER_ORDER: SubscriptionTier[] = ['free', 'standard', 'premium'];
+  const currentTierIndex = TIER_ORDER.indexOf(currentTier);
+
+  async function handleCta(tier: TierConfig) {
+    if (!onStartCheckout || tier.monthly_price_usd === 0) return;
+    setCheckingOutTier(tier.tier);
+    try {
+      await onStartCheckout(tier.tier as 'standard' | 'premium', billingCycle);
+    } catch (err) {
+      console.error('[TierComparisonSheet] Checkout error:', err);
+      setCheckingOutTier(null);
+    }
+  }
+
+  function getCtaLabel(tier: TierConfig): string {
+    if (checkingOutTier === tier.tier) return 'Redirecting…';
+    const tierIndex = TIER_ORDER.indexOf(tier.tier);
+    if (tierIndex > currentTierIndex) return `Upgrade to ${tier.display_name}`;
+    return `Switch to ${tier.display_name}`;
+  }
 
   const getPrice = (tier: TierConfig): string => {
     if (tier.monthly_price_usd === 0) return 'Free';
@@ -280,17 +311,17 @@ export default function TierComparisonSheet({ currentTier, onClose }: TierCompar
                   </div>
                 ) : isPaid ? (
                   <button
-                    disabled
+                    onClick={() => handleCta(tier)}
+                    disabled={checkingOutTier !== null}
                     className="vela-btn vela-btn-primary vela-label-sm"
                     style={{
                       width: '100%',
-                      opacity: 0.6,
-                      cursor: 'not-allowed',
                       fontWeight: 600,
+                      opacity: checkingOutTier !== null ? 0.7 : 1,
+                      cursor: checkingOutTier !== null ? 'wait' : 'pointer',
                     }}
-                    title="Coming soon"
                   >
-                    Coming soon
+                    {getCtaLabel(tier)}
                   </button>
                 ) : null}
               </div>
@@ -305,7 +336,7 @@ export default function TierComparisonSheet({ currentTier, onClose }: TierCompar
         >
           All plans include real-time signal monitoring and market analysis.
           <br />
-          Paid plans will be available soon via Stripe. You won&apos;t be charged until you upgrade.
+          Cancel anytime. You won&apos;t be charged until you confirm on the next screen.
         </p>
       </div>
     </div>

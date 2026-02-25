@@ -180,8 +180,14 @@ export interface UserSubscription {
   tier: SubscriptionTier;
   billing_cycle: 'monthly' | 'annual' | null;
   status: SubscriptionStatus;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
+  /** Provider-agnostic customer ID (e.g. Stripe's cus_xxx) */
+  provider_customer_id: string | null;
+  /** Provider-agnostic subscription ID (e.g. Stripe's sub_xxx) */
+  provider_subscription_id: string | null;
+  /** Which payment provider is active, e.g. "stripe". Null if never subscribed. */
+  payment_provider: string | null;
+  /** True when subscription will cancel at the end of the current period */
+  cancel_at_period_end: boolean;
   current_period_start: string | null;
   current_period_end: string | null;
   created_at: string;

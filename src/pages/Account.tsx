@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
+import { useSubscription } from '../hooks/useSubscription';
 import { LoadingSpinner } from '../components/VelaComponents';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import type { TradingMode } from '../types';
@@ -1116,8 +1117,51 @@ export default function Account() {
     loading: tradingLoading,
     circuitBreakers,
   } = useTrading();
+  const {
+    tier: currentTier,
+    subscription,
+    startCheckout,
+    openPortal,
+    cancelAtPeriodEnd,
+    refresh: refreshSubscription,
+  } = useSubscription();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [checkoutToast, setCheckoutToast] = useState<string | null>(null);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  // Handle redirect back from checkout / portal
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const result = params.get('checkout');
+    const tier = params.get('tier');
+    if (result === 'success') {
+      const label = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : 'new';
+      setCheckoutToast(`Welcome to ${label}! Your upgrade is now active.`);
+      // Poll until webhook has updated the subscription
+      const timer = setInterval(() => refreshSubscription(), 2000);
+      setTimeout(() => clearInterval(timer), 10000);
+      // Clean up URL params
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('checkout');
+      clean.searchParams.delete('tier');
+      window.history.replaceState({}, '', clean.toString());
+    } else if (result === 'cancel') {
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('checkout');
+      window.history.replaceState({}, '', clean.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleManageSubscription() {
+    setPortalError(null);
+    try {
+      await openPortal();
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : 'Could not open portal');
+    }
+  }
 
   // Load Tally widget script for feedback popup
   useEffect(() => {
@@ -1220,26 +1264,127 @@ export default function Account() {
                 padding: '1px 6px',
               }}
             >
-              Free
+              {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
             </span>
-            <button
-              onClick={() => setShowTierSheet(true)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--color-action-primary)',
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: 12,
-                fontWeight: 600,
-                padding: 0,
-              }}
-            >
-              Upgrade
-            </button>
+            {currentTier === 'free' ? (
+              <button
+                onClick={() => setShowTierSheet(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-action-primary)',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: 0,
+                }}
+              >
+                Upgrade
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowTierSheet(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: 0,
+                }}
+              >
+                Change plan
+              </button>
+            )}
           </div>
+
+          {/* Cancellation notice */}
+          {cancelAtPeriodEnd && subscription?.current_period_end && (
+            <p
+              className="vela-body-sm"
+              style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}
+            >
+              Reverts to Free on{' '}
+              {new Date(subscription.current_period_end).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
+          )}
+
+          {/* Manage subscription (portal) */}
+          {subscription?.provider_customer_id && (
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              <button
+                onClick={handleManageSubscription}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                Manage subscription
+              </button>
+              {portalError && (
+                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--red-primary)' }}>
+                  {portalError}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Checkout success toast */}
+      {checkoutToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 'var(--space-6)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'var(--color-status-buy-bg)',
+            border: '1.5px solid var(--green-primary)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-3) var(--space-5)',
+            boxShadow: '3px 3px 0 var(--black)',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            maxWidth: 360,
+          }}
+        >
+          <span className="vela-body-sm" style={{ fontWeight: 600, color: 'var(--green-dark)' }}>
+            {checkoutToast}
+          </span>
+          <button
+            onClick={() => setCheckoutToast(null)}
+            aria-label="Dismiss"
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--green-dark)',
+              fontSize: 16,
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Settings list */}
       <div
@@ -1360,7 +1505,14 @@ export default function Account() {
 
       {/* Tier comparison overlay */}
       {showTierSheet && (
-        <TierComparisonSheet currentTier="free" onClose={() => setShowTierSheet(false)} />
+        <TierComparisonSheet
+          currentTier={currentTier}
+          onClose={() => setShowTierSheet(false)}
+          onStartCheckout={async (tier, billingCycle) => {
+            setShowTierSheet(false);
+            await startCheckout(tier, billingCycle);
+          }}
+        />
       )}
     </div>
   );

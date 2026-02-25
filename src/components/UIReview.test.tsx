@@ -15,10 +15,7 @@ import { resolve } from 'path';
 import { plainEnglish } from '../lib/helpers';
 import { TIER_DEFINITIONS, COMPARISON_FEATURES, getTierConfig } from '../lib/tier-definitions';
 
-const assetDetailSrc = readFileSync(
-  resolve(__dirname, '../pages/AssetDetail.tsx'),
-  'utf-8'
-);
+const assetDetailSrc = readFileSync(resolve(__dirname, '../pages/AssetDetail.tsx'), 'utf-8');
 const helpersSrc = readFileSync(resolve(__dirname, '../lib/helpers.ts'), 'utf-8');
 
 // ── ADX Direction-Aware Coloring ──
@@ -210,9 +207,7 @@ describe('JARGON-SRC: enriched plainEnglish mappings', () => {
   });
 
   it('maps consolidation', () => {
-    expect(plainEnglish('entering consolidation phase')).toBe(
-      'entering sideways movement phase'
-    );
+    expect(plainEnglish('entering consolidation phase')).toBe('entering sideways movement phase');
   });
 
   it('maps support and resistance levels', () => {
@@ -329,10 +324,7 @@ describe('TIER-ADV: adversarial — tier definitions safety', () => {
   });
 
   it('no hardcoded dollar amounts in tier comparison source', () => {
-    const sheetSrc = readFileSync(
-      resolve(__dirname, './TierComparisonSheet.tsx'),
-      'utf-8'
-    );
+    const sheetSrc = readFileSync(resolve(__dirname, './TierComparisonSheet.tsx'), 'utf-8');
     // Prices should come from TIER_DEFINITIONS, not hardcoded in the component
     expect(sheetSrc).not.toMatch(/\$29|\$79|\$290|\$790/);
   });
@@ -344,10 +336,11 @@ const sheetSrc = readFileSync(resolve(__dirname, './TierComparisonSheet.tsx'), '
 const accountSrc = readFileSync(resolve(__dirname, '../pages/Account.tsx'), 'utf-8');
 
 describe('UPGRADE-SRC: upgrade flow source verification', () => {
-  it('paid tier buttons are disabled (no active purchase)', () => {
-    // All paid tier CTAs must be disabled until Stripe is wired up
-    expect(sheetSrc).toContain('disabled');
-    expect(sheetSrc).toContain("cursor: 'not-allowed'");
+  it('paid tier buttons are live CTAs wired to checkout', () => {
+    // CTAs call onStartCheckout — disabled only while a checkout is in flight
+    expect(sheetSrc).toContain('onStartCheckout');
+    expect(sheetSrc).toContain('handleCta');
+    expect(sheetSrc).toContain("cursor: checkingOutTier !== null ? 'wait' : 'pointer'");
   });
 
   it('annual billing is the default selection', () => {
@@ -376,8 +369,10 @@ describe('UPGRADE-SRC: upgrade flow source verification', () => {
     expect(accountSrc).toContain('setShowTierSheet(false)');
   });
 
-  it('Account page passes currentTier to sheet', () => {
-    expect(accountSrc).toContain('currentTier="free"');
+  it('Account page passes dynamic currentTier to sheet', () => {
+    // currentTier comes from useSubscription hook, not hardcoded
+    expect(accountSrc).toContain('currentTier={currentTier}');
+    expect(accountSrc).not.toContain('currentTier="free"');
   });
 });
 
@@ -393,14 +388,16 @@ describe('UPGRADE-ADV: adversarial — no premature purchase flow', () => {
     expect(sheetSrc).not.toContain('payment_intent');
   });
 
-  it('paid buttons show "Coming soon" not "Subscribe" or "Buy"', () => {
-    expect(sheetSrc).toContain('Coming soon');
-    expect(sheetSrc).not.toMatch(/Subscribe|Buy now|Purchase/);
+  it('paid buttons show contextual label, not "Coming soon"', () => {
+    // Labels are dynamic: "Upgrade to X" or "Switch to X"
+    expect(sheetSrc).toContain('Upgrade to');
+    expect(sheetSrc).toContain('Switch to');
+    expect(sheetSrc).not.toContain('Coming soon');
   });
 
-  it('"Coming soon" button has opacity reduction (visual disabled cue)', () => {
-    // Not just HTML disabled — must also look disabled
-    expect(sheetSrc).toContain('opacity: 0.6');
+  it('in-flight checkout shows "Redirecting…" and dims other buttons', () => {
+    expect(sheetSrc).toContain('Redirecting\u2026');
+    expect(sheetSrc).toContain('checkingOutTier !== null ? 0.7 : 1');
   });
 
   it('sheet cannot render without explicit user action', () => {
