@@ -588,6 +588,83 @@ export default function AssetDetail() {
   );
 }
 
+// ── Helpers: build signal_breakdown / market_context from raw indicators ──
+
+function buildSignalBreakdown(indicators: {
+  ema_9: number;
+  ema_21: number;
+  rsi_14: number;
+  adx_4h: number;
+  sma_50_daily: number;
+}, price: number): Record<string, string> {
+  const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
+  const fmt = (n: number) => n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+
+  const result: Record<string, string> = {};
+
+  result.ema_cross = ema9 > ema21
+    ? `Short-term average at ${fmt(ema9)} is above medium-term at ${fmt(ema21)}, suggesting short-term upward pressure.`
+    : `Short-term average at ${fmt(ema9)} is below medium-term at ${fmt(ema21)}, suggesting short-term downward pressure.`;
+
+  result.rsi = rsi > 70
+    ? `Buying pressure at ${rsi.toFixed(0)} indicates overbought conditions — price may be due for a pullback.`
+    : rsi < 30
+      ? `Buying pressure at ${rsi.toFixed(0)} indicates oversold conditions — price may be due for a bounce.`
+      : `Buying pressure at ${rsi.toFixed(0)} is in neutral territory — no extreme buying or selling pressure.`;
+
+  result.trend_filter = price > sma50
+    ? `Price is above the 50-day trend line (${fmt(sma50)}), which supports the broader uptrend.`
+    : `Price is below the 50-day trend line (${fmt(sma50)}), which suggests the broader trend is bearish.`;
+
+  result.adx = adx > 25
+    ? `Trend strength at ${adx.toFixed(0)} shows a strong directional move in progress.`
+    : adx > 20
+      ? `Trend strength at ${adx.toFixed(0)} shows moderate directional momentum.`
+      : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend — choppy conditions.`;
+
+  return result;
+}
+
+function buildWhatWouldChange(indicators: {
+  ema_9: number;
+  ema_21: number;
+  rsi_14: number;
+  adx_4h: number;
+  sma_50_daily: number;
+}, price: number): string {
+  const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
+  const bullLevel = Math.max(ema9, ema21);
+  const fmt = (n: number) => n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+
+  // Determine what's missing for a clear signal
+  const conditions: string[] = [];
+
+  if (price < bullLevel) {
+    conditions.push(`a clear break above ${fmt(bullLevel)}`);
+  }
+  if (rsi <= 40 || rsi >= 70) {
+    conditions.push(`buying pressure moving into the 40–70 range`);
+  } else if (rsi < 60) {
+    conditions.push(`buying pressure pushing above 60`);
+  }
+  if (adx < 25) {
+    conditions.push(`trend strength rising above 25`);
+  }
+  if (price < sma50) {
+    conditions.push(`price recovering above the 50-day average at ${fmt(sma50)}`);
+  }
+
+  if (conditions.length === 0) {
+    return 'Current conditions are close to triggering a signal — Vela is watching for confirmation.';
+  }
+
+  const joined = conditions.length === 1
+    ? conditions[0]
+    : conditions.slice(0, -1).join(', ') + ' and ' + conditions[conditions.length - 1];
+
+  return `${joined.charAt(0).toUpperCase() + joined.slice(1)} would likely shift the signal towards a clearer direction.`;
+}
+
 // ── Collapsible "Why we think this" section (replaces MUI Accordion) ──
 
 function WhyWeThinkThis({
@@ -610,6 +687,20 @@ function WhyWeThinkThis({
 }) {
   const [expanded, setExpanded] = useState(false);
   const indicators = detail?.indicators;
+
+  // Always have signal_breakdown — use AI data if available, else generate from raw indicators
+  const signalBreakdown: Record<string, string> =
+    detail.signal_breakdown && Object.keys(detail.signal_breakdown).length > 0
+      ? detail.signal_breakdown
+      : indicators && price
+        ? buildSignalBreakdown(indicators, price)
+        : {};
+
+  // Always have market_context — use AI data if available, else empty (Fear & Greed not in raw indicators)
+  const marketContext: Record<string, string> =
+    detail.market_context && Object.keys(detail.market_context).length > 0
+      ? detail.market_context
+      : {};
 
   return (
     <div
@@ -655,71 +746,19 @@ function WhyWeThinkThis({
       {/* Collapsible content */}
       {expanded && (
         <div style={{ padding: '0 var(--space-5) var(--space-5)' }}>
-          {/* Signal Breakdown — as bullet list */}
-          {detail.signal_breakdown && Object.keys(detail.signal_breakdown).length > 0 && (
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-              <SubLabel>Technical analysis</SubLabel>
-              <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                {Object.entries(detail.signal_breakdown).map(([key, value]) => (
-                  <li
-                    key={key}
-                    className="vela-body-sm"
-                    style={{
-                      color: 'var(--color-text-secondary)',
-                      marginBottom: 'var(--space-2)',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {(() => {
-                      const t = plainEnglish(value as string);
-                      return t.charAt(0).toUpperCase() + t.slice(1);
-                    })()}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <Divider />
-
-          {/* Market Context — with Fear & Greed gauge */}
-          {detail.market_context && (
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-              <SubLabel>Market context</SubLabel>
-
-              {fearGreedValue != null && (
-                <div
-                  className="vela-card"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    margin: 'var(--space-4) 0',
-                    padding: 'var(--space-3)',
-                    backgroundColor: 'var(--gray-50)',
-                  }}
-                >
-                  <FearGreedGauge value={fearGreedValue} label={fearGreedLabel} />
-                </div>
-              )}
-
-              {/* TODO(backend): Improve AI prompt to generate market context about dominance CHANGES rather than absolute values */}
-              <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                {Object.entries(detail.market_context)
-                  .sort(([keyA], [keyB]) => {
-                    // Push dominance-related keys to end of list
-                    const isDomA = /dominance/i.test(keyA);
-                    const isDomB = /dominance/i.test(keyB);
-                    if (isDomA && !isDomB) return 1;
-                    if (!isDomA && isDomB) return -1;
-                    return 0;
-                  })
-                  .map(([key, value]) => (
+          {/* Signal Breakdown — always shown; uses AI data or indicator-generated fallback */}
+          {Object.keys(signalBreakdown).length > 0 && (
+            <>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <SubLabel>Technical analysis</SubLabel>
+                <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+                  {Object.entries(signalBreakdown).map(([key, value]) => (
                     <li
                       key={key}
                       className="vela-body-sm"
                       style={{
                         color: 'var(--color-text-secondary)',
-                        marginBottom: 'var(--space-1)',
+                        marginBottom: 'var(--space-2)',
                         lineHeight: 1.6,
                       }}
                     >
@@ -729,11 +768,66 @@ function WhyWeThinkThis({
                       })()}
                     </li>
                   ))}
-              </ul>
-            </div>
+                </ul>
+              </div>
+              <Divider />
+            </>
           )}
 
-          <Divider />
+          {/* Market Context — with Fear & Greed gauge (only when AI data or fallback provides it) */}
+          {(Object.keys(marketContext).length > 0 || fearGreedValue != null) && (
+            <>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <SubLabel>Market context</SubLabel>
+
+                {fearGreedValue != null && (
+                  <div
+                    className="vela-card"
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      margin: 'var(--space-4) 0',
+                      padding: 'var(--space-3)',
+                      backgroundColor: 'var(--gray-50)',
+                    }}
+                  >
+                    <FearGreedGauge value={fearGreedValue} label={fearGreedLabel} />
+                  </div>
+                )}
+
+                {Object.keys(marketContext).length > 0 && (
+                  <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+                    {Object.entries(marketContext)
+                      .sort(([keyA], [keyB]) => {
+                        // Push dominance-related keys to end of list
+                        const isDomA = /dominance/i.test(keyA);
+                        const isDomB = /dominance/i.test(keyB);
+                        if (isDomA && !isDomB) return 1;
+                        if (!isDomA && isDomB) return -1;
+                        return 0;
+                      })
+                      .map(([key, value]) => (
+                        <li
+                          key={key}
+                          className="vela-body-sm"
+                          style={{
+                            color: 'var(--color-text-secondary)',
+                            marginBottom: 'var(--space-1)',
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {(() => {
+                            const t = plainEnglish(value as string);
+                            return t.charAt(0).toUpperCase() + t.slice(1);
+                          })()}
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+              <Divider />
+            </>
+          )}
 
           {/* Indicators — Plain English */}
           {indicators && (
@@ -953,7 +1047,7 @@ function PriceLevelTriggers({
   price,
   detail,
 }: {
-  indicators: { ema_9: number; ema_21: number; sma_50_daily: number };
+  indicators: { ema_9: number; ema_21: number; rsi_14: number; adx_4h: number; sma_50_daily: number };
   price: number | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -989,38 +1083,43 @@ function PriceLevelTriggers({
           }
         />
       </div>
-      {detail.what_would_change && (
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.6,
-            marginTop: 'var(--space-3)',
-            fontStyle: 'italic',
-          }}
-        >
-          {parsePriceSegments(plainEnglish(detail.what_would_change)).map((seg, i) =>
-            seg.type === 'price' ? (
-              <span
-                key={i}
-                className="vela-mono"
-                style={{
-                  fontWeight: 'var(--weight-semibold)',
-                  fontStyle: 'normal',
-                  color: 'var(--color-text-primary)',
-                  backgroundColor: 'var(--gray-100)',
-                  borderRadius: '4px',
-                  padding: '0 var(--space-1)',
-                }}
-              >
-                {seg.value}
-              </span>
-            ) : (
-              <React.Fragment key={i}>{seg.value}</React.Fragment>
-            )
-          )}
-        </p>
-      )}
+      {(() => {
+        // Use AI-generated text, or build a fallback from indicator data
+        const wwcText = detail.what_would_change || buildWhatWouldChange(indicators, cp);
+        if (!wwcText) return null;
+        return (
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-muted)',
+              lineHeight: 1.6,
+              marginTop: 'var(--space-3)',
+              fontStyle: 'italic',
+            }}
+          >
+            {parsePriceSegments(plainEnglish(wwcText)).map((seg, i) =>
+              seg.type === 'price' ? (
+                <span
+                  key={i}
+                  className="vela-mono"
+                  style={{
+                    fontWeight: 'var(--weight-semibold)',
+                    fontStyle: 'normal',
+                    color: 'var(--color-text-primary)',
+                    backgroundColor: 'var(--gray-100)',
+                    borderRadius: '4px',
+                    padding: '0 var(--space-1)',
+                  }}
+                >
+                  {seg.value}
+                </span>
+              ) : (
+                <React.Fragment key={i}>{seg.value}</React.Fragment>
+              )
+            )}
+          </p>
+        );
+      })()}
     </div>
   );
 }

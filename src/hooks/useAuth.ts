@@ -1,9 +1,20 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { createAuthenticatedClient } from '../lib/supabase';
+import { supabase, createAuthenticatedClient } from '../lib/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exchange`;
+
+// ── Dev bypass: skip Privy auth for local QA testing ──
+// Set VITE_DEV_BYPASS_AUTH=true in .env.local to enable.
+// Uses the public Supabase client (reads signals/briefs/assets).
+// Trading actions won't work (no real JWT), but UI QA is fully functional.
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+
+if (DEV_BYPASS && typeof window !== 'undefined') {
+  localStorage.setItem('vela_onboarded', 'true');
+  console.info('[useAuth] DEV BYPASS active — using mock auth state');
+}
 
 interface AuthUser {
   privyDid: string;
@@ -86,6 +97,7 @@ export function useAuth(): AuthState {
 
   // Trigger token exchange when user authenticates
   useEffect(() => {
+    if (DEV_BYPASS) return;
     if (ready && authenticated) {
       exchangeToken();
     }
@@ -93,6 +105,7 @@ export function useAuth(): AuthState {
 
   // Sync wallet address reactively (Privy creates embedded wallets async after login)
   useEffect(() => {
+    if (DEV_BYPASS) return;
     if (authenticated && privyUser?.wallet?.address) {
       setUser(prev => (prev ? { ...prev, walletAddress: privyUser.wallet?.address } : null));
     }
@@ -111,6 +124,19 @@ export function useAuth(): AuthState {
     setUser(null);
     await logout();
   }, [logout]);
+
+  // Dev bypass: return mock auth state using public Supabase client
+  if (DEV_BYPASS) {
+    return {
+      isAuthenticated: true,
+      isLoading: false,
+      user: { privyDid: 'dev-bypass-user', email: 'dev@vela.local' },
+      supabaseClient: supabase,
+      getToken: async () => null,
+      login: () => {},
+      logout: async () => {},
+    };
+  }
 
   return {
     isAuthenticated: ready && authenticated,
