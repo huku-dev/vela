@@ -1668,10 +1668,10 @@ function SignalHistoryCard({
                       backgroundColor: gc.bg,
                       border: `1.5px solid ${gc.border}`,
                       borderRadius: '4px',
-                      padding: '2px var(--space-2)',
+                      padding: '2px 0',
                       lineHeight: 1.3,
                       flexShrink: 0,
-                      minWidth: 32,
+                      width: 38,
                       textAlign: 'center',
                       marginTop: 2,
                     }}
