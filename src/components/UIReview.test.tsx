@@ -326,7 +326,7 @@ describe('TIER-ADV: adversarial — tier definitions safety', () => {
   it('no hardcoded dollar amounts in tier comparison source', () => {
     const sheetSrc = readFileSync(resolve(__dirname, './TierComparisonSheet.tsx'), 'utf-8');
     // Prices should come from TIER_DEFINITIONS, not hardcoded in the component
-    expect(sheetSrc).not.toMatch(/\$29|\$79|\$290|\$790/);
+    expect(sheetSrc).not.toMatch(/\$10|\$20|\$29|\$79|\$100|\$200|\$290|\$790/);
   });
 });
 

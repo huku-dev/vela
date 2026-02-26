@@ -9,7 +9,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
   {
     tier: 'free',
     display_name: 'Free',
-    trade_fee_pct: 0,
+    trade_fee_pct: 0.5,
     max_position_size_usd: 0,
     max_leverage: 0,
     signal_frequency_hours: 4,
@@ -41,8 +41,8 @@ export const TIER_DEFINITIONS: TierConfig[] = [
       email_alerts: true,
       telegram_alerts: true,
     },
-    monthly_price_usd: 29,
-    annual_price_usd: 290,
+    monthly_price_usd: 10,
+    annual_price_usd: 100,
   },
   {
     tier: 'premium',
@@ -60,8 +60,8 @@ export const TIER_DEFINITIONS: TierConfig[] = [
       email_alerts: true,
       telegram_alerts: true,
     },
-    monthly_price_usd: 79,
-    annual_price_usd: 790,
+    monthly_price_usd: 20,
+    annual_price_usd: 200,
   },
 ];
 
