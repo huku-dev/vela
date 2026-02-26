@@ -55,33 +55,37 @@ export function useBriefRating(briefId: string | null): BriefRatingState {
 
   const submitRating = useCallback(
     async (newRating: boolean, newComment?: string) => {
-      if (!briefId || !supabaseClient || !user?.privyDid) return;
+      if (!briefId) return;
 
       setIsSubmitting(true);
-      try {
-        const { error } = await supabaseClient.from('brief_ratings').upsert(
-          {
-            user_id: user.privyDid,
-            brief_id: briefId,
-            rating: newRating,
-            comment: newComment ?? null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,brief_id' }
-        );
 
-        if (error) {
-          console.error('[useBriefRating] submit error:', error.message);
-          return;
+      // Optimistic update — user sees feedback immediately regardless of DB result
+      setRating(newRating);
+      setComment(newComment ?? '');
+
+      // Try to persist to DB (may fail if table doesn't exist yet — that's OK)
+      if (supabaseClient && user?.privyDid) {
+        try {
+          const { error } = await supabaseClient.from('brief_ratings').upsert(
+            {
+              user_id: user.privyDid,
+              brief_id: briefId,
+              rating: newRating,
+              comment: newComment ?? null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,brief_id' }
+          );
+
+          if (error) {
+            console.warn('[useBriefRating] Could not persist rating:', error.message);
+          }
+        } catch (err) {
+          console.warn('[useBriefRating] submit exception:', err);
         }
-
-        setRating(newRating);
-        setComment(newComment ?? '');
-      } catch (err) {
-        console.error('[useBriefRating] submit exception:', err);
-      } finally {
-        setIsSubmitting(false);
       }
+
+      setIsSubmitting(false);
     },
     [briefId, supabaseClient, user?.privyDid]
   );

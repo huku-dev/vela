@@ -11,6 +11,7 @@ import type {
 } from '../types';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
+const HYPERLIQUID_INFO = 'https://api.hyperliquid.xyz/info';
 const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
 const STALE_THRESHOLD = 60 * 1000; // 1 minute — skip refetch if data is younger
 
@@ -21,7 +22,34 @@ let cachedDashboard: AssetDashboard[] | null = null;
 let cachedDigest: Brief | null = null;
 let lastFetchTime = 0;
 
-async function fetchLivePrices(ids: string[]): Promise<Record<string, PriceData>> {
+/**
+ * Fetch mid-prices from Hyperliquid exchange (primary source).
+ * Returns symbol → USD price (e.g. { BTC: 87400.5, ETH: 3200 }).
+ */
+async function fetchHyperliquidMids(): Promise<Record<string, number>> {
+  try {
+    const res = await fetch(HYPERLIQUID_INFO, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'allMids' }),
+    });
+    if (!res.ok) return {};
+    const data: Record<string, string> = await res.json();
+    const result: Record<string, number> = {};
+    for (const [sym, priceStr] of Object.entries(data)) {
+      const price = parseFloat(priceStr);
+      if (!isNaN(price)) result[sym] = price;
+    }
+    return result;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Fetch prices + 24h change from CoinGecko (fallback for prices, primary for 24h change).
+ */
+async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, PriceData>> {
   try {
     const url = `${COINGECKO_BASE}/simple/price?ids=${ids.join(',')}&vs_currencies=usd&include_24hr_change=true`;
     const res = await fetch(url);
@@ -30,13 +58,64 @@ async function fetchLivePrices(ids: string[]): Promise<Record<string, PriceData>
     const result: Record<string, PriceData> = {};
     for (const id of ids) {
       if (data[id]) {
-        result[id] = { price: data[id].usd, change24h: data[id].usd_24h_change ?? 0 };
+        result[id] = {
+          price: data[id].usd,
+          change24h: data[id].usd_24h_change ?? 0,
+          priceSource: 'coingecko',
+        };
       }
     }
     return result;
   } catch {
     return {};
   }
+}
+
+/**
+ * Dual-source price fetching: Hyperliquid primary, CoinGecko fallback.
+ *
+ * @param ids       - CoinGecko asset IDs (e.g. ["bitcoin", "ethereum"])
+ * @param symbolMap - Optional mapping of CoinGecko ID → Hyperliquid symbol (e.g. { bitcoin: "BTC" })
+ *
+ * Priority:
+ * 1. Hyperliquid mid-price (most accurate for trading)
+ * 2. CoinGecko price (fallback)
+ * 3. Both fail → empty result (caller uses signal.price_at_signal)
+ *
+ * 24h change always comes from CoinGecko (Hyperliquid allMids doesn't include it).
+ */
+async function fetchLivePrices(
+  ids: string[],
+  symbolMap?: Record<string, string>
+): Promise<Record<string, PriceData>> {
+  // Fetch both sources in parallel
+  const [hlMids, cgPrices] = await Promise.all([
+    symbolMap ? fetchHyperliquidMids() : Promise.resolve({} as Record<string, number>),
+    fetchCoinGeckoPrices(ids),
+  ]);
+
+  const result: Record<string, PriceData> = {};
+
+  for (const id of ids) {
+    const hlSymbol = symbolMap?.[id];
+    const hlPrice = hlSymbol ? hlMids[hlSymbol] : undefined;
+    const cgData = cgPrices[id];
+
+    if (hlPrice !== undefined) {
+      // Hyperliquid primary price + CoinGecko 24h change
+      result[id] = {
+        price: hlPrice,
+        change24h: cgData?.change24h ?? 0,
+        priceSource: 'hyperliquid',
+      };
+    } else if (cgData) {
+      // CoinGecko fallback
+      result[id] = cgData;
+    }
+    // If both fail: no entry → caller should use signal price + show stale warning
+  }
+
+  return result;
 }
 
 export function useDashboard() {
@@ -73,14 +152,31 @@ export function useDashboard() {
       const briefs = briefsRes.data || [];
 
       const coingeckoIds = assets.map((a: Asset) => a.coingecko_id);
-      const livePrices = await fetchLivePrices(coingeckoIds);
+      // Build CoinGecko ID → Hyperliquid symbol map for dual-source pricing
+      const symbolMap: Record<string, string> = {};
+      for (const a of assets) {
+        symbolMap[a.coingecko_id] = a.symbol;
+      }
+      const livePrices = await fetchLivePrices(coingeckoIds, symbolMap);
 
-      const dashboard: AssetDashboard[] = assets.map((asset: Asset) => ({
-        asset,
-        signal: signals.find((s: Signal) => s.asset_id === asset.id) || null,
-        brief: briefs.find((b: Brief) => b.asset_id === asset.id) || null,
-        priceData: livePrices[asset.coingecko_id] || null,
-      }));
+      const dashboard: AssetDashboard[] = assets.map((asset: Asset) => {
+        const signal = signals.find((s: Signal) => s.asset_id === asset.id) || null;
+        const livePrice = livePrices[asset.coingecko_id];
+
+        // Fall back to signal price when both live sources fail
+        const priceData: PriceData | null = livePrice
+          ? livePrice
+          : signal?.price_at_signal
+            ? { price: signal.price_at_signal, change24h: 0, priceSource: 'signal' as const }
+            : null;
+
+        return {
+          asset,
+          signal,
+          brief: briefs.find((b: Brief) => b.asset_id === asset.id) || null,
+          priceData,
+        };
+      });
 
       // Update module cache
       cachedDashboard = dashboard;
@@ -176,7 +272,8 @@ export function useAssetDetail(assetId: string) {
       setSignalLookup(signalMap);
 
       if (assetData?.coingecko_id) {
-        const prices = await fetchLivePrices([assetData.coingecko_id]);
+        const symMap = { [assetData.coingecko_id]: assetData.symbol };
+        const prices = await fetchLivePrices([assetData.coingecko_id], symMap);
         const freshPrice = prices[assetData.coingecko_id];
         // Only overwrite cached priceData if we got a valid response —
         // prevents wiping cached change24h on transient CoinGecko failures

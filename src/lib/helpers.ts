@@ -144,6 +144,13 @@ const jargonMap: [RegExp, string][] = [
   [/\bconsolidation\b/gi, 'sideways movement'],
   [/\bsupport\s+level\b/gi, 'price floor'],
   [/\bresistance\s+level\b/gi, 'price ceiling'],
+  [/\bstop[_\s-]?loss\b/gi, 'safety net triggered'],
+  [/\btrend[_\s-]?break\b/gi, 'trend reversed'],
+  [/\btrailing[_\s-]?stop\b/gi, 'trailing safety net'],
+  [/\bliquidat(?:ion|ed)\b/gi, 'position closed by exchange'],
+  [/\bvolatility\b/gi, 'price swings'],
+  [/\bretracement\b/gi, 'pullback'],
+  [/\bbreakout\b/gi, 'price broke through'],
 
   // Generic catch-alls last
   [/\bEMA\b/gi, 'moving average'],

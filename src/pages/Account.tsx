@@ -3,8 +3,10 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
 import { useSubscription } from '../hooks/useSubscription';
+import { useTierAccess } from '../hooks/useTierAccess';
 import { LoadingSpinner } from '../components/VelaComponents';
 import TierComparisonSheet from '../components/TierComparisonSheet';
+import { getTierConfig } from '../lib/tier-definitions';
 import type { TradingMode } from '../types';
 
 declare global {
@@ -163,9 +165,10 @@ interface BalanceCardProps {
   wallet: import('../types').UserWallet | null;
   hasWallet: boolean;
   isTradingEnabled: boolean;
+  showFundingNudge?: boolean;
 }
 
-function BalanceCard({ wallet, hasWallet, isTradingEnabled }: BalanceCardProps) {
+function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge }: BalanceCardProps) {
   // No wallet / trading not enabled — prompt to enable
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
@@ -181,7 +184,7 @@ function BalanceCard({ wallet, hasWallet, isTradingEnabled }: BalanceCardProps) 
           className="vela-label-sm"
           style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}
         >
-          BALANCE
+          TRADING WALLET
         </p>
         <p
           style={{
@@ -213,6 +216,27 @@ function BalanceCard({ wallet, hasWallet, isTradingEnabled }: BalanceCardProps) 
         marginBottom: 'var(--space-6)',
       }}
     >
+      {/* Funding nudge banner for unfunded paid users */}
+      {showFundingNudge && balance === 0 && (
+        <div
+          style={{
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--color-status-sell-bg)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1.5px solid var(--red-primary)',
+            marginBottom: 'var(--space-4)',
+            textAlign: 'center',
+          }}
+        >
+          <p
+            className="vela-body-sm"
+            style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}
+          >
+            Fund your wallet so Vela can execute your first trade
+          </p>
+        </div>
+      )}
+
       <p
         className="vela-label-sm"
         style={{
@@ -221,7 +245,7 @@ function BalanceCard({ wallet, hasWallet, isTradingEnabled }: BalanceCardProps) 
           textAlign: 'center',
         }}
       >
-        BALANCE {isTestnet && '· Testnet'}
+        TRADING WALLET {isTestnet && '· Testnet'}
       </p>
 
       {/* Big balance display */}
@@ -465,12 +489,21 @@ const MODE_DESCRIPTIONS: Record<TradingMode, string> = {
   full_auto: 'Vela executes trades automatically based on your signal preferences.',
 };
 
+/** Maps each trading mode to the tier feature flag that enables it */
+const MODE_FEATURE_KEY: Record<TradingMode, 'view_only' | 'semi_auto' | 'auto_mode'> = {
+  view_only: 'view_only',
+  semi_auto: 'semi_auto',
+  full_auto: 'auto_mode',
+};
+
 interface TradingPanelProps {
   preferences: import('../types').UserPreferences | null;
   isTradingEnabled: boolean;
   updatePreferences: (updates: Partial<import('../types').UserPreferences>) => Promise<void>;
   loading: boolean;
   circuitBreakers: import('../types').CircuitBreakerEvent[];
+  tierFeatures: Record<string, boolean>;
+  onUpgradeClick: () => void;
 }
 
 function TradingPanel({
@@ -479,6 +512,8 @@ function TradingPanel({
   updatePreferences,
   loading,
   circuitBreakers,
+  tierFeatures,
+  onUpgradeClick,
 }: TradingPanelProps) {
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
@@ -583,61 +618,99 @@ function TradingPanel({
           marginBottom: 'var(--space-4)',
         }}
       >
-        {(['view_only', 'semi_auto', 'full_auto'] as TradingMode[]).map(mode => (
-          <button
-            key={mode}
-            onClick={() => handleModeChange(mode)}
-            disabled={saving}
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 'var(--space-3)',
-              padding: 'var(--space-3)',
-              backgroundColor: currentMode === mode ? 'var(--gray-100)' : 'transparent',
-              border: currentMode === mode ? '2px solid var(--black)' : '1px solid var(--gray-200)',
-              borderRadius: 'var(--radius-sm)',
-              cursor: saving ? 'wait' : 'pointer',
-              textAlign: 'left',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              width: '100%',
-              boxShadow: currentMode === mode ? '2px 2px 0 var(--black)' : 'none',
-            }}
-          >
-            {/* Radio indicator */}
-            <div
+        {(['view_only', 'semi_auto', 'full_auto'] as TradingMode[]).map(mode => {
+          const isAllowed = tierFeatures[MODE_FEATURE_KEY[mode]];
+          const isSelected = currentMode === mode;
+          const isLocked = !isAllowed;
+
+          return (
+            <button
+              key={mode}
+              onClick={() => (isLocked ? onUpgradeClick() : handleModeChange(mode))}
+              disabled={saving}
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: '50%',
-                border: `2px solid ${currentMode === mode ? 'var(--black)' : 'var(--gray-300)'}`,
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                marginTop: 1,
+                alignItems: 'flex-start',
+                gap: 'var(--space-3)',
+                padding: 'var(--space-3)',
+                backgroundColor: isSelected ? 'var(--gray-100)' : 'transparent',
+                border: isSelected ? '2px solid var(--black)' : '1px solid var(--gray-200)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: saving ? 'wait' : 'pointer',
+                textAlign: 'left',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                width: '100%',
+                boxShadow: isSelected ? '2px 2px 0 var(--black)' : 'none',
+                opacity: isLocked ? 0.5 : 1,
               }}
             >
-              {currentMode === mode && (
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: 'var(--black)',
-                  }}
-                />
-              )}
-            </div>
-            <div>
-              <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
-                {MODE_LABELS[mode]}
-              </p>
-              <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
-                {MODE_DESCRIPTIONS[mode]}
-              </p>
-            </div>
-          </button>
-        ))}
+              {/* Radio indicator */}
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  border: `2px solid ${isSelected ? 'var(--black)' : 'var(--gray-300)'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}
+              >
+                {isSelected && (
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--black)',
+                    }}
+                  />
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+                  {MODE_LABELS[mode]}
+                  {isLocked && (
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      style={{
+                        verticalAlign: '-1px',
+                        marginLeft: 'var(--space-1)',
+                      }}
+                    >
+                      <rect
+                        x="4"
+                        y="9"
+                        width="12"
+                        height="9"
+                        rx="2"
+                        fill="var(--gray-300)"
+                        stroke="var(--gray-400)"
+                        strokeWidth="1.5"
+                      />
+                      <path
+                        d="M7 9V6a3 3 0 116 0v3"
+                        stroke="var(--gray-400)"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  )}
+                </p>
+                <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
+                  {isLocked
+                    ? `Upgrade to unlock`
+                    : MODE_DESCRIPTIONS[mode]}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       {/* Trading settings — only show if trading enabled */}
@@ -1146,6 +1219,7 @@ export default function Account() {
     cancelAtPeriodEnd,
     refresh: refreshSubscription,
   } = useSubscription();
+  const { needsFunding } = useTierAccess();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showTierSheet, setShowTierSheet] = useState(false);
   const [checkoutToast, setCheckoutToast] = useState<string | null>(null);
@@ -1367,7 +1441,12 @@ export default function Account() {
       </div>
 
       {/* Standalone balance card */}
-      <BalanceCard wallet={wallet} hasWallet={hasWallet} isTradingEnabled={isTradingEnabled} />
+      <BalanceCard
+        wallet={wallet}
+        hasWallet={hasWallet}
+        isTradingEnabled={isTradingEnabled}
+        showFundingNudge={needsFunding(wallet?.balance_usdc)}
+      />
 
       {/* Checkout toast — success (green) or error (red) */}
       {checkoutToast &&
@@ -1428,7 +1507,7 @@ export default function Account() {
         style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--space-6)' }}
       >
         <SettingsItem
-          label="Personal info"
+          label="Profile info"
           value={user?.email ?? '—'}
           onClick={() => toggleSection('personal')}
           expanded={expandedSection === 'personal'}
@@ -1467,7 +1546,7 @@ export default function Account() {
         )}
 
         <SettingsItem
-          label="Trading"
+          label="Trading preferences"
           value={isTradingEnabled ? MODE_LABELS[preferences?.mode ?? 'view_only'] : 'View only'}
           onClick={() => toggleSection('trading')}
           expanded={expandedSection === 'trading'}
@@ -1480,6 +1559,8 @@ export default function Account() {
               updatePreferences={updatePreferences}
               loading={tradingLoading}
               circuitBreakers={circuitBreakers}
+              tierFeatures={getTierConfig(currentTier).features}
+              onUpgradeClick={() => setShowTierSheet(true)}
             />
           </div>
         )}

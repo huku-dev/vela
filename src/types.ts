@@ -101,6 +101,8 @@ export interface BriefRating {
 export interface PriceData {
   price: number;
   change24h: number;
+  /** Where this price came from — 'signal' means both live sources failed */
+  priceSource?: 'hyperliquid' | 'coingecko' | 'signal';
 }
 
 /**

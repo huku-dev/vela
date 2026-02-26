@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Card, LoadingSpinner } from './VelaComponents';
+import TradeConfirmationSheet from './TradeConfirmationSheet';
 import { formatPrice } from '../lib/helpers';
+import { useTierAccess } from '../hooks/useTierAccess';
 import type { TradeProposal, TradeProposalStatus } from '../types';
 
 function getStatusConfig(status: TradeProposalStatus): {
@@ -70,6 +72,12 @@ interface TradeProposalCardProps {
   onDecline: (proposalId: string) => Promise<void>;
   /** Wallet balance for insufficient funds warning */
   walletBalance?: number;
+  /** Whether this user's tier allows trading (hide action buttons for free/view-only) */
+  canTrade?: boolean;
+  /** Label for the upgrade CTA when user can't trade */
+  upgradeLabel?: string;
+  /** Called when user clicks the upgrade CTA */
+  onUpgradeClick?: () => void;
 }
 
 /**
@@ -84,16 +92,25 @@ export default function TradeProposalCard({
   onAccept,
   onDecline,
   walletBalance,
+  canTrade = true,
+  upgradeLabel,
+  onUpgradeClick,
 }: TradeProposalCardProps) {
   const [acting, setActing] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBalanceWarning, setShowBalanceWarning] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const { tierConfig } = useTierAccess();
 
   const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';
   const expiresAt = new Date(proposal.expires_at);
   const timeLeft = expiresAt.getTime() - Date.now();
   const expired = timeLeft <= 0;
+
+  // Fee estimation
+  const feeRatePct = tierConfig.trade_fee_pct;
+  const estimatedFee = proposal.proposed_size_usd * (feeRatePct / 100);
 
   // Determine colors and labels based on proposal type
   const borderColor = isTrim ? '#FFD700' : isLong ? 'var(--green-primary)' : 'var(--red-primary)';
@@ -114,6 +131,12 @@ export default function TradeProposalCard({
       setShowBalanceWarning(true);
       return;
     }
+    // Show confirmation dialog instead of executing immediately
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmTrade = () => {
+    setShowConfirmation(false);
     handleAction('accept');
   };
 
@@ -263,6 +286,12 @@ export default function TradeProposalCard({
           value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
         />
         {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
+        {estimatedFee > 0 && (
+          <DetailRow
+            label={`Est. fee (${feeRatePct}%)`}
+            value={`$${estimatedFee.toFixed(2)}`}
+          />
+        )}
       </div>
 
       {/* Insufficient balance warning */}
@@ -330,35 +359,63 @@ export default function TradeProposalCard({
         </div>
       )}
 
-      {/* Action buttons */}
-      {!expired && (
+      {/* Action buttons — only for users with trading capability */}
+      {!canTrade ? (
         <div
           style={{
-            display: 'flex',
-            gap: 'var(--space-2)',
             marginTop: 'var(--space-3)',
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--gray-50)',
+            borderRadius: 'var(--radius-sm)',
+            textAlign: 'center',
           }}
         >
-          <button
-            className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-buy'} vela-btn-sm`}
-            onClick={handleAcceptClick}
-            disabled={acting !== null}
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 0, marginBottom: 'var(--space-2)' }}
+          >
+            Upgrade your plan to act on trade proposals
+          </p>
+          {upgradeLabel && onUpgradeClick && (
+            <button
+              className="vela-btn vela-btn-primary vela-btn-sm"
+              onClick={onUpgradeClick}
+              style={{ width: '100%' }}
+            >
+              {upgradeLabel}
+            </button>
+          )}
+        </div>
+      ) : (
+        !expired && (
+          <div
             style={{
-              flex: 1,
-              ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }),
+              display: 'flex',
+              gap: 'var(--space-2)',
+              marginTop: 'var(--space-3)',
             }}
           >
-            {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
-          </button>
-          <button
-            className="vela-btn vela-btn-ghost vela-btn-sm"
-            onClick={() => handleAction('decline')}
-            disabled={acting !== null}
-            style={{ flex: 1 }}
-          >
-            {acting === 'decline' ? 'Declining...' : 'Decline'}
-          </button>
-        </div>
+            <button
+              className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-buy'} vela-btn-sm`}
+              onClick={handleAcceptClick}
+              disabled={acting !== null}
+              style={{
+                flex: 1,
+                ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }),
+              }}
+            >
+              {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
+            </button>
+            <button
+              className="vela-btn vela-btn-ghost vela-btn-sm"
+              onClick={() => handleAction('decline')}
+              disabled={acting !== null}
+              style={{ flex: 1 }}
+            >
+              {acting === 'decline' ? 'Declining...' : 'Decline'}
+            </button>
+          </div>
+        )
       )}
 
       {/* Plain English context */}
@@ -377,6 +434,19 @@ export default function TradeProposalCard({
             ? 'This will open a long position — profit if price goes up.'
             : 'This will open a short position — profit if price goes down.'}
       </p>
+
+      {/* Trade confirmation overlay */}
+      {showConfirmation && (
+        <TradeConfirmationSheet
+          proposal={proposal}
+          assetSymbol={assetSymbol}
+          estimatedFee={estimatedFee}
+          feeRatePct={feeRatePct}
+          onConfirm={handleConfirmTrade}
+          onCancel={() => setShowConfirmation(false)}
+          isSubmitting={acting === 'accept'}
+        />
+      )}
     </Card>
   );
 }

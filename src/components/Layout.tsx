@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
+import { useTierAccess } from '../hooks/useTierAccess';
 
 const navItems = [
   {
@@ -80,8 +81,10 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, isLoading, login } = useAuthContext();
-  const { proposals } = useTrading();
+  const { proposals, wallet } = useTrading();
+  const { needsFunding } = useTierAccess();
   const pendingCount = proposals.filter(p => p.status === 'pending').length;
+  const showAccountDot = needsFunding(wallet?.balance_usdc);
 
   const getNavValue = useCallback(() => {
     const idx = navItems.findIndex(item => item.path === location.pathname);
@@ -94,7 +97,7 @@ export default function Layout() {
     setValue(getNavValue());
   }, [getNavValue]);
 
-  const showNav = !location.pathname.startsWith('/asset/') && location.pathname !== '/welcome';
+  const showNav = location.pathname !== '/welcome';
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg-page)' }}>
@@ -158,6 +161,19 @@ export default function Layout() {
               >
                 <div style={{ position: 'relative', display: 'inline-flex' }}>
                   {item.icon}
+                  {item.path === '/account' && showAccountDot && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -2,
+                        right: -4,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: 'var(--red-primary)',
+                      }}
+                    />
+                  )}
                   {item.path === '/' && pendingCount > 0 && (
                     <span
                       style={{

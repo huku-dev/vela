@@ -5,9 +5,11 @@ import SignalChip from '../components/SignalChip';
 import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
 import TradeProposalCard from '../components/TradeProposalCard';
-import { useAssetDetail } from '../hooks/useData';
+import TierComparisonSheet from '../components/TierComparisonSheet';
+import { useAssetDetail, useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTierAccess } from '../hooks/useTierAccess';
 import { useBriefRating } from '../hooks/useBriefRating';
 import {
   breakIntoParagraphs,
@@ -41,6 +43,13 @@ export default function AssetDetail() {
   );
   const { isAuthenticated } = useAuthContext();
   const { proposals, positions, wallet, acceptProposal, declineProposal } = useTrading();
+  const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
+  const { data: dashboardData } = useDashboard();
+  const [showTierSheet, setShowTierSheet] = useState(false);
+
+  // Check tier access — use dashboard data for ordered asset list
+  const allAssets = dashboardData.map(d => d.asset);
+  const hasAccess = !isAuthenticated || canAccessAsset(assetId!, allAssets);
 
   // Email redirect result banner
   const resultParam = searchParams.get('result');
@@ -81,6 +90,7 @@ export default function AssetDetail() {
     ? positions.find(p => p.asset_id === assetId && p.status === 'open')
     : undefined;
   const [positionExpanded, setPositionExpanded] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
   if (loading && !asset) {
     return (
@@ -94,6 +104,141 @@ export default function AssetDetail() {
     return (
       <div style={{ padding: 'var(--space-6)' }}>
         <p style={{ color: 'var(--color-error)' }}>Asset not found</p>
+      </div>
+    );
+  }
+
+  // Tier gate: show upgrade prompt if asset is outside user's tier allowance
+  if (!hasAccess) {
+    const price = priceData?.price ?? signal?.price_at_signal;
+    const iconUrl = getCoinIcon(asset.coingecko_id);
+
+    return (
+      <div
+        style={{
+          padding: 'var(--space-4)',
+          paddingBottom: 'var(--space-20)',
+          maxWidth: 600,
+          margin: '0 auto',
+        }}
+      >
+        {/* Header with back button + asset name + price */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-3)',
+            marginBottom: 'var(--space-6)',
+            marginTop: 'var(--space-2)',
+          }}
+        >
+          <button
+            onClick={() => navigate('/')}
+            aria-label="Go back"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: 'var(--border-medium) solid var(--color-border-default)',
+              borderRadius: 'var(--radius-sm)',
+              boxShadow: 'var(--shadow-xs)',
+              width: 36,
+              height: 36,
+              background: 'var(--color-bg-surface)',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M9 2L4 7L9 12"
+                style={{ stroke: 'var(--color-text-primary)' }}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          {iconUrl && (
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                border: 'var(--border-medium) solid var(--color-border-default)',
+                overflow: 'hidden',
+                flexShrink: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'var(--gray-100)',
+              }}
+            >
+              <img src={iconUrl} alt={asset.symbol} width={36} height={36} style={{ borderRadius: '50%' }} />
+            </div>
+          )}
+          <div style={{ flex: 1 }}>
+            <span className="vela-heading-base" style={{ fontWeight: 'var(--weight-bold)' }}>
+              {asset.symbol}
+            </span>
+            <span className="vela-body-sm vela-text-muted" style={{ display: 'block' }}>
+              {asset.name}
+            </span>
+          </div>
+          {price && (
+            <span className="vela-mono" style={{ fontWeight: 'var(--weight-semibold)', fontSize: '0.95rem' }}>
+              {formatPrice(price)}
+            </span>
+          )}
+        </div>
+
+        {/* Upgrade prompt */}
+        <Card
+          style={{
+            textAlign: 'center',
+            padding: 'var(--space-8) var(--space-4)',
+          }}
+        >
+          {/* Lock icon */}
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            fill="none"
+            style={{ margin: '0 auto var(--space-4)' }}
+          >
+            <rect x="8" y="18" width="24" height="18" rx="3" fill="var(--gray-200)" stroke="var(--gray-400)" strokeWidth="2" />
+            <path d="M14 18V12a6 6 0 1112 0v6" stroke="var(--gray-400)" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+
+          <h3
+            className="vela-heading-base"
+            style={{ marginBottom: 'var(--space-2)', fontWeight: 'var(--weight-bold)' }}
+          >
+            Unlock {asset.symbol} signals
+          </h3>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ marginBottom: 'var(--space-5)', lineHeight: 1.6 }}
+          >
+            Get trend analysis, AI briefs, and trade proposals for {asset.name} — upgrade your plan
+            to access more assets.
+          </p>
+          <button
+            className="vela-btn vela-btn-primary"
+            onClick={() => setShowTierSheet(true)}
+            style={{ width: '100%', maxWidth: 280 }}
+          >
+            {upgradeLabel(`access ${asset.symbol}`)}
+          </button>
+        </Card>
+
+        {showTierSheet && (
+          <TierComparisonSheet
+            currentTier={tier}
+            onClose={() => setShowTierSheet(false)}
+            onStartCheckout={startCheckout}
+          />
+        )}
       </div>
     );
   }
@@ -227,7 +372,20 @@ export default function AssetDetail() {
           >
             {formatPrice(price)}
           </span>
-          {change24h != null && (
+          {priceData?.priceSource === 'signal' ? (
+            <span
+              className="vela-body-sm"
+              style={{
+                fontSize: '0.6rem',
+                color: 'var(--color-text-muted)',
+                marginTop: 2,
+                display: 'block',
+                textAlign: 'right',
+              }}
+            >
+              Price may be delayed
+            </span>
+          ) : change24h != null ? (
             <span
               style={{
                 display: 'inline-flex',
@@ -252,7 +410,7 @@ export default function AssetDetail() {
                 {Math.abs(change24h).toFixed(1)}% 24h
               </span>
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -277,6 +435,9 @@ export default function AssetDetail() {
             onAccept={acceptProposal}
             onDecline={declineProposal}
             walletBalance={wallet?.balance_usdc}
+            canTrade={canTrade}
+            upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
+            onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
           />
         </div>
       ))}
@@ -288,6 +449,9 @@ export default function AssetDetail() {
             onAccept={acceptProposal}
             onDecline={declineProposal}
             walletBalance={wallet?.balance_usdc}
+            canTrade={canTrade}
+            upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
+            onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
           />
         </div>
       ))}
@@ -459,6 +623,92 @@ export default function AssetDetail() {
               >
                 View on Track Record →
               </button>
+
+              {/* Manual close button with friction */}
+              {canTrade && (
+                <div style={{ marginTop: 'var(--space-3)' }}>
+                  {!showCloseConfirm ? (
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        setShowCloseConfirm(true);
+                      }}
+                      className="vela-body-sm"
+                      style={{
+                        color: 'var(--color-text-muted)',
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
+                      }}
+                    >
+                      Close position
+                    </button>
+                  ) : (
+                    <div
+                      role="presentation"
+                      onClick={e => e.stopPropagation()}
+                      onKeyDown={e => e.stopPropagation()}
+                      style={{
+                        padding: 'var(--space-3)',
+                        backgroundColor: 'var(--color-status-yellow-bg, #fffbeb)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '2px solid var(--color-status-yellow, #f59e0b)',
+                      }}
+                    >
+                      <p
+                        className="vela-body-sm"
+                        style={{ fontWeight: 600, margin: 0, marginBottom: 'var(--space-1)' }}
+                      >
+                        Close your {asset.symbol} {assetPosition.side}?
+                      </p>
+                      <p
+                        className="vela-body-sm vela-text-muted"
+                        style={{ margin: 0, marginBottom: 'var(--space-2)' }}
+                      >
+                        Vela&apos;s signals haven&apos;t recommended closing this position yet.
+                        Manual exits sometimes miss further gains.
+                      </p>
+                      <p
+                        className="vela-mono vela-body-sm"
+                        style={{ margin: 0, marginBottom: 'var(--space-3)', fontWeight: 600 }}
+                      >
+                        Current P&L: {assetPosition.unrealized_pnl >= 0 ? '+' : ''}$
+                        {Math.abs(assetPosition.unrealized_pnl).toFixed(2)} (
+                        {assetPosition.unrealized_pnl_pct >= 0 ? '+' : ''}
+                        {assetPosition.unrealized_pnl_pct.toFixed(1)}%)
+                      </p>
+                      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                        <button
+                          className="vela-btn vela-btn-ghost vela-btn-sm"
+                          onClick={() => setShowCloseConfirm(false)}
+                          style={{ flex: 1 }}
+                        >
+                          Keep position
+                        </button>
+                        <button
+                          className="vela-btn vela-btn-sm"
+                          onClick={() => {
+                            // TODO: Call close-position edge function
+                            // For now, just close the confirmation
+                            setShowCloseConfirm(false);
+                          }}
+                          style={{
+                            flex: 1,
+                            backgroundColor: 'var(--color-status-yellow, #f59e0b)',
+                            color: 'var(--black)',
+                            border: '2px solid var(--black)',
+                          }}
+                        >
+                          Close anyway
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </Card>
@@ -584,57 +834,78 @@ export default function AssetDetail() {
           {brief && <>Analysis written {formatTimeAgo(brief.created_at)}</>}
         </p>
       )}
+
+      {/* Tier comparison sheet */}
+      {showTierSheet && (
+        <TierComparisonSheet
+          currentTier={tier}
+          onClose={() => setShowTierSheet(false)}
+          onStartCheckout={startCheckout}
+        />
+      )}
     </div>
   );
 }
 
 // ── Helpers: build signal_breakdown / market_context from raw indicators ──
 
-function buildSignalBreakdown(indicators: {
-  ema_9: number;
-  ema_21: number;
-  rsi_14: number;
-  adx_4h: number;
-  sma_50_daily: number;
-}, price: number): Record<string, string> {
+function buildSignalBreakdown(
+  indicators: {
+    ema_9: number;
+    ema_21: number;
+    rsi_14: number;
+    adx_4h: number;
+    sma_50_daily: number;
+  },
+  price: number
+): Record<string, string> {
   const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
-  const fmt = (n: number) => n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+  const fmt = (n: number) =>
+    n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
 
   const result: Record<string, string> = {};
 
-  result.ema_cross = ema9 > ema21
-    ? `Short-term average at ${fmt(ema9)} is above medium-term at ${fmt(ema21)}, suggesting short-term upward pressure.`
-    : `Short-term average at ${fmt(ema9)} is below medium-term at ${fmt(ema21)}, suggesting short-term downward pressure.`;
+  result.ema_cross =
+    ema9 > ema21
+      ? `Short-term average at ${fmt(ema9)} is above medium-term at ${fmt(ema21)}, suggesting short-term upward pressure.`
+      : `Short-term average at ${fmt(ema9)} is below medium-term at ${fmt(ema21)}, suggesting short-term downward pressure.`;
 
-  result.rsi = rsi > 70
-    ? `Buying pressure at ${rsi.toFixed(0)} indicates overbought conditions — price may be due for a pullback.`
-    : rsi < 30
-      ? `Buying pressure at ${rsi.toFixed(0)} indicates oversold conditions — price may be due for a bounce.`
-      : `Buying pressure at ${rsi.toFixed(0)} is in neutral territory — no extreme buying or selling pressure.`;
+  result.rsi =
+    rsi > 70
+      ? `Buying pressure at ${rsi.toFixed(0)} indicates overbought conditions — price may be due for a pullback.`
+      : rsi < 30
+        ? `Buying pressure at ${rsi.toFixed(0)} indicates oversold conditions — price may be due for a bounce.`
+        : `Buying pressure at ${rsi.toFixed(0)} is in neutral territory — no extreme buying or selling pressure.`;
 
-  result.trend_filter = price > sma50
-    ? `Price is above the 50-day trend line (${fmt(sma50)}), which supports the broader uptrend.`
-    : `Price is below the 50-day trend line (${fmt(sma50)}), which suggests the broader trend is bearish.`;
+  result.trend_filter =
+    price > sma50
+      ? `Price is above the 50-day trend line (${fmt(sma50)}), which supports the broader uptrend.`
+      : `Price is below the 50-day trend line (${fmt(sma50)}), which suggests the broader trend is bearish.`;
 
-  result.adx = adx > 25
-    ? `Trend strength at ${adx.toFixed(0)} shows a strong directional move in progress.`
-    : adx > 20
-      ? `Trend strength at ${adx.toFixed(0)} shows moderate directional momentum.`
-      : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend — choppy conditions.`;
+  result.adx =
+    adx > 25
+      ? `Trend strength at ${adx.toFixed(0)} shows a strong directional move in progress.`
+      : adx > 20
+        ? `Trend strength at ${adx.toFixed(0)} shows moderate directional momentum.`
+        : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend — choppy conditions.`;
 
   return result;
 }
 
-function buildWhatWouldChange(indicators: {
-  ema_9: number;
-  ema_21: number;
-  rsi_14: number;
-  adx_4h: number;
-  sma_50_daily: number;
-}, price: number): string {
+function buildWhatWouldChange(
+  indicators: {
+    ema_9: number;
+    ema_21: number;
+    rsi_14: number;
+    adx_4h: number;
+    sma_50_daily: number;
+  },
+  price: number
+): string {
   const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
   const bullLevel = Math.max(ema9, ema21);
-  const fmt = (n: number) => n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+  const fmt = (n: number) =>
+    n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
 
   // Determine what's missing for a clear signal
   const conditions: string[] = [];
@@ -658,9 +929,10 @@ function buildWhatWouldChange(indicators: {
     return 'Current conditions are close to triggering a signal — Vela is watching for confirmation.';
   }
 
-  const joined = conditions.length === 1
-    ? conditions[0]
-    : conditions.slice(0, -1).join(', ') + ' and ' + conditions[conditions.length - 1];
+  const joined =
+    conditions.length === 1
+      ? conditions[0]
+      : conditions.slice(0, -1).join(', ') + ' and ' + conditions[conditions.length - 1];
 
   return `${joined.charAt(0).toUpperCase() + joined.slice(1)} would likely shift the signal towards a clearer direction.`;
 }
@@ -1047,7 +1319,13 @@ function PriceLevelTriggers({
   price,
   detail,
 }: {
-  indicators: { ema_9: number; ema_21: number; rsi_14: number; adx_4h: number; sma_50_daily: number };
+  indicators: {
+    ema_9: number;
+    ema_21: number;
+    rsi_14: number;
+    adx_4h: number;
+    sma_50_daily: number;
+  };
   price: number | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -1173,6 +1451,12 @@ function BriefFeedback({ briefId }: { briefId: string }) {
     const isPositive = rating === true;
     return (
       <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
+        <p
+          className="vela-label-sm"
+          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
+        >
+          Was this analysis helpful?
+        </p>
         <div
           style={{
             display: 'flex',
@@ -1181,11 +1465,12 @@ function BriefFeedback({ briefId }: { briefId: string }) {
             alignItems: 'center',
           }}
         >
-          <span style={{ fontSize: `${thumbSize}px` }}>{isPositive ? '👍' : '👎'}</span>
+          <span style={{ fontSize: `${thumbSize - 4}px` }}>{isPositive ? '👍' : '👎'}</span>
           <span
-            className="vela-label-sm"
+            className="vela-body-sm"
             style={{
-              color: isPositive ? 'var(--color-signal-buy)' : 'var(--color-text-muted)',
+              color: 'var(--color-text-muted)',
+              fontSize: 'var(--text-xs)',
             }}
           >
             Thanks for your feedback

@@ -1,9 +1,13 @@
 /**
- * TrackRecord.test.tsx — Trust-critical tests for Track Record Storytelling
+ * TrackRecord.test.tsx — Trust-critical tests for Track Record
  *
  * Two test layers (per CLAUDE.md):
  * 1. Source-verification tests (TRACK-SRC:) — Read source, assert patterns exist
  * 2. Rendering tests (TRACK:) — Render with mocked hooks, verify behavior
+ *
+ * The page is split into two zones:
+ * - Zone 1 "Your trades" (live trades + positions) — always visible
+ * - Zone 2 "Vela's signal history" (backtest trades) — collapsible, hidden by default
  *
  * Trust-critical areas tested:
  * - P&L color mapping: green = positive, red = negative (NEVER reversed)
@@ -36,6 +40,11 @@ vi.mock('../hooks/useTrading', () => ({
 const mockUseAuthContext = vi.fn();
 vi.mock('../contexts/AuthContext', () => ({
   useAuthContext: () => mockUseAuthContext(),
+}));
+
+const mockUseTierAccess = vi.fn();
+vi.mock('../hooks/useTierAccess', () => ({
+  useTierAccess: () => mockUseTierAccess(),
 }));
 
 // Mock getCoinIcon to avoid network calls
@@ -74,6 +83,11 @@ function makeTrade(overrides: Partial<EnrichedTrade> = {}): EnrichedTrade {
   };
 }
 
+/** Make a live (user) trade */
+function makeLiveTrade(overrides: Partial<EnrichedTrade> = {}): EnrichedTrade {
+  return makeTrade({ source: 'live', ...overrides });
+}
+
 function makeOpenTrade(overrides: Partial<EnrichedTrade> = {}): EnrichedTrade {
   return makeTrade({
     id: 'trade-open-1',
@@ -105,6 +119,14 @@ beforeEach(() => {
   mockUseTrading.mockReturnValue({ positions: [] as Position[] });
   mockUseAuthContext.mockReturnValue({ isAuthenticated: false });
   mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
+  mockUseTierAccess.mockReturnValue({
+    tier: 'free',
+    canTrade: false,
+    upgradeLabel: (action: string) => `Upgrade to Standard to ${action}`,
+    startCheckout: vi.fn(),
+    partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+    needsFunding: () => false,
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -129,7 +151,8 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
     expect(src).toContain("isPositive ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
-  it('TRUST CRITICAL: narrative stats use green-dark for positive totalDollarPnl', () => {
+  it('TRUST CRITICAL: narrative stats use green-dark for positive P&L', () => {
+    // Now scoped to user/paper stats
     expect(src).toContain("totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
@@ -138,8 +161,8 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
     expect(src).toContain("{dollarPnl >= 0 ? 'profit' : 'loss'}");
     // In BestCallCard
     expect(src).toContain("{dollarPnl >= 0 ? 'profit' : 'loss'}");
-    // In narrative stats (may span lines after formatting)
-    expect(src).toContain("{totalDollarPnl >= 0 ? 'profit' : 'loss'}");
+    // In narrative stats (both user and paper zones)
+    expect(src).toContain("totalDollarPnl >= 0 ? 'profit' : 'loss'");
   });
 });
 
@@ -175,28 +198,36 @@ describe('TRACK-SRC: Source-verification — headline rendering', () => {
     expect(src).toContain('&#9733;'); // star character
   });
 
-  it('BestCallCard only renders when totalClosed >= 3', () => {
-    expect(src).toContain('bestTrade && totalClosed >= 3');
+  it('BestCallCard in paper zone only renders when paperStats.totalClosed >= 3', () => {
+    expect(src).toContain('bestPaperTrade && paperStats.totalClosed >= 3');
   });
 });
 
-describe('TRACK-SRC: Source-verification — layout order', () => {
+describe('TRACK-SRC: Source-verification — two-zone layout', () => {
   const src = readFileSync(resolve(__dirname, './TrackRecord.tsx'), 'utf-8');
 
-  it('Performance Breakdown appears after trade list, not before', () => {
-    const tradeListPos = src.indexOf('filteredTrades.map(trade =>');
-    const breakdownPos = src.indexOf('Performance breakdown');
-    expect(tradeListPos).toBeGreaterThan(-1);
-    expect(breakdownPos).toBeGreaterThan(-1);
-    expect(breakdownPos).toBeGreaterThan(tradeListPos);
+  it('page has "Your trades" zone label', () => {
+    expect(src).toContain('Your trades');
   });
 
-  it('BestCallCard appears before filters', () => {
-    const bestCallPos = src.indexOf('Best Call Hero');
-    const filterPos = src.indexOf('Sort By Filter');
-    expect(bestCallPos).toBeGreaterThan(-1);
-    expect(filterPos).toBeGreaterThan(-1);
-    expect(bestCallPos).toBeLessThan(filterPos);
+  it('page has "Vela\'s signal history" zone label', () => {
+    expect(src).toContain("Vela's signal history");
+  });
+
+  it('paper trades section contains "Simulated trades since" disclaimer', () => {
+    expect(src).toContain('Simulated trades since');
+  });
+
+  it('paper trades section contains "not real money" disclaimer', () => {
+    expect(src).toContain('not real money');
+  });
+
+  it('Performance Breakdown appears inside Vela signal history zone', () => {
+    const velaHistoryPos = src.indexOf("Vela's signal history");
+    const breakdownPos = src.indexOf('Performance breakdown');
+    expect(velaHistoryPos).toBeGreaterThan(-1);
+    expect(breakdownPos).toBeGreaterThan(-1);
+    expect(breakdownPos).toBeGreaterThan(velaHistoryPos);
   });
 });
 
@@ -277,8 +308,110 @@ describe('TRACK: bestTrade computation', () => {
 // Full component rendering with mocked hooks
 // ═══════════════════════════════════════════════════════════════════
 
-describe('TRACK: Narrative Stats Block', () => {
-  it('TRUST CRITICAL: shows "profit" for positive total P&L', () => {
+describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
+  it('TRUST CRITICAL: shows "profit" for positive total P&L in user stats', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    const trades = [
+      makeLiveTrade({ id: '1', pnl_pct: 20.0 }),
+      makeLiveTrade({ id: '2', pnl_pct: 15.0 }),
+      makeLiveTrade({ id: '3', pnl_pct: -5.0 }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+      bestTrade: trades[0],
+    });
+    mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
+
+    render(<TrackRecord />);
+    expect(screen.getByText(/total profit/i)).toBeInTheDocument();
+  });
+
+  it('TRUST CRITICAL: shows "loss" for negative total P&L in user stats', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    const trades = [
+      makeLiveTrade({ id: '1', pnl_pct: -20.0 }),
+      makeLiveTrade({ id: '2', pnl_pct: -15.0 }),
+      makeLiveTrade({ id: '3', pnl_pct: 5.0 }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+      bestTrade: trades[2],
+    });
+    mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
+
+    render(<TrackRecord />);
+    expect(screen.getByText(/total loss/i)).toBeInTheDocument();
+  });
+
+  it('shows trade count and win rate for user trades', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    const trades = [
+      makeLiveTrade({ id: '1', pnl_pct: 20.0 }),
+      makeLiveTrade({ id: '2', pnl_pct: -5.0 }),
+      makeLiveTrade({ id: '3', pnl_pct: 10.0 }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+      bestTrade: trades[0],
+    });
+    mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
+
+    render(<TrackRecord />);
+    expect(screen.getByText(/3 trades/)).toBeInTheDocument();
+    expect(screen.getByText(/2 profitable/)).toBeInTheDocument();
+  });
+
+  it('shows "Start trading" upgrade prompt for free users with no trades', () => {
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn, trades: [] });
+
+    render(<TrackRecord />);
+    expect(screen.getByText(/Start trading to build your track record/)).toBeInTheDocument();
+    expect(screen.getByText('View plans')).toBeInTheDocument();
+  });
+
+  it('shows "When you approve your first trade" for paid users with no trades', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn, trades: [] });
+
+    render(<TrackRecord />);
+    expect(screen.getByText(/approve your first trade/i)).toBeInTheDocument();
+  });
+});
+
+describe('TRACK: Zone 2 — Vela Signal History (paper trades)', () => {
+  it('paper trade stats are visible after expanding Vela signal history', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 20.0 }),
       makeTrade({ id: '2', pnl_pct: 15.0 }),
@@ -291,44 +424,21 @@ describe('TRACK: Narrative Stats Block', () => {
     });
 
     render(<TrackRecord />);
+
+    // Stats should NOT be visible yet (collapsed)
+    expect(screen.queryByText(/total profit/i)).not.toBeInTheDocument();
+
+    // Expand "Vela's signal history"
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
+    // Now paper stats should be visible
     expect(screen.getByText(/total profit/i)).toBeInTheDocument();
+    expect(screen.getByText(/not real money/i)).toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: shows "loss" for negative total P&L', () => {
-    const trades = [
-      makeTrade({ id: '1', pnl_pct: -20.0 }),
-      makeTrade({ id: '2', pnl_pct: -15.0 }),
-      makeTrade({ id: '3', pnl_pct: 5.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[2],
-    });
-
-    render(<TrackRecord />);
-    expect(screen.getByText(/total loss/i)).toBeInTheDocument();
-  });
-
-  it('shows trade count and win rate', () => {
-    const trades = [
-      makeTrade({ id: '1', pnl_pct: 20.0 }),
-      makeTrade({ id: '2', pnl_pct: -5.0 }),
-      makeTrade({ id: '3', pnl_pct: 10.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
-    });
-
-    render(<TrackRecord />);
-    // "3 trades · 2 profitable (67%)"
-    expect(screen.getByText(/3 trades/)).toBeInTheDocument();
-    expect(screen.getByText(/2 profitable/)).toBeInTheDocument();
-  });
-
-  it('shows cumulative explainer text', () => {
+  it('shows cumulative explainer text when expanded', async () => {
+    const user = userEvent.setup();
     const trades = [makeTrade({ id: '1', pnl_pct: 10.0 })];
     mockUseTrackRecord.mockReturnValue({
       ...defaultHookReturn,
@@ -336,23 +446,16 @@ describe('TRACK: Narrative Stats Block', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     expect(screen.getByText(/Total is cumulative across all closed trades/i)).toBeInTheDocument();
-  });
-
-  it('shows empty state when no closed trades', () => {
-    const trades = [makeOpenTrade({ id: '1' })];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    expect(screen.getByText(/No closed trades yet/i)).toBeInTheDocument();
   });
 });
 
 describe('TRACK: BestCallCard rendering', () => {
-  it('renders BestCallCard when bestTrade exists and >= 3 closed trades', () => {
+  it('renders BestCallCard in Vela signal history when >= 3 closed paper trades', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 52.5, entry_headline: 'Momentum shifting up' }),
       makeTrade({ id: '2', pnl_pct: 10.0 }),
@@ -365,10 +468,16 @@ describe('TRACK: BestCallCard rendering', () => {
     });
 
     render(<TrackRecord />);
+
+    // Expand Vela signal history
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     expect(screen.getByText('Best call')).toBeInTheDocument();
   });
 
-  it('does NOT render BestCallCard with fewer than 3 closed trades', () => {
+  it('does NOT render BestCallCard with fewer than 3 closed paper trades', async () => {
+    const user = userEvent.setup();
     const trades = [makeTrade({ id: '1', pnl_pct: 52.5 }), makeTrade({ id: '2', pnl_pct: 10.0 })];
     mockUseTrackRecord.mockReturnValue({
       ...defaultHookReturn,
@@ -377,10 +486,14 @@ describe('TRACK: BestCallCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     expect(screen.queryByText('Best call')).not.toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: BestCallCard shows profit/loss labels, not bare dollars', () => {
+  it('TRUST CRITICAL: BestCallCard shows profit/loss labels, not bare dollars', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 52.5 }),
       makeTrade({ id: '2', pnl_pct: 10.0 }),
@@ -393,6 +506,9 @@ describe('TRACK: BestCallCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     // BestCallCard + trade card both render — use getAllByText
     const profitLabels = screen.getAllByText(/\+\$525 profit/);
     expect(profitLabels.length).toBeGreaterThanOrEqual(1);
@@ -402,7 +518,8 @@ describe('TRACK: BestCallCard rendering', () => {
     expect(within(mintCard!).getByText(/\+\$525 profit/)).toBeInTheDocument();
   });
 
-  it('shows entry headline when available', () => {
+  it('shows entry headline when available', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({
         id: '1',
@@ -419,6 +536,9 @@ describe('TRACK: BestCallCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     // Headline appears in both BestCallCard and trade card — use getAllByText
     const headlines = screen.getAllByText(/Short-term trend crossed above medium-term/);
     expect(headlines.length).toBeGreaterThanOrEqual(1);
@@ -431,29 +551,48 @@ describe('TRACK: BestCallCard rendering', () => {
 });
 
 describe('TRACK: ClosedTradeCard rendering', () => {
-  it('TRUST CRITICAL: shows "profit" for positive pnl_pct trades', () => {
-    const trades = [makeTrade({ id: '1', pnl_pct: 27.3 })];
+  it('TRUST CRITICAL: shows "profit" for positive pnl_pct trades (live)', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    const trades = [makeLiveTrade({ id: '1', pnl_pct: 27.3 })];
     mockUseTrackRecord.mockReturnValue({
       ...defaultHookReturn,
       trades,
     });
+    mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
     expect(screen.getByText(/\+\$273 profit/)).toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: shows "loss" for negative pnl_pct trades', () => {
-    const trades = [makeTrade({ id: '1', pnl_pct: -8.8, exit_price: 38304 })];
+  it('TRUST CRITICAL: shows "loss" for negative pnl_pct trades (live)', () => {
+    mockUseTierAccess.mockReturnValue({
+      tier: 'standard',
+      canTrade: true,
+      upgradeLabel: (a: string) => a,
+      startCheckout: vi.fn(),
+      partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
+      needsFunding: () => false,
+    });
+    const trades = [makeLiveTrade({ id: '1', pnl_pct: -8.8, exit_price: 38304 })];
     mockUseTrackRecord.mockReturnValue({
       ...defaultHookReturn,
       trades,
     });
+    mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
     expect(screen.getByText(/\$88 loss/)).toBeInTheDocument();
   });
 
-  it('shows entry headline in collapsed state', () => {
+  it('shows entry headline in collapsed state (paper, expanded zone)', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({
         id: '1',
@@ -467,6 +606,9 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     expect(screen.getByText(/Price broke above resistance level/)).toBeInTheDocument();
   });
 
@@ -486,14 +628,15 @@ describe('TRACK: ClosedTradeCard rendering', () => {
 
     render(<TrackRecord />);
 
-    // Exit headline should NOT be visible in collapsed state
+    // Expand Vela signal history first
+    const expandZone = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandZone);
+
+    // Exit headline should NOT be visible in collapsed card state
     expect(screen.queryByText(/Underlying trend reversed direction/)).not.toBeInTheDocument();
 
-    // Click to expand — find the trade card's clickable role=button (not the breakdown toggle)
-    // The card's inner div has role="button", the breakdown toggle is a <button>
+    // Click to expand the trade card — find the trade card's clickable role=button (not the breakdown toggle)
     const cardButtons = screen.getAllByRole('button');
-    // The first role="button" is the trade card (div with role=button)
-    // Others may be the breakdown toggle button. Click the trade card.
     const tradeCard = cardButtons.find(btn => btn.tagName !== 'BUTTON');
     expect(tradeCard).toBeDefined();
     await user.click(tradeCard!);
@@ -504,7 +647,8 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     expect(screen.getByText('Exit reason')).toBeInTheDocument();
   });
 
-  it('uses reasonCodeToPlainEnglish fallback when no headline', () => {
+  it('uses reasonCodeToPlainEnglish fallback when no headline (paper, expanded zone)', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({
         id: '1',
@@ -519,12 +663,16 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     // The fallback chain: headline → reasonCodeToPlainEnglish → nothing
     // ema_cross_up maps to "Short-term trend crossed above medium-term — momentum shifting up"
     expect(screen.getByText(/momentum shifting up/)).toBeInTheDocument();
   });
 
-  it('hides headline area when no headline and no reason code', () => {
+  it('hides headline area when no headline and no reason code (paper, expanded zone)', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeTrade({
         id: '1',
@@ -539,9 +687,11 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     // Should not have any italic quoted text (the headline container)
     const italicElements = document.querySelectorAll('[style*="italic"]');
-    // No italic text should be in the card (only the stat block and card, no headline)
     let hasQuotedText = false;
     italicElements.forEach(el => {
       if (el.textContent?.includes('\u201C')) hasQuotedText = true; // left double quote
@@ -551,7 +701,8 @@ describe('TRACK: ClosedTradeCard rendering', () => {
 });
 
 describe('TRACK: OpenTradeCard rendering', () => {
-  it('shows entry headline for open trades', () => {
+  it('shows entry headline for open paper trades (expanded zone)', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeOpenTrade({
         id: '1',
@@ -565,10 +716,14 @@ describe('TRACK: OpenTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     expect(screen.getByText(/Strong buying pressure detected/)).toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: unrealized P&L shows profit/loss label', () => {
+  it('TRUST CRITICAL: unrealized P&L shows profit/loss label (paper, expanded zone)', async () => {
+    const user = userEvent.setup();
     const trades = [
       makeOpenTrade({
         id: '1',
@@ -582,13 +737,16 @@ describe('TRACK: OpenTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
     // 46200 vs 42000 = +10% → +$100 profit
     expect(screen.getByText(/profit/)).toBeInTheDocument();
   });
 });
 
 describe('TRACK: Performance Breakdown', () => {
-  it('shows breakdown toggle after trade list', async () => {
+  it('shows breakdown toggle in Vela signal history when expanded', async () => {
     const user = userEvent.setup();
     const trades = [makeTrade({ id: '1', pnl_pct: 20.0 }), makeTrade({ id: '2', pnl_pct: -5.0 })];
     mockUseTrackRecord.mockReturnValue({
@@ -597,10 +755,15 @@ describe('TRACK: Performance Breakdown', () => {
     });
 
     render(<TrackRecord />);
+
+    // Expand Vela signal history
+    const expandZone = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandZone);
+
     const breakdownBtn = screen.getByText('Performance breakdown');
     expect(breakdownBtn).toBeInTheDocument();
 
-    // Click to expand
+    // Click to expand breakdown
     await user.click(breakdownBtn);
 
     // Should show detail rows
@@ -610,15 +773,15 @@ describe('TRACK: Performance Breakdown', () => {
 });
 
 describe('TRACK: Page header', () => {
-  it('shows storytelling header text', () => {
+  it('shows updated header text', () => {
     mockUseTrackRecord.mockReturnValue({
       ...defaultHookReturn,
       trades: [],
     });
 
     render(<TrackRecord />);
-    expect(screen.getByText("Vela's Track Record")).toBeInTheDocument();
-    expect(screen.getByText("Here's how signals have performed")).toBeInTheDocument();
+    expect(screen.getByText('Track Record')).toBeInTheDocument();
+    expect(screen.getByText("Your trades and Vela's signal performance")).toBeInTheDocument();
   });
 });
 
@@ -631,6 +794,6 @@ describe('TRACK: Loading state', () => {
 
     render(<TrackRecord />);
     // LoadingSpinner renders an SVG animation
-    expect(screen.queryByText("Vela's Track Record")).not.toBeInTheDocument();
+    expect(screen.queryByText('Track Record')).not.toBeInTheDocument();
   });
 });

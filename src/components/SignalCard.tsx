@@ -142,7 +142,20 @@ export default function SignalCard({ data, position }: SignalCardProps) {
           >
             {formatPrice(price)}
           </span>
-          {priceData?.change24h != null && (
+          {priceData?.priceSource === 'signal' ? (
+            <span
+              className="vela-body-sm"
+              style={{
+                fontSize: '0.6rem',
+                color: 'var(--color-text-muted)',
+                marginTop: 2,
+                display: 'block',
+                textAlign: 'right',
+              }}
+            >
+              May be delayed
+            </span>
+          ) : priceData?.change24h != null ? (
             <span
               style={{
                 display: 'inline-flex',
@@ -167,7 +180,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
                 {Math.abs(priceData.change24h).toFixed(1)}%
               </span>
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* Signal chip */}

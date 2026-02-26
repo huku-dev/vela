@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { useSubscription } from '../hooks/useSubscription';
 import VelaLogo from '../components/VelaLogo';
 import type { TradingMode } from '../types';
 
@@ -38,23 +39,27 @@ const MODE_OPTIONS: {
   mode: TradingMode;
   label: string;
   description: string;
+  tier: string;
   recommended?: boolean;
 }[] = [
   {
     mode: 'view_only',
     label: 'View only',
-    description: 'See signals and market analysis. No trading.',
+    description: 'See signals and analysis. Great for learning how Vela works.',
+    tier: 'Free — included with your account',
   },
   {
     mode: 'semi_auto',
     label: 'Semi-auto',
-    description: 'Vela proposes trades. You approve each one before execution.',
+    description: 'Vela proposes trades, you approve each one before it executes. The best balance of control and convenience.',
+    tier: 'Standard · $10/mo',
     recommended: true,
   },
   {
     mode: 'full_auto',
     label: 'Full auto',
-    description: 'Vela executes trades automatically based on your signal preferences.',
+    description: 'Vela executes trades automatically when it spots an opportunity. Hands-free investing.',
+    tier: 'Premium · $20/mo',
   },
 ];
 
@@ -238,7 +243,8 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
           className="vela-body-base vela-text-secondary"
           style={{ marginBottom: 'var(--space-6)' }}
         >
-          You can change this anytime in your account settings.
+          Vela watches the crypto markets 24/7 and flags the best moments to buy or sell. When it
+          spots an opportunity, it creates a trade signal. Here&apos;s how you can act on those signals:
         </p>
 
         {/* Mode options */}
@@ -250,7 +256,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
             marginBottom: 'var(--space-8)',
           }}
         >
-          {MODE_OPTIONS.map(({ mode, label, description, recommended }) => {
+          {MODE_OPTIONS.map(({ mode, label, description, tier, recommended }) => {
             const isSelected = selectedMode === mode;
             return (
               <button
@@ -321,11 +327,30 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                   <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
                     {description}
                   </p>
+                  <p
+                    className="vela-body-sm"
+                    style={{
+                      margin: 0,
+                      marginTop: 'var(--space-2)',
+                      fontWeight: 600,
+                      fontSize: 12,
+                      color:
+                        mode === 'view_only'
+                          ? 'var(--color-text-muted)'
+                          : 'var(--green-dark)',
+                    }}
+                  >
+                    {tier}
+                  </p>
                 </div>
               </button>
             );
           })}
         </div>
+
+        <p className="vela-body-sm vela-text-muted" style={{ marginTop: 0 }}>
+          You can change this anytime in your account settings.
+        </p>
       </div>
 
       <button
@@ -333,34 +358,17 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
         onClick={() => onContinue(selectedMode)}
         style={{ width: '100%', maxWidth: 440, margin: '0 auto' }}
       >
-        Continue
+        {selectedMode === 'view_only' ? 'Continue' : 'Continue to checkout'}
       </button>
     </div>
   );
 }
 
 function WalletSetup({ onComplete }: { onComplete: () => void }) {
-  const { user } = useAuthContext();
-  const walletAddress = user?.walletAddress;
-  const [copied, setCopied] = useState(false);
-  const [faucetLoading, setFaucetLoading] = useState(false);
-  const [faucetDone, setFaucetDone] = useState(false);
-
-  const handleCopy = () => {
-    if (!walletAddress) return;
-    navigator.clipboard.writeText(walletAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleFaucet = () => {
-    setFaucetLoading(true);
-    // Open Hyperliquid testnet faucet in new tab
+  const handleFundNow = () => {
+    // Open faucet in new tab (testnet — will become Stripe/on-ramp for mainnet)
     window.open('https://app.hyperliquid-testnet.xyz/drip', '_blank');
-    setTimeout(() => {
-      setFaucetLoading(false);
-      setFaucetDone(true);
-    }, 1500);
+    onComplete();
   };
 
   return (
@@ -380,109 +388,86 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
 
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
         <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
-          Your wallet is ready
+          Your trading wallet is ready
         </h2>
         <p
           className="vela-body-base vela-text-secondary"
           style={{ marginBottom: 'var(--space-6)' }}
         >
-          Vela created a secure wallet for you. Fund it with testnet USDC to start trading.
+          When Vela spots a trade opportunity, funds are drawn from this wallet to invest in
+          signalled assets. You can add funds now or do it later from your account settings.
         </p>
 
-        {/* Wallet card */}
+        {/* Simple wallet visual */}
         <div
           className="vela-card"
           style={{
-            padding: 'var(--space-4)',
-            marginBottom: 'var(--space-4)',
+            padding: 'var(--space-5)',
+            marginBottom: 'var(--space-6)',
+            textAlign: 'center',
           }}
         >
-          <p
-            className="vela-label-sm"
-            style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}
+          <svg
+            width="40"
+            height="40"
+            viewBox="0 0 40 40"
+            fill="none"
+            style={{ margin: '0 auto var(--space-3)', display: 'block' }}
           >
-            WALLET ADDRESS
+            <rect
+              x="4"
+              y="12"
+              width="32"
+              height="22"
+              rx="4"
+              stroke="var(--black)"
+              strokeWidth="2.5"
+              fill="var(--gray-50)"
+            />
+            <circle
+              cx="28"
+              cy="23"
+              r="3"
+              fill="var(--green-primary)"
+              stroke="var(--black)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M8 12V8a4 4 0 014-4h16a4 4 0 014 4v4"
+              stroke="var(--black)"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <p className="vela-body-base" style={{ fontWeight: 600, margin: 0 }}>
+            Wallet created
           </p>
-
-          {walletAddress ? (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: 'var(--space-3)',
-                backgroundColor: 'var(--gray-50)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--gray-200)',
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 13,
-                  color: 'var(--color-text-primary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-              </span>
-              <button
-                onClick={handleCopy}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 'var(--space-1)',
-                  color: copied ? 'var(--color-success)' : 'var(--color-text-muted)',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  flexShrink: 0,
-                }}
-              >
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                padding: 'var(--space-3)',
-                backgroundColor: 'var(--gray-50)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--gray-200)',
-              }}
-            >
-              <span className="vela-body-sm vela-text-muted">Setting up your wallet...</span>
-            </div>
-          )}
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 0, marginTop: 'var(--space-1)' }}
+          >
+            Secured by Vela. Ready to fund when you are.
+          </p>
         </div>
-
-        {/* Faucet button */}
-        <button
-          className="vela-btn vela-btn-secondary"
-          onClick={handleFaucet}
-          disabled={faucetLoading}
-          style={{
-            width: '100%',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          {faucetLoading ? 'Opening faucet...' : faucetDone ? 'Faucet opened' : 'Get testnet USDC'}
-        </button>
-
-        <p className="vela-body-sm vela-text-muted" style={{ textAlign: 'center' }}>
-          You can always add funds later from your account settings.
-        </p>
       </div>
 
-      <button
-        className="vela-btn vela-btn-primary"
-        onClick={onComplete}
-        style={{ width: '100%', maxWidth: 440, margin: '0 auto' }}
-      >
-        Start exploring
-      </button>
+      {/* Action buttons */}
+      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%' }}>
+        <button
+          className="vela-btn vela-btn-primary"
+          onClick={handleFundNow}
+          style={{ width: '100%', marginBottom: 'var(--space-3)' }}
+        >
+          Fund now
+        </button>
+        <button
+          className="vela-btn vela-btn-ghost"
+          onClick={onComplete}
+          style={{ width: '100%' }}
+        >
+          Skip — I&apos;ll do this later
+        </button>
+      </div>
     </div>
   );
 }
@@ -496,6 +481,7 @@ export default function Onboarding() {
   const { isAuthenticated, login } = useAuthContext();
   const { updatePreferences } = useTrading();
   const { isOnboarded, completeOnboarding } = useOnboarding();
+  const { startCheckout } = useSubscription();
 
   // If already onboarded (e.g. direct /welcome visit), redirect to dashboard
   useEffect(() => {
@@ -506,6 +492,7 @@ export default function Onboarding() {
 
   // Determine starting step based on auth state
   const [step, setStep] = useState<OnboardingStep>('splash');
+  const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(null);
 
   // When user authenticates (after Privy login), advance to next step
   useEffect(() => {
@@ -530,12 +517,35 @@ export default function Onboarding() {
       // Best-effort — don't block onboarding if this fails
       console.warn('[Onboarding] Failed to save trading mode preference');
     }
+
+    // Track if user selected a paid mode so we can trigger checkout after onboarding
+    if (mode === 'semi_auto') {
+      setPendingCheckout('standard');
+    } else if (mode === 'full_auto') {
+      setPendingCheckout('premium');
+    } else {
+      setPendingCheckout(null);
+    }
+
     setStep('wallet');
   };
 
   const handleComplete = async () => {
     await completeOnboarding();
-    navigate('/', { replace: true });
+
+    if (pendingCheckout) {
+      // User selected a paid mode — redirect to Stripe checkout
+      try {
+        await startCheckout(pendingCheckout, 'monthly');
+        // startCheckout redirects to Stripe, so this line may not execute
+      } catch {
+        // If checkout fails, just go to dashboard — they can upgrade later via CTAs
+        console.warn('[Onboarding] Checkout redirect failed, navigating to dashboard');
+        navigate('/', { replace: true });
+      }
+    } else {
+      navigate('/', { replace: true });
+    }
   };
 
   if (step === 'splash') {

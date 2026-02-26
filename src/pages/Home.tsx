@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Card, LoadingSpinner } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
+import LockedSignalCard from '../components/LockedSignalCard';
 import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
 import PendingProposalsBanner from '../components/PendingProposalsBanner';
+import TierComparisonSheet from '../components/TierComparisonSheet';
 import { useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useTierAccess } from '../hooks/useTierAccess';
 import { breakIntoParagraphs } from '../lib/helpers';
 
 const DIGEST_COLLAPSED_HEIGHT = 96; // ~4 lines at 0.85rem with 1.7 line-height
@@ -15,7 +18,9 @@ export default function Home() {
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
   const { positions } = useTrading();
+  const { tier, partitionAssets, upgradeLabel, startCheckout } = useTierAccess();
   const [digestExpanded, setDigestExpanded] = useState(false);
+  const [showTierSheet, setShowTierSheet] = useState(false);
 
   if (loading) {
     return (
@@ -57,7 +62,38 @@ export default function Home() {
     >
       {/* Header */}
       <div style={{ marginBottom: 'var(--space-5)', marginTop: 'var(--space-2)' }}>
-        <VelaLogo variant="full" size={40} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <VelaLogo variant="full" size={40} />
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              padding: '2px 8px',
+              borderRadius: '3px',
+              lineHeight: 1.4,
+              color:
+                tier === 'premium'
+                  ? 'var(--green-dark)'
+                  : tier === 'standard'
+                    ? 'var(--green-dark)'
+                    : 'var(--color-text-muted)',
+              backgroundColor:
+                tier === 'premium'
+                  ? 'var(--color-status-buy-bg)'
+                  : tier === 'standard'
+                    ? 'var(--color-status-buy-bg)'
+                    : 'var(--gray-100)',
+              border:
+                tier === 'premium' || tier === 'standard'
+                  ? '1px solid var(--green-primary)'
+                  : '1px solid var(--gray-200)',
+            }}
+          >
+            {tier.charAt(0).toUpperCase() + tier.slice(1)}
+          </span>
+        </div>
         {lastUpdated && (
           <span
             className="vela-body-sm vela-text-muted"
@@ -179,14 +215,37 @@ export default function Home() {
       {data.length === 0 ? (
         <EmptyState type="no-signals" />
       ) : (
-        <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
-          {data.map(item => {
-            const assetPosition = isAuthenticated
-              ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
-              : undefined;
-            return <SignalCard key={item.asset.id} data={item} position={assetPosition} />;
-          })}
-        </div>
+        (() => {
+          const { accessible, locked } = partitionAssets(data);
+          return (
+            <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
+              {accessible.map(item => {
+                const assetPosition = isAuthenticated
+                  ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
+                  : undefined;
+                return <SignalCard key={item.asset.id} data={item} position={assetPosition} />;
+              })}
+              {locked.map(item => (
+                <LockedSignalCard
+                  key={item.asset.id}
+                  asset={item.asset}
+                  briefHeadline={item.brief?.headline}
+                  upgradeLabel={upgradeLabel(`see ${item.asset.symbol} signals`)}
+                  onUpgradeClick={() => setShowTierSheet(true)}
+                />
+              ))}
+            </div>
+          );
+        })()
+      )}
+
+      {/* Tier comparison sheet */}
+      {showTierSheet && (
+        <TierComparisonSheet
+          currentTier={tier}
+          onClose={() => setShowTierSheet(false)}
+          onStartCheckout={startCheckout}
+        />
       )}
     </div>
   );
