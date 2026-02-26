@@ -184,13 +184,7 @@ export default function Home() {
             const assetPosition = isAuthenticated
               ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
               : undefined;
-            return (
-              <SignalCard
-                key={item.asset.id}
-                data={item}
-                position={assetPosition}
-              />
-            );
+            return <SignalCard key={item.asset.id} data={item} position={assetPosition} />;
           })}
         </div>
       )}

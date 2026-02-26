@@ -155,7 +155,7 @@ describe('HISTORY-SRC: signal history enhancements', () => {
 
 describe('HISTORY-ADV: adversarial — history safeguards', () => {
   it('latestGroupIsNew requires signal_change type', () => {
-    expect(assetDetailSrc).toContain("signalGroups[0].type === 'signal_change'");
+    expect(assetDetailSrc).toContain("signalGroups[1].type === 'signal_change'");
   });
 
   it('latestGroupIsNew requires 24h recency window', () => {

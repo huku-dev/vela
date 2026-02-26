@@ -1346,48 +1346,57 @@ export default function Account() {
       </div>
 
       {/* Checkout toast — success (green) or error (red) */}
-      {checkoutToast && (() => {
-        const isError = checkoutToast.startsWith('Error:');
-        return (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 'var(--space-6)',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: isError ? 'var(--color-status-sell-bg)' : 'var(--color-status-buy-bg)',
-              border: `1.5px solid ${isError ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-              borderRadius: 'var(--radius-sm)',
-              padding: 'var(--space-3) var(--space-5)',
-              boxShadow: '3px 3px 0 var(--black)',
-              zIndex: 2000,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-3)',
-              maxWidth: 400,
-            }}
-          >
-            <span className="vela-body-sm" style={{ fontWeight: 600, color: isError ? 'var(--red-dark)' : 'var(--green-dark)' }}>
-              {checkoutToast}
-            </span>
-            <button
-              onClick={() => setCheckoutToast(null)}
-              aria-label="Dismiss"
+      {checkoutToast &&
+        (() => {
+          const isError = checkoutToast.startsWith('Error:');
+          return (
+            <div
               style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: isError ? 'var(--red-dark)' : 'var(--green-dark)',
-                fontSize: 16,
-                padding: 0,
-                lineHeight: 1,
+                position: 'fixed',
+                bottom: 'var(--space-6)',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: isError
+                  ? 'var(--color-status-sell-bg)'
+                  : 'var(--color-status-buy-bg)',
+                border: `1.5px solid ${isError ? 'var(--red-primary)' : 'var(--green-primary)'}`,
+                borderRadius: 'var(--radius-sm)',
+                padding: 'var(--space-3) var(--space-5)',
+                boxShadow: '3px 3px 0 var(--black)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+                maxWidth: 400,
               }}
             >
-              ✕
-            </button>
-          </div>
-        );
-      })()}
+              <span
+                className="vela-body-sm"
+                style={{
+                  fontWeight: 600,
+                  color: isError ? 'var(--red-dark)' : 'var(--green-dark)',
+                }}
+              >
+                {checkoutToast}
+              </span>
+              <button
+                onClick={() => setCheckoutToast(null)}
+                aria-label="Dismiss"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: isError ? 'var(--red-dark)' : 'var(--green-dark)',
+                  fontSize: 16,
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })()}
 
       {/* Settings list */}
       <div

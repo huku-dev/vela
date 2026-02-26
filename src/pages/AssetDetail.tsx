@@ -467,20 +467,22 @@ export default function AssetDetail() {
       {/* Tier 1: Key Signal — expandable with signal history */}
       {brief &&
         (() => {
+          // Include ALL briefs so the first group always matches the current
+          // signal color — prevents KEY SIGNAL showing WAIT while first
+          // history entry shows BUY
           const signalGroups =
-            recentBriefs.length > 1
+            recentBriefs.length > 0
               ? groupBriefsBySignalState(
-                  recentBriefs.slice(1),
+                  recentBriefs,
                   signalLookup as Record<string, SignalColor>,
                   signalColor
                 )
               : [];
-          const hasHistory = signalGroups.length > 0;
+          const hasHistory = signalGroups.length > 1; // Need >1 groups (first is current)
           const latestGroupIsNew =
             hasHistory &&
-            signalGroups[0].type === 'signal_change' &&
-            signalGroups[0].signalColor === signalColor && // Only NEW if same color as current signal
-            Date.now() - new Date(signalGroups[0].briefs[0].created_at).getTime() <
+            signalGroups[1].type === 'signal_change' &&
+            Date.now() - new Date(signalGroups[1].briefs[0].created_at).getTime() <
               24 * 60 * 60 * 1000;
 
           return (
