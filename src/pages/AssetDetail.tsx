@@ -40,7 +40,7 @@ export default function AssetDetail() {
     assetId!
   );
   const { isAuthenticated } = useAuthContext();
-  const { proposals, wallet, acceptProposal, declineProposal } = useTrading();
+  const { proposals, positions, wallet, acceptProposal, declineProposal } = useTrading();
 
   // Email redirect result banner
   const resultParam = searchParams.get('result');
@@ -75,6 +75,12 @@ export default function AssetDetail() {
   const activeProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && IN_FLIGHT_STATUSES.includes(p.status))
     : [];
+
+  // Open position for this asset (if any)
+  const assetPosition = isAuthenticated
+    ? positions.find(p => p.asset_id === assetId && p.status === 'open')
+    : undefined;
+  const [positionExpanded, setPositionExpanded] = useState(false);
 
   if (loading && !asset) {
     return (
@@ -285,6 +291,163 @@ export default function AssetDetail() {
           />
         </div>
       ))}
+
+      {/* Position card — shown if user has an open position for this asset */}
+      {assetPosition && (
+        <Card
+          style={{
+            marginBottom: 'var(--space-4)',
+            borderLeft: `4px solid ${assetPosition.side === 'long' ? 'var(--green-primary)' : 'var(--red-primary)'}`,
+            cursor: 'pointer',
+          }}
+          onClick={() => setPositionExpanded(!positionExpanded)}
+        >
+          {/* Compact view — always visible */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span
+              className="vela-label-sm vela-text-muted"
+              style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+            >
+              Your position
+            </span>
+            <div style={{ flex: 1 }} />
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              style={{
+                transform: positionExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform var(--motion-fast) var(--motion-ease-out)',
+              }}
+            >
+              <path
+                d="M3 5L7 9L11 5"
+                style={{ stroke: 'var(--gray-400)' }}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 'var(--space-2)',
+              marginTop: 'var(--space-2)',
+            }}
+          >
+            <span
+              className="vela-body-sm"
+              style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--color-text-primary)' }}
+            >
+              {assetPosition.side.toUpperCase()}
+            </span>
+            <span className="vela-body-sm vela-text-muted">·</span>
+            <span className="vela-mono vela-body-sm vela-text-muted">
+              Entry {formatPrice(assetPosition.entry_price)}
+            </span>
+            {assetPosition.leverage > 1 && (
+              <>
+                <span className="vela-body-sm vela-text-muted">·</span>
+                <span className="vela-mono vela-body-sm vela-text-muted">
+                  {assetPosition.leverage}x
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* P&L line */}
+          <div style={{ marginTop: 'var(--space-1)' }}>
+            <span
+              className="vela-mono"
+              style={{
+                fontWeight: 'var(--weight-bold)',
+                fontSize: '1rem',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {assetPosition.unrealized_pnl >= 0 ? '+' : ''}
+              ${Math.abs(assetPosition.unrealized_pnl).toFixed(2)}{' '}
+              {assetPosition.unrealized_pnl >= 0 ? 'profit' : 'loss'}
+            </span>
+            <span
+              className="vela-mono"
+              style={{
+                fontWeight: 'var(--weight-semibold)',
+                fontSize: '0.85rem',
+                color: 'var(--color-text-muted)',
+                marginLeft: 'var(--space-2)',
+              }}
+            >
+              ({assetPosition.unrealized_pnl_pct >= 0 ? '+' : ''}
+              {assetPosition.unrealized_pnl_pct.toFixed(1)}%)
+            </span>
+          </div>
+
+          {/* Expanded details */}
+          {positionExpanded && (
+            <div
+              style={{
+                marginTop: 'var(--space-3)',
+                paddingTop: 'var(--space-3)',
+                borderTop: 'var(--border-medium) solid var(--gray-200)',
+              }}
+            >
+              {[
+                ['Position size', `$${assetPosition.size_usd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`],
+                ['Entry price', formatPrice(assetPosition.entry_price)],
+                ['Current price', assetPosition.current_price ? formatPrice(assetPosition.current_price) : '—'],
+                ['Time open', (() => {
+                  const days = Math.floor(
+                    (Date.now() - new Date(assetPosition.created_at).getTime()) / (1000 * 60 * 60 * 24)
+                  );
+                  return days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`;
+                })()],
+                ...(assetPosition.stop_loss_price ? [['Stop-loss', formatPrice(assetPosition.stop_loss_price)]] : []),
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBottom: 'var(--space-2)',
+                  }}
+                >
+                  <span className="vela-body-sm vela-text-muted">{label}</span>
+                  <span className="vela-mono vela-body-sm" style={{ fontWeight: 'var(--weight-semibold)' }}>
+                    {value}
+                  </span>
+                </div>
+              ))}
+
+              {/* Link to track record */}
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  navigate('/track-record');
+                }}
+                className="vela-body-sm"
+                style={{
+                  color: 'var(--color-text-muted)',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  marginTop: 'var(--space-1)',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                }}
+              >
+                View on Track Record →
+              </button>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Tier 1: Key Signal — expandable with signal history */}
       {brief &&

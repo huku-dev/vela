@@ -2,18 +2,56 @@ import { useNavigate } from 'react-router-dom';
 import SignalChip from './SignalChip';
 import PriceArrow from './PriceArrow';
 import { getCoinIcon, formatPrice, stripAssetPrefix } from '../lib/helpers';
-import type { AssetDashboard } from '../types';
+import type { AssetDashboard, Position } from '../types';
 
 interface SignalCardProps {
   data: AssetDashboard;
+  /** Open position for this asset, if the authenticated user has one */
+  position?: Position;
 }
 
-export default function SignalCard({ data }: SignalCardProps) {
+/**
+ * Generate a position-aware headline for the signal card.
+ * Tone: understated, encouraging when profitable, reassuring when losing.
+ * Follows the "You Stay in Control" pillar — calm, confident, supportive.
+ */
+function getPositionHeadline(position: Position, symbol: string): string {
+  const side = position.side === 'long' ? 'long' : 'short';
+  const pnl = position.unrealized_pnl_pct;
+  const pnlAbs = Math.abs(pnl).toFixed(1);
+  const pnlSign = pnl >= 0 ? '+' : '-';
+
+  if (pnl >= 20) {
+    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}% — looking great, consider taking some profit`;
+  }
+  if (pnl >= 5) {
+    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}% — looking good!`;
+  }
+  if (pnl >= 0) {
+    return `${symbol} ${side} position open — ${pnlSign}${pnlAbs}% so far`;
+  }
+  if (pnl > -5) {
+    return `${symbol} ${side} position open — ${pnlSign}${pnlAbs}%. Still early, Vela is watching`;
+  }
+  if (pnl > -8) {
+    return `${symbol} ${side} is ${pnlSign}${pnlAbs}% — Vela is monitoring and will act if needed`;
+  }
+  return `${symbol} ${side} position — stop-loss level approaching. Vela has you covered`;
+}
+
+export default function SignalCard({ data, position }: SignalCardProps) {
   const navigate = useNavigate();
   const { asset, signal, brief, priceData } = data;
 
   const price = priceData?.price ?? signal?.price_at_signal;
   const iconUrl = getCoinIcon(asset.coingecko_id);
+
+  // Position-aware headline takes priority over generic brief headline
+  const headline = position
+    ? getPositionHeadline(position, asset.symbol.toUpperCase())
+    : brief?.headline
+      ? stripAssetPrefix(brief.headline, asset.symbol)
+      : null;
 
   return (
     <div
@@ -156,8 +194,8 @@ export default function SignalCard({ data }: SignalCardProps) {
         </svg>
       </div>
 
-      {/* Headline */}
-      {brief?.headline && (
+      {/* Headline — position-aware when user has an open position */}
+      {headline && (
         <p
           className="vela-body-sm"
           style={{
@@ -168,7 +206,7 @@ export default function SignalCard({ data }: SignalCardProps) {
             borderTop: 'var(--border-medium) solid var(--gray-200)',
           }}
         >
-          {stripAssetPrefix(brief.headline, asset.symbol)}
+          {headline}
         </p>
       )}
     </div>

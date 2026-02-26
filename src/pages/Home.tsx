@@ -5,12 +5,16 @@ import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
 import PendingProposalsBanner from '../components/PendingProposalsBanner';
 import { useDashboard } from '../hooks/useData';
+import { useTrading } from '../hooks/useTrading';
+import { useAuthContext } from '../contexts/AuthContext';
 import { breakIntoParagraphs } from '../lib/helpers';
 
 const DIGEST_COLLAPSED_HEIGHT = 96; // ~4 lines at 0.85rem with 1.7 line-height
 
 export default function Home() {
   const { data, digest, loading, error, lastUpdated } = useDashboard();
+  const { isAuthenticated } = useAuthContext();
+  const { positions } = useTrading();
   const [digestExpanded, setDigestExpanded] = useState(false);
 
   if (loading) {
@@ -176,9 +180,18 @@ export default function Home() {
         <EmptyState type="no-signals" />
       ) : (
         <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
-          {data.map(item => (
-            <SignalCard key={item.asset.id} data={item} />
-          ))}
+          {data.map(item => {
+            const assetPosition = isAuthenticated
+              ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
+              : undefined;
+            return (
+              <SignalCard
+                key={item.asset.id}
+                data={item}
+                position={assetPosition}
+              />
+            );
+          })}
         </div>
       )}
     </div>
