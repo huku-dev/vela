@@ -1725,8 +1725,7 @@ function SignalHistoryCard({
                       {formatDateRange(group.dateRange[0], group.dateRange[1])}
                       {priceAtSignal != null && (
                         <>
-                          {gi === 0 ? ' \u2022 ' : ' \u2014 '}
-                          {'Signal triggered at '}
+                          {' \u2022 Signal triggered at '}
                           <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                             {formatPrice(priceAtSignal)}
                           </span>
