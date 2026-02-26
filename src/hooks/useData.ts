@@ -177,7 +177,12 @@ export function useAssetDetail(assetId: string) {
 
       if (assetData?.coingecko_id) {
         const prices = await fetchLivePrices([assetData.coingecko_id]);
-        setPriceData(prices[assetData.coingecko_id] || null);
+        const freshPrice = prices[assetData.coingecko_id];
+        // Only overwrite cached priceData if we got a valid response —
+        // prevents wiping cached change24h on transient CoinGecko failures
+        if (freshPrice) {
+          setPriceData(freshPrice);
+        }
       }
 
       setLoading(false);

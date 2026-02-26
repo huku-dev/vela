@@ -21,8 +21,8 @@ import {
 import type { SignalColor, BriefGroup } from '../types';
 
 const signalTitles: Record<SignalColor, string> = {
-  green: 'Buy signal',
-  red: 'Exit signal',
+  green: 'Buy',
+  red: 'Sell',
   grey: 'Wait',
 };
 
@@ -369,8 +369,8 @@ export default function AssetDetail() {
                 color: 'var(--color-text-primary)',
               }}
             >
-              {assetPosition.unrealized_pnl >= 0 ? '+' : ''}
-              ${Math.abs(assetPosition.unrealized_pnl).toFixed(2)}{' '}
+              {assetPosition.unrealized_pnl >= 0 ? '+' : ''}$
+              {Math.abs(assetPosition.unrealized_pnl).toFixed(2)}{' '}
               {assetPosition.unrealized_pnl >= 0 ? 'profit' : 'loss'}
             </span>
             <span
@@ -397,16 +397,28 @@ export default function AssetDetail() {
               }}
             >
               {[
-                ['Position size', `$${assetPosition.size_usd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`],
+                [
+                  'Position size',
+                  `$${assetPosition.size_usd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                ],
                 ['Entry price', formatPrice(assetPosition.entry_price)],
-                ['Current price', assetPosition.current_price ? formatPrice(assetPosition.current_price) : '—'],
-                ['Time open', (() => {
-                  const days = Math.floor(
-                    (Date.now() - new Date(assetPosition.created_at).getTime()) / (1000 * 60 * 60 * 24)
-                  );
-                  return days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`;
-                })()],
-                ...(assetPosition.stop_loss_price ? [['Stop-loss', formatPrice(assetPosition.stop_loss_price)]] : []),
+                [
+                  'Current price',
+                  assetPosition.current_price ? formatPrice(assetPosition.current_price) : '—',
+                ],
+                [
+                  'Time open',
+                  (() => {
+                    const days = Math.floor(
+                      (Date.now() - new Date(assetPosition.created_at).getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    );
+                    return days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`;
+                  })(),
+                ],
+                ...(assetPosition.stop_loss_price
+                  ? [['Stop-loss', formatPrice(assetPosition.stop_loss_price)]]
+                  : []),
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -418,7 +430,10 @@ export default function AssetDetail() {
                   }}
                 >
                   <span className="vela-body-sm vela-text-muted">{label}</span>
-                  <span className="vela-mono vela-body-sm" style={{ fontWeight: 'var(--weight-semibold)' }}>
+                  <span
+                    className="vela-mono vela-body-sm"
+                    style={{ fontWeight: 'var(--weight-semibold)' }}
+                  >
                     {value}
                   </span>
                 </div>
@@ -464,6 +479,7 @@ export default function AssetDetail() {
           const latestGroupIsNew =
             hasHistory &&
             signalGroups[0].type === 'signal_change' &&
+            signalGroups[0].signalColor === signalColor && // Only NEW if same color as current signal
             Date.now() - new Date(signalGroups[0].briefs[0].created_at).getTime() <
               24 * 60 * 60 * 1000;
 
@@ -1703,10 +1719,12 @@ function SignalHistoryCard({
                         marginTop: 2,
                       }}
                     >
+                      {gi === 0 ? 'Since ' : ''}
                       {formatDateRange(group.dateRange[0], group.dateRange[1])}
                       {priceAtSignal != null && (
                         <>
-                          {' \u2014 Signal triggered at '}
+                          {gi === 0 ? ' \u2022 ' : ' \u2014 '}
+                          {'Signal triggered at '}
                           <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                             {formatPrice(priceAtSignal)}
                           </span>
