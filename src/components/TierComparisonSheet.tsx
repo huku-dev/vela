@@ -23,6 +23,7 @@ export default function TierComparisonSheet({
 }: TierComparisonSheetProps) {
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [checkingOutTier, setCheckingOutTier] = useState<SubscriptionTier | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const TIER_ORDER: SubscriptionTier[] = ['free', 'standard', 'premium'];
   const currentTierIndex = TIER_ORDER.indexOf(currentTier);
@@ -30,10 +31,13 @@ export default function TierComparisonSheet({
   async function handleCta(tier: TierConfig) {
     if (!onStartCheckout || tier.monthly_price_usd === 0) return;
     setCheckingOutTier(tier.tier);
+    setCheckoutError(null);
     try {
       await onStartCheckout(tier.tier as 'standard' | 'premium', billingCycle);
     } catch (err) {
       console.error('[TierComparisonSheet] Checkout error:', err);
+      const msg = err instanceof Error ? err.message : 'Something went wrong';
+      setCheckoutError(msg);
       setCheckingOutTier(null);
     }
   }
@@ -328,6 +332,24 @@ export default function TierComparisonSheet({
             );
           })}
         </div>
+
+        {/* Checkout error */}
+        {checkoutError && (
+          <div
+            style={{
+              padding: 'var(--space-3) var(--space-4)',
+              marginBottom: 'var(--space-4)',
+              borderRadius: 'var(--radius-sm)',
+              border: '1.5px solid var(--red-primary)',
+              backgroundColor: 'var(--color-status-sell-bg)',
+              textAlign: 'center',
+            }}
+          >
+            <span className="vela-body-sm" style={{ color: 'var(--red-dark)' }}>
+              {checkoutError}
+            </span>
+          </div>
+        )}
 
         {/* Footer note */}
         <p
