@@ -86,13 +86,15 @@ export default function TrackRecord() {
     formatDurationMs(Date.now() - new Date(openedAt).getTime());
 
   // Earliest paper trade date for the "since" label
-  const earliestPaperDate = paperTrades.length > 0
-    ? new Date(
-        paperTrades.reduce((earliest, t) =>
-          t.opened_at < earliest ? t.opened_at : earliest, paperTrades[0].opened_at
-        )
-      ).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-    : null;
+  const earliestPaperDate =
+    paperTrades.length > 0
+      ? new Date(
+          paperTrades.reduce(
+            (earliest, t) => (t.opened_at < earliest ? t.opened_at : earliest),
+            paperTrades[0].opened_at
+          )
+        ).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      : null;
 
   return (
     <div
@@ -162,8 +164,7 @@ export default function TrackRecord() {
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 700,
                   fontSize: 'var(--text-xl)',
-                  color:
-                    userStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: userStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   margin: 0,
                   lineHeight: 1.2,
                 }}
@@ -207,9 +208,7 @@ export default function TrackRecord() {
                     key={pos.id}
                     position={pos}
                     expanded={expandedTradeId === pos.id}
-                    onToggle={() =>
-                      setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
-                    }
+                    onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
                   />
                 ))}
               </div>
@@ -332,8 +331,7 @@ export default function TrackRecord() {
                   style={{
                     fontSize: '0.7rem',
                     fontWeight: 600,
-                    color:
-                      paperStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                    color: paperStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   }}
                 >
                   {paperStats.totalDollarPnl >= 0 ? '+' : '-'}$
@@ -391,9 +389,7 @@ export default function TrackRecord() {
                       fontWeight: 700,
                       fontSize: 'var(--text-lg)',
                       color:
-                        paperStats.totalDollarPnl >= 0
-                          ? 'var(--green-dark)'
-                          : 'var(--red-dark)',
+                        paperStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                       margin: 0,
                       lineHeight: 1.2,
                     }}
@@ -441,9 +437,7 @@ export default function TrackRecord() {
               )}
 
               {/* Paper trade list */}
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}
-              >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                 {paperTrades.map(trade =>
                   trade.status === 'open' ? (
                     <OpenTradeCard
@@ -459,9 +453,7 @@ export default function TrackRecord() {
                       }
                       expanded={expandedTradeId === trade.id}
                       onToggle={() =>
-                        setExpandedTradeId(
-                          expandedTradeId === trade.id ? null : trade.id
-                        )
+                        setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
                       }
                     />
                   ) : (
@@ -481,9 +473,7 @@ export default function TrackRecord() {
                       }
                       expanded={expandedTradeId === trade.id}
                       onToggle={() =>
-                        setExpandedTradeId(
-                          expandedTradeId === trade.id ? null : trade.id
-                        )
+                        setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
                       }
                     />
                   )
@@ -563,15 +553,12 @@ export default function TrackRecord() {
                             : '—'
                         }
                         valueColor={
-                          paperDetailedStats.worstTradeDollar < 0
-                            ? 'var(--red-dark)'
-                            : undefined
+                          paperDetailedStats.worstTradeDollar < 0 ? 'var(--red-dark)' : undefined
                         }
                       />
 
                       {/* By Direction */}
-                      {(paperDetailedStats.longCount > 0 ||
-                        paperDetailedStats.shortCount > 0) && (
+                      {(paperDetailedStats.longCount > 0 || paperDetailedStats.shortCount > 0) && (
                         <>
                           <SectionLabel style={{ marginTop: 'var(--space-3)' }}>
                             By direction

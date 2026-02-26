@@ -105,11 +105,7 @@ export default function TradeConfirmationSheet({
                 fontSize: 13,
                 fontWeight: 800,
                 letterSpacing: '0.05em',
-                color: isTrim
-                  ? 'var(--black)'
-                  : isLong
-                    ? 'var(--green-dark)'
-                    : 'var(--red-dark)',
+                color: isTrim ? 'var(--black)' : isLong ? 'var(--green-dark)' : 'var(--red-dark)',
               }}
             >
               {actionLabel}
@@ -126,9 +122,7 @@ export default function TradeConfirmationSheet({
               label={isTrim ? 'Trim amount' : 'Position size'}
               value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
             />
-            {!isTrim && (
-              <ConfirmRow label="Leverage" value={`${proposal.proposed_leverage}x`} />
-            )}
+            {!isTrim && <ConfirmRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
             {estimatedFee > 0 && (
               <ConfirmRow
                 label={`Est. fee (${feeRatePct}%)`}

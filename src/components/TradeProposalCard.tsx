@@ -287,10 +287,7 @@ export default function TradeProposalCard({
         />
         {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
         {estimatedFee > 0 && (
-          <DetailRow
-            label={`Est. fee (${feeRatePct}%)`}
-            value={`$${estimatedFee.toFixed(2)}`}
-          />
+          <DetailRow label={`Est. fee (${feeRatePct}%)`} value={`$${estimatedFee.toFixed(2)}`} />
         )}
       </div>
 

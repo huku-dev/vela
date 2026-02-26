@@ -173,7 +173,13 @@ export default function AssetDetail() {
                 backgroundColor: 'var(--gray-100)',
               }}
             >
-              <img src={iconUrl} alt={asset.symbol} width={36} height={36} style={{ borderRadius: '50%' }} />
+              <img
+                src={iconUrl}
+                alt={asset.symbol}
+                width={36}
+                height={36}
+                style={{ borderRadius: '50%' }}
+              />
             </div>
           )}
           <div style={{ flex: 1 }}>
@@ -185,7 +191,10 @@ export default function AssetDetail() {
             </span>
           </div>
           {price && (
-            <span className="vela-mono" style={{ fontWeight: 'var(--weight-semibold)', fontSize: '0.95rem' }}>
+            <span
+              className="vela-mono"
+              style={{ fontWeight: 'var(--weight-semibold)', fontSize: '0.95rem' }}
+            >
               {formatPrice(price)}
             </span>
           )}
@@ -206,8 +215,22 @@ export default function AssetDetail() {
             fill="none"
             style={{ margin: '0 auto var(--space-4)' }}
           >
-            <rect x="8" y="18" width="24" height="18" rx="3" fill="var(--gray-200)" stroke="var(--gray-400)" strokeWidth="2" />
-            <path d="M14 18V12a6 6 0 1112 0v6" stroke="var(--gray-400)" strokeWidth="2" strokeLinecap="round" />
+            <rect
+              x="8"
+              y="18"
+              width="24"
+              height="18"
+              rx="3"
+              fill="var(--gray-200)"
+              stroke="var(--gray-400)"
+              strokeWidth="2"
+            />
+            <path
+              d="M14 18V12a6 6 0 1112 0v6"
+              stroke="var(--gray-400)"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
 
           <h3

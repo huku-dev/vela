@@ -25,9 +25,7 @@ export interface TierAccess {
    * Filter an asset list to only the ones this tier can access.
    * Returns { accessible, locked } for rendering both unlocked and locked cards.
    */
-  partitionAssets: <T extends { asset: Asset }>(
-    items: T[]
-  ) => { accessible: T[]; locked: T[] };
+  partitionAssets: <T extends { asset: Asset }>(items: T[]) => { accessible: T[]; locked: T[] };
   /** Open the tier comparison sheet for a specific feature */
   upgradeLabel: (feature: string) => string;
   /** Start Stripe checkout for a tier */
@@ -44,13 +42,7 @@ export interface TierAccess {
 }
 
 export function useTierAccess(): TierAccess {
-  const {
-    tier,
-    isPaid,
-    isLoading,
-    startCheckout,
-    openPortal,
-  } = useSubscription();
+  const { tier, isPaid, isLoading, startCheckout, openPortal } = useSubscription();
 
   const tierConfig = useMemo(() => getTierConfig(tier), [tier]);
 
@@ -60,12 +52,13 @@ export function useTierAccess(): TierAccess {
   const canAutoTrade = tierConfig.features.auto_mode;
 
   const canAccessAsset = useMemo(
-    () => (assetId: string, allAssets: Asset[]): boolean => {
-      if (maxAssets === 0) return true; // unlimited
-      const idx = allAssets.findIndex(a => a.id === assetId);
-      if (idx === -1) return false;
-      return idx < maxAssets;
-    },
+    () =>
+      (assetId: string, allAssets: Asset[]): boolean => {
+        if (maxAssets === 0) return true; // unlimited
+        const idx = allAssets.findIndex(a => a.id === assetId);
+        if (idx === -1) return false;
+        return idx < maxAssets;
+      },
     [maxAssets]
   );
 
@@ -82,23 +75,25 @@ export function useTierAccess(): TierAccess {
   );
 
   const upgradeLabel = useMemo(
-    () => (feature: string): string => {
-      if (tier === 'free') {
-        return `Upgrade to Standard to ${feature}`;
-      }
-      if (tier === 'standard') {
-        return `Upgrade to Premium to ${feature}`;
-      }
-      return ''; // Premium — already has everything
-    },
+    () =>
+      (feature: string): string => {
+        if (tier === 'free') {
+          return `Upgrade to Standard to ${feature}`;
+        }
+        if (tier === 'standard') {
+          return `Upgrade to Premium to ${feature}`;
+        }
+        return ''; // Premium — already has everything
+      },
     [tier]
   );
 
   const needsFunding = useMemo(
-    () => (walletBalance: number | undefined): boolean => {
-      if (!isPaid) return false;
-      return walletBalance === undefined || walletBalance === 0;
-    },
+    () =>
+      (walletBalance: number | undefined): boolean => {
+        if (!isPaid) return false;
+        return walletBalance === undefined || walletBalance === 0;
+      },
     [isPaid]
   );
 

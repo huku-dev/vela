@@ -703,9 +703,7 @@ function TradingPanel({
                   )}
                 </p>
                 <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
-                  {isLocked
-                    ? `Upgrade to unlock`
-                    : MODE_DESCRIPTIONS[mode]}
+                  {isLocked ? `Upgrade to unlock` : MODE_DESCRIPTIONS[mode]}
                 </p>
               </div>
             </button>

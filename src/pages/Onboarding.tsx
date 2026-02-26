@@ -51,14 +51,16 @@ const MODE_OPTIONS: {
   {
     mode: 'semi_auto',
     label: 'Semi-auto',
-    description: 'Vela proposes trades, you approve each one before it executes. The best balance of control and convenience.',
+    description:
+      'Vela proposes trades, you approve each one before it executes. The best balance of control and convenience.',
     tier: 'Standard · $10/mo',
     recommended: true,
   },
   {
     mode: 'full_auto',
     label: 'Full auto',
-    description: 'Vela executes trades automatically when it spots an opportunity. Hands-free investing.',
+    description:
+      'Vela executes trades automatically when it spots an opportunity. Hands-free investing.',
     tier: 'Premium · $20/mo',
   },
 ];
@@ -244,7 +246,8 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
           style={{ marginBottom: 'var(--space-6)' }}
         >
           Vela watches the crypto markets 24/7 and flags the best moments to buy or sell. When it
-          spots an opportunity, it creates a trade signal. Here&apos;s how you can act on those signals:
+          spots an opportunity, it creates a trade signal. Here&apos;s how you can act on those
+          signals:
         </p>
 
         {/* Mode options */}
@@ -334,10 +337,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                       marginTop: 'var(--space-2)',
                       fontWeight: 600,
                       fontSize: 12,
-                      color:
-                        mode === 'view_only'
-                          ? 'var(--color-text-muted)'
-                          : 'var(--green-dark)',
+                      color: mode === 'view_only' ? 'var(--color-text-muted)' : 'var(--green-dark)',
                     }}
                   >
                     {tier}
@@ -460,11 +460,7 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
         >
           Fund now
         </button>
-        <button
-          className="vela-btn vela-btn-ghost"
-          onClick={onComplete}
-          style={{ width: '100%' }}
-        >
+        <button className="vela-btn vela-btn-ghost" onClick={onComplete} style={{ width: '100%' }}>
           Skip — I&apos;ll do this later
         </button>
       </div>

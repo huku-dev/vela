@@ -22,9 +22,7 @@ export default function LockedSignalCard({
   briefHeadline,
 }: LockedSignalCardProps) {
   const iconUrl = getCoinIcon(asset.coingecko_id);
-  const cleanHeadline = briefHeadline
-    ? stripAssetPrefix(briefHeadline, asset.symbol)
-    : null;
+  const cleanHeadline = briefHeadline ? stripAssetPrefix(briefHeadline, asset.symbol) : null;
 
   return (
     <div
@@ -107,13 +105,7 @@ export default function LockedSignalCard({
         </div>
 
         {/* Lock icon */}
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 20 20"
-          fill="none"
-          style={{ flexShrink: 0 }}
-        >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0 }}>
           <rect
             x="4"
             y="9"
