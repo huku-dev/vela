@@ -159,33 +159,45 @@ function WalletPanel({ address }: { address?: string }) {
   );
 }
 
-interface BalancePanelProps {
+interface BalanceCardProps {
   wallet: import('../types').UserWallet | null;
   hasWallet: boolean;
   isTradingEnabled: boolean;
 }
 
-function BalancePanel({ wallet, hasWallet, isTradingEnabled }: BalancePanelProps) {
-  // No wallet / trading not enabled — prompt user
+function BalanceCard({ wallet, hasWallet, isTradingEnabled }: BalanceCardProps) {
+  // No wallet / trading not enabled — prompt to enable
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
-      <div style={{ padding: 'var(--space-4)' }}>
-        <div
+      <div
+        className="vela-card"
+        style={{
+          padding: 'var(--space-5)',
+          marginBottom: 'var(--space-6)',
+          textAlign: 'center',
+        }}
+      >
+        <p
+          className="vela-label-sm"
+          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}
+        >
+          BALANCE
+        </p>
+        <p
           style={{
-            padding: 'var(--space-4)',
-            backgroundColor: 'var(--gray-50)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--gray-200)',
-            textAlign: 'center',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 32,
+            fontWeight: 700,
+            color: 'var(--color-text-muted)',
+            margin: 0,
+            lineHeight: 1.2,
           }}
         >
-          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}>
-            Enable trading to see your balance
-          </p>
-          <p className="vela-body-sm vela-text-muted">
-            Set your trading mode to Semi-auto or Full auto to create your wallet.
-          </p>
-        </div>
+          —
+        </p>
+        <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-3)' }}>
+          Enable trading to create your wallet and see your balance.
+        </p>
       </div>
     );
   }
@@ -194,59 +206,66 @@ function BalancePanel({ wallet, hasWallet, isTradingEnabled }: BalancePanelProps
   const isTestnet = wallet.environment === 'testnet';
 
   return (
-    <div style={{ padding: 'var(--space-4)' }}>
+    <div
+      className="vela-card"
+      style={{
+        padding: 'var(--space-5)',
+        marginBottom: 'var(--space-6)',
+      }}
+    >
       <p
         className="vela-label-sm"
-        style={{ marginBottom: 'var(--space-3)', color: 'var(--color-text-muted)' }}
+        style={{
+          color: 'var(--color-text-muted)',
+          marginBottom: 'var(--space-2)',
+          textAlign: 'center',
+        }}
       >
-        YOUR TRADING BALANCE
+        BALANCE {isTestnet && '· Testnet'}
       </p>
 
       {/* Big balance display */}
-      <div
+      <p
         style={{
-          padding: 'var(--space-4)',
-          backgroundColor: 'var(--gray-50)',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--gray-200)',
-          marginBottom: 'var(--space-4)',
+          fontFamily: 'JetBrains Mono, monospace',
+          fontSize: 32,
+          fontWeight: 700,
+          color: balance > 0 ? 'var(--green-dark)' : 'var(--color-text-primary)',
+          margin: 0,
+          lineHeight: 1.2,
+          textAlign: 'center',
         }}
       >
-        <p
-          style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 28,
-            fontWeight: 700,
-            color: balance > 0 ? 'var(--green-dark)' : 'var(--color-text-primary)',
-            margin: 0,
-            lineHeight: 1.2,
-          }}
-        >
-          $
-          {balance.toLocaleString(undefined, {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </p>
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{ margin: 0, marginTop: 'var(--space-1)' }}
-        >
-          USDC {isTestnet && '· Testnet'}
-        </p>
-      </div>
+        $
+        {balance.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </p>
+      <p
+        className="vela-body-sm vela-text-muted"
+        style={{ margin: 0, marginTop: 'var(--space-1)', textAlign: 'center' }}
+      >
+        USDC
+      </p>
 
-      {/* Fund wallet CTA */}
-      {isTestnet && (
-        <>
+      {/* Action buttons */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 'var(--space-3)',
+          marginTop: 'var(--space-5)',
+        }}
+      >
+        {isTestnet ? (
+          /* Testnet: single drip button */
           <a
             href="https://app.hyperliquid-testnet.xyz/drip"
             target="_blank"
             rel="noopener noreferrer"
             className="vela-btn vela-btn-primary vela-btn-sm"
             style={{
-              display: 'block',
-              width: '100%',
+              flex: 1,
               textAlign: 'center',
               textDecoration: 'none',
               boxSizing: 'border-box',
@@ -254,38 +273,40 @@ function BalancePanel({ wallet, hasWallet, isTradingEnabled }: BalancePanelProps
           >
             Get test USDC
           </a>
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{ marginTop: 'var(--space-2)', textAlign: 'center' }}
-          >
-            Get free test tokens to try paper trading.
-          </p>
-        </>
-      )}
-
-      {/* Coming soon */}
-      <div
-        style={{
-          marginTop: 'var(--space-4)',
-          paddingTop: 'var(--space-3)',
-          borderTop: '1px solid var(--gray-200)',
-        }}
-      >
-        <p
-          className="vela-label-sm"
-          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
-        >
-          COMING SOON
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span className="vela-body-sm vela-text-muted">Deposit from card</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span className="vela-body-sm vela-text-muted">Withdraw to external wallet</span>
-          </div>
-        </div>
+        ) : (
+          /* Mainnet: deposit + withdraw */
+          <>
+            <button
+              className="vela-btn vela-btn-primary vela-btn-sm"
+              style={{ flex: 1 }}
+              onClick={() => {
+                /* TODO: deposit flow — stablecoin transfer or Stripe top-up */
+              }}
+            >
+              Deposit
+            </button>
+            <button
+              className="vela-btn vela-btn-secondary vela-btn-sm"
+              style={{ flex: 1 }}
+              onClick={() => {
+                /* TODO: withdraw flow — send to external address */
+              }}
+            >
+              Withdraw
+            </button>
+          </>
+        )}
       </div>
+
+      {/* Testnet helper text */}
+      {isTestnet && (
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ marginTop: 'var(--space-2)', textAlign: 'center', fontSize: '0.7rem' }}
+        >
+          Free test tokens for paper trading
+        </p>
+      )}
     </div>
   );
 }
@@ -1345,6 +1366,9 @@ export default function Account() {
         </div>
       </div>
 
+      {/* Standalone balance card */}
+      <BalanceCard wallet={wallet} hasWallet={hasWallet} isTradingEnabled={isTradingEnabled} />
+
       {/* Checkout toast — success (green) or error (red) */}
       {checkoutToast &&
         (() => {
@@ -1439,26 +1463,6 @@ export default function Account() {
         {expandedSection === 'wallet' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
             <WalletPanel address={user?.walletAddress} />
-          </div>
-        )}
-
-        <SettingsItem
-          label="Balance"
-          value={
-            wallet
-              ? `$${wallet.balance_usdc.toLocaleString(undefined, { minimumFractionDigits: 2 })} USDC`
-              : '—'
-          }
-          onClick={() => toggleSection('balance')}
-          expanded={expandedSection === 'balance'}
-        />
-        {expandedSection === 'balance' && (
-          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <BalancePanel
-              wallet={wallet}
-              hasWallet={hasWallet}
-              isTradingEnabled={isTradingEnabled}
-            />
           </div>
         )}
 

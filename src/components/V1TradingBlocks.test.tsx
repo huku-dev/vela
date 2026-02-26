@@ -26,7 +26,7 @@ const assetDetailSrc = readFileSync(resolve(__dirname, '../pages/AssetDetail.tsx
 // ════════════════════════════════════════════════════════════
 // BALANCE-SRC: Source-verification — Balance Panel
 // ════════════════════════════════════════════════════════════
-describe('BALANCE-SRC: BalancePanel renders correctly', () => {
+describe('BALANCE-SRC: BalanceCard renders correctly', () => {
   it('shows balance from wallet.balance_usdc (not hardcoded)', () => {
     expect(accountSrc).toContain('wallet.balance_usdc');
     expect(accountSrc).toContain('balance.toLocaleString');
@@ -37,7 +37,7 @@ describe('BALANCE-SRC: BalancePanel renders correctly', () => {
   });
 
   it('shows "Get test USDC" only on testnet', () => {
-    expect(accountSrc).toContain('{isTestnet && (');
+    expect(accountSrc).toContain('{isTestnet ? (');
     expect(accountSrc).toContain('Get test USDC');
   });
 
@@ -45,46 +45,53 @@ describe('BALANCE-SRC: BalancePanel renders correctly', () => {
     expect(accountSrc).toContain('!isTradingEnabled || !hasWallet || !wallet');
   });
 
-  it('shows coming soon placeholders for card deposit and withdrawal', () => {
-    expect(accountSrc).toContain('Deposit from card');
-    expect(accountSrc).toContain('Withdraw to external wallet');
+  it('shows deposit and withdraw buttons on mainnet', () => {
+    // BalanceCard renders Deposit + Withdraw buttons for non-testnet environments
+    expect(accountSrc).toMatch(/Deposit/);
+    expect(accountSrc).toMatch(/Withdraw/);
+    // Both should be inside button elements
+    const cardStart = accountSrc.indexOf('function BalanceCard(');
+    const cardEnd = accountSrc.indexOf('function TreasuryInfo()');
+    const cardSrc = accountSrc.slice(cardStart, cardEnd);
+    expect(cardSrc).toContain('Deposit');
+    expect(cardSrc).toContain('Withdraw');
   });
 });
 
 // ════════════════════════════════════════════════════════════
 // BALANCE-ADV: Adversarial — Balance Panel
 // ════════════════════════════════════════════════════════════
-describe('BALANCE-ADV: Balance Panel adversarial checks', () => {
-  it('ADV: no hardcoded balance values in BalancePanel', () => {
-    // Extract BalancePanel function body
-    const panelStart = accountSrc.indexOf('function BalancePanel(');
-    const panelEnd = accountSrc.indexOf('function TreasuryInfo()');
-    const panelSrc = accountSrc.slice(panelStart, panelEnd);
+describe('BALANCE-ADV: Balance Card adversarial checks', () => {
+  it('ADV: no hardcoded balance values in BalanceCard', () => {
+    // Extract BalanceCard function body
+    const cardStart = accountSrc.indexOf('function BalanceCard(');
+    const cardEnd = accountSrc.indexOf('function TreasuryInfo()');
+    const cardSrc = accountSrc.slice(cardStart, cardEnd);
 
     // Should not contain hardcoded dollar amounts
-    expect(panelSrc).not.toMatch(/\$\d{2,}/);
+    expect(cardSrc).not.toMatch(/\$\d{2,}/);
     // Balance should come from wallet object
-    expect(panelSrc).toContain('wallet.balance_usdc');
+    expect(cardSrc).toContain('wallet.balance_usdc');
   });
 
   it('ADV: guard prevents balance display when wallet is null', () => {
     // The guard must return early before accessing wallet properties
-    const panelStart = accountSrc.indexOf('function BalancePanel(');
-    const guardIndex = accountSrc.indexOf('!isTradingEnabled || !hasWallet || !wallet', panelStart);
-    const balanceAccess = accountSrc.indexOf('wallet.balance_usdc', panelStart);
+    const cardStart = accountSrc.indexOf('function BalanceCard(');
+    const guardIndex = accountSrc.indexOf('!isTradingEnabled || !hasWallet || !wallet', cardStart);
+    const balanceAccess = accountSrc.indexOf('wallet.balance_usdc', cardStart);
 
     // Guard must appear before balance access
     expect(guardIndex).toBeLessThan(balanceAccess);
   });
 
   it('ADV: fund wallet link uses target="_blank" with noopener noreferrer', () => {
-    const panelStart = accountSrc.indexOf('function BalancePanel(');
-    const panelEnd = accountSrc.indexOf('function TreasuryInfo()');
-    const panelSrc = accountSrc.slice(panelStart, panelEnd);
+    const cardStart = accountSrc.indexOf('function BalanceCard(');
+    const cardEnd = accountSrc.indexOf('function TreasuryInfo()');
+    const cardSrc = accountSrc.slice(cardStart, cardEnd);
 
     // Every external link must have noopener noreferrer
-    const hrefMatches = panelSrc.match(/href="https?:\/\//g) || [];
-    const noopenerMatches = panelSrc.match(/rel="noopener noreferrer"/g) || [];
+    const hrefMatches = cardSrc.match(/href="https?:\/\//g) || [];
+    const noopenerMatches = cardSrc.match(/rel="noopener noreferrer"/g) || [];
     expect(hrefMatches.length).toBeGreaterThan(0);
     expect(noopenerMatches.length).toBe(hrefMatches.length);
   });
