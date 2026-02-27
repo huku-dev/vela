@@ -29,10 +29,7 @@ export default function Terms() {
       <h1 className="vela-heading-xl" style={{ marginBottom: 'var(--space-2)' }}>
         Terms of Service
       </h1>
-      <p
-        className="vela-body-sm vela-text-muted"
-        style={{ marginBottom: 'var(--space-8)' }}
-      >
+      <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-8)' }}>
         Last updated: February 2026
       </p>
 
@@ -42,9 +39,9 @@ export default function Terms() {
             1. Acceptance of Terms
           </h2>
           <p className="vela-body-base vela-text-secondary">
-            By accessing or using Vela (&quot;the Service&quot;), you agree to be bound by these Terms
-            of Service. If you do not agree, do not use the Service. You must be at least 18 years old
-            to use Vela.
+            By accessing or using Vela (&quot;the Service&quot;), you agree to be bound by these
+            Terms of Service. If you do not agree, do not use the Service. You must be at least 18
+            years old to use Vela.
           </p>
         </section>
 
@@ -85,7 +82,9 @@ export default function Terms() {
               Cryptocurrency markets are highly volatile and you may lose some or all of your
               investment.
             </li>
-            <li>You should consult a qualified financial advisor before making trading decisions.</li>
+            <li>
+              You should consult a qualified financial advisor before making trading decisions.
+            </li>
             <li>
               Paper trading results are simulated and may not reflect actual trading performance.
             </li>
@@ -143,8 +142,8 @@ export default function Terms() {
           </h2>
           <p className="vela-body-base vela-text-secondary">
             We reserve the right to modify these Terms at any time. Material changes will be
-            communicated via email or in-app notification. Continued use of the Service after changes
-            constitutes acceptance.
+            communicated via email or in-app notification. Continued use of the Service after
+            changes constitutes acceptance.
           </p>
         </section>
 

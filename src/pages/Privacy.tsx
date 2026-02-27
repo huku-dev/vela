@@ -29,10 +29,7 @@ export default function Privacy() {
       <h1 className="vela-heading-xl" style={{ marginBottom: 'var(--space-2)' }}>
         Privacy Policy
       </h1>
-      <p
-        className="vela-body-sm vela-text-muted"
-        style={{ marginBottom: 'var(--space-8)' }}
-      >
+      <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-8)' }}>
         Last updated: February 2026
       </p>
 
@@ -137,10 +134,10 @@ export default function Privacy() {
             4. Data Storage &amp; Security
           </h2>
           <p className="vela-body-base vela-text-secondary">
-            Your data is stored in Supabase (PostgreSQL) with row-level security policies that ensure
-            users can only access their own data. All connections use TLS encryption. Wallet private
-            keys are managed by Privy using Trusted Execution Environments (TEE) and are never
-            accessible to Vela.
+            Your data is stored in Supabase (PostgreSQL) with row-level security policies that
+            ensure users can only access their own data. All connections use TLS encryption. Wallet
+            private keys are managed by Privy using Trusted Execution Environments (TEE) and are
+            never accessible to Vela.
           </p>
         </section>
 
@@ -161,8 +158,8 @@ export default function Privacy() {
           </h2>
           <p className="vela-body-base vela-text-secondary">
             Vela uses essential cookies for authentication (via Privy) and session management. We do
-            not use advertising or tracking cookies. Third-party services (Google Fonts) may set their
-            own cookies.
+            not use advertising or tracking cookies. Third-party services (Google Fonts) may set
+            their own cookies.
           </p>
         </section>
 

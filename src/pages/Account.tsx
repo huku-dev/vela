@@ -663,9 +663,7 @@ function NotificationsPanel({
           {telegramAllowed ? (
             <button
               onClick={() => setTelegramEnabled(!telegramEnabled)}
-              aria-label={
-                telegramEnabled ? 'Disable Telegram alerts' : 'Enable Telegram alerts'
-              }
+              aria-label={telegramEnabled ? 'Disable Telegram alerts' : 'Enable Telegram alerts'}
               style={{
                 width: 44,
                 height: 24,
@@ -695,7 +693,7 @@ function NotificationsPanel({
             </button>
           ) : (
             <button
-              onClick={(e) => {
+              onClick={e => {
                 e.stopPropagation();
                 // Re-enable pointer events for the upgrade click
                 onUpgradeClick();
