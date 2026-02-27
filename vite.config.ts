@@ -21,13 +21,17 @@ export default defineConfig({
           }),
         ]
       : []),
-    // Bundle analysis — generates stats.html on build (npm run build)
-    // Open stats.html in a browser to see bundle composition
-    visualizer({
-      filename: 'stats.html',
-      gzipSize: true,
-      brotliSize: true,
-    }),
+    // Bundle analysis — generates stats.html on build
+    // Usage: ANALYZE=true npm run build && open stats.html
+    ...(process.env.ANALYZE
+      ? [
+          visualizer({
+            filename: 'stats.html',
+            gzipSize: true,
+            brotliSize: true,
+          }),
+        ]
+      : []),
   ],
   build: {
     // Generate source maps for Sentry but don't ship them to users
