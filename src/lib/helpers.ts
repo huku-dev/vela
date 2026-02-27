@@ -7,9 +7,16 @@ import type { Brief, BriefGroup, SignalColor } from '../types';
 export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): string[] {
   if (!text) return [];
 
-  // Split on sentence boundaries, but NOT after decimal points in numbers (e.g. "$29.86").
-  // A period only counts as sentence-ending if NOT preceded by a digit followed by digits.
-  const sentences = text.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [text];
+  // Split on sentence boundaries, but NOT after:
+  //   - Decimal points in numbers (e.g. "$29.86")
+  //   - Single-letter abbreviations (e.g. "U.S.", "E.U.", "A.I.")
+  // Strategy: replace abbreviation periods with a placeholder, split, then restore.
+  const ABBR_PLACEHOLDER = '\u200B'; // zero-width space
+  const escaped = text.replace(
+    /\b([A-Z]\.){2,}/g,
+    (match) => match.split('.').join(ABBR_PLACEHOLDER)
+  );
+  const sentences = escaped.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [escaped];
 
   const paragraphs: string[] = [];
   let current = '';
@@ -29,7 +36,8 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
     paragraphs.push(current.trim());
   }
 
-  return paragraphs;
+  // Restore abbreviation periods
+  return paragraphs.map(p => p.split(ABBR_PLACEHOLDER).join('.'));
 }
 
 /**

@@ -74,6 +74,24 @@ describe('breakIntoParagraphs - TRUST CRITICAL', () => {
     expect(result[0]).toContain('$29.86');
     expect(result[0]).toContain('significant');
   });
+
+  it('does not split on abbreviations like U.S., E.U., A.I.', () => {
+    const text =
+      'Bitcoin slipping alongside U.S. equities after a rough day. The market is uncertain.';
+    const result = breakIntoParagraphs(text, 2);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain('U.S. equities');
+  });
+
+  it('handles multiple abbreviations in one text', () => {
+    const text =
+      'The U.S. and E.U. are both cracking down on crypto. This could affect prices. Watch for more news.';
+    const result = breakIntoParagraphs(text, 2);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toContain('U.S.');
+    expect(result[0]).toContain('E.U.');
+    expect(result[0]).toContain('prices');
+  });
 });
 
 describe('parsePriceSegments', () => {
