@@ -154,10 +154,10 @@ export default function Terms() {
           <p className="vela-body-base vela-text-secondary">
             Questions about these Terms? Contact us at{' '}
             <a
-              href="mailto:support@vela.trade"
+              href="mailto:support@getvela.xyz"
               style={{ color: 'var(--color-text-secondary)', textDecoration: 'underline' }}
             >
-              support@vela.trade
+              support@getvela.xyz
             </a>
           </p>
         </section>

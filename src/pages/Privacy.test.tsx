@@ -78,8 +78,8 @@ describe('Privacy Policy Page', () => {
 
   it('includes contact email', () => {
     render(<Privacy />);
-    const email = screen.getByText('privacy@vela.trade');
+    const email = screen.getByText('privacy@getvela.xyz');
     expect(email).toBeInTheDocument();
-    expect(email.getAttribute('href')).toBe('mailto:privacy@vela.trade');
+    expect(email.getAttribute('href')).toBe('mailto:privacy@getvela.xyz');
   });
 });

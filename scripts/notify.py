@@ -47,8 +47,7 @@ NOTIFICATION_EMAIL = _env.get("NOTIFICATION_EMAIL", "")
 
 # ── Configuration ────────────────────────────────────────────────────────
 
-# TODO: Replace with production URL before go-live
-APP_BASE_URL = "http://localhost:5173"
+APP_BASE_URL = _env.get("APP_BASE_URL", "https://getvela.xyz")
 
 # Telegram inline keyboard buttons require HTTPS URLs — skip buttons for localhost
 _USE_INLINE_BUTTONS = APP_BASE_URL.startswith("https://")

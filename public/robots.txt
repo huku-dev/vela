@@ -2,4 +2,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://vela.trade/sitemap.xml
+Sitemap: https://getvela.xyz/sitemap.xml

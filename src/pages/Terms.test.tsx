@@ -64,8 +64,8 @@ describe('Terms of Service Page', () => {
 
   it('includes contact email', () => {
     render(<Terms />);
-    const email = screen.getByText('support@vela.trade');
+    const email = screen.getByText('support@getvela.xyz');
     expect(email).toBeInTheDocument();
-    expect(email.getAttribute('href')).toBe('mailto:support@vela.trade');
+    expect(email.getAttribute('href')).toBe('mailto:support@getvela.xyz');
   });
 });

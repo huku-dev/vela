@@ -205,10 +205,10 @@ export default function Privacy() {
           <p className="vela-body-base vela-text-secondary">
             Questions about your privacy? Contact us at{' '}
             <a
-              href="mailto:privacy@vela.trade"
+              href="mailto:privacy@getvela.xyz"
               style={{ color: 'var(--color-text-secondary)', textDecoration: 'underline' }}
             >
-              privacy@vela.trade
+              privacy@getvela.xyz
             </a>
           </p>
         </section>
