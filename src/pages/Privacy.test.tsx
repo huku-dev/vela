@@ -41,9 +41,7 @@ describe('Privacy Policy Page', () => {
   it('CRITICAL: declares no sale of data', () => {
     render(<Privacy />);
     expect(
-      screen.getByText(
-        /does not sell, rent, or share your personal data with third parties/
-      )
+      screen.getByText(/does not sell, rent, or share your personal data with third parties/)
     ).toBeInTheDocument();
   });
 

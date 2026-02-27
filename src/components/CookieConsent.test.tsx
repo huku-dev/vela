@@ -53,9 +53,7 @@ describe('CookieConsent', () => {
     });
 
     expect(screen.getByText('Got it')).toBeInTheDocument();
-    expect(
-      screen.getByText(/essential cookies for authentication/)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/essential cookies for authentication/)).toBeInTheDocument();
   });
 
   it('includes a link to the Privacy Policy', () => {

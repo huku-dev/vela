@@ -360,6 +360,11 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.vela-btn:focus-visible {
+  outline: 3px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
 .vela-btn:active {
   transform: translate(0, 0);
   box-shadow: var(--shadow-xs);
@@ -447,6 +452,11 @@ body {
   transition:
     transform var(--motion-fast) var(--motion-ease-out),
     box-shadow var(--motion-fast) var(--motion-ease-out);
+}
+
+.vela-card:focus-visible {
+  outline: 3px solid var(--color-action-primary);
+  outline-offset: 2px;
 }
 
 .vela-card:hover {
@@ -582,6 +592,12 @@ body {
   background-repeat: no-repeat;
   background-position: right var(--space-3) center;
   padding-right: var(--space-10);
+}
+
+.vela-select:focus-visible {
+  outline: none;
+  border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 3px var(--blue-light);
 }
 
 /* ============================================================================

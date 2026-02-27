@@ -78,7 +78,14 @@ function NotificationsPanel({
   return (
     <div style={{ padding: 'var(--space-4)' }}>
       {/* Email toggle */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--space-4)',
+        }}
+      >
         <div>
           <p style={{ fontWeight: 600, margin: 0 }}>Email alerts</p>
           <p style={{ margin: 0 }}>Signal changes and trade proposals</p>
@@ -306,7 +313,11 @@ describe('NotificationsPanel', () => {
   it('pre-fills chat ID from preferences', () => {
     render(
       <NotificationsPanel
-        preferences={{ ...basePreferences, notifications_telegram: true, telegram_chat_id: '12345' }}
+        preferences={{
+          ...basePreferences,
+          notifications_telegram: true,
+          telegram_chat_id: '12345',
+        }}
         updatePreferences={mockUpdatePreferences}
         loading={false}
         tierFeatures={paidTierFeatures}
@@ -432,7 +443,10 @@ describe('NotificationsPanel', () => {
     // Slow updatePreferences that we can control
     let resolveUpdate: () => void;
     mockUpdatePreferences.mockImplementation(
-      () => new Promise<void>(r => { resolveUpdate = r; })
+      () =>
+        new Promise<void>(r => {
+          resolveUpdate = r;
+        })
     );
     const user = userEvent.setup();
     render(

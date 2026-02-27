@@ -8,6 +8,7 @@ import { LoadingSpinner } from './components/VelaComponents';
 import { useOnboarding } from './hooks/useOnboarding';
 import DeactivationScreen from './components/DeactivationScreen';
 import CookieConsent from './components/CookieConsent';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy load pages for faster initial load
 const Home = lazy(() => import('./pages/Home'));
@@ -84,10 +85,10 @@ export default function App() {
                     </OnboardingGate>
                   }
                 >
-                  <Route path="/" element={<Home />} />
-                  <Route path="/asset/:assetId" element={<AssetDetail />} />
-                  <Route path="/trades" element={<TrackRecord />} />
-                  <Route path="/account" element={<Account />} />
+                  <Route path="/" element={<ErrorBoundary><Home /></ErrorBoundary>} />
+                  <Route path="/asset/:assetId" element={<ErrorBoundary><AssetDetail /></ErrorBoundary>} />
+                  <Route path="/trades" element={<ErrorBoundary><TrackRecord /></ErrorBoundary>} />
+                  <Route path="/account" element={<ErrorBoundary><Account /></ErrorBoundary>} />
                 </Route>
               </Routes>
             </DeactivationGate>

@@ -59,6 +59,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
       onClick={() => navigate(`/asset/${asset.id}`)}
       role="button"
       tabIndex={0}
+      aria-label={`View ${asset.name} signal details`}
       onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

@@ -59,9 +59,7 @@ describe('Terms of Service Page', () => {
 
   it('includes volatility warning', () => {
     render(<Terms />);
-    expect(
-      screen.getByText(/Cryptocurrency markets are highly volatile/)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Cryptocurrency markets are highly volatile/)).toBeInTheDocument();
   });
 
   it('includes contact email', () => {

@@ -101,7 +101,45 @@ export default function Layout() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--color-bg-page)' }}>
-      <Outlet />
+      <a
+        href="#main-content"
+        style={{
+          position: 'absolute',
+          left: '-9999px',
+          top: 'auto',
+          width: '1px',
+          height: '1px',
+          overflow: 'hidden',
+        }}
+        onFocus={e => {
+          e.currentTarget.style.position = 'fixed';
+          e.currentTarget.style.left = 'var(--space-4)';
+          e.currentTarget.style.top = 'var(--space-4)';
+          e.currentTarget.style.width = 'auto';
+          e.currentTarget.style.height = 'auto';
+          e.currentTarget.style.overflow = 'visible';
+          e.currentTarget.style.zIndex = '9999';
+          e.currentTarget.style.padding = 'var(--space-3) var(--space-4)';
+          e.currentTarget.style.background = 'var(--color-action-primary)';
+          e.currentTarget.style.color = 'var(--color-text-on-accent)';
+          e.currentTarget.style.borderRadius = 'var(--radius-md)';
+          e.currentTarget.style.fontWeight = '600';
+          e.currentTarget.style.textDecoration = 'none';
+          e.currentTarget.style.border = '3px solid var(--black)';
+        }}
+        onBlur={e => {
+          e.currentTarget.style.position = 'absolute';
+          e.currentTarget.style.left = '-9999px';
+          e.currentTarget.style.width = '1px';
+          e.currentTarget.style.height = '1px';
+          e.currentTarget.style.overflow = 'hidden';
+        }}
+      >
+        Skip to main content
+      </a>
+      <main id="main-content">
+        <Outlet />
+      </main>
       {showNav && (
         <nav
           style={{
