@@ -122,7 +122,7 @@ beforeEach(() => {
   mockUseTierAccess.mockReturnValue({
     tier: 'free',
     canTrade: false,
-    upgradeLabel: (action: string) => `Upgrade to Standard to ${action}`,
+    upgradeLabel: (action: string) => `Upgrade your plan to ${action}`,
     startCheckout: vi.fn(),
     partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
     needsFunding: () => false,

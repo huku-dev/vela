@@ -77,13 +77,8 @@ export function useTierAccess(): TierAccess {
   const upgradeLabel = useMemo(
     () =>
       (feature: string): string => {
-        if (tier === 'free') {
-          return `Upgrade to Standard to ${feature}`;
-        }
-        if (tier === 'standard') {
-          return `Upgrade to Premium to ${feature}`;
-        }
-        return ''; // Premium — already has everything
+        if (tier === 'premium') return ''; // already has everything
+        return `Upgrade your plan to ${feature}`;
       },
     [tier]
   );

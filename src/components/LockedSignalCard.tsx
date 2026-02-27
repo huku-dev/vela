@@ -3,7 +3,7 @@ import type { Asset } from '../types';
 
 interface LockedSignalCardProps {
   asset: Asset;
-  /** Label for the upgrade CTA — e.g. "Upgrade to Standard to see ETH signals" */
+  /** Label for the upgrade CTA — e.g. "Upgrade your plan to see ETH signals" */
   upgradeLabel: string;
   onUpgradeClick: () => void;
   /** Optional brief headline to tease — shown faded before upgrade CTA */

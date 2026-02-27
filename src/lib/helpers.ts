@@ -12,9 +12,8 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   //   - Single-letter abbreviations (e.g. "U.S.", "E.U.", "A.I.")
   // Strategy: replace abbreviation periods with a placeholder, split, then restore.
   const ABBR_PLACEHOLDER = '\u200B'; // zero-width space
-  const escaped = text.replace(
-    /\b([A-Z]\.){2,}/g,
-    (match) => match.split('.').join(ABBR_PLACEHOLDER)
+  const escaped = text.replace(/\b([A-Z]\.){2,}/g, match =>
+    match.split('.').join(ABBR_PLACEHOLDER)
   );
   const sentences = escaped.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [escaped];
 
@@ -73,6 +72,8 @@ export function getCoinIcon(coingeckoId: string): string {
     hype: 'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
     'hyperliquid-hype':
       'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
+    solana: 'https://coin-images.coingecko.com/coins/images/4128/small/solana.png',
+    sol: 'https://coin-images.coingecko.com/coins/images/4128/small/solana.png',
   };
 
   const iconUrl = icons[coingeckoId] || '';
