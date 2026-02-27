@@ -1883,6 +1883,49 @@ export default function Account() {
             <SupportPanel />
           </div>
         )}
+
+        <SettingsItem
+          label="Legal"
+          onClick={() => toggleSection('legal')}
+          expanded={expandedSection === 'legal'}
+        />
+        {expandedSection === 'legal' && (
+          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
+            <div style={{ padding: 'var(--space-4)' }}>
+              <a
+                href="/terms"
+                className="vela-body-sm"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  color: 'var(--color-text-primary)',
+                  padding: 'var(--space-3) 0',
+                }}
+              >
+                <span>Terms of Service</span>
+                <span className="vela-text-muted">&rsaquo;</span>
+              </a>
+              <div style={{ borderTop: '1px solid var(--gray-100)' }} />
+              <a
+                href="/privacy"
+                className="vela-body-sm"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  color: 'var(--color-text-primary)',
+                  padding: 'var(--space-3) 0',
+                }}
+              >
+                <span>Privacy Policy</span>
+                <span className="vela-text-muted">&rsaquo;</span>
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Log out */}
