@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { Card, Button, Alert } from './VelaComponents';
 
 interface ErrorBoundaryProps {
@@ -55,8 +56,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Send to Sentry or other error tracking service
-    // Sentry.captureException(error, { contexts: { react: errorInfo } });
+    // Send to Sentry for production error tracking
+    Sentry.captureException(error, {
+      contexts: {
+        react: { componentStack: errorInfo.componentStack ?? '' },
+      },
+    });
   }
 
   handleReset = (): void => {

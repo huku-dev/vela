@@ -496,6 +496,294 @@ const MODE_FEATURE_KEY: Record<TradingMode, 'view_only' | 'semi_auto' | 'auto_mo
   full_auto: 'auto_mode',
 };
 
+// ---------------------------------------------------------------------------
+// NotificationsPanel — email + Telegram toggle (Telegram tier-gated)
+// ---------------------------------------------------------------------------
+interface NotificationsPanelProps {
+  preferences: import('../types').UserPreferences | null;
+  updatePreferences: (updates: Partial<import('../types').UserPreferences>) => Promise<void>;
+  loading: boolean;
+  tierFeatures: Record<string, boolean>;
+  onUpgradeClick: () => void;
+}
+
+function NotificationsPanel({
+  preferences,
+  updatePreferences,
+  loading,
+  tierFeatures,
+  onUpgradeClick,
+}: NotificationsPanelProps) {
+  const [saving, setSaving] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(preferences?.notifications_email ?? true);
+  const [telegramEnabled, setTelegramEnabled] = useState(
+    preferences?.notifications_telegram ?? false
+  );
+  const [chatId, setChatId] = useState(preferences?.telegram_chat_id ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const telegramAllowed = tierFeatures.telegram_alerts;
+
+  // Sync when preferences load
+  useEffect(() => {
+    if (preferences) {
+      setEmailEnabled(preferences.notifications_email);
+      setTelegramEnabled(preferences.notifications_telegram);
+      setChatId(preferences.telegram_chat_id ?? '');
+    }
+  }, [preferences]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await updatePreferences({
+        notifications_email: emailEnabled,
+        notifications_telegram: telegramAllowed ? telegramEnabled : false,
+        telegram_chat_id: telegramAllowed && telegramEnabled ? chatId.trim() || null : null,
+      } as Record<string, unknown>);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-4)' }}>
+        <p className="vela-body-sm vela-text-muted">Loading notification settings...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: 'var(--space-4)' }}>
+      {/* Email toggle */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--space-4)',
+        }}
+      >
+        <div>
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+            Email alerts
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+            Signal changes and trade proposals
+          </p>
+        </div>
+        <button
+          onClick={() => setEmailEnabled(!emailEnabled)}
+          aria-label={emailEnabled ? 'Disable email alerts' : 'Enable email alerts'}
+          style={{
+            width: 44,
+            height: 24,
+            borderRadius: 12,
+            border: '2px solid var(--black)',
+            backgroundColor: emailEnabled ? 'var(--green-primary)' : 'var(--gray-200)',
+            cursor: 'pointer',
+            padding: 0,
+            position: 'relative',
+            transition: 'background-color 0.15s ease',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              border: '2px solid var(--black)',
+              position: 'absolute',
+              top: 2,
+              left: emailEnabled ? 22 : 2,
+              transition: 'left 0.15s ease',
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Telegram section */}
+      <div
+        style={{
+          opacity: telegramAllowed ? 1 : 0.5,
+          pointerEvents: telegramAllowed ? 'auto' : 'none',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: telegramAllowed && telegramEnabled ? 'var(--space-3)' : 0,
+          }}
+        >
+          <div>
+            <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+              Telegram alerts
+              {!telegramAllowed && (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  style={{ verticalAlign: '-1px', marginLeft: 'var(--space-1)' }}
+                >
+                  <rect
+                    x="4"
+                    y="9"
+                    width="12"
+                    height="9"
+                    rx="2"
+                    fill="var(--gray-300)"
+                    stroke="var(--gray-400)"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M7 9V6a3 3 0 0 1 6 0v3"
+                    stroke="var(--gray-400)"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              )}
+            </p>
+            <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+              {telegramAllowed ? 'Instant alerts via Telegram bot' : 'Upgrade to unlock'}
+            </p>
+          </div>
+          {telegramAllowed ? (
+            <button
+              onClick={() => setTelegramEnabled(!telegramEnabled)}
+              aria-label={
+                telegramEnabled ? 'Disable Telegram alerts' : 'Enable Telegram alerts'
+              }
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                border: '2px solid var(--black)',
+                backgroundColor: telegramEnabled ? 'var(--green-primary)' : 'var(--gray-200)',
+                cursor: 'pointer',
+                padding: 0,
+                position: 'relative',
+                transition: 'background-color 0.15s ease',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: '50%',
+                  backgroundColor: 'white',
+                  border: '2px solid var(--black)',
+                  position: 'absolute',
+                  top: 2,
+                  left: telegramEnabled ? 22 : 2,
+                  transition: 'left 0.15s ease',
+                }}
+              />
+            </button>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Re-enable pointer events for the upgrade click
+                onUpgradeClick();
+              }}
+              className="vela-body-sm"
+              style={{
+                color: 'var(--color-action-primary)',
+                textDecoration: 'underline',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                pointerEvents: 'auto',
+              }}
+            >
+              Upgrade
+            </button>
+          )}
+        </div>
+
+        {/* Telegram chat ID input — only shown when Telegram is toggled on */}
+        {telegramAllowed && telegramEnabled && (
+          <div style={{ marginBottom: 'var(--space-2)' }}>
+            <label
+              htmlFor="telegram-chat-id"
+              className="vela-body-sm vela-text-muted"
+              style={{ display: 'block', marginBottom: 'var(--space-1)' }}
+            >
+              Telegram chat ID
+            </label>
+            <input
+              id="telegram-chat-id"
+              type="text"
+              className="vela-input"
+              placeholder="e.g. 123456789"
+              value={chatId}
+              onChange={e => setChatId(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box' }}
+            />
+            <p
+              className="vela-body-sm vela-text-muted"
+              style={{ marginTop: 'var(--space-1)', marginBottom: 0, fontSize: 'var(--text-xs)' }}
+            >
+              Open Telegram &rarr; search @VelaTradesBot &rarr; send /start &rarr; paste your chat
+              ID here
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Save button + status */}
+      <div style={{ marginTop: 'var(--space-4)' }}>
+        {error && (
+          <p
+            className="vela-body-sm"
+            style={{ color: 'var(--color-error)', margin: 0, marginBottom: 'var(--space-2)' }}
+          >
+            {error}
+          </p>
+        )}
+        {success && (
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--green-dark)',
+              margin: 0,
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            Saved
+          </p>
+        )}
+        <button
+          className="vela-btn vela-btn-primary"
+          onClick={handleSave}
+          disabled={saving}
+          style={{ width: '100%' }}
+        >
+          {saving ? 'Saving...' : 'Save notification preferences'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TradingPanel — trading mode + position settings
+// ---------------------------------------------------------------------------
 interface TradingPanelProps {
   preferences: import('../types').UserPreferences | null;
   isTradingEnabled: boolean;
@@ -1565,15 +1853,25 @@ export default function Account() {
 
         <SettingsItem
           label="Notifications"
-          value="Email"
+          value={
+            preferences?.notifications_telegram
+              ? 'Email · Telegram'
+              : preferences?.notifications_email !== false
+                ? 'Email'
+                : 'Off'
+          }
           onClick={() => toggleSection('notifications')}
           expanded={expandedSection === 'notifications'}
         />
         {expandedSection === 'notifications' && (
-          <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--gray-200)' }}>
-            <p className="vela-body-sm vela-text-muted">
-              Notification preferences coming soon. You currently receive signal alerts via email.
-            </p>
+          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
+            <NotificationsPanel
+              preferences={preferences}
+              updatePreferences={updatePreferences}
+              loading={tradingLoading}
+              tierFeatures={getTierConfig(currentTier).features}
+              onUpgradeClick={() => setShowTierSheet(true)}
+            />
           </div>
         )}
 

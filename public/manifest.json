@@ -1,0 +1,16 @@
+{
+  "name": "Vela",
+  "short_name": "Vela",
+  "description": "Crypto market intelligence — always watching the markets for you",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#FEF9EF",
+  "background_color": "#FFFBF5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

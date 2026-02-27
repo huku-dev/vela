@@ -7,6 +7,7 @@ import { PRIVY_APP_ID, privyConfig } from './lib/privy';
 import { LoadingSpinner } from './components/VelaComponents';
 import { useOnboarding } from './hooks/useOnboarding';
 import DeactivationScreen from './components/DeactivationScreen';
+import CookieConsent from './components/CookieConsent';
 
 // Lazy load pages for faster initial load
 const Home = lazy(() => import('./pages/Home'));
@@ -14,6 +15,8 @@ const AssetDetail = lazy(() => import('./pages/AssetDetail'));
 const TrackRecord = lazy(() => import('./pages/TrackRecord'));
 const Account = lazy(() => import('./pages/Account'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
 
 function PageLoader() {
   return (
@@ -66,6 +69,10 @@ export default function App() {
           <Suspense fallback={<PageLoader />}>
             <DeactivationGate>
               <Routes>
+                {/* Legal pages — outside Layout + OnboardingGate (accessible without login) */}
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+
                 {/* Onboarding — outside Layout (no nav bar) */}
                 <Route path="/welcome" element={<Onboarding />} />
 
@@ -85,6 +92,7 @@ export default function App() {
               </Routes>
             </DeactivationGate>
           </Suspense>
+          <CookieConsent />
         </BrowserRouter>
       </AuthProvider>
     </PrivyProvider>

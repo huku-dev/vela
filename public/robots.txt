@@ -1,0 +1,5 @@
+# Vela — allow all crawlers
+User-agent: *
+Allow: /
+
+Sitemap: https://vela.trade/sitemap.xml

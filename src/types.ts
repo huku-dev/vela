@@ -158,6 +158,7 @@ export interface UserPreferences {
   allowed_assets: string[];
   notifications_telegram: boolean;
   notifications_email: boolean;
+  telegram_chat_id: string | null;
   created_at: string;
   updated_at: string;
 }
