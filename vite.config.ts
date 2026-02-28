@@ -37,5 +37,15 @@ export default defineConfig({
     // Generate source maps for Sentry but don't ship them to users
     // (sentryVitePlugin deletes .map files after upload)
     sourcemap: 'hidden',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Stable vendor chunks — cached across deploys
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          sentry: ['@sentry/react'],
+        },
+      },
+    },
   },
 });
