@@ -4,7 +4,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import Layout from './components/Layout';
 import { AuthProvider, useAuthContext } from './contexts/AuthContext';
 import { PRIVY_APP_ID, privyConfig } from './lib/privy';
-import { LoadingSpinner } from './components/VelaComponents';
+import VelaLogo from './components/VelaLogo';
 import { useOnboarding } from './hooks/useOnboarding';
 import DeactivationScreen from './components/DeactivationScreen';
 import CookieConsent from './components/CookieConsent';
@@ -23,8 +23,9 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 
 function PageLoader() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-20)' }}>
-      <LoadingSpinner size={24} />
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 'var(--space-20)', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <VelaLogo variant="mark" size={48} pulse />
+      <span className="vela-body-sm vela-text-muted">Loading...</span>
     </div>
   );
 }

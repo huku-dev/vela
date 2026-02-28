@@ -4,7 +4,7 @@ import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
 import { useSubscription } from '../hooks/useSubscription';
 import { useTierAccess } from '../hooks/useTierAccess';
-import { LoadingSpinner } from '../components/VelaComponents';
+import VelaLogo from '../components/VelaLogo';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import { getTierConfig } from '../lib/tier-definitions';
 import type { TradingMode } from '../types';
@@ -1365,7 +1365,7 @@ function DeleteAccountFlow() {
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          <LoadingSpinner size={24} />
+          <VelaLogo variant="mark" size={36} pulse />
           <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-3)' }}>
             Deleting your account...
           </p>

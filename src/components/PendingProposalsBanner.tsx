@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useTrading } from '../hooks/useTrading';
+import VelaLogo from './VelaLogo';
 
 export default function PendingProposalsBanner() {
   const { proposals } = useTrading();
@@ -37,7 +38,7 @@ export default function PendingProposalsBanner() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-        <span style={{ fontSize: 16 }}>&#9889;</span>
+        <VelaLogo variant="mark" size={20} pulse />
         <span
           className="vela-body-sm"
           style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}

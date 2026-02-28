@@ -3,80 +3,87 @@ interface VelaLogoProps {
   variant?: 'mark' | 'full';
   /** Size in pixels (applies to the mark height) */
   size?: number;
+  /** Color mode — 'light' renders ink strokes on transparent, 'dark' renders cream strokes */
+  mode?: 'light' | 'dark';
+  /** When true, expanding diamond rings pulse from the iris (signal detected, trade proposal, etc.) */
+  pulse?: boolean;
 }
 
 /**
- * Vela brand logo — neobrutalist sail/V mark.
+ * Vela brand logo — angular eye with green diamond iris.
  *
- * The mark is a stylized sail shape (vela = sail) formed by two
- * converging strokes, evoking both a "V" and a billowing sail.
- * Thick black outlines + green accent follow the design system.
+ * The mark is an angular, sharp-cornered eye shape (30° system)
+ * with a rotated diamond iris filled in Signal Green. It evokes
+ * watchfulness — "always watching the markets for you."
+ *
+ * Monochrome-first: works in all-black, green adds life.
+ * Wordmark: lowercase "vela" in Space Grotesk 800.
+ *
+ * Signal pulse: set `pulse={true}` to trigger expanding diamond rings
+ * from the iris. Uses `.vela-signal-pulse--active` from the design system.
+ * Contexts: new signal detected, trade proposal ready, position alert, loading.
  */
-export default function VelaLogo({ variant = 'full', size = 32 }: VelaLogoProps) {
+export default function VelaLogo({ variant = 'full', size = 32, mode = 'light', pulse = false }: VelaLogoProps) {
+  const stroke = mode === 'light' ? '#0A0A0A' : '#FFFBF5';
+
   const mark = (
     <svg
       width={size}
-      height={size}
-      viewBox="0 0 40 40"
+      height={size * 0.5}
+      viewBox="-58 -30 116 60"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="Vela logo"
     >
-      {/* Background circle */}
+      {/* Outer eye — sharp angular almond, miter joins */}
+      <polygon
+        points="-55,0 0,-28 55,0 0,28"
+        stroke={stroke}
+        strokeWidth="3.5"
+        fill="none"
+        strokeLinejoin="miter"
+      />
+      {/* Inner iris — rotated diamond, pure Signal Green fill */}
       <rect
-        x="2"
-        y="2"
-        width="36"
-        height="36"
-        rx="10"
-        fill="#1A1A1A"
-        stroke="#1A1A1A"
-        strokeWidth="2"
+        x="-9"
+        y="-9"
+        width="18"
+        height="18"
+        rx="2"
+        transform="rotate(45)"
+        fill="#0FE68C"
       />
-      {/* Sail / V shape — two converging lines forming a sail */}
-      {/* Left stroke of the V / sail's leading edge */}
-      <path
-        d="M12 8L20 32"
-        stroke="#22C55E"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Right stroke of the V / sail's trailing edge */}
-      <path
-        d="M28 8L20 32"
-        stroke="#FFFFFF"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Small accent dot — like a star / navigation point */}
-      <circle cx="28" cy="8" r="2.5" fill="#22C55E" />
     </svg>
   );
 
-  if (variant === 'mark') return mark;
+  const wrappedMark = (
+    <span className={`vela-signal-pulse${pulse ? ' vela-signal-pulse--active' : ''}`}>
+      {mark}
+    </span>
+  );
+
+  if (variant === 'mark') return wrappedMark;
 
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: size * 0.3,
+        gap: size * 0.25,
       }}
     >
-      {mark}
+      {wrappedMark}
       <span
         style={{
           fontFamily: '"Space Grotesk", sans-serif',
           fontWeight: 800,
-          fontSize: size * 0.85,
+          fontSize: size * 0.75,
           letterSpacing: '-0.03em',
-          color: '#1A1A1A',
+          color: stroke,
           lineHeight: 1,
         }}
       >
-        Vela
+        vela
       </span>
     </span>
   );

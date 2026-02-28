@@ -53,6 +53,9 @@
   --sky-100: #e0f2fe;
 
   /* Brand colors */
+  --vela-signal-green: #0FE68C; /* Signal Green — primary brand accent */
+  --vela-ink: #0A0A0A;          /* Ink — primary dark / logomark stroke */
+  --vela-cream: #FFFBF5;        /* Cream — primary light background */
   --vela-purple: #8b5cf6;
   --vela-purple-dark: #7c3aed;
   --vela-purple-light: #a78bfa;
@@ -810,4 +813,57 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ============================================================================
+   10. SIGNAL PULSE ANIMATION
+   Expanding diamond rings radiating from the logomark iris.
+   Used when a signal is detected, trade proposal arrives, or notification fires.
+
+   Usage:
+     .vela-signal-pulse        — container (position: relative)
+     .vela-signal-pulse--active — triggers the animation
+     .vela-pulse-ring           — each expanding ring (create 2-3 via ::before/::after or JS)
+
+   Standalone CSS class approach (no JS needed):
+     Add .vela-signal-pulse--active to the logo container to trigger.
+     Remove it to stop.
+   ============================================================================ */
+
+@keyframes vela-pulse-ring {
+  0% {
+    transform: rotate(45deg) scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(45deg) scale(3.5);
+    opacity: 0;
+  }
+}
+
+.vela-signal-pulse {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Two concentric expanding diamond rings */
+.vela-signal-pulse--active::before,
+.vela-signal-pulse--active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  margin-left: -9px;
+  border: 2px solid var(--vela-signal-green, #0FE68C);
+  border-radius: 2px;
+  transform: rotate(45deg) scale(1);
+  animation: vela-pulse-ring 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+  pointer-events: none;
+}
+
+.vela-signal-pulse--active::after {
+  animation-delay: 0.5s;
 }

@@ -159,8 +159,8 @@ describe('PROPOSAL-SRC: TradeProposalCard execution lifecycle', () => {
     expect(proposalCardSrc).toContain("case 'executing':");
   });
 
-  it('shows LoadingSpinner for in-flight statuses', () => {
-    expect(proposalCardSrc).toContain('isInFlight && <LoadingSpinner');
+  it('shows pulsing VelaLogo for in-flight statuses', () => {
+    expect(proposalCardSrc).toContain('isInFlight && <VelaLogo');
   });
 
   it('has a default/fallback case for unknown statuses', () => {

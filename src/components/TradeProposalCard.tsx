@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Card, LoadingSpinner } from './VelaComponents';
+import { Card } from './VelaComponents';
 import TradeConfirmationSheet from './TradeConfirmationSheet';
+import VelaLogo from './VelaLogo';
 import { formatPrice } from '../lib/helpers';
 import { useTierAccess } from '../hooks/useTierAccess';
 import type { TradeProposal, TradeProposalStatus } from '../types';
@@ -174,7 +175,7 @@ export default function TradeProposalCard({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            {isInFlight && <LoadingSpinner size={14} />}
+            {isInFlight && <VelaLogo variant="mark" size={16} pulse />}
             {proposal.status === 'executed' && (
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="7" fill="var(--green-primary)" />

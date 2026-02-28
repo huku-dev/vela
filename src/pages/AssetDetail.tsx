@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Alert, LoadingSpinner } from '../components/VelaComponents';
+import { Card, Alert } from '../components/VelaComponents';
+import VelaLogo from '../components/VelaLogo';
 import SignalChip from '../components/SignalChip';
 import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
@@ -94,8 +95,9 @@ export default function AssetDetail() {
 
   if (loading && !asset) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 'var(--space-16)' }}>
-        <LoadingSpinner size={28} />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 'var(--space-16)', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <VelaLogo variant="mark" size={48} pulse />
+        <span className="vela-body-sm vela-text-muted">Loading asset...</span>
       </div>
     );
   }

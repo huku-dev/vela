@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, LoadingSpinner } from '../components/VelaComponents';
+import { Card } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
 import LockedSignalCard from '../components/LockedSignalCard';
 import EmptyState from '../components/EmptyState';
@@ -34,7 +34,7 @@ export default function Home() {
           gap: 'var(--space-4)',
         }}
       >
-        <LoadingSpinner size={28} />
+        <VelaLogo variant="mark" size={48} pulse />
         <span className="vela-body-sm vela-text-muted">Loading signals...</span>
       </div>
     );

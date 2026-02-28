@@ -1,6 +1,5 @@
 import { useAuthContext } from '../contexts/AuthContext';
 import { useAccountDelete } from '../hooks/useAccountDelete';
-import { LoadingSpinner } from './VelaComponents';
 import VelaLogo from './VelaLogo';
 
 /**
@@ -144,7 +143,7 @@ export default function DeactivationScreen() {
             <span
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
             >
-              <LoadingSpinner size={16} />
+              <VelaLogo variant="mark" size={16} pulse />
               Reactivating...
             </span>
           ) : (

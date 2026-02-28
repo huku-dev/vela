@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Card, Badge, LoadingSpinner, PageHeader } from '../components/VelaComponents';
+import { Card, Badge, PageHeader } from '../components/VelaComponents';
+import VelaLogo from '../components/VelaLogo';
 import { useTrackRecord, DEFAULT_POSITION_SIZE, type EnrichedTrade } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -43,8 +44,9 @@ export default function TrackRecord() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 64 }}>
-        <LoadingSpinner size={28} />
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 64, flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <VelaLogo variant="mark" size={48} pulse />
+        <span className="vela-body-sm vela-text-muted">Loading trades...</span>
       </div>
     );
   }
