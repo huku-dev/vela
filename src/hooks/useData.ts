@@ -180,7 +180,16 @@ export function useDashboard() {
 
       // Update module cache
       cachedDashboard = dashboard;
-      cachedDigest = digestsRes.data?.[0] || null;
+      // Defense-in-depth: reject digest rows with fallback/error content.
+      // The backend should never persist these (as of 2026-02-28), but if
+      // old rows exist or a future bug slips through, don't show garbage.
+      const rawDigest: Brief | null = digestsRes.data?.[0] || null;
+      const digestText = rawDigest?.summary || rawDigest?.context || '';
+      const isValidDigest =
+        digestText.length >= 50 &&
+        !digestText.toLowerCase().includes('unavailable') &&
+        !digestText.toLowerCase().includes('check back later');
+      cachedDigest = isValidDigest ? rawDigest : null;
       lastFetchTime = Date.now();
 
       setData(dashboard);
