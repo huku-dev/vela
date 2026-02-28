@@ -339,6 +339,30 @@ git commit -m "feat: add signal detail page"  # Conventional commits format
 git push origin main  # Auto-deploys to Vercel
 ```
 
+### Post-Push CI Verification (MANDATORY)
+After every `git push`, you **must** verify the CI pipeline passes before marking a task as complete:
+
+```bash
+# Check CI status after push
+gh run list --limit 3                    # See recent runs
+gh run view <run-id> --log-failed        # Inspect failures
+```
+
+**Rules:**
+1. Never mark a task as done until the corresponding CI run is green
+2. If a build fails, investigate and fix immediately — do not move on to the next task
+3. After fixing, push the fix and verify the new run passes
+4. Keep the `develop` branch in sync with `main` after fixes (`git checkout develop && git merge main && git push`)
+
+### Post-Ship Documentation Updates (MANDATORY)
+After every completed feature, fix, or ship, **immediately update documentation** before moving on:
+
+1. **MEMORY.md** — Update test counts, completed items, new patterns, and remove stale info
+2. **CLAUDE.md** — Update if conventions, commands, or architecture changed
+3. **Completed Plan Items** in MEMORY.md — Move shipped work from pending to completed
+
+Documentation must never be outdated. If a fact has changed (test count, file paths, process rules), update it in the same session.
+
 ---
 
 ## Architectural Decision Records (ADRs)
@@ -523,10 +547,18 @@ Before merging code that affects:
 3. Check git status for uncommitted changes
 
 ### Session End Routine
-1. Run `vela-end` to log decisions and tasks
-2. Ensure all tests pass
-3. Commit with conventional commit message
-4. Push to trigger Vercel deployment
+1. Ensure all tests pass and CI is green
+2. Commit with conventional commit message
+3. Push to trigger Vercel deployment
+4. Verify CI passes after push (`gh run list`)
+5. Update MEMORY.md with completed items, new patterns, changed facts
+6. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
+
+### Notion Integration
+- **Automatic:** Every `git commit` triggers `scripts/git_to_notion.py` via post-commit hook, logging the commit to the Notion changelog
+- **Manual (user runs):** `vela-end` logs session decisions + follow-up tasks to Notion (interactive — uses `input()` prompts)
+- **Manual (user runs):** `vela-start` shows project status from Notion
+- Claude Code should **remind the user** to run `vela-end` at the end of every session
 
 ### If You're Stuck
 - Check this file (CLAUDE.md) for conventions

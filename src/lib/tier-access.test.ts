@@ -266,9 +266,7 @@ describe('upgradeLabel', () => {
   }
 
   it('free users see tier-agnostic upgrade label', () => {
-    expect(upgradeLabel('free', 'see ETH signals')).toBe(
-      'Upgrade your plan to see ETH signals'
-    );
+    expect(upgradeLabel('free', 'see ETH signals')).toBe('Upgrade your plan to see ETH signals');
   });
 
   it('standard users see same tier-agnostic upgrade label', () => {
