@@ -48,11 +48,8 @@ export default function Login() {
 
         {/* Heading */}
         <div style={{ textAlign: 'center' }}>
-          <h1
-            className="vela-heading-lg"
-            style={{ marginBottom: 'var(--space-2)' }}
-          >
-            Welcome back
+          <h1 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
+            Welcome back!
           </h1>
           <p className="vela-body-base vela-text-secondary">
             Log in to see your signals and trades.
@@ -70,10 +67,7 @@ export default function Login() {
         </button>
 
         {/* New user link */}
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{ textAlign: 'center' }}
-        >
+        <p className="vela-body-sm vela-text-muted" style={{ textAlign: 'center' }}>
           New to Vela?{' '}
           <Link
             to="/welcome"
