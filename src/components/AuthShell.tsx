@@ -15,6 +15,7 @@ const AssetDetail = lazy(() => import('../pages/AssetDetail'));
 const TrackRecord = lazy(() => import('../pages/TrackRecord'));
 const Account = lazy(() => import('../pages/Account'));
 const Onboarding = lazy(() => import('../pages/Onboarding'));
+const Login = lazy(() => import('../pages/Login'));
 
 /**
  * Redirects new users to /welcome. Returns children for onboarded users.
@@ -70,8 +71,8 @@ export default function AuthShell() {
               {/* Onboarding — outside Layout (no nav bar) */}
               <Route path="/welcome" element={<Onboarding />} />
 
-              {/* /login alias → redirect to onboarding */}
-              <Route path="/login" element={<Navigate to="/welcome" replace />} />
+              {/* Login — returning users, no onboarding steps */}
+              <Route path="/login" element={<Login />} />
 
               {/* Main app — gated by onboarding check */}
               <Route
