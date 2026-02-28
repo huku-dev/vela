@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://getvela.xyz/</loc>
+    <loc>https://app.getvela.xyz/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://getvela.xyz/terms</loc>
+    <loc>https://app.getvela.xyz/terms</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://getvela.xyz/privacy</loc>
+    <loc>https://app.getvela.xyz/privacy</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
