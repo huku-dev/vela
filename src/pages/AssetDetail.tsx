@@ -95,7 +95,16 @@ export default function AssetDetail() {
 
   if (loading && !asset) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 'var(--space-16)', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingTop: 'var(--space-16)',
+          flexDirection: 'column',
+          gap: 'var(--space-4)',
+        }}
+      >
         <VelaLogo variant="mark" size={48} pulse />
         <span className="vela-body-sm vela-text-muted">Loading asset...</span>
       </div>

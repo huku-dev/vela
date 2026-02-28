@@ -23,7 +23,12 @@ interface VelaLogoProps {
  * from the iris. Uses `.vela-signal-pulse--active` from the design system.
  * Contexts: new signal detected, trade proposal ready, position alert, loading.
  */
-export default function VelaLogo({ variant = 'full', size = 32, mode = 'light', pulse = false }: VelaLogoProps) {
+export default function VelaLogo({
+  variant = 'full',
+  size = 36,
+  mode = 'light',
+  pulse = false,
+}: VelaLogoProps) {
   const stroke = mode === 'light' ? '#0A0A0A' : '#FFFBF5';
 
   const mark = (
@@ -39,27 +44,17 @@ export default function VelaLogo({ variant = 'full', size = 32, mode = 'light', 
       <polygon
         points="-55,0 0,-28 55,0 0,28"
         stroke={stroke}
-        strokeWidth="3.5"
+        strokeWidth="5"
         fill="none"
         strokeLinejoin="miter"
       />
       {/* Inner iris — rotated diamond, pure Signal Green fill */}
-      <rect
-        x="-9"
-        y="-9"
-        width="18"
-        height="18"
-        rx="2"
-        transform="rotate(45)"
-        fill="#0FE68C"
-      />
+      <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C" />
     </svg>
   );
 
   const wrappedMark = (
-    <span className={`vela-signal-pulse${pulse ? ' vela-signal-pulse--active' : ''}`}>
-      {mark}
-    </span>
+    <span className={`vela-signal-pulse${pulse ? ' vela-signal-pulse--active' : ''}`}>{mark}</span>
   );
 
   if (variant === 'mark') return wrappedMark;

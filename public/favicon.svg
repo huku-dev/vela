@@ -2,7 +2,7 @@
   <!-- Dark rounded square background for contrast -->
   <rect width="32" height="32" rx="6" fill="#0A0A0A"/>
   <!-- Angular eye — centered, scaled to fit -->
-  <polygon points="2,16 16,7 30,16 16,25" stroke="#FFFBF5" stroke-width="2.5" fill="none" stroke-linejoin="miter"/>
+  <polygon points="2,16 16,7 30,16 16,25" stroke="#FFFBF5" stroke-width="3" fill="none" stroke-linejoin="miter"/>
   <!-- Green diamond iris -->
   <rect x="12.5" y="12.5" width="7" height="7" rx="1" transform="rotate(45 16 16)" fill="#0FE68C"/>
 </svg>

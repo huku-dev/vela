@@ -34,7 +34,7 @@ A sharp, geometric eye shape formed by a pointed almond (four straight edges, mi
 <polygon
   points="-55,0 0,-28 55,0 0,28"
   stroke="#0A0A0A"
-  stroke-width="3.5"
+  stroke-width="5"
   fill="none"
   stroke-linejoin="miter"
 />
@@ -47,6 +47,8 @@ A sharp, geometric eye shape formed by a pointed almond (four straight edges, mi
   fill="#0FE68C"
 />
 ```
+
+**Stroke weight note:** The stroke-width was increased from 3.5 → 5 (in SVG viewBox units) to ensure the eye shape reads clearly at typical rendered sizes (32–52px wide). At the original 3.5, the strokes rendered as ~1px and appeared too light/thin in navigation bars and headers.
 
 **Proportions:** 2:1 ratio (width:height). The outer eye points form a ~30° angle at the horizontal axis.
 

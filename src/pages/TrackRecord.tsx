@@ -44,7 +44,16 @@ export default function TrackRecord() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 64, flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingTop: 64,
+          flexDirection: 'column',
+          gap: 'var(--space-4)',
+        }}
+      >
         <VelaLogo variant="mark" size={48} pulse />
         <span className="vela-body-sm vela-text-muted">Loading trades...</span>
       </div>

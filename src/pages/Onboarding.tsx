@@ -89,7 +89,7 @@ function WelcomeSplash({ onGetStarted }: { onGetStarted: () => void }) {
     >
       {/* Logo header */}
       <div style={{ padding: 'var(--space-6) var(--space-4) var(--space-2)' }}>
-        <VelaLogo size={28} />
+        <VelaLogo size={40} />
       </div>
 
       {/* Swipeable panels */}
@@ -234,7 +234,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
     >
       {/* Header */}
       <div style={{ marginBottom: 'var(--space-8)' }}>
-        <VelaLogo size={28} />
+        <VelaLogo size={40} />
       </div>
 
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
@@ -383,7 +383,7 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
     >
       {/* Header */}
       <div style={{ marginBottom: 'var(--space-8)' }}>
-        <VelaLogo size={28} />
+        <VelaLogo size={40} />
       </div>
 
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>

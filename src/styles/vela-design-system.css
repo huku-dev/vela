@@ -53,9 +53,9 @@
   --sky-100: #e0f2fe;
 
   /* Brand colors */
-  --vela-signal-green: #0FE68C; /* Signal Green — primary brand accent */
-  --vela-ink: #0A0A0A;          /* Ink — primary dark / logomark stroke */
-  --vela-cream: #FFFBF5;        /* Cream — primary light background */
+  --vela-signal-green: #0fe68c; /* Signal Green — primary brand accent */
+  --vela-ink: #0a0a0a; /* Ink — primary dark / logomark stroke */
+  --vela-cream: #fffbf5; /* Cream — primary light background */
   --vela-purple: #8b5cf6;
   --vela-purple-dark: #7c3aed;
   --vela-purple-light: #a78bfa;
@@ -857,7 +857,7 @@ body {
   height: 18px;
   margin-top: -9px;
   margin-left: -9px;
-  border: 2px solid var(--vela-signal-green, #0FE68C);
+  border: 2px solid var(--vela-signal-green, #0fe68c);
   border-radius: 2px;
   transform: rotate(45deg) scale(1);
   animation: vela-pulse-ring 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;

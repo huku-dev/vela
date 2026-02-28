@@ -23,7 +23,16 @@ const Privacy = lazy(() => import('./pages/Privacy'));
 
 function PageLoader() {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', paddingTop: 'var(--space-20)', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingTop: 'var(--space-20)',
+        flexDirection: 'column',
+        gap: 'var(--space-4)',
+      }}
+    >
       <VelaLogo variant="mark" size={48} pulse />
       <span className="vela-body-sm vela-text-muted">Loading...</span>
     </div>
