@@ -10,6 +10,7 @@ export const privyConfig: PrivyClientConfig = {
   appearance: {
     theme: 'light',
     accentColor: '#0A0A0A',
+    landingHeader: 'Log in to Vela',
   },
   embeddedWallets: {
     ethereum: {
