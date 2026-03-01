@@ -24,9 +24,22 @@ export default function TierComparisonSheet({
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [checkingOutTier, setCheckingOutTier] = useState<SubscriptionTier | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [expandedTiers, setExpandedTiers] = useState<Set<SubscriptionTier>>(new Set());
 
   const TIER_ORDER: SubscriptionTier[] = ['free', 'standard', 'premium'];
   const currentTierIndex = TIER_ORDER.indexOf(currentTier);
+
+  // Recommend the next tier above current (the upgrade target)
+  const recommendedTier: SubscriptionTier | null =
+    currentTierIndex < TIER_ORDER.length - 1 ? TIER_ORDER[currentTierIndex + 1] : null;
+
+  // Tiers at or below current tier start collapsed
+  const shouldCollapse = (tier: SubscriptionTier): boolean => {
+    const tierIndex = TIER_ORDER.indexOf(tier);
+    // When at top tier, keep current expanded (nothing to upgrade to)
+    if (recommendedTier === null && tier === currentTier) return false;
+    return tierIndex <= currentTierIndex;
+  };
 
   async function handleCta(tier: TierConfig) {
     if (!onStartCheckout || tier.monthly_price_usd === 0) return;
@@ -182,8 +195,69 @@ export default function TierComparisonSheet({
         >
           {TIER_DEFINITIONS.map(tier => {
             const isCurrent = tier.tier === currentTier;
-            const isRecommended = tier.tier === 'standard';
+            const isRecommended = tier.tier === recommendedTier;
             const isPaid = tier.monthly_price_usd > 0;
+            const isCollapsible = shouldCollapse(tier.tier);
+            const isExpanded = expandedTiers.has(tier.tier);
+
+            // Collapsed summary for tiers at or below current
+            if (isCollapsible && !isExpanded) {
+              return (
+                <div
+                  key={tier.tier}
+                  className="vela-card"
+                  onClick={() => setExpandedTiers(prev => new Set(prev).add(tier.tier))}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') setExpandedTiers(prev => new Set(prev).add(tier.tier));
+                  }}
+                  style={{
+                    padding: 'var(--space-3) var(--space-4)',
+                    border: '1.5px solid var(--gray-200)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <h3
+                      className="vela-heading-base"
+                      style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700 }}
+                    >
+                      {tier.display_name}
+                    </h3>
+                    {isPaid && (
+                      <span
+                        className="vela-body-sm vela-text-muted"
+                        style={{ fontSize: '0.7rem' }}
+                      >
+                        {getPrice(tier)}/mo
+                      </span>
+                    )}
+                    {isCurrent && (
+                      <span
+                        className="vela-label-sm"
+                        style={{
+                          fontSize: '0.6rem',
+                          fontWeight: 600,
+                          color: 'var(--color-text-muted)',
+                          border: '1px solid var(--gray-200)',
+                          borderRadius: '3px',
+                          padding: '1px 6px',
+                        }}
+                      >
+                        Current plan
+                      </span>
+                    )}
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+                    <path d="M4 6l4 4 4-4" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              );
+            }
 
             return (
               <div
@@ -222,12 +296,37 @@ export default function TierComparisonSheet({
                   </span>
                 )}
 
+                {/* Collapse button for expanded collapsible tiers */}
+                {isCollapsible && isExpanded && (
+                  <button
+                    onClick={() => setExpandedTiers(prev => {
+                      const next = new Set(prev);
+                      next.delete(tier.tier);
+                      return next;
+                    })}
+                    style={{
+                      position: 'absolute',
+                      top: 'var(--space-3)',
+                      right: 'var(--space-3)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 'var(--space-1)',
+                    }}
+                    aria-label="Collapse"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M4 10l4-4 4 4" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                )}
+
                 {/* Tier name */}
                 <h3
                   className="vela-heading-base"
                   style={{
                     margin: 0,
-                    marginBottom: 'var(--space-1)',
+                    marginBottom: isPaid ? 'var(--space-1)' : 'var(--space-3)',
                     fontSize: '1rem',
                     fontWeight: 700,
                   }}
@@ -235,36 +334,38 @@ export default function TierComparisonSheet({
                   {tier.display_name}
                 </h3>
 
-                {/* Price */}
-                <div style={{ marginBottom: 'var(--space-4)' }}>
-                  <span
-                    style={{
-                      fontFamily: 'JetBrains Mono, monospace',
-                      fontSize: '1.8rem',
-                      fontWeight: 700,
-                      color: 'var(--color-text-primary)',
-                      lineHeight: 1.1,
-                    }}
-                  >
-                    {getPrice(tier)}
-                  </span>
-                  {getBillingNote(tier) && (
+                {/* Price — hidden for free tier (name is self-explanatory) */}
+                {isPaid && (
+                  <div style={{ marginBottom: 'var(--space-4)' }}>
                     <span
-                      className="vela-body-sm vela-text-muted"
-                      style={{ marginLeft: 'var(--space-1)', fontSize: '0.7rem' }}
+                      style={{
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: '1.8rem',
+                        fontWeight: 700,
+                        color: 'var(--color-text-primary)',
+                        lineHeight: 1.1,
+                      }}
                     >
-                      {billingCycle === 'annual' ? '/mo' : getBillingNote(tier)}
+                      {getPrice(tier)}
                     </span>
-                  )}
-                  {isPaid && billingCycle === 'annual' && (
-                    <p
-                      className="vela-body-sm vela-text-muted"
-                      style={{ margin: 0, marginTop: 2, fontSize: '0.65rem' }}
-                    >
-                      Billed {getBillingNote(tier)}
-                    </p>
-                  )}
-                </div>
+                    {getBillingNote(tier) && (
+                      <span
+                        className="vela-body-sm vela-text-muted"
+                        style={{ marginLeft: 'var(--space-1)', fontSize: '0.7rem' }}
+                      >
+                        {billingCycle === 'annual' ? '/mo' : getBillingNote(tier)}
+                      </span>
+                    )}
+                    {billingCycle === 'annual' && (
+                      <p
+                        className="vela-body-sm vela-text-muted"
+                        style={{ margin: 0, marginTop: 2, fontSize: '0.65rem' }}
+                      >
+                        Billed {getBillingNote(tier)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Feature list */}
                 <div style={{ flex: 1, marginBottom: 'var(--space-4)' }}>
@@ -289,7 +390,9 @@ export default function TierComparisonSheet({
                           color:
                             feature.getValue(tier) === '\u2014'
                               ? 'var(--color-text-muted)'
-                              : 'var(--color-text-primary)',
+                              : feature.key === 'fee' && feature.getValue(tier) === 'Free'
+                                ? 'var(--green-dark)'
+                                : 'var(--color-text-primary)',
                         }}
                       >
                         {feature.getValue(tier)}

@@ -181,7 +181,7 @@ export default function TrackRecord() {
                 }}
               >
                 {userStats.totalDollarPnl >= 0 ? '+' : '-'}$
-                {Math.abs(userStats.totalDollarPnl).toLocaleString(undefined, {
+                {Math.abs(userStats.totalDollarPnl).toLocaleString('en-US', {
                   maximumFractionDigits: 0,
                 })}{' '}
                 total {userStats.totalDollarPnl >= 0 ? 'profit' : 'loss'}
@@ -346,7 +346,7 @@ export default function TrackRecord() {
                   }}
                 >
                   {paperStats.totalDollarPnl >= 0 ? '+' : '-'}$
-                  {Math.abs(paperStats.totalDollarPnl).toLocaleString(undefined, {
+                  {Math.abs(paperStats.totalDollarPnl).toLocaleString('en-US', {
                     maximumFractionDigits: 0,
                   })}
                   {' · '}
@@ -406,7 +406,7 @@ export default function TrackRecord() {
                     }}
                   >
                     {paperStats.totalDollarPnl >= 0 ? '+' : '-'}$
-                    {Math.abs(paperStats.totalDollarPnl).toLocaleString(undefined, {
+                    {Math.abs(paperStats.totalDollarPnl).toLocaleString('en-US', {
                       maximumFractionDigits: 0,
                     })}{' '}
                     total {paperStats.totalDollarPnl >= 0 ? 'profit' : 'loss'}
@@ -551,7 +551,7 @@ export default function TrackRecord() {
                         label="Biggest profit"
                         value={
                           paperDetailedStats.bestTradeDollar >= 0
-                            ? `+$${paperDetailedStats.bestTradeDollar.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${paperDetailedStats.bestTradeAsset}${paperDetailedStats.bestTradeDate ? ` · ${paperDetailedStats.bestTradeDate}` : ''})`
+                            ? `+$${paperDetailedStats.bestTradeDollar.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${paperDetailedStats.bestTradeAsset}${paperDetailedStats.bestTradeDate ? ` · ${paperDetailedStats.bestTradeDate}` : ''})`
                             : '—'
                         }
                         valueColor="var(--green-dark)"
@@ -560,7 +560,7 @@ export default function TrackRecord() {
                         label="Biggest loss"
                         value={
                           paperDetailedStats.worstTradeDollar < 0
-                            ? `-$${Math.abs(paperDetailedStats.worstTradeDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${paperDetailedStats.worstTradeAsset}${paperDetailedStats.worstTradeDate ? ` · ${paperDetailedStats.worstTradeDate}` : ''})`
+                            ? `-$${Math.abs(paperDetailedStats.worstTradeDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })} (${paperDetailedStats.worstTradeAsset}${paperDetailedStats.worstTradeDate ? ` · ${paperDetailedStats.worstTradeDate}` : ''})`
                             : '—'
                         }
                         valueColor={
@@ -734,7 +734,7 @@ function OpenTradeCard({
                   }}
                 >
                   {unrealizedDollar >= 0 ? '+' : '-'}$
-                  {Math.abs(unrealizedDollar).toLocaleString(undefined, {
+                  {Math.abs(unrealizedDollar).toLocaleString('en-US', {
                     maximumFractionDigits: 0,
                   })}{' '}
                   {unrealizedDollar >= 0 ? 'profit' : 'loss'}
@@ -810,7 +810,7 @@ function OpenTradeCard({
           {unrealizedPct != null && unrealizedDollar != null && (
             <DetailRow
               label="Unrealized P&L"
-              value={`${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(1)}% · ${unrealizedDollar >= 0 ? '+' : '-'}$${Math.abs(unrealizedDollar).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${unrealizedPct >= 0 ? 'profit' : 'loss'}`}
+              value={`${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(1)}% · ${unrealizedDollar >= 0 ? '+' : '-'}$${Math.abs(unrealizedDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${unrealizedPct >= 0 ? 'profit' : 'loss'}`}
               valueColor={unrealizedPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
             />
           )}
@@ -978,7 +978,7 @@ function ClosedTradeCard({
                   }}
                 >
                   {dollarPnl >= 0 ? '+' : '-'}$
-                  {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+                  {Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
                   {dollarPnl >= 0 ? 'profit' : 'loss'}
                 </p>
               )}
@@ -1067,7 +1067,7 @@ function ClosedTradeCard({
           {trade.pnl_pct != null && dollarPnl != null && (
             <DetailRow
               label="Realized P&L"
-              value={`${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}% · ${dollarPnl >= 0 ? '+' : '-'}$${Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${trade.pnl_pct >= 0 ? 'profit' : 'loss'}`}
+              value={`${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}% · ${dollarPnl >= 0 ? '+' : '-'}$${Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${trade.pnl_pct >= 0 ? 'profit' : 'loss'}`}
               valueColor={trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
             />
           )}
@@ -1230,7 +1230,7 @@ function BestCallCard({
                 }}
               >
                 {dollarPnl >= 0 ? '+' : '-'}$
-                {Math.abs(dollarPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+                {Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
                 {dollarPnl >= 0 ? 'profit' : 'loss'}
               </p>
             )}
@@ -1510,7 +1510,7 @@ function LivePositionCard({
               }}
             >
               {pnlDollar >= 0 ? '+' : '-'}$
-              {Math.abs(pnlDollar).toLocaleString(undefined, { maximumFractionDigits: 2 })}{' '}
+              {Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
               {pnlDollar >= 0 ? 'profit' : 'loss'}
             </p>
           </div>
@@ -1542,7 +1542,7 @@ function LivePositionCard({
         >
           <DetailRow
             label="Position size"
-            value={`$${position.size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            value={`$${position.size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
           />
           <DetailRow label="Leverage" value={`${position.leverage}x`} />
           <DetailRow label="Entry price" value={formatPrice(position.entry_price)} />
@@ -1566,7 +1566,7 @@ function LivePositionCard({
           )}
           <DetailRow
             label="Unrealized P&L"
-            value={`${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% · ${pnlDollar >= 0 ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pnlPct >= 0 ? 'profit' : 'loss'}`}
+            value={`${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}% · ${pnlDollar >= 0 ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${pnlPct >= 0 ? 'profit' : 'loss'}`}
             valueColor={pnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
           />
 
@@ -1590,7 +1590,7 @@ function LivePositionCard({
                   <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
                     {' '}
                     (Original: $
-                    {position.original_size_usd.toLocaleString(undefined, {
+                    {position.original_size_usd.toLocaleString('en-US', {
                       maximumFractionDigits: 0,
                     })}
                     )
@@ -1605,8 +1605,8 @@ function LivePositionCard({
                 >
                   {trim.trim_pct}% at {trim.fill_price ? formatPrice(trim.fill_price) : '—'}
                   {' · '}$
-                  {trim.size_before_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })} → $
-                  {trim.size_after_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {trim.size_before_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })} → $
+                  {trim.size_after_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </span>
               ))}
             </div>

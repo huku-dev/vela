@@ -284,7 +284,7 @@ export default function TradeProposalCard({
         />
         <DetailRow
           label={isTrim ? 'Trim amount' : 'Position size'}
-          value={`$${proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
+          value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
         />
         {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
         {estimatedFee > 0 && (
@@ -314,9 +314,9 @@ export default function TradeProposalCard({
             style={{ margin: 0, marginBottom: 'var(--space-2)' }}
           >
             This trade needs $
-            {proposal.proposed_size_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}{' '}
+            {proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
             USDC. Your balance: $
-            {walletBalance?.toLocaleString(undefined, { minimumFractionDigits: 2 })} USDC.
+            {walletBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDC.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
             <a

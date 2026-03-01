@@ -597,7 +597,7 @@ export default function AssetDetail() {
               {[
                 [
                   'Position size',
-                  `$${assetPosition.size_usd.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+                  `$${assetPosition.size_usd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
                 ],
                 ['Entry price', formatPrice(assetPosition.entry_price)],
                 [
@@ -804,7 +804,7 @@ export default function AssetDetail() {
       {/* Events moving markets — only when news events exist */}
       {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
         <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <SectionLabel>Events moving markets</SectionLabel>
+          <SectionLabel>Events moving {asset.name}</SectionLabel>
           {detail.events_moving_markets.map((event, i) => (
             <div
               key={i}
@@ -830,12 +830,22 @@ export default function AssetDetail() {
                 {event.impact}
               </p>
               {event.source && (
-                <p
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="vela-label-sm"
-                  style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-1)' }}
+                  style={{
+                    color: 'var(--color-text-muted)',
+                    marginTop: 'var(--space-1)',
+                    display: 'inline-block',
+                    textDecoration: 'underline',
+                    textDecorationColor: 'var(--gray-300)',
+                    textUnderlineOffset: '2px',
+                  }}
                 >
                   {event.source}
-                </p>
+                </a>
               )}
             </div>
           ))}
@@ -895,7 +905,7 @@ function buildSignalBreakdown(
 ): Record<string, string> {
   const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
   const fmt = (n: number) =>
-    n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+    n >= 100 ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
 
   const result: Record<string, string> = {};
 
@@ -939,7 +949,7 @@ function buildWhatWouldChange(
   const { ema_9: ema9, ema_21: ema21, rsi_14: rsi, adx_4h: adx, sma_50_daily: sma50 } = indicators;
   const bullLevel = Math.max(ema9, ema21);
   const fmt = (n: number) =>
-    n >= 100 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+    n >= 100 ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
 
   // Determine what's missing for a clear signal
   const conditions: string[] = [];
@@ -1705,11 +1715,11 @@ function IndicatorRow({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--space-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)', flexShrink: 0 }}>
           <span
             className="vela-body-sm"
-            style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}
+            style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}
           >
             {label}
           </span>
@@ -1744,6 +1754,7 @@ function IndicatorRow({
             fontSize: '0.72rem',
             fontWeight: 'var(--weight-semibold)',
             color,
+            textAlign: 'right',
           }}
         >
           {description}

@@ -87,9 +87,9 @@ export function getCoinIcon(coingeckoId: string): string {
  */
 export function formatPrice(price: number | null | undefined): string {
   if (price == null) return '—';
-  if (price >= 1000) return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  if (price >= 1000) return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if (price >= 1)
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   return `$${price.toFixed(4)}`;
 }
 

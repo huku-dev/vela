@@ -30,7 +30,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     display_name: 'Standard',
     trade_fee_pct: 0.1,
     max_position_size_usd: 20_000,
-    max_leverage: 5,
+    max_leverage: 2,
     signal_frequency_hours: 2,
     max_active_positions: 3,
     max_assets: 3,
@@ -49,7 +49,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     display_name: 'Premium',
     trade_fee_pct: 0,
     max_position_size_usd: 0, // 0 = unlimited
-    max_leverage: 20,
+    max_leverage: 5,
     signal_frequency_hours: 1,
     max_active_positions: 10,
     max_assets: 0, // 0 = unlimited
@@ -99,7 +99,7 @@ export const COMPARISON_FEATURES: {
   },
   {
     key: 'leverage',
-    label: 'Max leverage',
+    label: 'Trade multiplier',
     getValue: t => (t.tier === 'free' ? '\u2014' : `${t.max_leverage}x`),
   },
   {

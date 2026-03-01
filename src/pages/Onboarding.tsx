@@ -45,23 +45,23 @@ const MODE_OPTIONS: {
   {
     mode: 'view_only',
     label: 'View only',
-    description: 'See signals and analysis. Great for learning how Vela works.',
+    description: 'See signals and analysis. Includes 1 free trade to try it out.',
     tier: 'Free — included with your account',
   },
   {
     mode: 'semi_auto',
     label: 'Semi-auto',
     description:
-      'Vela proposes trades, you approve each one before it executes. The best balance of control and convenience.',
-    tier: 'Standard · $10/mo',
+      'Vela proposes trades, you approve each one before it executes. A good balance of control and convenience.',
+    tier: 'Standard plan required · $10/mo',
     recommended: true,
   },
   {
     mode: 'full_auto',
     label: 'Full auto',
     description:
-      'Vela executes trades automatically when it spots an opportunity. Hands-free investing.',
-    tier: 'Premium · $20/mo',
+      'Vela executes trades the moment it spots an opportunity. Best way to capture optimal prices.',
+    tier: 'Premium plan required · $20/mo',
   },
 ];
 
@@ -229,11 +229,11 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
         flexDirection: 'column',
         minHeight: '100dvh',
         backgroundColor: 'var(--color-bg-page)',
-        padding: 'var(--space-6) var(--space-4) var(--space-8)',
+        padding: 'var(--space-6) var(--space-4) var(--space-6)',
       }}
     >
       {/* Header */}
-      <div style={{ marginBottom: 'var(--space-8)' }}>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
         <VelaLogo size={40} />
       </div>
 
@@ -242,12 +242,11 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
           How do you want to trade?
         </h2>
         <p
-          className="vela-body-base vela-text-secondary"
-          style={{ marginBottom: 'var(--space-6)' }}
+          className="vela-body-sm vela-text-secondary"
+          style={{ marginBottom: 'var(--space-5)' }}
         >
-          Vela watches the crypto markets 24/7 and flags the best moments to buy or sell. When it
-          spots an opportunity, it creates a trade signal. Here&apos;s how you can act on those
-          signals:
+          Vela watches the crypto markets 24/7 and flags the best moments to buy or sell. Choose how
+          you want to act on signals:
         </p>
 
         {/* Mode options */}
@@ -255,8 +254,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 'var(--space-3)',
-            marginBottom: 'var(--space-8)',
+            gap: 'var(--space-2)',
           }}
         >
           {MODE_OPTIONS.map(({ mode, label, description, tier, recommended }) => {
@@ -269,7 +267,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 'var(--space-3)',
-                  padding: 'var(--space-4)',
+                  padding: 'var(--space-3)',
                   backgroundColor: isSelected ? 'var(--gray-100)' : 'transparent',
                   border: isSelected ? '2px solid var(--black)' : '1px solid var(--gray-200)',
                   borderRadius: 'var(--radius-sm)',
@@ -307,7 +305,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                   )}
                 </div>
                 <div>
-                  <p className="vela-body-base" style={{ fontWeight: 600, margin: 0 }}>
+                  <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
                     {label}
                     {recommended && (
                       <span
@@ -327,17 +325,21 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                       </span>
                     )}
                   </p>
-                  <p className="vela-body-sm vela-text-muted" style={{ margin: 0, marginTop: 2 }}>
+                  <p
+                    className="vela-text-muted"
+                    style={{ margin: 0, marginTop: 2, fontSize: 13, lineHeight: 1.4 }}
+                  >
                     {description}
                   </p>
                   <p
-                    className="vela-body-sm"
                     style={{
                       margin: 0,
                       marginTop: 'var(--space-2)',
                       fontWeight: 600,
-                      fontSize: 12,
-                      color: mode === 'view_only' ? 'var(--color-text-muted)' : 'var(--green-dark)',
+                      fontSize: 11,
+                      color: 'var(--color-text-muted)',
+                      letterSpacing: '0.02em',
+                      textTransform: 'uppercase',
                     }}
                   >
                     {tier}
@@ -347,19 +349,29 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
             );
           })}
         </div>
+      </div>
 
-        <p className="vela-body-sm vela-text-muted" style={{ marginTop: 0 }}>
+      {/* Bottom CTA area */}
+      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-4)' }}>
+        <button
+          className="vela-btn vela-btn-primary"
+          onClick={() => onContinue(selectedMode)}
+          style={{ width: '100%' }}
+        >
+          {selectedMode === 'view_only' ? 'Continue' : 'Select plan'}
+        </button>
+        <p
+          style={{
+            margin: 0,
+            marginTop: 'var(--space-3)',
+            textAlign: 'center',
+            fontSize: 12,
+            color: 'var(--gray-400)',
+          }}
+        >
           You can change this anytime in your account settings.
         </p>
       </div>
-
-      <button
-        className="vela-btn vela-btn-primary"
-        onClick={() => onContinue(selectedMode)}
-        style={{ width: '100%', maxWidth: 440, margin: '0 auto' }}
-      >
-        {selectedMode === 'view_only' ? 'Continue' : 'Continue to checkout'}
-      </button>
     </div>
   );
 }
@@ -448,6 +460,41 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
           >
             Secured by Vela. Ready to fund when you are.
           </p>
+
+          {/* Balance display */}
+          <div
+            style={{
+              marginTop: 'var(--space-4)',
+              paddingTop: 'var(--space-4)',
+              borderTop: '1px solid var(--gray-200)',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11,
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                color: 'var(--color-text-muted)',
+                marginBottom: 'var(--space-1)',
+              }}
+            >
+              Balance
+            </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 28,
+                fontWeight: 700,
+                fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif",
+                color: 'var(--color-text-muted)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              $0.00
+            </p>
+          </div>
         </div>
       </div>
 

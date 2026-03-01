@@ -126,13 +126,13 @@ export default function LockedSignalCard({
         </svg>
       </div>
 
-      {/* Brief teaser — fades out to tease content */}
+      {/* Brief teaser — blurs from start of first line, single line only */}
       {cleanHeadline && (
         <div
           style={{
             position: 'relative',
             marginTop: 'var(--space-3)',
-            maxHeight: '3.2em',
+            maxHeight: '1.6em',
             overflow: 'hidden',
           }}
         >
@@ -142,20 +142,22 @@ export default function LockedSignalCard({
               color: 'var(--color-text-secondary)',
               lineHeight: 1.6,
               margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
             }}
           >
             {cleanHeadline}
           </p>
-          {/* Fade-out gradient overlay */}
+          {/* Fade-out gradient overlay — starts early for aggressive blur */}
           <div
             style={{
               position: 'absolute',
-              bottom: 0,
-              left: 0,
+              top: 0,
               right: 0,
-              height: '2em',
+              width: '70%',
+              height: '100%',
               background:
-                'linear-gradient(to bottom, transparent 0%, var(--background-primary, #FFFBF5) 100%)',
+                'linear-gradient(to right, transparent 0%, var(--background-primary, #FFFBF5) 80%)',
               pointerEvents: 'none',
             }}
           />

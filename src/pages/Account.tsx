@@ -166,10 +166,11 @@ interface BalanceCardProps {
   hasWallet: boolean;
   isTradingEnabled: boolean;
   showFundingNudge?: boolean;
+  onEnableClick?: () => void;
 }
 
-function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge }: BalanceCardProps) {
-  // No wallet / trading not enabled — prompt to enable
+function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge, onEnableClick }: BalanceCardProps) {
+  // No wallet / trading not enabled — show $0 balance + enable CTA
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
       <div
@@ -177,30 +178,74 @@ function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge }: 
         style={{
           padding: 'var(--space-5)',
           marginBottom: 'var(--space-6)',
-          textAlign: 'center',
         }}
       >
         <p
           className="vela-label-sm"
-          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)' }}
+          style={{
+            color: 'var(--color-text-muted)',
+            marginBottom: 'var(--space-2)',
+            textAlign: 'center',
+          }}
         >
           TRADING WALLET
         </p>
-        <p
+
+        {/* Balance display */}
+        <div
           style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: 32,
-            fontWeight: 700,
-            color: 'var(--color-text-muted)',
-            margin: 0,
-            lineHeight: 1.2,
+            textAlign: 'center',
+            paddingBottom: 'var(--space-4)',
+            borderBottom: '1px solid var(--gray-200)',
           }}
         >
-          —
-        </p>
-        <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-3)' }}>
-          Enable trading to create your wallet and see your balance.
-        </p>
+          <p
+            className="vela-label-sm"
+            style={{
+              fontSize: '0.6rem',
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-muted)',
+              margin: 0,
+              marginBottom: 'var(--space-1)',
+            }}
+          >
+            BALANCE
+          </p>
+          <p
+            style={{
+              fontFamily: 'JetBrains Mono, monospace',
+              fontSize: 28,
+              fontWeight: 700,
+              color: 'var(--color-text-muted)',
+              margin: 0,
+              lineHeight: 1.2,
+            }}
+          >
+            $0.00
+          </p>
+        </div>
+
+        {/* Enable CTA */}
+        <div style={{ textAlign: 'center', paddingTop: 'var(--space-4)' }}>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 0, marginBottom: 'var(--space-3)', fontSize: '0.75rem' }}
+          >
+            Set up a trading mode to activate your wallet.
+          </p>
+          <button
+            onClick={onEnableClick}
+            className="vela-btn vela-btn-primary vela-label-sm"
+            style={{
+              fontWeight: 600,
+              padding: 'var(--space-2) var(--space-5)',
+            }}
+          >
+            Enable trading
+          </button>
+        </div>
       </div>
     );
   }
@@ -261,7 +306,7 @@ function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge }: 
         }}
       >
         $
-        {balance.toLocaleString(undefined, {
+        {balance.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
@@ -452,11 +497,11 @@ function SupportPanel() {
             Email support
           </p>
           <a
-            href="mailto:support@vela.exchange"
+            href="mailto:support@getvela.xyz"
             className="vela-body-sm"
             style={{ color: 'var(--color-action-primary)', textDecoration: 'none' }}
           >
-            support@vela.exchange
+            support@getvela.xyz
           </a>
         </div>
 
@@ -1730,6 +1775,7 @@ export default function Account() {
         hasWallet={hasWallet}
         isTradingEnabled={isTradingEnabled}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
+        onEnableClick={() => setExpandedSection('trading')}
       />
 
       {/* Checkout toast — success (green) or error (red) */}
@@ -1851,13 +1897,14 @@ export default function Account() {
 
         <SettingsItem
           label="Notifications"
-          value={
-            preferences?.notifications_telegram
-              ? 'Email · Telegram'
-              : preferences?.notifications_email !== false
-                ? 'Email'
-                : 'Off'
-          }
+          value={(() => {
+            const email = preferences?.notifications_email !== false;
+            const telegram = !!preferences?.notifications_telegram;
+            if (email && telegram) return 'Email · Telegram';
+            if (email) return 'Email only';
+            if (telegram) return 'Telegram only';
+            return 'Off';
+          })()}
           onClick={() => toggleSection('notifications')}
           expanded={expandedSection === 'notifications'}
         />
