@@ -383,6 +383,47 @@ V6D_TRAILING_BOTH = {
     "trailing_stop_long": True,
 }
 
+# ── V7: EMA stop-loss cooldown sweep ──
+# After a main EMA position is closed by stop-loss, block re-entry for N bars.
+# Each bar = 4 hours in Vela's signal cycle.
+# Sweep: 0 (baseline), 1 bar (4h), 2 bars (8h), 3 bars (12h), 6 bars (24h), 12 bars (48h)
+
+V7_COOLDOWN_0 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: No cooldown (baseline)",
+    "ema_cooldown_bars": 0,
+}
+
+V7_COOLDOWN_4H = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: 4h cooldown after SL",
+    "ema_cooldown_bars": 1,
+}
+
+V7_COOLDOWN_8H = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: 8h cooldown after SL",
+    "ema_cooldown_bars": 2,
+}
+
+V7_COOLDOWN_12H = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: 12h cooldown after SL",
+    "ema_cooldown_bars": 3,
+}
+
+V7_COOLDOWN_24H = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: 24h cooldown after SL",
+    "ema_cooldown_bars": 6,
+}
+
+V7_COOLDOWN_48H = {
+    **V6D_TRAILING_BOTH,
+    "name": "V7: 48h cooldown after SL",
+    "ema_cooldown_bars": 12,
+}
+
 # Registry for CLI --config-a / --config-b selection
 NAMED_CONFIGS = {
     "current": SIGNAL_CONFIG,
@@ -404,6 +445,12 @@ NAMED_CONFIGS = {
     "v6c_combined": V6C_COMBINED,
     "adopted": V6_ADOPTED,
     "v6d_trailing_both": V6D_TRAILING_BOTH,
+    "v7_cooldown_0": V7_COOLDOWN_0,
+    "v7_cooldown_4h": V7_COOLDOWN_4H,
+    "v7_cooldown_8h": V7_COOLDOWN_8H,
+    "v7_cooldown_12h": V7_COOLDOWN_12H,
+    "v7_cooldown_24h": V7_COOLDOWN_24H,
+    "v7_cooldown_48h": V7_COOLDOWN_48H,
 }
 
 
@@ -1111,6 +1158,14 @@ def simulate_trades(
     bb_long_cooldown_until: int = -1  # bar index until which BB longs are blocked
     bb_short_cooldown_until: int = -1  # bar index until which BB shorts are blocked
 
+    # ── EMA cooldown after stop-loss ──
+    # When a main EMA position is closed by stop-loss (or ATR stop-loss),
+    # block new entries in that direction for N bars. Prevents immediate
+    # re-entry into a losing direction after getting stopped out.
+    ema_cooldown_bars = config.get("ema_cooldown_bars", 0)  # 0 = disabled
+    ema_long_cooldown_until: int = -1   # bar index until which EMA longs are blocked
+    ema_short_cooldown_until: int = -1  # bar index until which EMA shorts are blocked
+
     # Confirmation-based entry gates: track bars since cross where direction holds
     confirmation_bars = config.get("confirmation_bars", 0)  # 0 = disabled
     consecutive_green: int = 0
@@ -1546,6 +1601,10 @@ def simulate_trades(
                     "status": "closed",
                     "exit_indicators": _snapshot_indicators(row),
                 })
+            # Set EMA cooldown if closed by stop-loss
+            if ema_cooldown_bars > 0 and reason in ("stop_loss", "atr_stop_loss"):
+                ema_long_cooldown_until = bar_idx + ema_cooldown_bars
+
             open_long = None
             long_remaining_frac = 1.0
             long_peak_profit = 0.0
@@ -1593,6 +1652,10 @@ def simulate_trades(
                     "status": "closed",
                     "exit_indicators": _snapshot_indicators(row),
                 })
+            # Set EMA cooldown if closed by stop-loss
+            if ema_cooldown_bars > 0 and reason in ("stop_loss", "atr_stop_loss"):
+                ema_short_cooldown_until = bar_idx + ema_cooldown_bars
+
             open_short = None
             short_remaining_frac = 1.0
             ladder_trims_short = []
@@ -1635,8 +1698,11 @@ def simulate_trades(
         # ── Open new positions (with optional confirmation gate + DCA) ──
 
         if open_long is None and consecutive_green > 0:
+            # EMA cooldown check: skip entry if recently stopped out
+            if ema_cooldown_bars > 0 and bar_idx <= ema_long_cooldown_until:
+                pass  # Cooldown active — skip long entry
             # Check if we have enough confirmation bars OR gate is disabled
-            if confirmation_bars <= 0 or consecutive_green >= confirmation_bars:
+            elif confirmation_bars <= 0 or consecutive_green >= confirmation_bars:
                 # Only enter on the actual cross bar if no gate, or on confirmation bar
                 if confirmation_bars <= 0 and not (color == "green" and reason == "ema_cross_up"):
                     pass  # Without gate, only enter on cross bar itself
@@ -1689,7 +1755,10 @@ def simulate_trades(
                     consecutive_green = 0  # Reset after entry
 
         if open_short is None and consecutive_red > 0:
-            if confirmation_bars <= 0 or consecutive_red >= confirmation_bars:
+            # EMA cooldown check: skip entry if recently stopped out
+            if ema_cooldown_bars > 0 and bar_idx <= ema_short_cooldown_until:
+                pass  # Cooldown active — skip short entry
+            elif confirmation_bars <= 0 or consecutive_red >= confirmation_bars:
                 if confirmation_bars <= 0 and not (color == "red" and reason == "ema_cross_down"):
                     pass
                 else:
@@ -3090,6 +3159,7 @@ def run_comparison(
         ("bb_improved_stop_pct", "BB2 stop %"),
         ("bb_improved_position_mult", "BB2 position mult"),
         ("bb_improved_cooldown_days", "BB2 cooldown days"),
+        ("ema_cooldown_bars", "EMA cooldown (bars × 4h)"),
         # V6 short profit capture params
         ("trailing_stop_short", "Trailing stop (shorts)"),
         ("trailing_stop_long", "Trailing stop (longs)"),
