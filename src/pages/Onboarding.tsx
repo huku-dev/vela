@@ -241,10 +241,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
         <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
           How do you want to trade?
         </h2>
-        <p
-          className="vela-body-sm vela-text-secondary"
-          style={{ marginBottom: 'var(--space-5)' }}
-        >
+        <p className="vela-body-sm vela-text-secondary" style={{ marginBottom: 'var(--space-5)' }}>
           Vela watches the crypto markets 24/7 and flags the best moments to buy or sell. Choose how
           you want to act on signals:
         </p>

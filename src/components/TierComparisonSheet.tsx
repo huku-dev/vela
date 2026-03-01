@@ -229,10 +229,7 @@ export default function TierComparisonSheet({
                       {tier.display_name}
                     </h3>
                     {isPaid && (
-                      <span
-                        className="vela-body-sm vela-text-muted"
-                        style={{ fontSize: '0.7rem' }}
-                      >
+                      <span className="vela-body-sm vela-text-muted" style={{ fontSize: '0.7rem' }}>
                         {getPrice(tier)}/mo
                       </span>
                     )}
@@ -252,8 +249,20 @@ export default function TierComparisonSheet({
                       </span>
                     )}
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-                    <path d="M4 6l4 4 4-4" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <path
+                      d="M4 6l4 4 4-4"
+                      stroke="var(--color-text-muted)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </div>
               );
@@ -299,11 +308,13 @@ export default function TierComparisonSheet({
                 {/* Collapse button for expanded collapsible tiers */}
                 {isCollapsible && isExpanded && (
                   <button
-                    onClick={() => setExpandedTiers(prev => {
-                      const next = new Set(prev);
-                      next.delete(tier.tier);
-                      return next;
-                    })}
+                    onClick={() =>
+                      setExpandedTiers(prev => {
+                        const next = new Set(prev);
+                        next.delete(tier.tier);
+                        return next;
+                      })
+                    }
                     style={{
                       position: 'absolute',
                       top: 'var(--space-3)',
@@ -316,7 +327,13 @@ export default function TierComparisonSheet({
                     aria-label="Collapse"
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M4 10l4-4 4 4" stroke="var(--color-text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path
+                        d="M4 10l4-4 4 4"
+                        stroke="var(--color-text-muted)"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </button>
                 )}

@@ -314,9 +314,9 @@ export default function TradeProposalCard({
             style={{ margin: 0, marginBottom: 'var(--space-2)' }}
           >
             This trade needs $
-            {proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
-            USDC. Your balance: $
-            {walletBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDC.
+            {proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })} USDC.
+            Your balance: ${walletBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
+            USDC.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
             <a

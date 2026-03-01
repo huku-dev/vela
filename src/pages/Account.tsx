@@ -169,7 +169,13 @@ interface BalanceCardProps {
   onEnableClick?: () => void;
 }
 
-function BalanceCard({ wallet, hasWallet, isTradingEnabled, showFundingNudge, onEnableClick }: BalanceCardProps) {
+function BalanceCard({
+  wallet,
+  hasWallet,
+  isTradingEnabled,
+  showFundingNudge,
+  onEnableClick,
+}: BalanceCardProps) {
   // No wallet / trading not enabled — show $0 balance + enable CTA
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
