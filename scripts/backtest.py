@@ -424,6 +424,108 @@ V7_COOLDOWN_48H = {
     "ema_cooldown_bars": 12,
 }
 
+# ── V8: EMA spread minimum threshold sweep ──
+# After a cross, require EMA-9/EMA-21 to be separated by at least X%
+# to confirm the cross has conviction. Filters out noise crosses.
+V8_SPREAD_0 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: No spread filter (baseline)",
+    "min_ema_spread_pct": 0.0,
+}
+V8_SPREAD_005 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 0.05% min EMA spread",
+    "min_ema_spread_pct": 0.05,
+}
+V8_SPREAD_01 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 0.1% min EMA spread",
+    "min_ema_spread_pct": 0.1,
+}
+V8_SPREAD_02 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 0.2% min EMA spread",
+    "min_ema_spread_pct": 0.2,
+}
+V8_SPREAD_03 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 0.3% min EMA spread",
+    "min_ema_spread_pct": 0.3,
+}
+V8_SPREAD_05 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 0.5% min EMA spread",
+    "min_ema_spread_pct": 0.5,
+}
+V8_SPREAD_10 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8: 1.0% min EMA spread",
+    "min_ema_spread_pct": 1.0,
+}
+
+# ── V8b: Graduated ADX scaling based on EMA spread ──
+# Instead of hard-filtering low-spread crosses, raise ADX requirement
+# when spread is low to demand stronger trend confirmation.
+# Format: list of (spread_threshold_pct, adx_boost) — checked largest-first.
+# Example: [(0.20, 5), (0.10, 10), (0.05, 15)] means:
+#   spread < 0.05% → ADX + 15, spread < 0.10% → ADX + 10, spread < 0.20% → ADX + 5
+
+V8B_ADX_BASELINE = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: No ADX scaling (baseline)",
+}
+
+V8B_ADX_GENTLE = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Gentle ADX scaling (+3/+6/+9)",
+    "adx_spread_scaling": [(0.20, 3), (0.10, 6), (0.05, 9)],
+}
+
+V8B_ADX_MODERATE = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Moderate ADX scaling (+5/+10/+15)",
+    "adx_spread_scaling": [(0.20, 5), (0.10, 10), (0.05, 15)],
+}
+
+V8B_ADX_AGGRESSIVE = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Aggressive ADX scaling (+7/+14/+21)",
+    "adx_spread_scaling": [(0.20, 7), (0.10, 14), (0.05, 21)],
+}
+
+V8B_ADX_TWO_TIER = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Two-tier ADX scaling (+5/+15)",
+    "adx_spread_scaling": [(0.20, 5), (0.05, 15)],
+}
+
+V8B_ADX_BOTTOM_ONLY = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Bottom-only ADX scaling (+10 < 0.05%)",
+    "adx_spread_scaling": [(0.05, 10)],
+}
+
+V8B_ADX_WIDE = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Wide ADX scaling (+5/+10/+15/+20)",
+    "adx_spread_scaling": [(0.30, 5), (0.20, 10), (0.10, 15), (0.05, 20)],
+}
+
+# ── V8b direction-aware: less restrictive on shorts (48.6% win) vs longs (29.7%) ──
+V8B_ADX_DIRECTIONAL_MOD = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Direction-aware moderate (longs +5/+10/+15, shorts +3/+6/+9)",
+    "adx_spread_scaling": [(0.20, 5), (0.10, 10), (0.05, 15)],           # longs
+    "adx_spread_scaling_short": [(0.20, 3), (0.10, 6), (0.05, 9)],       # shorts (gentler)
+}
+
+V8B_ADX_DIRECTIONAL_AGG = {
+    **V6D_TRAILING_BOTH,
+    "name": "V8b: Direction-aware aggressive (longs +7/+14/+21, shorts +3/+6/+9)",
+    "adx_spread_scaling": [(0.20, 7), (0.10, 14), (0.05, 21)],           # longs
+    "adx_spread_scaling_short": [(0.20, 3), (0.10, 6), (0.05, 9)],       # shorts (gentler)
+}
+
 # Registry for CLI --config-a / --config-b selection
 NAMED_CONFIGS = {
     "current": SIGNAL_CONFIG,
@@ -451,6 +553,22 @@ NAMED_CONFIGS = {
     "v7_cooldown_12h": V7_COOLDOWN_12H,
     "v7_cooldown_24h": V7_COOLDOWN_24H,
     "v7_cooldown_48h": V7_COOLDOWN_48H,
+    "v8_spread_0": V8_SPREAD_0,
+    "v8_spread_005": V8_SPREAD_005,
+    "v8_spread_01": V8_SPREAD_01,
+    "v8_spread_02": V8_SPREAD_02,
+    "v8_spread_03": V8_SPREAD_03,
+    "v8_spread_05": V8_SPREAD_05,
+    "v8_spread_10": V8_SPREAD_10,
+    "v8b_baseline": V8B_ADX_BASELINE,
+    "v8b_gentle": V8B_ADX_GENTLE,
+    "v8b_moderate": V8B_ADX_MODERATE,
+    "v8b_aggressive": V8B_ADX_AGGRESSIVE,
+    "v8b_two_tier": V8B_ADX_TWO_TIER,
+    "v8b_bottom_only": V8B_ADX_BOTTOM_ONLY,
+    "v8b_wide": V8B_ADX_WIDE,
+    "v8b_directional_mod": V8B_ADX_DIRECTIONAL_MOD,
+    "v8b_directional_agg": V8B_ADX_DIRECTIONAL_AGG,
 }
 
 
@@ -823,6 +941,10 @@ def calculate_indicators(df: pd.DataFrame, config: dict = SIGNAL_CONFIG) -> pd.D
     # --- ATR as percentage of price (for dynamic stop-loss) ---
     df["atr_pct"] = (df["atr_14"] / df["close"]) * 100
 
+    # --- EMA spread (percentage distance between EMA-9 and EMA-21) ---
+    # Positive when EMA-9 > EMA-21 (bullish), negative when below
+    df["ema_spread_pct"] = ((df["ema_9"] - df["ema_21"]) / df["ema_21"].replace(0, float("nan"))) * 100
+
     # --- Volume indicators ---
     if "volume" in df.columns and df["volume"].sum() > 0:
         df["vma_20"] = calculate_sma(df["volume"], 20)
@@ -980,8 +1102,26 @@ def evaluate_signal(
     # ── GREEN: Bullish EMA cross with all conditions ──
 
     if ema_crossed_up:
-        # Check regime (trending market)
-        if adx4h < config["adx_threshold"]:
+        # Check minimum EMA spread — filter noise crosses
+        min_spread = config.get("min_ema_spread_pct", 0.0)
+        if min_spread > 0:
+            spread_pct = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+            if spread_pct < min_spread:
+                return ("grey", "insufficient_ema_spread")
+        # Check regime (trending market) — with graduated ADX scaling
+        # When EMA spread is low, require higher ADX to confirm trend conviction
+        adx_base = config["adx_threshold"]
+        adx_scaling = config.get("adx_spread_scaling")
+        if adx_scaling:
+            spread_abs = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+            adx_boost = 0
+            for spread_cutoff, boost in adx_scaling:
+                if spread_abs < spread_cutoff:
+                    adx_boost = max(adx_boost, boost)
+            adx_required = adx_base + adx_boost
+        else:
+            adx_required = adx_base
+        if adx4h < adx_required:
             return ("grey", "chop")
         # Check RSI zone
         if rsi14 < config["rsi_long_entry_min"] or rsi14 > config["rsi_long_entry_max"]:
@@ -1003,8 +1143,25 @@ def evaluate_signal(
     # ── RED: Bearish EMA cross with all conditions ──
 
     if ema_crossed_down:
-        # Check regime
-        if adx4h < config["adx_threshold"]:
+        # Check minimum EMA spread — filter noise crosses
+        min_spread = config.get("min_ema_spread_pct", 0.0)
+        if min_spread > 0:
+            spread_pct = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+            if spread_pct < min_spread:
+                return ("grey", "insufficient_ema_spread")
+        # Check regime — with graduated ADX scaling (direction-aware: shorts use gentler scaling)
+        adx_base = config["adx_threshold"]
+        adx_scaling = config.get("adx_spread_scaling_short", config.get("adx_spread_scaling"))
+        if adx_scaling:
+            spread_abs = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+            adx_boost = 0
+            for spread_cutoff, boost in adx_scaling:
+                if spread_abs < spread_cutoff:
+                    adx_boost = max(adx_boost, boost)
+            adx_required = adx_base + adx_boost
+        else:
+            adx_required = adx_base
+        if adx4h < adx_required:
             return ("grey", "chop")
         # Check RSI zone
         if rsi14 < config["rsi_short_entry_min"] or rsi14 > config["rsi_short_entry_max"]:
@@ -2275,6 +2432,8 @@ def _snapshot_indicators(row: pd.Series) -> dict:
         snap["atr_pct"] = round(row["atr_pct"], 2)
     if "volume_ratio" in row and not pd.isna(row["volume_ratio"]):
         snap["volume_ratio"] = round(row["volume_ratio"], 2)
+    if "ema_spread_pct" in row and not pd.isna(row["ema_spread_pct"]):
+        snap["ema_spread_pct"] = round(row["ema_spread_pct"], 4)
     return snap
 
 
