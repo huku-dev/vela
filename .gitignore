@@ -9,6 +9,9 @@ dist/
 __pycache__/
 *.pyc
 
+# Claude Code local settings (may contain sensitive tool permissions)
+.claude/settings.local.json
+
 # Bundle analysis output
 stats.html
 
