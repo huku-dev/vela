@@ -306,12 +306,7 @@ export interface UserWallet {
 // ── Funding Events ──────────────────────────────────────────────────────
 
 export type FundingEventType = 'deposit' | 'withdrawal';
-export type FundingEventStatus =
-  | 'pending'
-  | 'processing'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
+export type FundingEventStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
 export interface FundingEvent {
   id: string;

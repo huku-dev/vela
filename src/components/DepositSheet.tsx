@@ -171,11 +171,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
 
         {/* Tab content */}
         {activeTab === 'transfer' && (
-          <TransferTab
-            address={address}
-            copied={copied}
-            onCopy={handleCopy}
-          />
+          <TransferTab address={address} copied={copied} onCopy={handleCopy} />
         )}
 
         {activeTab === 'card' && <CardTab />}
@@ -233,7 +229,12 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
           {refreshResult && !refreshResult.depositDetected && (
             <p
               className="vela-body-sm vela-text-muted"
-              style={{ textAlign: 'center', marginTop: 'var(--space-2)', marginBottom: 0, fontSize: '0.75rem' }}
+              style={{
+                textAlign: 'center',
+                marginTop: 'var(--space-2)',
+                marginBottom: 0,
+                fontSize: '0.75rem',
+              }}
             >
               Balance: ${refreshResult.balance?.toFixed(2) ?? '—'} · No new deposits detected
             </p>
@@ -307,13 +308,7 @@ function TransferTab({
             border: '2px solid var(--gray-200)',
           }}
         >
-          <QRCodeSVG
-            value={address}
-            size={160}
-            level="M"
-            bgColor="#FFFFFF"
-            fgColor="#0A0A0A"
-          />
+          <QRCodeSVG value={address} size={160} level="M" bgColor="#FFFFFF" fgColor="#0A0A0A" />
         </div>
       </div>
 
@@ -379,8 +374,12 @@ function TransferTab({
             color: 'var(--color-text-muted)',
           }}
         >
-          <li><strong>Hyperliquid</strong> — via usdSend (instant)</li>
-          <li><strong>Arbitrum</strong> — standard USDC transfer (5-10 min)</li>
+          <li>
+            <strong>Hyperliquid</strong> — via usdSend (instant)
+          </li>
+          <li>
+            <strong>Arbitrum</strong> — standard USDC transfer (5-10 min)
+          </li>
         </ul>
       </div>
 
@@ -401,7 +400,8 @@ function TransferTab({
             fontSize: '0.8rem',
           }}
         >
-          Only send USDC on Arbitrum or Hyperliquid. Other tokens or networks may result in lost funds.
+          Only send USDC on Arbitrum or Hyperliquid. Other tokens or networks may result in lost
+          funds.
         </p>
       </div>
     </>
@@ -423,12 +423,12 @@ function CardTab() {
         Card funding coming soon
       </h4>
       <p className="vela-body-sm vela-text-muted" style={{ marginBottom: 'var(--space-3)' }}>
-        We&apos;re working on adding credit and debit card support so you can buy USDC directly
-        in the app. For now, you can transfer USDC from any wallet.
+        We&apos;re working on adding credit and debit card support so you can buy USDC directly in
+        the app. For now, you can transfer USDC from any wallet.
       </p>
       <p className="vela-body-sm vela-text-muted" style={{ margin: 0, fontSize: '0.75rem' }}>
-        Don&apos;t have USDC? You can buy it on Coinbase, Binance, or most major exchanges
-        and then transfer it to your deposit address.
+        Don&apos;t have USDC? You can buy it on Coinbase, Binance, or most major exchanges and then
+        transfer it to your deposit address.
       </p>
     </div>
   );

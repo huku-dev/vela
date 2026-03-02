@@ -56,7 +56,8 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
   // ── Derived values ──
   const parsedAmount = parseFloat(amount);
   const availableBalance = wallet.balance_usdc ?? 0;
-  const isAmountValid = !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= availableBalance;
+  const isAmountValid =
+    !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= availableBalance;
   const isAddressValid = ETH_ADDRESS_RE.test(destination);
   const isFormValid = isAmountValid && isAddressValid;
   const isOtpValid = otpCode.length === 6 && /^\d{6}$/.test(otpCode);
@@ -333,7 +334,11 @@ function FormStep({
             marginTop: 'var(--space-1)',
           }}
         >
-          ${availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          $
+          {availableBalance.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
         </div>
       </div>
 
@@ -379,7 +384,10 @@ function FormStep({
           </button>
         </div>
         {showAmountError && (
-          <p className="vela-body-sm" style={{ color: 'var(--red-primary)', marginTop: 'var(--space-1)', marginBottom: 0 }}>
+          <p
+            className="vela-body-sm"
+            style={{ color: 'var(--red-primary)', marginTop: 'var(--space-1)', marginBottom: 0 }}
+          >
             {parsedAmount > availableBalance
               ? 'Amount exceeds available balance'
               : 'Enter a valid amount'}
@@ -434,7 +442,10 @@ function FormStep({
           </button>
         </div>
         {showAddressError && (
-          <p className="vela-body-sm" style={{ color: 'var(--red-primary)', marginTop: 'var(--space-1)', marginBottom: 0 }}>
+          <p
+            className="vela-body-sm"
+            style={{ color: 'var(--red-primary)', marginTop: 'var(--space-1)', marginBottom: 0 }}
+          >
             Enter a valid Ethereum address (0x...)
           </p>
         )}
@@ -452,8 +463,12 @@ function FormStep({
           }}
         >
           <p className="vela-body-sm" style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-            ~${parsedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC
-            will be sent to your Arbitrum wallet.
+            ~$
+            {parsedAmount.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{' '}
+            USDC will be sent to your Arbitrum wallet.
           </p>
         </div>
       )}
@@ -554,17 +569,28 @@ function OtpStep({
           marginBottom: 'var(--space-4)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
-          <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>Amount</span>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: 'var(--space-2)',
+          }}
+        >
+          <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Amount
+          </span>
           <span
             className="vela-body-sm"
             style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
           >
-            ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            $
+            {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>To</span>
+          <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+            To
+          </span>
           <span
             className="vela-body-sm"
             style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
@@ -575,7 +601,10 @@ function OtpStep({
       </div>
 
       {/* OTP instruction */}
-      <p className="vela-body-sm" style={{ textAlign: 'center', marginBottom: 'var(--space-4)', marginTop: 0 }}>
+      <p
+        className="vela-body-sm"
+        style={{ textAlign: 'center', marginBottom: 'var(--space-4)', marginTop: 0 }}
+      >
         Enter the 6-digit code we sent to your email
       </p>
 
@@ -695,15 +724,16 @@ function SuccessStep({
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>
-        {'✓'}
-      </div>
+      <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>{'✓'}</div>
       <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
         Withdrawal sent
       </h4>
-      <p className="vela-body-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}>
-        ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC
-        is on its way to {shortAddr}
+      <p
+        className="vela-body-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}
+      >
+        ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
+        USDC is on its way to {shortAddr}
       </p>
       <p
         className="vela-body-sm"
@@ -735,13 +765,18 @@ function ErrorStep({
 }) {
   return (
     <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)', color: 'var(--red-primary)' }}>
+      <div
+        style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)', color: 'var(--red-primary)' }}
+      >
         {'✕'}
       </div>
       <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
         Withdrawal failed
       </h4>
-      <p className="vela-body-sm" style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-5)' }}>
+      <p
+        className="vela-body-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-5)' }}
+      >
         {errorMessage || 'Something went wrong. Your funds are safe.'}
       </p>
       <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

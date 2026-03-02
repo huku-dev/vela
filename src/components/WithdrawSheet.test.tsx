@@ -235,9 +235,7 @@ describe('WithdrawSheet', () => {
   it('calls onClose when close button clicked', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(
-      <WithdrawSheet wallet={mockWallet} onClose={onClose} />
-    );
+    render(<WithdrawSheet wallet={mockWallet} onClose={onClose} />);
     await user.click(screen.getByRole('button', { name: /close/i }));
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -245,9 +243,7 @@ describe('WithdrawSheet', () => {
   it('calls onClose when Escape key pressed', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(
-      <WithdrawSheet wallet={mockWallet} onClose={onClose} />
-    );
+    render(<WithdrawSheet wallet={mockWallet} onClose={onClose} />);
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledOnce();
   });
@@ -255,9 +251,7 @@ describe('WithdrawSheet', () => {
   it('calls onClose when backdrop clicked', async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(
-      <WithdrawSheet wallet={mockWallet} onClose={onClose} />
-    );
+    render(<WithdrawSheet wallet={mockWallet} onClose={onClose} />);
     // Click the backdrop (the dialog overlay itself)
     const dialog = screen.getByRole('dialog');
     await user.click(dialog);
@@ -280,9 +274,7 @@ describe('WithdrawSheet', () => {
 
     const onSuccess = vi.fn();
     const user = userEvent.setup();
-    render(
-      <WithdrawSheet wallet={mockWallet} onClose={vi.fn()} onSuccess={onSuccess} />
-    );
+    render(<WithdrawSheet wallet={mockWallet} onClose={vi.fn()} onSuccess={onSuccess} />);
 
     // Fill form
     await user.type(screen.getByLabelText(/amount/i), '100');

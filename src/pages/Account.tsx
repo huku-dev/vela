@@ -441,9 +441,7 @@ function FundingHistory() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span style={{ fontSize: '1rem' }}>
-                {event.event_type === 'deposit' ? '↓' : '↑'}
-              </span>
+              <span style={{ fontSize: '1rem' }}>{event.event_type === 'deposit' ? '↓' : '↑'}</span>
               <div>
                 <span className="vela-body-sm" style={{ fontWeight: 600 }}>
                   {event.event_type === 'deposit' ? 'Deposit' : 'Withdrawal'}
@@ -465,7 +463,10 @@ function FundingHistory() {
                 style={{
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 600,
-                  color: event.event_type === 'deposit' ? 'var(--green-primary)' : 'var(--color-text-primary)',
+                  color:
+                    event.event_type === 'deposit'
+                      ? 'var(--green-primary)'
+                      : 'var(--color-text-primary)',
                 }}
               >
                 {event.event_type === 'deposit' ? '+' : '-'}${Number(event.amount_usdc).toFixed(2)}
@@ -481,8 +482,16 @@ function FundingHistory() {
 
 function FundingStatusBadge({ status }: { status: import('../types').FundingEventStatus }) {
   const config: Record<string, { bg: string; color: string; label: string }> = {
-    completed: { bg: 'var(--green-light, #F0FFF4)', color: 'var(--green-dark, #166534)', label: 'Done' },
-    processing: { bg: 'var(--yellow-light, #FFFDE7)', color: 'var(--yellow-dark, #92400E)', label: 'Processing' },
+    completed: {
+      bg: 'var(--green-light, #F0FFF4)',
+      color: 'var(--green-dark, #166534)',
+      label: 'Done',
+    },
+    processing: {
+      bg: 'var(--yellow-light, #FFFDE7)',
+      color: 'var(--yellow-dark, #92400E)',
+      label: 'Processing',
+    },
     pending: { bg: 'var(--gray-50)', color: 'var(--color-text-muted)', label: 'Pending' },
     failed: { bg: 'var(--red-light, #FFF0F1)', color: 'var(--red-primary)', label: 'Failed' },
     cancelled: { bg: 'var(--gray-50)', color: 'var(--color-text-muted)', label: 'Cancelled' },
