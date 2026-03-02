@@ -234,10 +234,10 @@ describe('Asset ordering matters for tier gating', () => {
 // ── Tier feature gating ────────────────────────────────
 
 describe('Tier feature gating', () => {
-  it('free tier: view-only, no trading, no telegram', () => {
+  it('free tier: semi-auto trial trade, no full auto, no telegram', () => {
     const free = getTierConfig('free');
     expect(free.features.view_only).toBe(true);
-    expect(free.features.semi_auto).toBe(false);
+    expect(free.features.semi_auto).toBe(true); // 1 lifetime trial trade
     expect(free.features.auto_mode).toBe(false);
     expect(free.features.telegram_alerts).toBe(false);
   });

@@ -11,13 +11,13 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     display_name: 'Free',
     trade_fee_pct: 0.5,
     max_position_size_usd: 0,
-    max_leverage: 0,
+    max_leverage: 1,
     signal_frequency_hours: 4,
-    max_active_positions: 0,
+    max_active_positions: 1,
     max_assets: 1,
     features: {
       auto_mode: false,
-      semi_auto: false,
+      semi_auto: true,
       view_only: true,
       email_alerts: true,
       telegram_alerts: false,
@@ -32,7 +32,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_position_size_usd: 20_000,
     max_leverage: 2,
     signal_frequency_hours: 2,
-    max_active_positions: 3,
+    max_active_positions: 2,
     max_assets: 3,
     features: {
       auto_mode: false,
@@ -51,7 +51,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_position_size_usd: 0, // 0 = unlimited
     max_leverage: 5,
     signal_frequency_hours: 1,
-    max_active_positions: 10,
+    max_active_positions: 5,
     max_assets: 0, // 0 = unlimited
     features: {
       auto_mode: true,

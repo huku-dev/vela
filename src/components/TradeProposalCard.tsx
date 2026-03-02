@@ -218,6 +218,25 @@ export default function TradeProposalCard({
         >
           {statusConfig.description}
         </p>
+
+        {/* Auto-trading nudge — only for non-premium users */}
+        {tierConfig?.tier !== 'premium' && (
+          <>
+            {proposal.status === 'executed' && (
+              <AutoTradingNudge
+                message="Nice catch! With auto-trading, Vela executes instantly at the best entry."
+                onUpgradeClick={onUpgradeClick}
+              />
+            )}
+            {proposal.status === 'expired' && (
+              <AutoTradingNudge
+                message="This trade expired before you saw it. Auto-trading never misses a signal."
+                onUpgradeClick={onUpgradeClick}
+                strong
+              />
+            )}
+          </>
+        )}
       </Card>
     );
   }
@@ -473,4 +492,54 @@ function formatTimeLeft(ms: number): string {
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
   if (hours > 0) return `${hours}h ${minutes}m left`;
   return `${minutes}m left`;
+}
+
+/** Auto-trading upgrade nudge shown after trade execution or expiry */
+function AutoTradingNudge({
+  message,
+  onUpgradeClick,
+  strong,
+}: {
+  message: string;
+  onUpgradeClick?: () => void;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 'var(--space-2)',
+        padding: 'var(--space-2) var(--space-3)',
+        borderRadius: 'var(--radius-sm)',
+        background: strong ? 'var(--yellow-50, #FFFBEB)' : 'var(--gray-50, #F9FAFB)',
+        border: `1px solid ${strong ? 'var(--yellow-200, #FDE68A)' : 'var(--gray-200, #E5E7EB)'}`,
+      }}
+    >
+      <p
+        className="vela-body-sm"
+        style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
+      >
+        {strong ? '⚡ ' : '💡 '}
+        {message}
+      </p>
+      {onUpgradeClick && (
+        <button
+          type="button"
+          onClick={onUpgradeClick}
+          style={{
+            marginTop: 'var(--space-1)',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'var(--vela-signal-green)',
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontSize: 13,
+            fontFamily: 'inherit',
+          }}
+        >
+          Upgrade to Premium →
+        </button>
+      )}
+    </div>
+  );
 }

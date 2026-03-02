@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, Badge, PageHeader } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
+import ShareTradeCard from '../components/ShareTradeCard';
 import { useTrackRecord, DEFAULT_POSITION_SIZE, type EnrichedTrade } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -1138,6 +1139,31 @@ function ClosedTradeCard({
               ))}
             </div>
           )}
+
+          {/* Share trade card */}
+          {trade.exit_price != null && trade.pnl_pct != null && (
+            <div
+              style={{
+                marginTop: 'var(--space-3)',
+                paddingTop: 'var(--space-2)',
+                borderTop: '1px solid var(--gray-200)',
+              }}
+            >
+              <ShareTradeCard
+                trade={{
+                  symbol,
+                  direction: trade.direction ?? 'long',
+                  entryPrice: trade.entry_price,
+                  exitPrice: trade.exit_price,
+                  pnlPct: trade.pnl_pct,
+                  duration:
+                    trade.opened_at && trade.closed_at
+                      ? formatHoldingPeriod(trade.opened_at, trade.closed_at)
+                      : undefined,
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
     </Card>
@@ -1609,6 +1635,29 @@ function LivePositionCard({
                   {trim.size_after_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Share live position */}
+          {position.current_price != null && (
+            <div
+              style={{
+                marginTop: 'var(--space-3)',
+                paddingTop: 'var(--space-2)',
+                borderTop: '1px solid var(--gray-200)',
+              }}
+            >
+              <ShareTradeCard
+                trade={{
+                  symbol: position.asset_id.toUpperCase(),
+                  direction: position.side,
+                  entryPrice: position.entry_price,
+                  exitPrice: position.current_price,
+                  pnlPct: position.unrealized_pnl_pct,
+                  duration: formatDuration(position.created_at),
+                  leverage: position.leverage > 1 ? position.leverage : undefined,
+                }}
+              />
             </div>
           )}
 

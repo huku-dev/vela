@@ -262,13 +262,14 @@ describe('TIER-SRC: tier definitions integrity', () => {
     expect(premium.annual_price_usd).toBe(premium.monthly_price_usd * 10);
   });
 
-  it('free tier is view-only with no position or leverage', () => {
+  it('free tier has 1 trial trade (semi-auto) with no position size limit', () => {
     const free = getTierConfig('free');
     expect(free.features.view_only).toBe(true);
-    expect(free.features.semi_auto).toBe(false);
+    expect(free.features.semi_auto).toBe(true); // trial trade
     expect(free.features.auto_mode).toBe(false);
     expect(free.max_position_size_usd).toBe(0);
-    expect(free.max_leverage).toBe(0);
+    expect(free.max_leverage).toBe(1);
+    expect(free.max_active_positions).toBe(1);
   });
 
   it('standard tier fee is 0.1%', () => {

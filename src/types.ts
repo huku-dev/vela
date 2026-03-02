@@ -298,6 +298,8 @@ export interface UserWallet {
   agent_registered: boolean;
   balance_usdc: number;
   balance_last_synced_at: string | null;
+  /** Free tier: true after the user's 1 lifetime trial trade has been opened */
+  trial_trade_used: boolean;
   environment: WalletEnvironment;
   created_at: string;
   updated_at: string;

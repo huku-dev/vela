@@ -970,6 +970,9 @@ interface TradingPanelProps {
   loading: boolean;
   circuitBreakers: import('../types').CircuitBreakerEvent[];
   tierFeatures: Record<string, boolean>;
+  currentTier: import('../types').SubscriptionTier;
+  openPositionCount: number;
+  trialTradeUsed: boolean;
   onUpgradeClick: () => void;
 }
 
@@ -980,13 +983,26 @@ function TradingPanel({
   loading,
   circuitBreakers,
   tierFeatures,
+  currentTier,
+  openPositionCount,
+  trialTradeUsed,
   onUpgradeClick,
 }: TradingPanelProps) {
+  const tierConfig = getTierConfig(currentTier);
+  const maxLeverageForTier = tierConfig.max_leverage || 1; // 0 for free → treat as 1
+  const atCapacity =
+    tierConfig.max_active_positions > 0 &&
+    openPositionCount >= tierConfig.max_active_positions;
+
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
     preferences?.default_position_size_usd?.toString() ?? '100'
   );
   const [leverage, setLeverage] = useState(preferences?.max_leverage?.toString() ?? '1');
+  const [leverageAcknowledged, setLeverageAcknowledged] = useState(
+    // Pre-acknowledge if user already has leverage > 1 saved
+    (preferences?.max_leverage ?? 1) > 1
+  );
   const [stopLoss, setStopLoss] = useState(preferences?.stop_loss_pct?.toString() ?? '5');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -996,6 +1012,7 @@ function TradingPanel({
     if (preferences) {
       setPositionSize(preferences.default_position_size_usd.toString());
       setLeverage(preferences.max_leverage.toString());
+      setLeverageAcknowledged(preferences.max_leverage > 1);
       setStopLoss(preferences.stop_loss_pct.toString());
     }
   }, [preferences]);
@@ -1014,13 +1031,20 @@ function TradingPanel({
     }
   };
 
+  const leverageValue = Number(leverage) || 1;
+  const needsLeverageAck = leverageValue > 1 && !leverageAcknowledged;
+
   const handleSaveSettings = async () => {
+    if (needsLeverageAck) {
+      setError('Please acknowledge the leverage risk warning before saving.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       await updatePreferences({
         default_position_size_usd: Number(positionSize) || 100,
-        max_leverage: Math.min(Math.max(Number(leverage) || 1, 1), 20),
+        max_leverage: Math.min(Math.max(leverageValue, 1), maxLeverageForTier),
         stop_loss_pct: Math.min(Math.max(Number(stopLoss) || 5, 1), 50),
       } as Record<string, unknown>);
       setSuccess(true);
@@ -1188,6 +1212,84 @@ function TradingPanel({
             POSITION SETTINGS
           </p>
 
+          {/* Active position count indicator */}
+          {tierConfig.max_active_positions > 0 && (() => {
+            const isFree = currentTier === 'free';
+            const trialUsedNoPosition = isFree && trialTradeUsed && openPositionCount === 0;
+            const showWarning = atCapacity || trialUsedNoPosition;
+
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: showWarning ? 'var(--yellow-50, #FFFBEB)' : 'var(--gray-50)',
+                  border: showWarning
+                    ? '1px solid var(--yellow-200, #FDE68A)'
+                    : '1px solid var(--gray-200)',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
+                <div>
+                  <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
+                    {isFree
+                      ? trialTradeUsed
+                        ? 'Trial trade used'
+                        : openPositionCount > 0
+                          ? '1 free trial trade active'
+                          : '1 free trial trade available'
+                      : `${openPositionCount}/${tierConfig.max_active_positions} positions active`}
+                  </p>
+                  {isFree ? (
+                    <p
+                      className="vela-body-sm vela-text-muted"
+                      style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
+                    >
+                      {trialTradeUsed && openPositionCount === 0
+                        ? 'Upgrade to keep trading'
+                        : openPositionCount > 0
+                          ? 'Upgrade for unlimited trades'
+                          : 'Experience Vela with your first trade'}
+                    </p>
+                  ) : (
+                    atCapacity && (
+                      <p
+                        className="vela-body-sm vela-text-muted"
+                        style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
+                      >
+                        New trades are paused until a position closes
+                      </p>
+                    )
+                  )}
+                </div>
+                {showWarning && currentTier !== 'premium' && (
+                  <button
+                    type="button"
+                    onClick={onUpgradeClick}
+                    className="vela-btn vela-btn-sm"
+                    style={{
+                      background: 'var(--vela-signal-green)',
+                      color: 'var(--black)',
+                      fontWeight: 700,
+                      fontSize: '0.7rem',
+                      padding: '4px 10px',
+                      border: '2px solid var(--black)',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                    }}
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
           <div
             style={{
               display: 'flex',
@@ -1226,7 +1328,7 @@ function TradingPanel({
                 className="vela-body-sm vela-text-muted"
                 style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
               >
-                Amount in USDC per trade
+                Max USDC per trade. Vela will auto-size based on your balance if this exceeds available capital.
               </p>
             </div>
 
@@ -1241,16 +1343,88 @@ function TradingPanel({
               <input
                 type="range"
                 value={leverage}
-                onChange={e => setLeverage(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  setLeverage(val);
+                  // Reset acknowledgment when user changes leverage
+                  if (Number(val) <= 1) setLeverageAcknowledged(false);
+                }}
                 min={1}
-                max={20}
+                max={maxLeverageForTier}
                 step={1}
                 style={{ width: '100%' }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="vela-body-sm vela-text-muted">1x</span>
-                <span className="vela-body-sm vela-text-muted">20x</span>
+                <span className="vela-body-sm vela-text-muted">1x (no leverage)</span>
+                <span className="vela-body-sm vela-text-muted">{maxLeverageForTier}x</span>
               </div>
+
+              {/* Leverage risk warning — only shown when leverage > 1x */}
+              {leverageValue > 1 && (
+                <div
+                  style={{
+                    marginTop: 'var(--space-2)',
+                    padding: 'var(--space-2) var(--space-3)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--yellow-50, #FFFBEB)',
+                    border: '1px solid var(--yellow-200, #FDE68A)',
+                  }}
+                >
+                  <p
+                    className="vela-body-sm"
+                    style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
+                  >
+                    ⚠️ At {leverage}x leverage, both gains <strong>and losses</strong> are
+                    multiplied by {leverage}. A {Math.round(100 / leverageValue)}% move against
+                    your position could liquidate your collateral.
+                  </p>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 'var(--space-2)',
+                      marginTop: 'var(--space-2)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={leverageAcknowledged}
+                      onChange={e => setLeverageAcknowledged(e.target.checked)}
+                      style={{ marginTop: 2, flexShrink: 0 }}
+                    />
+                    <span className="vela-body-sm" style={{ color: 'var(--color-text-primary)' }}>
+                      I understand that leverage amplifies both potential profits and potential
+                      losses, and I accept the risk of liquidation.
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {maxLeverageForTier < 5 && (
+                <p
+                  className="vela-body-sm vela-text-muted"
+                  style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+                >
+                  <button
+                    type="button"
+                    onClick={onUpgradeClick}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: 'var(--vela-signal-green)',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Upgrade to Premium
+                  </button>
+                  {' '}for up to 5x leverage
+                </p>
+              )}
             </div>
 
             {/* Stop-loss */}
@@ -1669,6 +1843,7 @@ export default function Account() {
   const { isAuthenticated, user, logout, login } = useAuthContext();
   const {
     preferences,
+    positions,
     wallet,
     isTradingEnabled,
     hasWallet,
@@ -2021,7 +2196,19 @@ export default function Account() {
 
         <SettingsItem
           label="Trading preferences"
-          value={isTradingEnabled ? MODE_LABELS[preferences?.mode ?? 'view_only'] : 'View only'}
+          value={(() => {
+            const modeLabel = MODE_LABELS[preferences?.mode ?? 'view_only'];
+            if (!isTradingEnabled) return 'View only';
+            if (currentTier === 'free') {
+              const used = wallet?.trial_trade_used ?? false;
+              if (used && positions.length === 0) return 'Trial used · Upgrade';
+              if (positions.length > 0) return 'Trial trade active';
+              return '1 free trial trade';
+            }
+            const maxPos = getTierConfig(currentTier).max_active_positions;
+            if (maxPos > 0) return `${modeLabel} · ${positions.length}/${maxPos} positions`;
+            return modeLabel;
+          })()}
           onClick={() => toggleSection('trading')}
           expanded={expandedSection === 'trading'}
         />
@@ -2034,6 +2221,9 @@ export default function Account() {
               loading={tradingLoading}
               circuitBreakers={circuitBreakers}
               tierFeatures={getTierConfig(currentTier).features}
+              currentTier={currentTier}
+              openPositionCount={positions.length}
+              trialTradeUsed={wallet?.trial_trade_used ?? false}
               onUpgradeClick={() => setShowTierSheet(true)}
             />
           </div>

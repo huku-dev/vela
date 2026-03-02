@@ -173,6 +173,19 @@ export function useTrading(): TradingState {
           fetchTradingData();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_wallets',
+          filter: `user_id=eq.${user.privyDid}`,
+        },
+        () => {
+          // Balance update from position-monitor (every 2 min) or refresh-balance
+          fetchTradingData();
+        }
+      )
       .subscribe();
 
     return () => {

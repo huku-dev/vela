@@ -30,6 +30,7 @@ const mockWallet: UserWallet = {
   agent_registered: true,
   balance_usdc: 1000.0,
   balance_last_synced_at: null,
+  trial_trade_used: false,
   environment: 'testnet',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
