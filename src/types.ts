@@ -297,7 +297,32 @@ export interface UserWallet {
   agent_address: string | null;
   agent_registered: boolean;
   balance_usdc: number;
+  balance_last_synced_at: string | null;
   environment: WalletEnvironment;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Funding Events ──────────────────────────────────────────────────────
+
+export type FundingEventType = 'deposit' | 'withdrawal';
+export type FundingEventStatus =
+  | 'pending'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export interface FundingEvent {
+  id: string;
+  user_id: string;
+  event_type: FundingEventType;
+  status: FundingEventStatus;
+  amount_usdc: number;
+  destination_address: string | null;
+  error_message: string | null;
+  metadata: Record<string, unknown>;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

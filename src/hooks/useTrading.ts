@@ -99,7 +99,7 @@ export function useTrading(): TradingState {
             .order('closed_at', { ascending: false })
             .limit(20),
           supabaseClient.from('user_preferences').select('*').single(),
-          supabaseClient.from('user_wallets').select('*').eq('environment', 'testnet').limit(1),
+          supabaseClient.from('user_wallets').select('*').eq('environment', import.meta.env.VITE_WALLET_ENVIRONMENT ?? 'testnet').limit(1),
           supabaseClient
             .from('circuit_breaker_events')
             .select('*')

@@ -6,6 +6,8 @@ import { useSubscription } from '../hooks/useSubscription';
 import { useTierAccess } from '../hooks/useTierAccess';
 import VelaLogo from '../components/VelaLogo';
 import TierComparisonSheet from '../components/TierComparisonSheet';
+import WithdrawSheet from '../components/WithdrawSheet';
+import DepositSheet from '../components/DepositSheet';
 import { getTierConfig } from '../lib/tier-definitions';
 import type { TradingMode } from '../types';
 
@@ -167,6 +169,8 @@ interface BalanceCardProps {
   isTradingEnabled: boolean;
   showFundingNudge?: boolean;
   onEnableClick?: () => void;
+  onWithdrawClick?: () => void;
+  onDepositClick?: () => void;
 }
 
 function BalanceCard({
@@ -175,6 +179,8 @@ function BalanceCard({
   isTradingEnabled,
   showFundingNudge,
   onEnableClick,
+  onWithdrawClick,
+  onDepositClick,
 }: BalanceCardProps) {
   // No wallet / trading not enabled — show $0 balance + enable CTA
   if (!isTradingEnabled || !hasWallet || !wallet) {
@@ -354,18 +360,14 @@ function BalanceCard({
             <button
               className="vela-btn vela-btn-primary vela-btn-sm"
               style={{ flex: 1 }}
-              onClick={() => {
-                /* TODO: deposit flow — stablecoin transfer or Stripe top-up */
-              }}
+              onClick={() => onDepositClick?.()}
             >
               Deposit
             </button>
             <button
               className="vela-btn vela-btn-secondary vela-btn-sm"
               style={{ flex: 1 }}
-              onClick={() => {
-                /* TODO: withdraw flow — send to external address */
-              }}
+              onClick={() => onWithdrawClick?.()}
             >
               Withdraw
             </button>
@@ -383,6 +385,125 @@ function BalanceCard({
         </p>
       )}
     </div>
+  );
+}
+
+function FundingHistory() {
+  const { supabaseClient, isAuthenticated } = useAuthContext();
+  const [events, setEvents] = useState<import('../types').FundingEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabaseClient || !isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const { data } = await supabaseClient
+          .from('funding_events')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        setEvents(data ?? []);
+      } catch {
+        // Non-critical — silently ignore
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [supabaseClient, isAuthenticated]);
+
+  if (loading || events.length === 0) return null;
+
+  return (
+    <div
+      className="vela-card"
+      style={{ padding: 'var(--space-4)', marginBottom: 'var(--space-4)' }}
+    >
+      <p
+        className="vela-label-sm"
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-3)', marginTop: 0 }}
+      >
+        RECENT ACTIVITY
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        {events.map(event => (
+          <div
+            key={event.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 'var(--space-2) 0',
+              borderBottom: '1px solid var(--gray-100)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span style={{ fontSize: '1rem' }}>
+                {event.event_type === 'deposit' ? '↓' : '↑'}
+              </span>
+              <div>
+                <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+                  {event.event_type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+                </span>
+                <span
+                  className="vela-body-sm vela-text-muted"
+                  style={{ marginLeft: 'var(--space-2)', fontSize: '0.75rem' }}
+                >
+                  {new Date(event.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <span
+                className="vela-body-sm"
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontWeight: 600,
+                  color: event.event_type === 'deposit' ? 'var(--green-primary)' : 'var(--color-text-primary)',
+                }}
+              >
+                {event.event_type === 'deposit' ? '+' : '-'}${Number(event.amount_usdc).toFixed(2)}
+              </span>
+              <FundingStatusBadge status={event.status} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FundingStatusBadge({ status }: { status: import('../types').FundingEventStatus }) {
+  const config: Record<string, { bg: string; color: string; label: string }> = {
+    completed: { bg: 'var(--green-light, #F0FFF4)', color: 'var(--green-dark, #166534)', label: 'Done' },
+    processing: { bg: 'var(--yellow-light, #FFFDE7)', color: 'var(--yellow-dark, #92400E)', label: 'Processing' },
+    pending: { bg: 'var(--gray-50)', color: 'var(--color-text-muted)', label: 'Pending' },
+    failed: { bg: 'var(--red-light, #FFF0F1)', color: 'var(--red-primary)', label: 'Failed' },
+    cancelled: { bg: 'var(--gray-50)', color: 'var(--color-text-muted)', label: 'Cancelled' },
+  };
+  const c = config[status] ?? config.pending;
+
+  return (
+    <span
+      style={{
+        fontSize: '0.65rem',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        padding: '2px 6px',
+        borderRadius: '4px',
+        backgroundColor: c.bg,
+        color: c.color,
+      }}
+    >
+      {c.label}
+    </span>
   );
 }
 
@@ -1545,6 +1666,7 @@ export default function Account() {
     updatePreferences,
     loading: tradingLoading,
     circuitBreakers,
+    refresh,
   } = useTrading();
   const {
     tier: currentTier,
@@ -1557,6 +1679,8 @@ export default function Account() {
   const { needsFunding } = useTierAccess();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
+  const [showDepositSheet, setShowDepositSheet] = useState(false);
   const [checkoutToast, setCheckoutToast] = useState<string | null>(null);
   const [portalError, setPortalError] = useState<string | null>(null);
 
@@ -1782,7 +1906,12 @@ export default function Account() {
         isTradingEnabled={isTradingEnabled}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
         onEnableClick={() => setExpandedSection('trading')}
+        onWithdrawClick={() => setShowWithdrawSheet(true)}
+        onDepositClick={() => setShowDepositSheet(true)}
       />
+
+      {/* Recent funding activity */}
+      {hasWallet && <FundingHistory />}
 
       {/* Checkout toast — success (green) or error (red) */}
       {checkoutToast &&
@@ -1989,6 +2118,27 @@ export default function Account() {
       >
         Log out
       </button>
+
+      {/* Withdraw sheet overlay */}
+      {showWithdrawSheet && wallet && (
+        <WithdrawSheet
+          wallet={wallet}
+          onClose={() => setShowWithdrawSheet(false)}
+          onSuccess={() => {
+            // Refresh trading data to get updated balance
+            refresh();
+          }}
+        />
+      )}
+
+      {/* Deposit sheet overlay */}
+      {showDepositSheet && wallet && (
+        <DepositSheet
+          wallet={wallet}
+          onClose={() => setShowDepositSheet(false)}
+          onRefresh={() => refresh()}
+        />
+      )}
 
       {/* Tier comparison overlay */}
       {showTierSheet && (
