@@ -374,9 +374,13 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
 }
 
 function WalletSetup({ onComplete }: { onComplete: () => void }) {
+  const isTestnet = (import.meta.env.VITE_WALLET_ENVIRONMENT ?? 'testnet') === 'testnet';
+
   const handleFundNow = () => {
-    // Open faucet in new tab (testnet — will become Stripe/on-ramp for mainnet)
-    window.open('https://app.hyperliquid-testnet.xyz/drip', '_blank');
+    if (isTestnet) {
+      window.open('https://app.hyperliquid-testnet.xyz/drip', '_blank');
+    }
+    // On mainnet, user deposits via Account page — just advance onboarding
     onComplete();
   };
 
@@ -502,7 +506,7 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
           onClick={handleFundNow}
           style={{ width: '100%', marginBottom: 'var(--space-3)' }}
         >
-          Fund now
+          {isTestnet ? 'Get test USDC' : 'Continue'}
         </button>
         <button className="vela-btn vela-btn-ghost" onClick={onComplete} style={{ width: '100%' }}>
           Skip — I&apos;ll do this later

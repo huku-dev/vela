@@ -469,6 +469,7 @@ export default function AssetDetail() {
             onAccept={acceptProposal}
             onDecline={declineProposal}
             walletBalance={wallet?.balance_usdc}
+            walletEnvironment={wallet?.environment}
             canTrade={canTrade}
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
@@ -483,6 +484,7 @@ export default function AssetDetail() {
             onAccept={acceptProposal}
             onDecline={declineProposal}
             walletBalance={wallet?.balance_usdc}
+            walletEnvironment={wallet?.environment}
             canTrade={canTrade}
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}

@@ -73,6 +73,8 @@ interface TradeProposalCardProps {
   onDecline: (proposalId: string) => Promise<void>;
   /** Wallet balance for insufficient funds warning */
   walletBalance?: number;
+  /** Wallet environment — controls fund link (testnet faucet vs deposit) */
+  walletEnvironment?: string;
   /** Whether this user's tier allows trading (hide action buttons for free/view-only) */
   canTrade?: boolean;
   /** Label for the upgrade CTA when user can't trade */
@@ -93,6 +95,7 @@ export default function TradeProposalCard({
   onAccept,
   onDecline,
   walletBalance,
+  walletEnvironment,
   canTrade = true,
   upgradeLabel,
   onUpgradeClick,
@@ -338,15 +341,25 @@ export default function TradeProposalCard({
             USDC.
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <a
-              href="https://app.hyperliquid-testnet.xyz/drip"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="vela-btn vela-btn-primary vela-btn-sm"
-              style={{ textDecoration: 'none', flex: 1, textAlign: 'center' }}
-            >
-              Fund wallet
-            </a>
+            {walletEnvironment === 'testnet' ? (
+              <a
+                href="https://app.hyperliquid-testnet.xyz/drip"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="vela-btn vela-btn-primary vela-btn-sm"
+                style={{ textDecoration: 'none', flex: 1, textAlign: 'center' }}
+              >
+                Get test USDC
+              </a>
+            ) : (
+              <button
+                className="vela-btn vela-btn-primary vela-btn-sm"
+                onClick={() => window.dispatchEvent(new CustomEvent('vela:open-deposit'))}
+                style={{ flex: 1 }}
+              >
+                Deposit USDC
+              </button>
+            )}
             <button
               className="vela-btn vela-btn-ghost vela-btn-sm"
               onClick={() => handleAction('accept')}
