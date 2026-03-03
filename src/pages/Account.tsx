@@ -5,6 +5,7 @@ import { useAccountDelete } from '../hooks/useAccountDelete';
 import { useSubscription } from '../hooks/useSubscription';
 import { useTierAccess } from '../hooks/useTierAccess';
 import VelaLogo from '../components/VelaLogo';
+import VelaToast from '../components/VelaToast';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import WithdrawSheet from '../components/WithdrawSheet';
 import DepositSheet from '../components/DepositSheet';
@@ -70,7 +71,7 @@ function SettingsItem({ label, value, onClick, danger, expanded }: SettingsItemP
         padding: 'var(--space-4)',
         background: 'none',
         border: 'none',
-        borderBottom: '1px solid var(--gray-200)',
+        borderBottom: expanded ? 'none' : '1px solid var(--gray-200)',
         cursor: onClick ? 'pointer' : 'default',
         textAlign: 'left',
         fontFamily: 'Inter, system-ui, sans-serif',
@@ -619,12 +620,71 @@ function SupportPanel() {
       >
         {/* FAQ */}
         <div>
-          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+          <p className="vela-body-sm" style={{ fontWeight: 600, marginBottom: 'var(--space-2)' }}>
             FAQ
           </p>
-          <p className="vela-body-sm vela-text-muted">
-            Common questions about signals, trading, and your account — coming soon.
-          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {[
+              {
+                q: 'What is Vela?',
+                a: 'Vela is an intelligent trading platform that monitors markets 24/7, analyzes price action and momentum, and delivers clear trading signals for assets like Bitcoin, Ethereum, and more.',
+              },
+              {
+                q: 'Is Vela a trading bot?',
+                a: "Not in the traditional sense. Trading bots blindly execute rules. Vela uses AI to analyze market conditions and generate signals with clear reasoning. On free and standard plans, you approve every trade before it executes. On premium, you can enable full automation, but you can always override.",
+              },
+              {
+                q: "What's the difference between semi-auto and full auto?",
+                a: 'Semi-auto (Standard): Vela sends you a signal with a trade proposal. You review it and approve or decline with one tap.\n\nFull auto (Premium): Vela executes trades automatically within your configured parameters. You can still override or pause at any time.',
+              },
+              {
+                q: 'How does Vela decide when to trade?',
+                a: "Vela analyzes multiple indicators including price trends, momentum, volume, and market conditions to identify high-probability entry and exit points. Every signal comes with a clear explanation of the reasoning, not just a buy or sell alert.",
+              },
+              {
+                q: 'Is my money safe?',
+                a: 'Your funds stay in your own wallet at all times. Vela never has custody of your money. We use secure, isolated wallets for trade execution, and every position has built-in stop-losses as a safety net.',
+              },
+              {
+                q: 'Can I lose money?',
+                a: 'Yes. All trading involves risk and you can lose money. Vela uses stop-losses to limit downside, but no system can eliminate risk entirely. Only invest what you can afford to lose.',
+              },
+            ].map((faq, i) => (
+              <details
+                key={i}
+                style={{
+                  borderBottom: '1px solid var(--gray-100)',
+                }}
+              >
+                <summary
+                  className="vela-body-sm"
+                  style={{
+                    fontWeight: 500,
+                    padding: 'var(--space-2) 0',
+                    cursor: 'pointer',
+                    listStyle: 'none',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  {faq.q}
+                  <span className="vela-text-muted" style={{ fontSize: 14, flexShrink: 0, marginLeft: 'var(--space-2)' }}>+</span>
+                </summary>
+                <p
+                  className="vela-body-sm vela-text-muted"
+                  style={{
+                    margin: 0,
+                    paddingBottom: 'var(--space-2)',
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {faq.a}
+                </p>
+              </details>
+            ))}
+          </div>
         </div>
 
         {/* Email support */}
@@ -966,6 +1026,8 @@ function NotificationsPanel({
 interface TradingPanelProps {
   preferences: import('../types').UserPreferences | null;
   isTradingEnabled: boolean;
+  hasWallet: boolean;
+  enableTrading: (mode: TradingMode) => Promise<void>;
   updatePreferences: (updates: Partial<import('../types').UserPreferences>) => Promise<void>;
   loading: boolean;
   circuitBreakers: import('../types').CircuitBreakerEvent[];
@@ -979,6 +1041,8 @@ interface TradingPanelProps {
 function TradingPanel({
   preferences,
   isTradingEnabled,
+  hasWallet,
+  enableTrading,
   updatePreferences,
   loading,
   circuitBreakers,
@@ -990,10 +1054,9 @@ function TradingPanel({
 }: TradingPanelProps) {
   const tierConfig = getTierConfig(currentTier);
   const maxLeverageForTier = tierConfig.max_leverage || 1; // 0 for free → treat as 1
-  const atCapacity =
-    tierConfig.max_active_positions > 0 && openPositionCount >= tierConfig.max_active_positions;
 
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [positionSize, setPositionSize] = useState(
     preferences?.default_position_size_usd?.toString() ?? '100'
   );
@@ -1020,7 +1083,12 @@ function TradingPanel({
     setSaving(true);
     setError(null);
     try {
-      await updatePreferences({ mode } as Record<string, unknown>);
+      // If switching away from view_only and no wallet exists, provision one
+      if (mode !== 'view_only' && !hasWallet) {
+        await enableTrading(mode);
+      } else {
+        await updatePreferences({ mode } as Record<string, unknown>);
+      }
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {
@@ -1201,279 +1269,292 @@ function TradingPanel({
         })}
       </div>
 
-      {/* Trading settings — only show if trading enabled */}
+      {/* Position count + advanced settings — only show if trading enabled */}
       {isTradingEnabled && (
         <>
-          <p
-            className="vela-label-sm"
-            style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
-          >
-            POSITION SETTINGS
-          </p>
-
-          {/* Active position count indicator */}
-          {tierConfig.max_active_positions > 0 &&
-            (() => {
-              const isFree = currentTier === 'free';
-              const trialUsedNoPosition = isFree && trialTradeUsed && openPositionCount === 0;
-              const showWarning = atCapacity || trialUsedNoPosition;
-
-              return (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: 'var(--space-2) var(--space-3)',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: showWarning ? 'var(--yellow-50, #FFFBEB)' : 'var(--gray-50)',
-                    border: showWarning
-                      ? '1px solid var(--yellow-200, #FDE68A)'
-                      : '1px solid var(--gray-200)',
-                    marginBottom: 'var(--space-3)',
-                  }}
-                >
-                  <div>
-                    <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
-                      {isFree
-                        ? trialTradeUsed
-                          ? 'Trial trade used'
-                          : openPositionCount > 0
-                            ? '1 free trial trade active'
-                            : '1 free trial trade available'
-                        : `${openPositionCount}/${tierConfig.max_active_positions} positions active`}
-                    </p>
-                    {isFree ? (
-                      <p
-                        className="vela-body-sm vela-text-muted"
-                        style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
-                      >
-                        {trialTradeUsed && openPositionCount === 0
-                          ? 'Upgrade to keep trading'
-                          : openPositionCount > 0
-                            ? 'Upgrade for unlimited trades'
-                            : 'Experience Vela with your first trade'}
-                      </p>
-                    ) : (
-                      atCapacity && (
-                        <p
-                          className="vela-body-sm vela-text-muted"
-                          style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
-                        >
-                          New trades are paused until a position closes
-                        </p>
-                      )
-                    )}
-                  </div>
-                  {showWarning && currentTier !== 'premium' && (
-                    <button
-                      type="button"
-                      onClick={onUpgradeClick}
-                      className="vela-btn vela-btn-sm"
-                      style={{
-                        background: 'var(--vela-signal-green)',
-                        color: 'var(--black)',
-                        fontWeight: 700,
-                        fontSize: '0.7rem',
-                        padding: '4px 10px',
-                        border: '2px solid var(--black)',
-                        borderRadius: 'var(--radius-sm)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      Upgrade
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-3)',
-              marginBottom: 'var(--space-4)',
-            }}
-          >
-            {/* Position size */}
-            <div>
-              <label
-                htmlFor="position-size"
-                className="vela-body-sm"
-                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
-              >
-                Default position size (USD)
-              </label>
-              <input
-                id="position-size"
-                type="number"
-                value={positionSize}
-                onChange={e => setPositionSize(e.target.value)}
-                min={10}
-                max={10000}
-                style={{
-                  width: '100%',
-                  padding: 'var(--space-2) var(--space-3)',
-                  border: '2px solid var(--gray-300)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  fontSize: 14,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <p
-                className="vela-body-sm vela-text-muted"
-                style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
-              >
-                Max USDC per trade. Vela will auto-size based on your balance if this exceeds
-                available capital.
-              </p>
-            </div>
-
-            {/* Max leverage */}
-            <div>
-              <label
-                className="vela-body-sm"
-                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
-              >
-                Max leverage: {leverage}x
-              </label>
-              <input
-                type="range"
-                value={leverage}
-                onChange={e => {
-                  const val = e.target.value;
-                  setLeverage(val);
-                  // Reset acknowledgment when user changes leverage
-                  if (Number(val) <= 1) setLeverageAcknowledged(false);
-                }}
-                min={1}
-                max={maxLeverageForTier}
-                step={1}
-                style={{ width: '100%' }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span className="vela-body-sm vela-text-muted">1x (no leverage)</span>
-                <span className="vela-body-sm vela-text-muted">{maxLeverageForTier}x</span>
-              </div>
-
-              {/* Leverage risk warning — only shown when leverage > 1x */}
-              {leverageValue > 1 && (
-                <div
-                  style={{
-                    marginTop: 'var(--space-2)',
-                    padding: 'var(--space-2) var(--space-3)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--yellow-50, #FFFBEB)',
-                    border: '1px solid var(--yellow-200, #FDE68A)',
-                  }}
-                >
-                  <p
-                    className="vela-body-sm"
-                    style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
-                  >
-                    ⚠️ At {leverage}x leverage, both gains <strong>and losses</strong> are
-                    multiplied by {leverage}. A {Math.round(100 / leverageValue)}% move against your
-                    position could liquidate your collateral.
-                  </p>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 'var(--space-2)',
-                      marginTop: 'var(--space-2)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={leverageAcknowledged}
-                      onChange={e => setLeverageAcknowledged(e.target.checked)}
-                      style={{ marginTop: 2, flexShrink: 0 }}
-                    />
-                    <span className="vela-body-sm" style={{ color: 'var(--color-text-primary)' }}>
-                      I understand that leverage amplifies both potential profits and potential
-                      losses, and I accept the risk of liquidation.
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              {maxLeverageForTier < 5 && (
-                <p
-                  className="vela-body-sm vela-text-muted"
-                  style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
-                >
+          {/* Position count indicator — always visible */}
+          {tierConfig.max_active_positions > 0 && (
+            <div
+              style={{
+                padding: 'var(--space-2) var(--space-3)',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: 'var(--gray-50)',
+                border: '1px solid var(--gray-200)',
+                marginBottom: 'var(--space-3)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
+                  {currentTier === 'free'
+                    ? trialTradeUsed
+                      ? 'Trial trade used'
+                      : openPositionCount > 0
+                        ? '1 free trial trade active'
+                        : '1 free trial trade available'
+                    : `${openPositionCount}/${tierConfig.max_active_positions} positions`}
+                </p>
+                {currentTier !== 'premium' && (
                   <button
                     type="button"
                     onClick={onUpgradeClick}
+                    className="vela-btn vela-btn-sm"
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      color: 'var(--vela-signal-green)',
-                      fontWeight: 600,
+                      background: 'var(--vela-signal-green)',
+                      color: 'var(--black)',
+                      fontWeight: 700,
+                      fontSize: '0.7rem',
+                      padding: '4px 10px',
+                      border: '2px solid var(--black)',
+                      borderRadius: 'var(--radius-sm)',
                       cursor: 'pointer',
-                      fontSize: 'inherit',
-                      fontFamily: 'inherit',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
                     }}
                   >
-                    Upgrade to Premium
-                  </button>{' '}
-                  for up to 5x leverage
-                </p>
-              )}
-            </div>
-
-            {/* Stop-loss */}
-            <div>
-              <label
-                htmlFor="stop-loss"
-                className="vela-body-sm"
-                style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+                    Upgrade
+                  </button>
+                )}
+              </div>
+              <p
+                className="vela-body-sm vela-text-muted"
+                style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
               >
-                Stop-loss percentage
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                {currentTier === 'free'
+                  ? trialTradeUsed && openPositionCount === 0
+                    ? 'Your 1 free trade has been used. Upgrade to continue trading.'
+                    : openPositionCount > 0
+                      ? 'Upgrade to open multiple positions.'
+                      : 'You have 1 free trial trade. Upgrade to open multiple positions.'
+                  : currentTier === 'standard'
+                    ? `You can have up to ${tierConfig.max_active_positions} trades open at the same time. Upgrade to increase your limits.`
+                    : ''}
+              </p>
+            </div>
+          )}
+
+          {/* Advanced settings toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 'var(--space-2) 0',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              marginBottom: showAdvanced ? 'var(--space-3)' : 0,
+            }}
+          >
+            <span className="vela-body-sm" style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>
+              Advanced settings
+            </span>
+            <ExpandIcon expanded={showAdvanced} />
+          </button>
+
+          {showAdvanced && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-3)',
+              }}
+            >
+              {/* Position size */}
+              <div>
+                <label
+                  htmlFor="position-size"
+                  className="vela-body-sm"
+                  style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+                >
+                  Position size (USD)
+                </label>
                 <input
-                  id="stop-loss"
+                  id="position-size"
                   type="number"
-                  value={stopLoss}
-                  onChange={e => setStopLoss(e.target.value)}
-                  min={1}
-                  max={50}
+                  value={positionSize}
+                  onChange={e => setPositionSize(e.target.value)}
+                  min={10}
+                  max={10000}
                   style={{
-                    width: 80,
+                    width: '100%',
                     padding: 'var(--space-2) var(--space-3)',
                     border: '2px solid var(--gray-300)',
                     borderRadius: 'var(--radius-sm)',
                     fontFamily: 'JetBrains Mono, monospace',
                     fontSize: 14,
-                    textAlign: 'center',
+                    boxSizing: 'border-box',
                   }}
                 />
-                <span className="vela-body-sm">%</span>
+                <p
+                  className="vela-body-sm vela-text-muted"
+                  style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+                >
+                  Maximum USDC per trade. If this exceeds your balance, Vela will use what&apos;s available.
+                </p>
               </div>
-              <p
-                className="vela-body-sm vela-text-muted"
-                style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
-              >
-                Automatically close position if it drops below this threshold
-              </p>
-            </div>
-          </div>
 
-          <button
-            className="vela-btn vela-btn-primary vela-btn-sm"
-            onClick={handleSaveSettings}
-            disabled={saving}
-            style={{ width: '100%' }}
-          >
-            {saving ? 'Saving...' : 'Save settings'}
-          </button>
+              {/* Max leverage */}
+              <div>
+                <label
+                  className="vela-body-sm"
+                  style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+                >
+                  Max leverage: {leverage}x
+                </label>
+                <p
+                  className="vela-body-sm vela-text-muted"
+                  style={{ margin: 0, marginBottom: 'var(--space-2)', lineHeight: 1.4 }}
+                >
+                  Leverage multiplies your buying power — at 2x, $100 lets you open a $200 position, but
+                  losses are also multiplied. Leave at 1x if unsure.
+                </p>
+                <input
+                  type="range"
+                  value={leverage}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setLeverage(val);
+                    if (Number(val) <= 1) setLeverageAcknowledged(false);
+                  }}
+                  min={1}
+                  max={maxLeverageForTier}
+                  step={1}
+                  style={{ width: '100%' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span className="vela-body-sm vela-text-muted">1x (no leverage)</span>
+                  <span className="vela-body-sm vela-text-muted">{maxLeverageForTier}x</span>
+                </div>
+
+                {leverageValue > 1 && (
+                  <div
+                    style={{
+                      marginTop: 'var(--space-2)',
+                      padding: 'var(--space-2) var(--space-3)',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--yellow-50, #FFFBEB)',
+                      border: '1px solid var(--yellow-200, #FDE68A)',
+                    }}
+                  >
+                    <p
+                      className="vela-body-sm"
+                      style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
+                    >
+                      At {leverage}x, both gains and losses are multiplied by {leverage}. A{' '}
+                      {Math.round(100 / leverageValue)}% move against your position could liquidate your
+                      collateral.
+                    </p>
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 'var(--space-2)',
+                        marginTop: 'var(--space-2)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={leverageAcknowledged}
+                        onChange={e => setLeverageAcknowledged(e.target.checked)}
+                        style={{ marginTop: 2, flexShrink: 0 }}
+                      />
+                      <span className="vela-body-sm" style={{ color: 'var(--color-text-primary)' }}>
+                        I understand that leverage amplifies both profits and losses, and I accept the
+                        risk of liquidation.
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {maxLeverageForTier < 5 && (
+                  <p
+                    className="vela-body-sm vela-text-muted"
+                    style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={onUpgradeClick}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        color: 'var(--vela-signal-green)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        fontSize: 'inherit',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Upgrade to Premium
+                    </button>{' '}
+                    for up to 5x leverage
+                  </p>
+                )}
+              </div>
+
+              {/* Stop-loss */}
+              <div>
+                <label
+                  htmlFor="stop-loss"
+                  className="vela-body-sm"
+                  style={{ fontWeight: 500, display: 'block', marginBottom: 'var(--space-1)' }}
+                >
+                  Stop-loss percentage
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <input
+                    id="stop-loss"
+                    type="number"
+                    value={stopLoss}
+                    onChange={e => setStopLoss(e.target.value)}
+                    min={1}
+                    max={50}
+                    style={{
+                      width: 80,
+                      padding: 'var(--space-2) var(--space-3)',
+                      border: '2px solid var(--gray-300)',
+                      borderRadius: 'var(--radius-sm)',
+                      fontFamily: 'JetBrains Mono, monospace',
+                      fontSize: 14,
+                      textAlign: 'center',
+                    }}
+                  />
+                  <span className="vela-body-sm">%</span>
+                </div>
+                <div
+                  style={{
+                    marginTop: 'var(--space-2)',
+                    padding: 'var(--space-2) var(--space-3)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: 'var(--gray-50)',
+                    border: '1px solid var(--gray-200)',
+                  }}
+                >
+                  <p
+                    className="vela-body-sm vela-text-muted"
+                    style={{ margin: 0, lineHeight: 1.4 }}
+                  >
+                    Vela&apos;s default stop-loss is tuned for our signal model. Adjusting this may reduce
+                    effectiveness. Change with caution.
+                  </p>
+                </div>
+              </div>
+
+              {/* Save advanced settings */}
+              <button
+                className="vela-btn vela-btn-secondary vela-btn-sm"
+                onClick={handleSaveSettings}
+                disabled={saving}
+                style={{ width: '100%' }}
+              >
+                {saving ? 'Saving...' : 'Save advanced settings'}
+              </button>
+            </div>
+          )}
         </>
       )}
 
@@ -1841,13 +1922,14 @@ function DeleteAccountFlow() {
 }
 
 export default function Account() {
-  const { isAuthenticated, user, logout, login } = useAuthContext();
+  const { isAuthenticated, user, logout, login, supabaseClient } = useAuthContext();
   const {
     preferences,
     positions,
     wallet,
     isTradingEnabled,
     hasWallet,
+    enableTrading,
     updatePreferences,
     loading: tradingLoading,
     circuitBreakers,
@@ -1869,6 +1951,47 @@ export default function Account() {
   const [checkoutToast, setCheckoutToast] = useState<string | null>(null);
   const [portalError, setPortalError] = useState<string | null>(null);
 
+  // Display name state
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  // Load display name from profile
+  useEffect(() => {
+    if (!supabaseClient || !isAuthenticated) return;
+    supabaseClient
+      .from('profiles')
+      .select('display_name')
+      .single()
+      .then(({ data }) => {
+        if (data?.display_name) setDisplayName(data.display_name);
+      });
+  }, [supabaseClient, isAuthenticated]);
+
+  const handleSaveName = async () => {
+    if (!supabaseClient || !nameInput.trim()) return;
+    setSavingName(true);
+    try {
+      await supabaseClient
+        .from('profiles')
+        .update({ display_name: nameInput.trim() })
+        .eq('privy_did', user?.privyDid);
+      setDisplayName(nameInput.trim());
+      setEditingName(false);
+    } catch {
+      // Non-blocking
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  // Checkout pending gate — shows loading instead of stale free-tier data
+  const [checkoutPending, setCheckoutPending] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('checkout') === 'success';
+  });
+
   // Handle redirect back from checkout / portal
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1879,7 +2002,10 @@ export default function Account() {
       setCheckoutToast(`Welcome to ${label}! Your upgrade is now active.`);
       // Poll until webhook has updated the subscription
       const timer = setInterval(() => refreshSubscription(), 2000);
-      setTimeout(() => clearInterval(timer), 10000);
+      setTimeout(() => {
+        clearInterval(timer);
+        setCheckoutPending(false);
+      }, 10000);
       // Clean up URL params
       const clean = new URL(window.location.href);
       clean.searchParams.delete('checkout');
@@ -1892,6 +2018,13 @@ export default function Account() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Clear checkout pending gate once subscription updates to a paid tier
+  useEffect(() => {
+    if (checkoutPending && currentTier !== 'free') {
+      setCheckoutPending(false);
+    }
+  }, [checkoutPending, currentTier]);
 
   async function handleManageSubscription() {
     setPortalError(null);
@@ -1946,6 +2079,41 @@ export default function Account() {
     );
   }
 
+  // Checkout pending — show loading gate instead of stale data
+  if (checkoutPending) {
+    return (
+      <div
+        style={{
+          padding: 'var(--space-4)',
+          paddingTop: 80,
+          paddingBottom: 80,
+          maxWidth: 600,
+          margin: '0 auto',
+          textAlign: 'center',
+        }}
+      >
+        <div className="vela-card" style={{ padding: 'var(--space-8)' }}>
+          <div style={{ margin: '0 auto var(--space-4)', width: 32 }}>
+            <VelaLogo size={32} />
+          </div>
+          <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
+            Activating your subscription...
+          </h2>
+          <p className="vela-body-base vela-text-secondary">
+            This usually takes just a moment.
+          </p>
+        </div>
+        {checkoutToast && (
+          <VelaToast
+            message={checkoutToast}
+            variant={checkoutToast.startsWith('Error:') ? 'error' : 'success'}
+            onDismiss={() => setCheckoutToast(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -1982,13 +2150,103 @@ export default function Account() {
             flexShrink: 0,
           }}
         >
-          {(user?.email?.[0] ?? 'U').toUpperCase()}
+          {(displayName?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()}
         </div>
-        <div>
-          <p className="vela-body-base" style={{ fontWeight: 600 }}>
-            {user?.email ?? 'Connected user'}
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <div style={{ flex: 1 }}>
+          {/* Display name or "Set name" prompt */}
+          {editingName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <input
+                ref={el => el?.focus()}
+                type="text"
+                value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                placeholder="Your name"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSaveName();
+                  if (e.key === 'Escape') setEditingName(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '4px 8px',
+                  border: '2px solid var(--gray-300)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={savingName || !nameInput.trim()}
+                className="vela-btn vela-btn-sm vela-btn-primary"
+                style={{ padding: '4px 10px', fontSize: 12 }}
+              >
+                {savingName ? '...' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditingName(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  fontSize: 14,
+                  padding: 0,
+                }}
+              >
+                &#x2715;
+              </button>
+            </div>
+          ) : (
+            <p className="vela-body-base" style={{ fontWeight: 600, margin: 0 }}>
+              {displayName ?? (
+                <button
+                  onClick={() => {
+                    setNameInput(displayName ?? '');
+                    setEditingName(true);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSize: 14,
+                    fontWeight: 500,
+                    padding: 0,
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'dotted',
+                  }}
+                >
+                  Set name
+                </button>
+              )}
+              {displayName && (
+                <button
+                  onClick={() => {
+                    setNameInput(displayName);
+                    setEditingName(true);
+                  }}
+                  aria-label="Edit name"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    fontSize: 12,
+                    padding: 0,
+                    marginLeft: 'var(--space-2)',
+                    verticalAlign: 'middle',
+                  }}
+                >
+                  &#9998;
+                </button>
+              )}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 2 }}>
             <span
               className="vela-label-sm"
               style={{
@@ -1996,16 +2254,17 @@ export default function Account() {
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
-                color: 'var(--color-text-muted)',
-                backgroundColor: 'var(--gray-100)',
-                border: '1px solid var(--gray-200)',
+                color: currentTier === 'premium' ? 'var(--green-dark)' : 'var(--color-text-muted)',
+                backgroundColor:
+                  currentTier === 'premium' ? 'var(--color-status-buy-bg)' : 'var(--gray-100)',
+                border: `1px solid ${currentTier === 'premium' ? 'var(--green-primary)' : 'var(--gray-200)'}`,
                 borderRadius: '3px',
                 padding: '1px 6px',
               }}
             >
               {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
             </span>
-            {currentTier === 'free' ? (
+            {currentTier !== 'premium' && (
               <button
                 onClick={() => setShowTierSheet(true)}
                 style={{
@@ -2019,68 +2278,10 @@ export default function Account() {
                   padding: 0,
                 }}
               >
-                Upgrade
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowTierSheet(true)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-muted)',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: 0,
-                }}
-              >
-                Change plan
+                {currentTier === 'free' ? 'Upgrade' : 'Change plan'}
               </button>
             )}
           </div>
-
-          {/* Cancellation notice */}
-          {cancelAtPeriodEnd && subscription?.current_period_end && (
-            <p
-              className="vela-body-sm"
-              style={{ margin: '4px 0 0', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}
-            >
-              Reverts to Free on{' '}
-              {new Date(subscription.current_period_end).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
-          )}
-
-          {/* Manage subscription (portal) */}
-          {subscription?.provider_customer_id && (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <button
-                onClick={handleManageSubscription}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--color-text-muted)',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  padding: 0,
-                  textDecoration: 'underline',
-                }}
-              >
-                Manage subscription
-              </button>
-              {portalError && (
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--red-primary)' }}>
-                  {portalError}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -2098,58 +2299,14 @@ export default function Account() {
       {/* Recent funding activity */}
       {hasWallet && <FundingHistory />}
 
-      {/* Checkout toast — success (green) or error (red) */}
-      {checkoutToast &&
-        (() => {
-          const isError = checkoutToast.startsWith('Error:');
-          return (
-            <div
-              style={{
-                position: 'fixed',
-                bottom: 'var(--space-6)',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                backgroundColor: isError
-                  ? 'var(--color-status-sell-bg)'
-                  : 'var(--color-status-buy-bg)',
-                border: `1.5px solid ${isError ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-                borderRadius: 'var(--radius-sm)',
-                padding: 'var(--space-3) var(--space-5)',
-                boxShadow: '3px 3px 0 var(--black)',
-                zIndex: 2000,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-3)',
-                maxWidth: 400,
-              }}
-            >
-              <span
-                className="vela-body-sm"
-                style={{
-                  fontWeight: 600,
-                  color: isError ? 'var(--red-dark)' : 'var(--green-dark)',
-                }}
-              >
-                {checkoutToast}
-              </span>
-              <button
-                onClick={() => setCheckoutToast(null)}
-                aria-label="Dismiss"
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: isError ? 'var(--red-dark)' : 'var(--green-dark)',
-                  fontSize: 16,
-                  padding: 0,
-                  lineHeight: 1,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          );
-        })()}
+      {/* Checkout toast */}
+      {checkoutToast && (
+        <VelaToast
+          message={checkoutToast}
+          variant={checkoutToast.startsWith('Error:') ? 'error' : 'success'}
+          onDismiss={() => setCheckoutToast(null)}
+        />
+      )}
 
       {/* Settings list */}
       <div
@@ -2180,6 +2337,80 @@ export default function Account() {
 
             {/* Delete account — multi-step flow */}
             <DeleteAccountFlow />
+          </div>
+        )}
+
+        <SettingsItem
+          label="Subscription"
+          value={currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
+          onClick={() => toggleSection('subscription')}
+          expanded={expandedSection === 'subscription'}
+        />
+        {expandedSection === 'subscription' && (
+          <div style={{ padding: 'var(--space-4)', borderBottom: '1px solid var(--gray-200)' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 'var(--space-3)',
+              }}
+            >
+              <span className="vela-body-sm vela-text-muted">Current plan</span>
+              <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+                {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
+                {subscription?.billing_cycle === 'annual' ? ' (Annual)' : subscription?.billing_cycle === 'monthly' ? ' (Monthly)' : ''}
+              </span>
+            </div>
+
+            {cancelAtPeriodEnd && subscription?.current_period_end && (
+              <div
+                style={{
+                  padding: 'var(--space-2) var(--space-3)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--yellow-50, #FFFBEB)',
+                  border: '1px solid var(--yellow-200, #FDE68A)',
+                  marginBottom: 'var(--space-3)',
+                }}
+              >
+                <p className="vela-body-sm" style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+                  Your plan reverts to Free on{' '}
+                  {new Date(subscription.current_period_end).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {currentTier !== 'premium' && (
+                <button
+                  className="vela-btn vela-btn-primary vela-btn-sm"
+                  onClick={() => setShowTierSheet(true)}
+                  style={{ width: '100%' }}
+                >
+                  {currentTier === 'free' ? 'Upgrade your plan' : 'Change plan'}
+                </button>
+              )}
+              {subscription?.provider_customer_id && (
+                <>
+                  <button
+                    className="vela-btn vela-btn-secondary vela-btn-sm"
+                    onClick={handleManageSubscription}
+                    style={{ width: '100%' }}
+                  >
+                    Manage billing
+                  </button>
+                  {portalError && (
+                    <p style={{ margin: 0, fontSize: 11, color: 'var(--red-primary)' }}>
+                      {portalError}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -2218,6 +2449,8 @@ export default function Account() {
             <TradingPanel
               preferences={preferences}
               isTradingEnabled={isTradingEnabled}
+              hasWallet={hasWallet}
+              enableTrading={enableTrading}
               updatePreferences={updatePreferences}
               loading={tradingLoading}
               circuitBreakers={circuitBreakers}

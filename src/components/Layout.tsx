@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
@@ -84,7 +84,21 @@ export default function Layout() {
   const { proposals, wallet } = useTrading();
   const { needsFunding } = useTierAccess();
   const pendingCount = proposals.filter(p => p.status === 'pending').length;
-  const showAccountDot = needsFunding(wallet?.balance_usdc);
+
+  // Red dot on Account tab: show when funding is needed, clear once user visits /account
+  const fundingNeeded = needsFunding(wallet?.balance_usdc);
+  const accountDotSeenRef = useRef(false);
+  // Reset "seen" when funding state changes (e.g. balance drops to 0 again)
+  useEffect(() => {
+    if (!fundingNeeded) accountDotSeenRef.current = false;
+  }, [fundingNeeded]);
+  // Mark as seen when user is on the account page
+  useEffect(() => {
+    if (location.pathname === '/account' && fundingNeeded) {
+      accountDotSeenRef.current = true;
+    }
+  }, [location.pathname, fundingNeeded]);
+  const showAccountDot = fundingNeeded && !accountDotSeenRef.current;
 
   const getNavValue = useCallback(() => {
     const idx = navItems.findIndex(item => item.path === location.pathname);
