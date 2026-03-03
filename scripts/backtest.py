@@ -569,6 +569,85 @@ NAMED_CONFIGS = {
     "v8b_wide": V8B_ADX_WIDE,
     "v8b_directional_mod": V8B_ADX_DIRECTIONAL_MOD,
     "v8b_directional_agg": V8B_ADX_DIRECTIONAL_AGG,
+    # ── V9: Equities/Commodities tuning experiments ──
+    # All based on V6d (production), tuned for lower-volatility non-crypto assets.
+    # Hypothesis: crypto-calibrated thresholds are too wide for equities.
+    "eq_tight_trail": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-1: Tight Trailing Stop",
+        "trailing_stop_activation_pct": 3.0,   # 3% vs 5%
+        "trailing_stop_trail_pct": 1.5,        # 1.5% vs 2.5%
+    },
+    "eq_tight_atr": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-2: Tight ATR Stop-Loss",
+        "atr_stop_multiplier": 1.3,            # 1.3× vs 2.0×
+    },
+    "eq_tight_both": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-3: Tight Trail + ATR",
+        "trailing_stop_activation_pct": 3.0,
+        "trailing_stop_trail_pct": 1.5,
+        "atr_stop_multiplier": 1.3,
+    },
+    "eq_agg_trim": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-4: Aggressive Trims",
+        "rsi_yellow_threshold": 72,            # earlier trim trigger (vs 78)
+        "rsi_orange_threshold": 80,            # earlier strong trim (vs 85)
+        "trim_pct_yellow": 0.33,               # 33% vs 25%
+        "trim_pct_orange": 0.50,               # unchanged
+        "rsi_short_yellow_threshold": 28,      # earlier short trim (vs 22)
+        "rsi_short_orange_threshold": 20,      # earlier short strong (vs 15)
+        "profit_ladder_levels": [10, 20, 30],  # earlier ladder start (vs 15/25/35)
+        "profit_ladder_fractions": [0.10, 0.10, 0.10],
+    },
+    "eq_atr_trail": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-5: ATR-Scaled Trailing",
+        "trailing_stop_atr_mode": True,        # use ATR instead of fixed %
+        "trailing_stop_atr_activation": 1.5,   # activate after 1.5× ATR profit
+        "trailing_stop_atr_trail": 0.75,       # trail at 0.75× ATR
+    },
+    # ── V9: Adopted equities/commodities config ──
+    # Winner from EQ-1 experiment: +88% P&L vs V6d baseline across 30 assets.
+    # Only change: tighter trailing stop (3%/1.5% vs crypto's 5%/2.5%).
+    # Lower-volatility non-crypto assets retrace faster, so tighter trailing
+    # locks in profits before they evaporate.
+    "v9_equities": {
+        **V6D_TRAILING_BOTH,
+        "name": "V9: Equities/Commodities",
+        "trailing_stop_activation_pct": 3.0,   # 3% vs crypto's 5%
+        "trailing_stop_trail_pct": 1.5,        # 1.5% vs crypto's 2.5%
+    },
+    # ── Combination experiments ──
+    "eq_tight_trail_trim": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-6: Tight Trail + Agg Trims",
+        # EQ-1: tight trailing stop
+        "trailing_stop_activation_pct": 3.0,
+        "trailing_stop_trail_pct": 1.5,
+        # EQ-4: aggressive trims
+        "rsi_yellow_threshold": 72,
+        "rsi_orange_threshold": 80,
+        "trim_pct_yellow": 0.33,
+        "trim_pct_orange": 0.50,
+        "rsi_short_yellow_threshold": 28,
+        "rsi_short_orange_threshold": 20,
+        "profit_ladder_levels": [10, 20, 30],
+        "profit_ladder_fractions": [0.10, 0.10, 0.10],
+    },
+    "eq_tight_trail_atr": {
+        **V6D_TRAILING_BOTH,
+        "name": "EQ-7: Tight Trail + ATR-Scaled",
+        # EQ-1: tight fixed fallback
+        "trailing_stop_activation_pct": 3.0,
+        "trailing_stop_trail_pct": 1.5,
+        # EQ-5: ATR-scaled trailing (overrides fixed when ATR available)
+        "trailing_stop_atr_mode": True,
+        "trailing_stop_atr_activation": 1.5,
+        "trailing_stop_atr_trail": 0.75,
+    },
 }
 
 
@@ -1389,6 +1468,10 @@ def simulate_trades(
     trailing_stop_long = config.get("trailing_stop_long", False)
     trailing_stop_activation = config.get("trailing_stop_activation_pct", 5.0)
     trailing_stop_trail = config.get("trailing_stop_trail_pct", 2.5)
+    # V9: ATR-scaled trailing stop — adapts to each asset's volatility
+    trailing_stop_atr_mode = config.get("trailing_stop_atr_mode", False)
+    trailing_stop_atr_activation = config.get("trailing_stop_atr_activation", 1.5)
+    trailing_stop_atr_trail = config.get("trailing_stop_atr_trail", 0.75)
     short_peak_profit: float = 0.0  # Best profit % seen during current short
     long_peak_profit: float = 0.0   # Best profit % seen during current long
 
@@ -1454,9 +1537,17 @@ def simulate_trades(
             # Update peak profit tracker
             if current_profit > short_peak_profit:
                 short_peak_profit = current_profit
+            # Determine activation/trail thresholds (ATR-scaled or fixed)
+            _ts_activation = trailing_stop_activation
+            _ts_trail = trailing_stop_trail
+            if trailing_stop_atr_mode:
+                _bar_atr = row.get("atr_pct", float("nan"))
+                if not pd.isna(_bar_atr):
+                    _ts_activation = _bar_atr * trailing_stop_atr_activation
+                    _ts_trail = _bar_atr * trailing_stop_atr_trail
             # Close if activated and retraced beyond trail distance
-            if (short_peak_profit >= trailing_stop_activation
-                    and (short_peak_profit - current_profit) >= trailing_stop_trail):
+            if (short_peak_profit >= _ts_activation
+                    and (short_peak_profit - current_profit) >= _ts_trail):
                 color, reason = "green", "trailing_stop"
 
         # ── V6d: Trailing stop for longs ──
@@ -1467,8 +1558,16 @@ def simulate_trades(
             current_profit = ((price - entry_price) / entry_price) * 100
             if current_profit > long_peak_profit:
                 long_peak_profit = current_profit
-            if (long_peak_profit >= trailing_stop_activation
-                    and (long_peak_profit - current_profit) >= trailing_stop_trail):
+            # Determine activation/trail thresholds (ATR-scaled or fixed)
+            _ts_activation = trailing_stop_activation
+            _ts_trail = trailing_stop_trail
+            if trailing_stop_atr_mode:
+                _bar_atr = row.get("atr_pct", float("nan"))
+                if not pd.isna(_bar_atr):
+                    _ts_activation = _bar_atr * trailing_stop_atr_activation
+                    _ts_trail = _bar_atr * trailing_stop_atr_trail
+            if (long_peak_profit >= _ts_activation
+                    and (long_peak_profit - current_profit) >= _ts_trail):
                 color, reason = "red", "trailing_stop"
 
         # ── V5 Strategy 1: Profit-Taking Ladder ──
