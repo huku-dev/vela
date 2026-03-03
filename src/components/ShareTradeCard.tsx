@@ -55,8 +55,14 @@ function generateTradeImage(trade: ShareTradeData): string {
   ctx.textAlign = 'left';
   ctx.fillText(trade.symbol, 32, 56);
 
-  const dirLabel = trade.direction === 'long' ? 'LONG' : trade.direction === 'short' ? 'SHORT' : trade.direction.toUpperCase();
-  const dirColor = trade.direction === 'long' ? '#00D084' : trade.direction === 'short' ? '#FF4757' : textMuted;
+  const dirLabel =
+    trade.direction === 'long'
+      ? 'LONG'
+      : trade.direction === 'short'
+        ? 'SHORT'
+        : trade.direction.toUpperCase();
+  const dirColor =
+    trade.direction === 'long' ? '#00D084' : trade.direction === 'short' ? '#FF4757' : textMuted;
 
   ctx.fillStyle = dirColor;
   ctx.font = '700 16px "Inter", sans-serif';
@@ -208,7 +214,16 @@ export default function ShareTradeCard({ trade }: ShareTradeCardProps) {
         }}
         aria-label={`Share ${trade.symbol} trade result`}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="18" cy="5" r="3" />
           <circle cx="6" cy="12" r="3" />
           <circle cx="18" cy="19" r="3" />
@@ -264,10 +279,7 @@ export default function ShareTradeCard({ trade }: ShareTradeCardProps) {
               }}
             />
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-              <button
-                className="vela-btn vela-btn-primary vela-btn-sm"
-                onClick={handleDownload}
-              >
+              <button className="vela-btn vela-btn-primary vela-btn-sm" onClick={handleDownload}>
                 Download image
               </button>
               <button

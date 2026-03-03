@@ -43,9 +43,7 @@ export default function VelaToast({
         left: '50%',
         transform: `translateX(-50%) translateY(${visible ? '0' : '-8px'})`,
         opacity: visible ? 1 : 0,
-        backgroundColor: isError
-          ? 'var(--color-status-sell-bg)'
-          : 'var(--color-status-buy-bg)',
+        backgroundColor: isError ? 'var(--color-status-sell-bg)' : 'var(--color-status-buy-bg)',
         border: `1.5px solid ${isError ? 'var(--red-primary)' : 'var(--green-primary)'}`,
         borderRadius: 'var(--radius-sm)',
         padding: 'var(--space-3) var(--space-5)',

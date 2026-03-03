@@ -631,7 +631,7 @@ function SupportPanel() {
               },
               {
                 q: 'Is Vela a trading bot?',
-                a: "Not in the traditional sense. Trading bots blindly execute rules. Vela uses AI to analyze market conditions and generate signals with clear reasoning. On free and standard plans, you approve every trade before it executes. On premium, you can enable full automation, but you can always override.",
+                a: 'Not in the traditional sense. Trading bots blindly execute rules. Vela uses AI to analyze market conditions and generate signals with clear reasoning. On free and standard plans, you approve every trade before it executes. On premium, you can enable full automation, but you can always override.',
               },
               {
                 q: "What's the difference between semi-auto and full auto?",
@@ -639,7 +639,7 @@ function SupportPanel() {
               },
               {
                 q: 'How does Vela decide when to trade?',
-                a: "Vela analyzes multiple indicators including price trends, momentum, volume, and market conditions to identify high-probability entry and exit points. Every signal comes with a clear explanation of the reasoning, not just a buy or sell alert.",
+                a: 'Vela analyzes multiple indicators including price trends, momentum, volume, and market conditions to identify high-probability entry and exit points. Every signal comes with a clear explanation of the reasoning, not just a buy or sell alert.',
               },
               {
                 q: 'Is my money safe?',
@@ -669,7 +669,12 @@ function SupportPanel() {
                   }}
                 >
                   {faq.q}
-                  <span className="vela-text-muted" style={{ fontSize: 14, flexShrink: 0, marginLeft: 'var(--space-2)' }}>+</span>
+                  <span
+                    className="vela-text-muted"
+                    style={{ fontSize: 14, flexShrink: 0, marginLeft: 'var(--space-2)' }}
+                  >
+                    +
+                  </span>
                 </summary>
                 <p
                   className="vela-body-sm vela-text-muted"
@@ -1283,7 +1288,9 @@ function TradingPanel({
                 marginBottom: 'var(--space-3)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+              >
                 <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
                   {currentTier === 'free'
                     ? trialTradeUsed
@@ -1348,7 +1355,10 @@ function TradingPanel({
               marginBottom: showAdvanced ? 'var(--space-3)' : 0,
             }}
           >
-            <span className="vela-body-sm" style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>
+            <span
+              className="vela-body-sm"
+              style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}
+            >
               Advanced settings
             </span>
             <ExpandIcon expanded={showAdvanced} />
@@ -1392,7 +1402,8 @@ function TradingPanel({
                   className="vela-body-sm vela-text-muted"
                   style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
                 >
-                  Maximum USDC per trade. If this exceeds your balance, Vela will use what&apos;s available.
+                  Maximum USDC per trade. If this exceeds your balance, Vela will use what&apos;s
+                  available.
                 </p>
               </div>
 
@@ -1408,8 +1419,8 @@ function TradingPanel({
                   className="vela-body-sm vela-text-muted"
                   style={{ margin: 0, marginBottom: 'var(--space-2)', lineHeight: 1.4 }}
                 >
-                  Leverage multiplies your buying power — at 2x, $100 lets you open a $200 position, but
-                  losses are also multiplied. Leave at 1x if unsure.
+                  Leverage multiplies your buying power — at 2x, $100 lets you open a $200 position,
+                  but losses are also multiplied. Leave at 1x if unsure.
                 </p>
                 <input
                   type="range"
@@ -1444,8 +1455,8 @@ function TradingPanel({
                       style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
                     >
                       At {leverage}x, both gains and losses are multiplied by {leverage}. A{' '}
-                      {Math.round(100 / leverageValue)}% move against your position could liquidate your
-                      collateral.
+                      {Math.round(100 / leverageValue)}% move against your position could liquidate
+                      your collateral.
                     </p>
                     <label
                       style={{
@@ -1463,8 +1474,8 @@ function TradingPanel({
                         style={{ marginTop: 2, flexShrink: 0 }}
                       />
                       <span className="vela-body-sm" style={{ color: 'var(--color-text-primary)' }}>
-                        I understand that leverage amplifies both profits and losses, and I accept the
-                        risk of liquidation.
+                        I understand that leverage amplifies both profits and losses, and I accept
+                        the risk of liquidation.
                       </span>
                     </label>
                   </div>
@@ -1538,8 +1549,8 @@ function TradingPanel({
                     className="vela-body-sm vela-text-muted"
                     style={{ margin: 0, lineHeight: 1.4 }}
                   >
-                    Vela&apos;s default stop-loss is tuned for our signal model. Adjusting this may reduce
-                    effectiveness. Change with caution.
+                    Vela&apos;s default stop-loss is tuned for our signal model. Adjusting this may
+                    reduce effectiveness. Change with caution.
                   </p>
                 </div>
               </div>
@@ -2099,9 +2110,7 @@ export default function Account() {
           <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
             Activating your subscription...
           </h2>
-          <p className="vela-body-base vela-text-secondary">
-            This usually takes just a moment.
-          </p>
+          <p className="vela-body-base vela-text-secondary">This usually takes just a moment.</p>
         </div>
         {checkoutToast && (
           <VelaToast
@@ -2246,7 +2255,9 @@ export default function Account() {
             </p>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 2 }}>
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: 2 }}
+          >
             <span
               className="vela-label-sm"
               style={{
@@ -2359,7 +2370,11 @@ export default function Account() {
               <span className="vela-body-sm vela-text-muted">Current plan</span>
               <span className="vela-body-sm" style={{ fontWeight: 600 }}>
                 {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}
-                {subscription?.billing_cycle === 'annual' ? ' (Annual)' : subscription?.billing_cycle === 'monthly' ? ' (Monthly)' : ''}
+                {subscription?.billing_cycle === 'annual'
+                  ? ' (Annual)'
+                  : subscription?.billing_cycle === 'monthly'
+                    ? ' (Monthly)'
+                    : ''}
               </span>
             </div>
 
@@ -2373,7 +2388,10 @@ export default function Account() {
                   marginBottom: 'var(--space-3)',
                 }}
               >
-                <p className="vela-body-sm" style={{ margin: 0, color: 'var(--color-text-primary)' }}>
+                <p
+                  className="vela-body-sm"
+                  style={{ margin: 0, color: 'var(--color-text-primary)' }}
+                >
                   Your plan reverts to Free on{' '}
                   {new Date(subscription.current_period_end).toLocaleDateString(undefined, {
                     month: 'short',
