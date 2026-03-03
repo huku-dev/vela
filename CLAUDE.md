@@ -354,6 +354,53 @@ gh run view <run-id> --log-failed        # Inspect failures
 3. After fixing, push the fix and verify the new run passes
 4. Keep the `develop` branch in sync with `main` after fixes (`git checkout develop && git merge main && git push`)
 
+### Pre-Deploy QA Smoke Test (MANDATORY)
+Before merging `develop` → `main`, you **must** perform a visual smoke test on staging:
+
+**Process:**
+1. Push changes to `develop` → wait for CI green
+2. Open staging app (`staging.getvela.xyz` or `localhost:5173` via dev bypass)
+3. Walk through **every page** and verify:
+
+**Dashboard (Home)**
+- Daily digest renders with content
+- All asset cards load (BTC, ETH, HYPE, SOL)
+- Signal colors match status (green=BUY, red=SELL, gray=WAIT)
+- Price data is fresh
+
+**Asset Detail** (at least one asset)
+- Key Signal card with correct color
+- "What's Happening" has content
+- "Events Moving the Asset" shows real news
+- Indicators render
+- Signal history expandable
+
+**Track Record**
+- "Your Trades" loads (or empty state)
+- "Vela's Signal History" loads with stats
+- P&L displays correctly ("+$X profit" / "-$X loss")
+
+**Account**
+- User info displays
+- Tier badge correct
+- Notification label matches tier access
+- All sections expand/collapse
+- Legal links work
+
+**Cross-cutting**
+- No console errors in DevTools
+- Dark mode (if applicable)
+- Mobile responsive (375px) — no overflow
+- Loading states appear
+
+4. If backend changes: run `verify-environment.sh` on staging
+5. After merge to `main`: spot-check production (dashboard + changed pages)
+
+**Rules:**
+- If ANY page has a regression, fix before merging
+- Screenshot evidence of QA pass is encouraged in PR descriptions
+- Use the PR template (`.github/pull_request_template.md`) which includes the full checklist
+
 ### Post-Ship Documentation Updates (MANDATORY)
 After every completed feature, fix, or ship, **immediately update documentation** before moving on:
 
