@@ -30,6 +30,44 @@ function isShortTrade(d: TradeDirection | null | undefined): boolean {
   return d === 'short' || d === 'bb_short';
 }
 
+/** A parent trade with its associated trims grouped together */
+interface GroupedTrade {
+  trade: EnrichedTrade;
+  trims: EnrichedTrade[];
+}
+
+/**
+ * Group trim trades with their parent position.
+ * Trims share the same asset_id and their opened_at falls within the
+ * parent trade's time window (opened_at → closed_at or now if still open).
+ */
+function groupTradesWithTrims(trades: EnrichedTrade[]): GroupedTrade[] {
+  const parents = trades.filter(t => t.direction !== 'trim');
+  const trims = trades.filter(t => t.direction === 'trim');
+
+  const grouped: GroupedTrade[] = parents.map(parent => {
+    const parentOpen = new Date(parent.opened_at).getTime();
+    const parentClose = parent.closed_at ? new Date(parent.closed_at).getTime() : Date.now();
+
+    const matchingTrims = trims.filter(trim => {
+      if (trim.asset_id !== parent.asset_id) return false;
+      const trimTime = new Date(trim.opened_at).getTime();
+      return trimTime >= parentOpen && trimTime <= parentClose;
+    });
+
+    return { trade: parent, trims: matchingTrims };
+  });
+
+  // Collect any orphaned trims (no matching parent) and show them standalone
+  const assignedTrimIds = new Set(grouped.flatMap(g => g.trims.map(t => t.id)));
+  const orphanedTrims = trims.filter(t => !assignedTrimIds.has(t.id));
+  for (const trim of orphanedTrims) {
+    grouped.push({ trade: trim, trims: [] });
+  }
+
+  return grouped;
+}
+
 export default function TrackRecord() {
   const { trades, livePrices, assetMap, loading, loadingMore, hasMore, loadMore } =
     useTrackRecord();
@@ -79,6 +117,9 @@ export default function TrackRecord() {
   const paperDetailedStats = computeDetailedStats(paperClosed, DEFAULT_POSITION_SIZE);
 
   const hasUserTrades = userTrades.length > 0 || hasLivePositions;
+
+  // ── Group paper trades: attach trims to their parent trade ──
+  const groupedPaperTrades = groupTradesWithTrims(paperTrades);
 
   // Best paper trade for the "Vela's signal history" hero card
   const bestPaperTrade = paperTrades.reduce<EnrichedTrade | null>((best, t) => {
@@ -191,8 +232,9 @@ export default function TrackRecord() {
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
               >
-                {userStats.totalClosed} trade{userStats.totalClosed !== 1 ? 's' : ''} ·{' '}
-                {userDetailedStats.wins} profitable
+                {userClosed.length + userOpen.length} trade
+                {userClosed.length + userOpen.length !== 1 ? 's' : ''} · {userDetailedStats.wins}{' '}
+                profitable
                 {userStats.totalClosed > 0 &&
                   ` (${Math.round((userDetailedStats.wins / userStats.totalClosed) * 100)}%)`}
                 {(userOpen.length > 0 || hasLivePositions) &&
@@ -227,6 +269,42 @@ export default function TrackRecord() {
             </div>
           )}
 
+          {/* User's open trades */}
+          {userOpen.length > 0 && (
+            <div style={{ marginBottom: 'var(--space-3)' }}>
+              <p
+                className="vela-label-sm"
+                style={{
+                  color: 'var(--gray-400)',
+                  marginBottom: 'var(--space-2)',
+                  paddingLeft: 'var(--space-1)',
+                }}
+              >
+                Open trades
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                {userOpen.map(trade => (
+                  <OpenTradeCard
+                    key={trade.id}
+                    trade={trade}
+                    currentPrice={getLivePrice(trade.asset_coingecko_id)}
+                    coingeckoId={trade.asset_coingecko_id}
+                    formatDuration={formatDuration}
+                    entryHeadline={
+                      trade.entry_headline ??
+                      reasonCodeToPlainEnglish(trade.entry_reason_code) ??
+                      undefined
+                    }
+                    expanded={expandedTradeId === trade.id}
+                    onToggle={() =>
+                      setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* User's closed trades */}
           {userClosed.length > 0 && (
             <div>
@@ -254,32 +332,6 @@ export default function TrackRecord() {
                     exitHeadline={
                       trade.exit_headline ??
                       reasonCodeToPlainEnglish(trade.exit_reason_code) ??
-                      undefined
-                    }
-                    expanded={expandedTradeId === trade.id}
-                    onToggle={() =>
-                      setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* User's open paper trades (rare but possible — open backtests) */}
-          {userOpen.length > 0 && (
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {userOpen.map(trade => (
-                  <OpenTradeCard
-                    key={trade.id}
-                    trade={trade}
-                    currentPrice={getLivePrice(trade.asset_coingecko_id)}
-                    coingeckoId={trade.asset_coingecko_id}
-                    formatDuration={formatDuration}
-                    entryHeadline={
-                      trade.entry_headline ??
-                      reasonCodeToPlainEnglish(trade.entry_reason_code) ??
                       undefined
                     }
                     expanded={expandedTradeId === trade.id}
@@ -448,9 +500,9 @@ export default function TrackRecord() {
                 />
               )}
 
-              {/* Paper trade list */}
+              {/* Paper trade list (trims grouped with parent) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {paperTrades.map(trade =>
+                {groupedPaperTrades.map(({ trade, trims }) =>
                   trade.status === 'open' ? (
                     <OpenTradeCard
                       key={trade.id}
@@ -472,6 +524,7 @@ export default function TrackRecord() {
                     <ClosedTradeCard
                       key={trade.id}
                       trade={trade}
+                      trims={trims}
                       coingeckoId={trade.asset_coingecko_id}
                       entryHeadline={
                         trade.entry_headline ??
@@ -899,6 +952,7 @@ function OpenTradeCard({
 
 function ClosedTradeCard({
   trade,
+  trims,
   coingeckoId,
   entryHeadline,
   exitHeadline,
@@ -906,6 +960,7 @@ function ClosedTradeCard({
   onToggle,
 }: {
   trade: EnrichedTrade;
+  trims?: EnrichedTrade[];
   coingeckoId: string | undefined;
   entryHeadline?: string;
   exitHeadline?: string;
@@ -949,6 +1004,9 @@ function ClosedTradeCard({
                 {directionLabel(trade.direction)}
                 {trade.direction === 'trim' && trade.trim_pct != null && ` (${trade.trim_pct}%)`} ·
                 Closed
+                {trims &&
+                  trims.length > 0 &&
+                  ` · ${trims.length} trim${trims.length !== 1 ? 's' : ''}`}
               </p>
             </div>
           </div>
@@ -1137,6 +1195,59 @@ function ClosedTradeCard({
                   </span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Trim history (grouped from separate trim records) */}
+          {trims && trims.length > 0 && (
+            <div
+              style={{
+                marginTop: 'var(--space-2)',
+                padding: 'var(--space-2)',
+                backgroundColor: 'rgba(255, 215, 0, 0.08)',
+                borderRadius: 'var(--radius-sm)',
+                borderLeft: '3px solid #FFD700',
+              }}
+            >
+              <span
+                className="vela-label-sm"
+                style={{ color: '#B8860B', display: 'block', marginBottom: 'var(--space-1)' }}
+              >
+                Trimmed {trims.length}x during trade
+              </span>
+              {trims.map(trim => {
+                const trimDollar =
+                  trim.pnl_pct != null ? pctToDollar(trim.pnl_pct, DEFAULT_POSITION_SIZE) : null;
+                return (
+                  <span
+                    key={trim.id}
+                    className="vela-body-sm"
+                    style={{ color: 'var(--color-text-muted)', display: 'block' }}
+                  >
+                    {trim.trim_pct != null ? `${trim.trim_pct}%` : 'Trim'} at{' '}
+                    {trim.exit_price != null ? formatPrice(trim.exit_price) : '—'}
+                    {trim.pnl_pct != null && (
+                      <span
+                        style={{
+                          color: trim.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {' · '}
+                        {trim.pnl_pct >= 0 ? '+' : ''}
+                        {trim.pnl_pct.toFixed(1)}%
+                        {trimDollar != null &&
+                          ` (${trimDollar >= 0 ? '+' : '-'}$${Math.abs(trimDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
+                      </span>
+                    )}
+                    {' · '}
+                    {new Date(trim.opened_at).toLocaleDateString('en-GB', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                );
+              })}
             </div>
           )}
 

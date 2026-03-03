@@ -27,6 +27,64 @@ function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+/** Dev-only tier toggle for QA testing. Only renders when VITE_DEV_BYPASS_AUTH=true. */
+function DevTierToggle({
+  currentTier,
+  onTierChange,
+}: {
+  currentTier: string;
+  onTierChange: () => void;
+}) {
+  const tiers = ['free', 'standard', 'premium'] as const;
+  return (
+    <div
+      style={{
+        marginTop: 'var(--space-4)',
+        padding: 'var(--space-3)',
+        backgroundColor: '#FFF3CD',
+        border: '2px dashed #856404',
+        borderRadius: 'var(--radius-sm)',
+      }}
+    >
+      <p
+        className="vela-label-sm"
+        style={{ margin: 0, marginBottom: 'var(--space-2)', color: '#856404' }}
+      >
+        DEV TIER TOGGLE
+      </p>
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        {tiers.map(t => (
+          <button
+            key={t}
+            onClick={() => {
+              if (t === 'free') {
+                localStorage.removeItem('vela_dev_tier');
+              } else {
+                localStorage.setItem('vela_dev_tier', t);
+              }
+              onTierChange();
+            }}
+            style={{
+              flex: 1,
+              padding: 'var(--space-2)',
+              border: `2px solid ${currentTier === t ? '#856404' : 'var(--gray-300)'}`,
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: currentTier === t ? '#856404' : 'transparent',
+              color: currentTier === t ? '#fff' : '#856404',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              textTransform: 'capitalize',
+            }}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ExpandIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
@@ -279,16 +337,16 @@ function BalanceCard({
         <div
           style={{
             padding: 'var(--space-3)',
-            backgroundColor: 'var(--color-status-sell-bg)',
+            backgroundColor: 'var(--blue-light)',
             borderRadius: 'var(--radius-sm)',
-            border: '1.5px solid var(--red-primary)',
+            border: '1.5px solid var(--blue-primary)',
             marginBottom: 'var(--space-4)',
             textAlign: 'center',
           }}
         >
           <p
             className="vela-body-sm"
-            style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}
+            style={{ fontWeight: 600, color: 'var(--blue-primary)', margin: 0 }}
           >
             Fund your wallet so Vela can execute your first trade
           </p>
@@ -2576,6 +2634,11 @@ export default function Account() {
       >
         Log out
       </button>
+
+      {/* Dev tier toggle — only visible in dev bypass mode */}
+      {import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' && (
+        <DevTierToggle currentTier={currentTier} onTierChange={() => window.location.reload()} />
+      )}
 
       {/* Withdraw sheet overlay */}
       {showWithdrawSheet && wallet && (

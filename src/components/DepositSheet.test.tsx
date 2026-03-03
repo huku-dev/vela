@@ -150,12 +150,13 @@ describe('DepositSheet', () => {
 
   // ── Refresh Balance ──
 
-  it('shows refresh balance button', () => {
+  it('shows "I\'ve sent the USDC" button and "Check balance now" link', () => {
     renderSheet();
-    expect(screen.getByRole('button', { name: /refresh balance/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /i've sent the usdc/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /check balance now/i })).toBeInTheDocument();
   });
 
-  it('calls refresh-balance API on click', async () => {
+  it('calls refresh-balance API when "Check balance now" clicked', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ balance: 600, deposit_detected: null }),
@@ -163,7 +164,7 @@ describe('DepositSheet', () => {
 
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByRole('button', { name: /refresh balance/i }));
+    await user.click(screen.getByRole('button', { name: /check balance now/i }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
@@ -182,7 +183,7 @@ describe('DepositSheet', () => {
     const user = userEvent.setup();
     const onRefresh = vi.fn();
     render(<DepositSheet wallet={mockWallet} onClose={vi.fn()} onRefresh={onRefresh} />);
-    await user.click(screen.getByRole('button', { name: /refresh balance/i }));
+    await user.click(screen.getByRole('button', { name: /check balance now/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/deposit detected/i)).toBeInTheDocument();
@@ -199,7 +200,7 @@ describe('DepositSheet', () => {
 
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByRole('button', { name: /refresh balance/i }));
+    await user.click(screen.getByRole('button', { name: /check balance now/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/no new deposits/i)).toBeInTheDocument();

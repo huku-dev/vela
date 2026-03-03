@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { UserWallet } from '../types';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
  * Reinforces "You Stay in Control" pillar with clear confirmation steps.
  */
 export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSheetProps) {
+  useBodyScrollLock();
   const { getToken } = useAuthContext();
 
   // ── State ──
@@ -161,7 +163,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         inset: 0,
         zIndex: 9999,
         display: 'flex',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
       }}
@@ -176,12 +178,13 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         style={{
           width: '100%',
           maxWidth: 440,
+          maxHeight: '90vh',
+          overflowY: 'auto',
           backgroundColor: 'var(--color-bg-surface)',
-          borderRadius: 'var(--radius-md) var(--radius-md) 0 0',
+          borderRadius: 'var(--radius-md)',
           border: '3px solid var(--black)',
-          borderBottom: 'none',
           padding: 'var(--space-5)',
-          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
         }}
       >
         {/* Header */}
@@ -306,6 +309,7 @@ function FormStep({
   onSetMax,
   onSubmit,
 }: FormStepProps) {
+  const [showArbitrumInfo, setShowArbitrumInfo] = useState(false);
   const parsedAmount = parseFloat(amount);
   const showAmountError = amount !== '' && !isAmountValid;
   const showAddressError = destination !== '' && !isAddressValid;
@@ -397,13 +401,67 @@ function FormStep({
 
       {/* Destination address input */}
       <div style={{ marginBottom: 'var(--space-4)' }}>
-        <label
-          className="vela-label-sm"
-          htmlFor="withdraw-address"
-          style={{ display: 'block', marginBottom: 'var(--space-2)' }}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-1)',
+            marginBottom: 'var(--space-2)',
+          }}
         >
-          Destination address (Arbitrum)
-        </label>
+          <label className="vela-label-sm" htmlFor="withdraw-address">
+            Destination address (Arbitrum)
+          </label>
+          <button
+            type="button"
+            onClick={() => setShowArbitrumInfo(!showArbitrumInfo)}
+            aria-label="What is Arbitrum?"
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: '50%',
+              border: '1.5px solid var(--gray-400)',
+              background: 'none',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              color: 'var(--gray-500)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              lineHeight: 1,
+              flexShrink: 0,
+            }}
+          >
+            ?
+          </button>
+        </div>
+        {showArbitrumInfo && (
+          <div
+            style={{
+              padding: 'var(--space-2) var(--space-3)',
+              backgroundColor: 'var(--blue-light)',
+              border: '1.5px solid var(--blue-primary)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            <p
+              className="vela-body-sm"
+              style={{
+                margin: 0,
+                color: 'var(--blue-primary)',
+                fontSize: '0.8rem',
+                lineHeight: 1.5,
+              }}
+            >
+              Withdrawals are processed on the Arbitrum network. Make sure your destination supports
+              Arbitrum — most Ethereum-style wallets do, but if you&apos;re withdrawing to an
+              exchange, select &ldquo;Arbitrum&rdquo; as the deposit network.
+            </p>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <input
             id="withdraw-address"
@@ -598,6 +656,25 @@ function OtpStep({
             {shortAddr}
           </span>
         </div>
+      </div>
+
+      {/* Arbitrum address warning */}
+      <div
+        style={{
+          padding: 'var(--space-2) var(--space-3)',
+          backgroundColor: 'var(--yellow-light, #FFFDE7)',
+          border: '1.5px solid var(--yellow-primary, #FFD700)',
+          borderRadius: 'var(--radius-sm)',
+          marginBottom: 'var(--space-3)',
+        }}
+      >
+        <p
+          className="vela-body-sm"
+          style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem', color: '#92600a' }}
+        >
+          Double-check your address supports Arbitrum. Sending to the wrong network may result in
+          lost funds.
+        </p>
       </div>
 
       {/* OTP instruction */}

@@ -3,6 +3,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import type { UserSubscription, SubscriptionTier } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 export interface SubscriptionState {
   subscription: UserSubscription | null;
@@ -127,8 +128,16 @@ export function useSubscription(): SubscriptionState {
     window.location.href = url;
   }, [getToken]);
 
-  const tier: SubscriptionTier = subscription?.tier ?? 'free';
-  const isPaid = tier !== 'free' && subscription?.status === 'active';
+  // Dev bypass: allow overriding tier via localStorage for QA testing.
+  // Set via: localStorage.setItem('vela_dev_tier', 'standard') or 'premium'
+  // Or use the tier toggle on the Account page.
+  const devTierOverride =
+    DEV_BYPASS && typeof window !== 'undefined'
+      ? (localStorage.getItem('vela_dev_tier') as SubscriptionTier | null)
+      : null;
+
+  const tier: SubscriptionTier = devTierOverride ?? subscription?.tier ?? 'free';
+  const isPaid = tier !== 'free' && (devTierOverride ? true : subscription?.status === 'active');
   const cancelAtPeriodEnd = subscription?.cancel_at_period_end ?? false;
 
   return {
