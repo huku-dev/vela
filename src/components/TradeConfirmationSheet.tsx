@@ -1,5 +1,6 @@
 import type { TradeProposal } from '../types';
 import { formatPrice } from '../lib/helpers';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface TradeConfirmationSheetProps {
   proposal: TradeProposal;
@@ -28,6 +29,8 @@ export default function TradeConfirmationSheet({
   onCancel,
   isSubmitting,
 }: TradeConfirmationSheetProps) {
+  useBodyScrollLock();
+
   const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';
   const actionLabel = isTrim
@@ -45,7 +48,7 @@ export default function TradeConfirmationSheet({
         inset: 0,
         zIndex: 9999,
         display: 'flex',
-        alignItems: 'flex-end',
+        alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
       }}
@@ -61,11 +64,10 @@ export default function TradeConfirmationSheet({
           width: '100%',
           maxWidth: 440,
           backgroundColor: 'var(--color-bg-surface)',
-          borderRadius: 'var(--radius-md) var(--radius-md) 0 0',
+          borderRadius: 'var(--radius-md)',
           border: '3px solid var(--black)',
-          borderBottom: 'none',
           padding: 'var(--space-5)',
-          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2)',
         }}
       >
         {/* Header */}

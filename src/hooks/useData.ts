@@ -335,7 +335,7 @@ export function useTrackRecord() {
   ) =>
     data.map(t => ({
       ...t,
-      source: t.source || ('live' as const),
+      source: t.source || ('backtest' as const),
       asset_symbol: t.assets?.symbol,
       asset_coingecko_id: t.assets?.coingecko_id,
     }));
