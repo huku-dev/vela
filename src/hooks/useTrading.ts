@@ -304,7 +304,7 @@ export function useTrading(): TradingState {
     loading,
     error,
     isTradingEnabled: preferences?.mode !== 'view_only' && preferences?.mode != null,
-    hasWallet: wallet?.agent_registered === true,
+    hasWallet: !!wallet?.master_address,
     acceptProposal,
     declineProposal,
     updatePreferences,

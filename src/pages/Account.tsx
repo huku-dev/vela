@@ -2434,13 +2434,19 @@ export default function Account() {
 
         <SettingsItem
           label="Connected wallet"
-          value={user?.walletAddress ? truncateAddress(user.walletAddress) : '—'}
+          value={
+            wallet?.master_address
+              ? truncateAddress(wallet.master_address)
+              : user?.walletAddress
+                ? truncateAddress(user.walletAddress)
+                : '—'
+          }
           onClick={() => toggleSection('wallet')}
           expanded={expandedSection === 'wallet'}
         />
         {expandedSection === 'wallet' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <WalletPanel address={user?.walletAddress} />
+            <WalletPanel address={wallet?.master_address ?? user?.walletAddress} />
           </div>
         )}
 
