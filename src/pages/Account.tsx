@@ -991,8 +991,7 @@ function TradingPanel({
   const tierConfig = getTierConfig(currentTier);
   const maxLeverageForTier = tierConfig.max_leverage || 1; // 0 for free → treat as 1
   const atCapacity =
-    tierConfig.max_active_positions > 0 &&
-    openPositionCount >= tierConfig.max_active_positions;
+    tierConfig.max_active_positions > 0 && openPositionCount >= tierConfig.max_active_positions;
 
   const [saving, setSaving] = useState(false);
   const [positionSize, setPositionSize] = useState(
@@ -1213,82 +1212,83 @@ function TradingPanel({
           </p>
 
           {/* Active position count indicator */}
-          {tierConfig.max_active_positions > 0 && (() => {
-            const isFree = currentTier === 'free';
-            const trialUsedNoPosition = isFree && trialTradeUsed && openPositionCount === 0;
-            const showWarning = atCapacity || trialUsedNoPosition;
+          {tierConfig.max_active_positions > 0 &&
+            (() => {
+              const isFree = currentTier === 'free';
+              const trialUsedNoPosition = isFree && trialTradeUsed && openPositionCount === 0;
+              const showWarning = atCapacity || trialUsedNoPosition;
 
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 'var(--space-2) var(--space-3)',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: showWarning ? 'var(--yellow-50, #FFFBEB)' : 'var(--gray-50)',
-                  border: showWarning
-                    ? '1px solid var(--yellow-200, #FDE68A)'
-                    : '1px solid var(--gray-200)',
-                  marginBottom: 'var(--space-3)',
-                }}
-              >
-                <div>
-                  <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
-                    {isFree
-                      ? trialTradeUsed
-                        ? 'Trial trade used'
-                        : openPositionCount > 0
-                          ? '1 free trial trade active'
-                          : '1 free trial trade available'
-                      : `${openPositionCount}/${tierConfig.max_active_positions} positions active`}
-                  </p>
-                  {isFree ? (
-                    <p
-                      className="vela-body-sm vela-text-muted"
-                      style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
-                    >
-                      {trialTradeUsed && openPositionCount === 0
-                        ? 'Upgrade to keep trading'
-                        : openPositionCount > 0
-                          ? 'Upgrade for unlimited trades'
-                          : 'Experience Vela with your first trade'}
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 'var(--space-2) var(--space-3)',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: showWarning ? 'var(--yellow-50, #FFFBEB)' : 'var(--gray-50)',
+                    border: showWarning
+                      ? '1px solid var(--yellow-200, #FDE68A)'
+                      : '1px solid var(--gray-200)',
+                    marginBottom: 'var(--space-3)',
+                  }}
+                >
+                  <div>
+                    <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
+                      {isFree
+                        ? trialTradeUsed
+                          ? 'Trial trade used'
+                          : openPositionCount > 0
+                            ? '1 free trial trade active'
+                            : '1 free trial trade available'
+                        : `${openPositionCount}/${tierConfig.max_active_positions} positions active`}
                     </p>
-                  ) : (
-                    atCapacity && (
+                    {isFree ? (
                       <p
                         className="vela-body-sm vela-text-muted"
                         style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
                       >
-                        New trades are paused until a position closes
+                        {trialTradeUsed && openPositionCount === 0
+                          ? 'Upgrade to keep trading'
+                          : openPositionCount > 0
+                            ? 'Upgrade for unlimited trades'
+                            : 'Experience Vela with your first trade'}
                       </p>
-                    )
+                    ) : (
+                      atCapacity && (
+                        <p
+                          className="vela-body-sm vela-text-muted"
+                          style={{ margin: 0, marginTop: 2, fontSize: '0.72rem' }}
+                        >
+                          New trades are paused until a position closes
+                        </p>
+                      )
+                    )}
+                  </div>
+                  {showWarning && currentTier !== 'premium' && (
+                    <button
+                      type="button"
+                      onClick={onUpgradeClick}
+                      className="vela-btn vela-btn-sm"
+                      style={{
+                        background: 'var(--vela-signal-green)',
+                        color: 'var(--black)',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        padding: '4px 10px',
+                        border: '2px solid var(--black)',
+                        borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      Upgrade
+                    </button>
                   )}
                 </div>
-                {showWarning && currentTier !== 'premium' && (
-                  <button
-                    type="button"
-                    onClick={onUpgradeClick}
-                    className="vela-btn vela-btn-sm"
-                    style={{
-                      background: 'var(--vela-signal-green)',
-                      color: 'var(--black)',
-                      fontWeight: 700,
-                      fontSize: '0.7rem',
-                      padding: '4px 10px',
-                      border: '2px solid var(--black)',
-                      borderRadius: 'var(--radius-sm)',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0,
-                    }}
-                  >
-                    Upgrade
-                  </button>
-                )}
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           <div
             style={{
@@ -1328,7 +1328,8 @@ function TradingPanel({
                 className="vela-body-sm vela-text-muted"
                 style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
               >
-                Max USDC per trade. Vela will auto-size based on your balance if this exceeds available capital.
+                Max USDC per trade. Vela will auto-size based on your balance if this exceeds
+                available capital.
               </p>
             </div>
 
@@ -1375,8 +1376,8 @@ function TradingPanel({
                     style={{ margin: 0, color: 'var(--color-text-primary)', lineHeight: 1.5 }}
                   >
                     ⚠️ At {leverage}x leverage, both gains <strong>and losses</strong> are
-                    multiplied by {leverage}. A {Math.round(100 / leverageValue)}% move against
-                    your position could liquidate your collateral.
+                    multiplied by {leverage}. A {Math.round(100 / leverageValue)}% move against your
+                    position could liquidate your collateral.
                   </p>
                   <label
                     style={{
@@ -1421,8 +1422,8 @@ function TradingPanel({
                     }}
                   >
                     Upgrade to Premium
-                  </button>
-                  {' '}for up to 5x leverage
+                  </button>{' '}
+                  for up to 5x leverage
                 </p>
               )}
             </div>
@@ -2233,7 +2234,8 @@ export default function Account() {
           label="Notifications"
           value={(() => {
             const email = preferences?.notifications_email !== false;
-            const telegram = !!preferences?.notifications_telegram;
+            const telegramAllowed = getTierConfig(currentTier).features.telegram_alerts;
+            const telegram = telegramAllowed && !!preferences?.notifications_telegram;
             if (email && telegram) return 'Email · Telegram';
             if (email) return 'Email only';
             if (telegram) return 'Telegram only';
