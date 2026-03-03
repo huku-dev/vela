@@ -63,11 +63,19 @@ def load_env() -> dict[str, str]:
 _env = load_env()
 SUPABASE_URL = _env.get("VITE_SUPABASE_URL", "")
 SUPABASE_KEY = _env.get("VITE_SUPABASE_ANON_KEY", "")
+# Service role key bypasses RLS — required for INSERT/DELETE on paper_trades.
+SUPABASE_SERVICE_KEY = _env.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 def _require_supabase_keys() -> None:
     """Validate Supabase keys are present. Called in main(), not at import time."""
     if not SUPABASE_URL or not SUPABASE_KEY:
         sys.exit("ERROR: Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env")
+    if not SUPABASE_SERVICE_KEY:
+        print("  ⚠️  Missing SUPABASE_SERVICE_ROLE_KEY in .env — writes may fail due to RLS")
+
+def _write_key() -> str:
+    """Return the best key for write operations (service role > anon)."""
+    return SUPABASE_SERVICE_KEY or SUPABASE_KEY
 
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
@@ -526,6 +534,34 @@ V8B_ADX_DIRECTIONAL_AGG = {
     "adx_spread_scaling_short": [(0.20, 3), (0.10, 6), (0.05, 9)],       # shorts (gentler)
 }
 
+# ── V9: ATR stop-loss multiplier sweep ──
+# Production uses 2.0× ATR(14). Test tighter stops to reduce max single-trade loss.
+# All based on V7 production config (24h cooldown + trailing stop both directions).
+
+V9_ATR_1_3X = {
+    **V7_COOLDOWN_24H,
+    "name": "V9: ATR 1.3x stop",
+    "atr_stop_multiplier": 1.3,
+}
+
+V9_ATR_1_5X = {
+    **V7_COOLDOWN_24H,
+    "name": "V9: ATR 1.5x stop",
+    "atr_stop_multiplier": 1.5,
+}
+
+V9_ATR_1_75X = {
+    **V7_COOLDOWN_24H,
+    "name": "V9: ATR 1.75x stop",
+    "atr_stop_multiplier": 1.75,
+}
+
+V9_ATR_2_0X = {
+    **V7_COOLDOWN_24H,
+    "name": "V9: ATR 2.0x stop (production baseline)",
+    "atr_stop_multiplier": 2.0,
+}
+
 # Registry for CLI --config-a / --config-b selection
 NAMED_CONFIGS = {
     "current": SIGNAL_CONFIG,
@@ -569,6 +605,10 @@ NAMED_CONFIGS = {
     "v8b_wide": V8B_ADX_WIDE,
     "v8b_directional_mod": V8B_ADX_DIRECTIONAL_MOD,
     "v8b_directional_agg": V8B_ADX_DIRECTIONAL_AGG,
+    "v9_atr_1_3x": V9_ATR_1_3X,
+    "v9_atr_1_5x": V9_ATR_1_5X,
+    "v9_atr_1_75x": V9_ATR_1_75X,
+    "v9_atr_2_0x": V9_ATR_2_0X,
     # ── V9: Equities/Commodities tuning experiments ──
     # All based on V6d (production), tuned for lower-volatility non-crypto assets.
     # Hypothesis: crypto-calibrated thresholds are too wide for equities.
@@ -2543,9 +2583,10 @@ def _snapshot_indicators(row: pd.Series) -> dict:
 
 def clear_backtest_trades(asset_id: str | None = None) -> None:
     """Delete backtest trades from Supabase. If asset_id given, only clear that asset."""
+    wk = _write_key()
     headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": wk,
+        "Authorization": f"Bearer {wk}",
     }
     url = f"{SUPABASE_URL}/rest/v1/paper_trades?source=eq.backtest"
     if asset_id:
@@ -2597,9 +2638,10 @@ def write_to_supabase(
                 )
         return
 
+    wk = _write_key()
     headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "apikey": wk,
+        "Authorization": f"Bearer {wk}",
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
@@ -4735,7 +4777,7 @@ def main():
     print("=" * 60)
     print("  Vela Backtesting Engine v4 — Volume + ATR + BTC Filter + RSI BB")
     print(f"  Lookback: {args.days} days | Dry run: {args.dry_run}")
-    cfg = IMPROVED_CONFIG
+    cfg = NAMED_CONFIGS.get(args.config_a, V6D_TRAILING_BOTH)
     print(f"  Signal config: {cfg['name']} | ADX >= {cfg['adx_threshold']}, "
           f"RSI long [{cfg['rsi_long_entry_min']}-{cfg['rsi_long_entry_max']}], "
           f"RSI short [{cfg['rsi_short_entry_min']}-{cfg['rsi_short_entry_max']}], "
@@ -4769,7 +4811,7 @@ def main():
                 print(f"  ⚠️  Asset '{args.asset}' not found in Supabase. Use --dry-run or add it first.")
                 sys.exit(1)
 
-        run_backtest(asset["coingecko_id"], asset["id"], args.days, args.dry_run, source=args.source)
+        run_backtest(asset["coingecko_id"], asset["id"], args.days, args.dry_run, config=cfg, source=args.source)
     else:
         # All enabled assets
         assets = fetch_assets()
@@ -4788,7 +4830,7 @@ def main():
             try:
                 trades = run_backtest(
                     asset["coingecko_id"], asset["id"], args.days, args.dry_run,
-                    source=args.source,
+                    config=cfg, source=args.source,
                 )
                 all_trades.extend(trades)
             except Exception as e:
