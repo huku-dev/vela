@@ -48,6 +48,9 @@ export function useAuth(): AuthState {
   const { ready, authenticated, login, logout, getAccessToken, user: privyUser } = usePrivy();
   const [user, setUser] = useState<AuthUser | null>(null);
   const tokenCacheRef = useRef<{ token: string; expiresAt: number } | null>(null);
+  // Promise lock: deduplicates concurrent exchangeToken calls so only one
+  // network request fires at a time (prevents thundering herd → 429s).
+  const inflightRef = useRef<Promise<string | null> | null>(null);
 
   // Exchange Privy token for Supabase token
   const exchangeToken = useCallback(async (): Promise<string | null> => {
@@ -56,43 +59,56 @@ export function useAuth(): AuthState {
       return tokenCacheRef.current.token;
     }
 
-    const privyToken = await getAccessToken();
-    if (!privyToken) return null;
+    // If a request is already in-flight, piggyback on it instead of firing another
+    if (inflightRef.current) {
+      return inflightRef.current;
+    }
 
-    try {
-      const res = await fetch(EXCHANGE_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${privyToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+    const doExchange = async (): Promise<string | null> => {
+      const privyToken = await getAccessToken();
+      if (!privyToken) return null;
 
-      if (!res.ok) {
-        console.error('[useAuth] Token exchange failed:', res.status);
+      try {
+        const res = await fetch(EXCHANGE_URL, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${privyToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!res.ok) {
+          console.error('[useAuth] Token exchange failed:', res.status);
+          return null;
+        }
+
+        const data = await res.json();
+
+        tokenCacheRef.current = {
+          token: data.access_token,
+          expiresAt: Date.now() + data.expires_in * 1000,
+        };
+
+        setUser({
+          privyDid: data.user.privy_did,
+          profileId: data.user.profile_id,
+          email: privyUser?.email?.address ?? undefined,
+          deactivatedAt: data.user.deactivated_at ?? undefined,
+          deletionScheduledAt: data.user.deletion_scheduled_at ?? undefined,
+        });
+
+        return data.access_token;
+      } catch (err) {
+        console.error('[useAuth] Token exchange error:', err);
         return null;
       }
+    };
 
-      const data = await res.json();
+    inflightRef.current = doExchange().finally(() => {
+      inflightRef.current = null;
+    });
 
-      tokenCacheRef.current = {
-        token: data.access_token,
-        expiresAt: Date.now() + data.expires_in * 1000,
-      };
-
-      setUser({
-        privyDid: data.user.privy_did,
-        profileId: data.user.profile_id,
-        email: privyUser?.email?.address ?? undefined,
-        deactivatedAt: data.user.deactivated_at ?? undefined,
-        deletionScheduledAt: data.user.deletion_scheduled_at ?? undefined,
-      });
-
-      return data.access_token;
-    } catch (err) {
-      console.error('[useAuth] Token exchange error:', err);
-      return null;
-    }
+    return inflightRef.current;
   }, [getAccessToken, privyUser?.email?.address]);
 
   // Trigger token exchange when user authenticates
