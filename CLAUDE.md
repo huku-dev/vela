@@ -493,6 +493,11 @@ What did we choose? Why this approach?
 - Convert to user's local time for display
 - Always show time zone in UI: "Last updated: 2:34 PM PST"
 
+### 6. Notification Audience Check
+- **Before implementing any notification**, explicitly ask: "Who is the audience — user, admin, or both?"
+- Document the answer in a code comment (e.g. `// Email to user`, `// Telegram to admin (operator alert)`)
+- For multi-channel systems, build a **routing table** (function → channel → audience) during implementation, not after. This catches misrouted notifications before they ship.
+
 ---
 
 ## Performance Targets
@@ -612,7 +617,11 @@ Before merging code that affects:
 3. Push to trigger Vercel deployment
 4. Verify CI passes after push (`gh run list`)
 5. Update MEMORY.md with completed items, new patterns, changed facts
-6. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
+6. **Session retrospective (MANDATORY):** Before closing out, review the session's work with the user:
+   - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework?
+   - **Efficiency feedback:** Where could Claude have been better? Wasted steps, missed patterns, over-engineering, wrong assumptions?
+   - **Learnings:** Align on any reusable insights, then update CLAUDE.md and/or MEMORY.md with agreed improvements so future sessions benefit.
+7. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
 
 ### Notion Integration
 - **Automatic:** Every `git commit` triggers `scripts/git_to_notion.py` via post-commit hook, logging the commit to the Notion changelog
