@@ -104,6 +104,14 @@ describe('WithdrawSheet', () => {
     expect(screen.getByText('Enter a valid amount')).toBeInTheDocument();
   });
 
+  it('shows minimum withdrawal error for amounts below $2', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    const amountInput = screen.getByLabelText(/amount/i);
+    await user.type(amountInput, '1.50');
+    expect(screen.getByText('Minimum withdrawal is $2.00')).toBeInTheDocument();
+  });
+
   it('Max button sets amount to full balance', async () => {
     const user = userEvent.setup();
     renderSheet();
@@ -130,6 +138,36 @@ describe('WithdrawSheet', () => {
     const addressInput = screen.getByLabelText(/destination/i);
     await user.type(addressInput, validEthAddress);
     expect(screen.queryByText(/valid ethereum address/i)).not.toBeInTheDocument();
+  });
+
+  // ── Fee Display ──
+
+  it('shows fee breakdown when form is valid', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.type(screen.getByLabelText(/amount/i), '50');
+    await user.type(screen.getByLabelText(/destination/i), validEthAddress);
+
+    expect(screen.getByText('Withdraw')).toBeInTheDocument();
+    expect(screen.getByText('Network fee')).toBeInTheDocument();
+    expect(screen.getByText('You receive')).toBeInTheDocument();
+    expect(screen.getByText('$50.00')).toBeInTheDocument();
+    expect(screen.getByText('-$1.00')).toBeInTheDocument();
+    expect(screen.getByText('$49.00')).toBeInTheDocument();
+  });
+
+  it('does not show fee breakdown when amount is empty', () => {
+    renderSheet();
+    expect(screen.queryByText('Network fee')).not.toBeInTheDocument();
+  });
+
+  it('calculates correct net amount for max withdrawal', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /max/i }));
+    await user.type(screen.getByLabelText(/destination/i), validEthAddress);
+
+    expect(screen.getByText('$999.00')).toBeInTheDocument(); // $1000 - $1 fee
   });
 
   // ── Form Submission ──
@@ -171,6 +209,23 @@ describe('WithdrawSheet', () => {
     await waitFor(() => {
       expect(screen.getByText(/enter the 6-digit code/i)).toBeInTheDocument();
     });
+  });
+
+  it('shows fee breakdown in OTP confirmation step', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.type(screen.getByLabelText(/amount/i), '100');
+    await user.type(screen.getByLabelText(/destination/i), validEthAddress);
+    await user.click(screen.getByRole('button', { name: /send verification code/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/enter the 6-digit code/i)).toBeInTheDocument();
+    });
+
+    // OTP step should show fee and net amount
+    expect(screen.getByText('Network fee')).toBeInTheDocument();
+    expect(screen.getByText('You receive')).toBeInTheDocument();
+    expect(screen.getByText('$99.00')).toBeInTheDocument(); // $100 - $1 fee
   });
 
   it('shows error message on API failure', async () => {
@@ -289,10 +344,11 @@ describe('WithdrawSheet', () => {
     await user.type(screen.getByLabelText(/verification code/i), '123456');
     await user.click(screen.getByRole('button', { name: /confirm withdrawal/i }));
 
-    // Check success
+    // Check success — shows net amount ($100 - $1 fee = $99)
     await waitFor(() => {
       expect(screen.getByText(/withdrawal sent/i)).toBeInTheDocument();
     });
+    expect(screen.getByText(/\$99\.00/)).toBeInTheDocument();
     expect(onSuccess).toHaveBeenCalledOnce();
   });
 

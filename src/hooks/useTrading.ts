@@ -45,9 +45,27 @@ export interface TradingState {
 }
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 /** Polling interval for position updates (30 seconds) */
 const POLL_INTERVAL_MS = 30_000;
+
+/** Mock wallet for dev bypass so the Deposit/Withdraw UI is testable */
+const DEV_MOCK_WALLET: UserWallet = {
+  id: 'dev-wallet',
+  user_id: 'dev-bypass-user',
+  master_wallet_id: 'dev-mw',
+  master_address: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18',
+  agent_wallet_id: 'dev-aw',
+  agent_address: '0xAgentDevAddr',
+  agent_registered: true,
+  balance_usdc: 250.0,
+  balance_last_synced_at: new Date().toISOString(),
+  trial_trade_used: false,
+  environment: 'mainnet' as const,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
 
 // ── Hook ──────────────────────────────────────────────
 
@@ -114,8 +132,8 @@ export function useTrading(): TradingState {
       setProposals(proposalsRes.data ?? []);
       setPositions(openPosRes.data ?? []);
       setClosedPositions(closedPosRes.data ?? []);
-      setPreferences(prefsRes.data ?? null);
-      setWallet(walletRes.data?.[0] ?? null);
+      setPreferences(prefsRes.data ?? (DEV_BYPASS ? { mode: 'semi_automated' } as unknown as UserPreferences : null));
+      setWallet(walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null));
       setCircuitBreakers(cbRes.data ?? []);
       setError(null);
     } catch (err) {

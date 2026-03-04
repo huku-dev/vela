@@ -19,6 +19,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 /** Ethereum address format: 0x followed by 40 hex characters */
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
+/** Flat withdrawal fee in USDC (matches tier_config default; backend enforces actual value) */
+const WITHDRAWAL_FEE = 1.0;
+
+/** Minimum withdrawal amount in USDC */
+const MIN_WITHDRAWAL = 2.0;
+
 // ── Component ──────────────────────────────────────────────────────────
 
 /**
@@ -58,8 +64,9 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
   // ── Derived values ──
   const parsedAmount = parseFloat(amount);
   const availableBalance = wallet.balance_usdc ?? 0;
+  const netAmount = parsedAmount - WITHDRAWAL_FEE;
   const isAmountValid =
-    !isNaN(parsedAmount) && parsedAmount > 0 && parsedAmount <= availableBalance;
+    !isNaN(parsedAmount) && parsedAmount >= MIN_WITHDRAWAL && parsedAmount <= availableBalance && netAmount > 0;
   const isAddressValid = ETH_ADDRESS_RE.test(destination);
   const isFormValid = isAmountValid && isAddressValid;
   const isOtpValid = otpCode.length === 6 && /^\d{6}$/.test(otpCode);
@@ -120,7 +127,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         destination_address: destination,
         otp_code: otpCode,
       });
-      setSuccessAmount(parsedAmount);
+      setSuccessAmount(parsedAmount - WITHDRAWAL_FEE);
       setStep('success');
       onSuccess?.();
     } catch (err) {
@@ -244,6 +251,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
             otpInputRef={otpInputRef}
             isConfirming={step === 'confirming'}
             amount={parsedAmount}
+            fee={WITHDRAWAL_FEE}
             destination={destination}
             onOtpChange={setOtpCode}
             onConfirm={handleConfirm}
@@ -311,6 +319,7 @@ function FormStep({
 }: FormStepProps) {
   const [showArbitrumInfo, setShowArbitrumInfo] = useState(false);
   const parsedAmount = parseFloat(amount);
+  const netAmount = parsedAmount - WITHDRAWAL_FEE;
   const showAmountError = amount !== '' && !isAmountValid;
   const showAddressError = destination !== '' && !isAddressValid;
 
@@ -394,7 +403,9 @@ function FormStep({
           >
             {parsedAmount > availableBalance
               ? 'Amount exceeds available balance'
-              : 'Enter a valid amount'}
+              : parsedAmount > 0 && parsedAmount < MIN_WITHDRAWAL
+                ? `Minimum withdrawal is $${MIN_WITHDRAWAL.toFixed(2)}`
+                : 'Enter a valid amount'}
           </p>
         )}
       </div>
@@ -509,7 +520,7 @@ function FormStep({
         )}
       </div>
 
-      {/* Summary */}
+      {/* Fee breakdown summary */}
       {isFormValid && (
         <div
           style={{
@@ -520,29 +531,60 @@ function FormStep({
             marginBottom: 'var(--space-4)',
           }}
         >
-          <p className="vela-body-sm" style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-            ~$
-            {parsedAmount.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}{' '}
-            USDC will be sent to your Arbitrum wallet.
-          </p>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Withdraw
+            </span>
+            <span
+              className="vela-body-sm"
+              style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+            >
+              ${parsedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+              Network fee
+            </span>
+            <span
+              className="vela-body-sm"
+              style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+            >
+              -${WITHDRAWAL_FEE.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              paddingTop: 'var(--space-2)',
+              borderTop: '1px solid var(--gray-200)',
+            }}
+          >
+            <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+              You receive
+            </span>
+            <span
+              className="vela-body-sm"
+              style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 700 }}
+            >
+              ${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
         </div>
       )}
-
-      {/* Warning */}
-      <p
-        className="vela-body-sm"
-        style={{
-          color: 'var(--color-text-muted)',
-          marginBottom: 'var(--space-4)',
-          marginTop: 0,
-          fontSize: '0.75rem',
-        }}
-      >
-        Allow 5-10 minutes for processing on Arbitrum.
-      </p>
 
       {/* Error display */}
       {errorMessage && (
@@ -592,6 +634,7 @@ interface OtpStepProps {
   otpInputRef: React.RefObject<HTMLInputElement | null>;
   isConfirming: boolean;
   amount: number;
+  fee: number;
   destination: string;
   onOtpChange: (value: string) => void;
   onConfirm: () => void;
@@ -607,6 +650,7 @@ function OtpStep({
   otpInputRef,
   isConfirming,
   amount,
+  fee,
   destination,
   onOtpChange,
   onConfirm,
@@ -614,6 +658,7 @@ function OtpStep({
   onBack,
 }: OtpStepProps) {
   const shortAddr = `${destination.slice(0, 6)}...${destination.slice(-4)}`;
+  const netAmount = amount - fee;
 
   return (
     <>
@@ -643,6 +688,42 @@ function OtpStep({
           >
             $
             {amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: 'var(--space-2)',
+          }}
+        >
+          <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+            Network fee
+          </span>
+          <span
+            className="vela-body-sm"
+            style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+          >
+            -${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: 'var(--space-2)',
+            paddingTop: 'var(--space-2)',
+            borderTop: '1px solid var(--gray-200)',
+          }}
+        >
+          <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+            You receive
+          </span>
+          <span
+            className="vela-body-sm"
+            style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 700 }}
+          >
+            ${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -807,20 +888,10 @@ function SuccessStep({
       </h4>
       <p
         className="vela-body-sm"
-        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-4)' }}
+        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-5)' }}
       >
         ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{' '}
         USDC is on its way to {shortAddr}
-      </p>
-      <p
-        className="vela-body-sm"
-        style={{
-          color: 'var(--color-text-muted)',
-          marginBottom: 'var(--space-5)',
-          fontSize: '0.75rem',
-        }}
-      >
-        Allow 5-10 minutes for the transfer to arrive on Arbitrum.
       </p>
       <button className="vela-btn vela-btn-primary" onClick={onClose} style={{ width: '100%' }}>
         Done

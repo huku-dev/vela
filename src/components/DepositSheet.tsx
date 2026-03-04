@@ -37,7 +37,6 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
     depositDetected?: number | null;
   } | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
-
   const address = wallet.master_address;
 
   // ── Copy address ──
@@ -55,7 +54,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
 
     try {
       const token = await getToken();
-      if (!token) throw new Error('Not authenticated — please log in again');
+      if (!token) return; // Dev bypass or logged out — skip silently
 
       const res = await fetch(`${SUPABASE_URL}/functions/v1/refresh-balance`, {
         method: 'POST',
@@ -74,7 +73,6 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
         balance: data.balance,
         depositDetected: data.deposit_detected,
       });
-
       onRefresh?.();
     } catch (err) {
       console.error('[DepositSheet] Refresh error:', err);
@@ -84,26 +82,25 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
     }
   }, [getToken, onRefresh]);
 
-  // ── Auto-poll every 2 minutes while sheet is open ──
+  // ── Auto-poll while sheet is open ──
+  // Fire immediately on open, then every 30s to catch deposits quickly
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
-    pollRef.current = setInterval(handleRefreshBalance, 120_000);
+    handleRefreshBalance();
+    pollRef.current = setInterval(handleRefreshBalance, 30_000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [handleRefreshBalance]);
-
-  // ── Time since last sync ──
-  const lastSynced = wallet.balance_last_synced_at
-    ? getTimeSince(wallet.balance_last_synced_at)
-    : null;
+    // Only run on mount/unmount — handleRefreshBalance is stable via useCallback
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Deposit USDC"
+      aria-label="Deposit to Wallet"
       style={{
         position: 'fixed',
         inset: 0,
@@ -144,7 +141,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
           }}
         >
           <h3 className="vela-heading-base" style={{ margin: 0 }}>
-            Deposit USDC
+            Deposit to Wallet
           </h3>
           <button
             onClick={onClose}
@@ -184,130 +181,21 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
 
         {/* Tab content */}
         {activeTab === 'transfer' && (
-          <TransferTab address={address} copied={copied} onCopy={handleCopy} />
-        )}
-
-        {activeTab === 'card' && <CardTab />}
-
-        {/* Action section */}
-        <div
-          style={{
-            marginTop: 'var(--space-4)',
-            paddingTop: 'var(--space-4)',
-            borderTop: '1px solid var(--gray-200)',
-          }}
-        >
-          {/* Deposit detected feedback */}
-          {refreshResult?.depositDetected && refreshResult.depositDetected > 0 && (
-            <div
-              style={{
-                marginBottom: 'var(--space-3)',
-                padding: 'var(--space-3)',
-                backgroundColor: 'var(--green-light, #F0FFF4)',
-                border: '2px solid var(--green-primary)',
-                borderRadius: 'var(--radius-sm)',
-                textAlign: 'center',
-              }}
-            >
-              <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
-                Deposit detected: +${refreshResult.depositDetected.toFixed(2)} USDC
-              </p>
-              <p
-                className="vela-body-sm vela-text-muted"
-                style={{ margin: 0, marginTop: 'var(--space-1)', fontSize: '0.75rem' }}
-              >
-                New balance: ${refreshResult.balance?.toFixed(2) ?? '—'}
-              </p>
-            </div>
-          )}
-
-          {/* Primary action: "I've sent the USDC" — triggers refresh + closes */}
-          <button
-            className="vela-btn vela-btn-primary"
-            onClick={() => {
+          <TransferTab
+            address={address}
+            copied={copied}
+            onCopy={handleCopy}
+            refreshing={refreshing}
+            refreshResult={refreshResult}
+            refreshError={refreshError}
+            onConfirmSent={() => {
               handleRefreshBalance();
               onClose();
             }}
-            style={{ width: '100%', marginBottom: 'var(--space-2)' }}
-          >
-            I&apos;ve sent the USDC
-          </button>
+          />
+        )}
 
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{
-              textAlign: 'center',
-              margin: 0,
-              marginBottom: 'var(--space-2)',
-              fontSize: '0.7rem',
-            }}
-          >
-            We&apos;ll check for your deposit automatically. It may take a few minutes to appear.
-          </p>
-
-          {/* Secondary: manual check balance */}
-          <button
-            onClick={handleRefreshBalance}
-            disabled={refreshing}
-            style={{
-              display: 'block',
-              margin: '0 auto',
-              background: 'none',
-              border: 'none',
-              color: 'var(--color-text-muted)',
-              fontSize: '0.75rem',
-              cursor: refreshing ? 'default' : 'pointer',
-              textDecoration: 'underline',
-              padding: 'var(--space-1)',
-            }}
-          >
-            {refreshing ? 'Checking...' : 'Check balance now'}
-          </button>
-
-          {refreshResult && !refreshResult.depositDetected && (
-            <p
-              className="vela-body-sm vela-text-muted"
-              style={{
-                textAlign: 'center',
-                marginTop: 'var(--space-2)',
-                marginBottom: 0,
-                fontSize: '0.75rem',
-              }}
-            >
-              Balance: ${refreshResult.balance?.toFixed(2) ?? '—'} · No new deposits detected
-            </p>
-          )}
-
-          {/* Error feedback */}
-          {refreshError && (
-            <p
-              className="vela-body-sm"
-              style={{
-                textAlign: 'center',
-                marginTop: 'var(--space-2)',
-                marginBottom: 0,
-                fontSize: '0.75rem',
-                color: 'var(--red-primary)',
-              }}
-            >
-              {refreshError}
-            </p>
-          )}
-
-          {lastSynced && (
-            <p
-              className="vela-body-sm vela-text-muted"
-              style={{
-                textAlign: 'center',
-                marginTop: 'var(--space-2)',
-                marginBottom: 0,
-                fontSize: '0.7rem',
-              }}
-            >
-              Last synced: {lastSynced}
-            </p>
-          )}
-        </div>
+        {activeTab === 'card' && <CardTab />}
       </div>
     </div>
   );
@@ -345,70 +233,25 @@ function TabButton({
   );
 }
 
-// ── Network Option ────────────────────────────────────────────────────
-
-function NetworkOption({
-  label,
-  detail,
-  active,
-  onClick,
-}: {
-  label: string;
-  detail: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        flex: 1,
-        padding: 'var(--space-2) var(--space-3)',
-        border: `2px solid ${active ? 'var(--black)' : 'var(--gray-200)'}`,
-        borderRadius: 'var(--radius-sm)',
-        backgroundColor: active ? 'var(--gray-50)' : 'transparent',
-        cursor: 'pointer',
-        textAlign: 'left',
-        transition: 'all 0.15s ease',
-      }}
-    >
-      <span
-        style={{
-          display: 'block',
-          fontWeight: 600,
-          fontSize: '0.85rem',
-          color: 'var(--color-text-primary)',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          display: 'block',
-          fontSize: '0.7rem',
-          color: 'var(--color-text-muted)',
-          marginTop: 2,
-        }}
-      >
-        {detail}
-      </span>
-    </button>
-  );
-}
-
 // ── Transfer Tab ───────────────────────────────────────────────────────
 
 function TransferTab({
   address,
   copied,
   onCopy,
+  refreshResult,
+  refreshError,
+  onConfirmSent,
 }: {
   address: string;
   copied: boolean;
   onCopy: () => void;
+  refreshing?: boolean;
+  refreshResult: { balance?: number; depositDetected?: number | null } | null;
+  refreshError: string | null;
+  onConfirmSent: () => void;
 }) {
-  const [selectedNetwork, setSelectedNetwork] = useState<'arbitrum' | 'hyperliquid'>('arbitrum');
-  const shortAddress = `${address.slice(0, 8)}...${address.slice(-6)}`;
+  const [selectedNetwork, setSelectedNetwork] = useState<'arbitrum' | 'hyperliquid' | null>(null);
 
   return (
     <>
@@ -463,18 +306,28 @@ function TransferTab({
           <span
             style={{
               fontFamily: 'var(--type-mono-base-font)',
-              fontSize: '0.8rem',
+              fontSize: '0.75rem',
               color: 'var(--color-text-primary)',
               wordBreak: 'break-all',
+              lineHeight: 1.4,
             }}
-            title={address}
           >
-            {shortAddress}
+            {address}
           </span>
           <button
-            className="vela-btn vela-btn-ghost vela-btn-sm"
             onClick={onCopy}
-            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+            style={{
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              background: 'none',
+              border: '1.5px solid var(--gray-200)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '4px 10px',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              color: 'var(--color-text-primary)',
+            }}
           >
             {copied ? 'Copied!' : 'Copy'}
           </button>
@@ -488,59 +341,130 @@ function TransferTab({
       >
         SELECT NETWORK
       </p>
-      <div
+      <select
+        value={selectedNetwork ?? ''}
+        onChange={e => {
+          const val = e.target.value;
+          setSelectedNetwork(val === '' ? null : (val as 'arbitrum' | 'hyperliquid'));
+        }}
+        aria-label="Select deposit network"
         style={{
-          display: 'flex',
-          gap: 'var(--space-2)',
+          width: '100%',
+          padding: 'var(--space-2) var(--space-3)',
+          border: '2px solid var(--gray-200)',
+          borderRadius: 'var(--radius-sm)',
+          backgroundColor: 'var(--color-bg-surface)',
+          color: selectedNetwork ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+          fontWeight: 600,
+          fontSize: '0.85rem',
+          cursor: 'pointer',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 5l3 3 3-3' stroke='%23666' stroke-width='1.5' fill='none'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 12px center',
           marginBottom: 'var(--space-3)',
         }}
       >
-        <NetworkOption
-          label="Arbitrum"
-          detail="USDC transfer · 5-10 min"
-          active={selectedNetwork === 'arbitrum'}
-          onClick={() => setSelectedNetwork('arbitrum')}
-        />
-        <NetworkOption
-          label="Hyperliquid"
-          detail="usdSend · instant"
-          active={selectedNetwork === 'hyperliquid'}
-          onClick={() => setSelectedNetwork('hyperliquid')}
-        />
-      </div>
+        <option value="">Choose a network...</option>
+        <option value="arbitrum">Arbitrum · USDC transfer · 5-10 min</option>
+        <option value="hyperliquid">Hyperliquid · usdSend · instant</option>
+      </select>
 
-      {/* Warning */}
-      <div
-        style={{
-          padding: 'var(--space-3)',
-          backgroundColor: 'var(--yellow-light, #FFFDE7)',
-          border: '2px solid var(--yellow-primary, #FFD700)',
-          borderRadius: 'var(--radius-sm)',
-          marginBottom: 'var(--space-2)',
-        }}
-      >
-        <p
-          className="vela-body-sm"
+      {/* Warning — only shown when a network is selected */}
+      {selectedNetwork && (
+        <div
           style={{
-            margin: 0,
-            fontWeight: 600,
-            fontSize: '0.8rem',
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--yellow-light, #FFFDE7)',
+            border: '2px solid var(--yellow-primary, #FFD700)',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 'var(--space-2)',
           }}
         >
-          {selectedNetwork === 'arbitrum'
-            ? 'Only send USDC on Arbitrum. Other tokens or chains sent to this address will not appear in your balance.'
-            : 'Only send via Hyperliquid usdSend. Regular token transfers on other networks will not appear in your balance.'}
-        </p>
-      </div>
+          <p
+            className="vela-body-sm"
+            style={{
+              margin: 0,
+              fontWeight: 600,
+              fontSize: '0.8rem',
+            }}
+          >
+            {selectedNetwork === 'arbitrum'
+              ? 'Only send USDC on Arbitrum. Other tokens or chains sent to this address will not appear in your balance.'
+              : 'Only send via Hyperliquid usdSend. Regular token transfers on other networks will not appear in your balance.'}
+          </p>
+        </div>
+      )}
 
-      {/* Other chains note */}
-      <p
-        className="vela-body-sm vela-text-muted"
-        style={{ margin: 0, fontSize: '0.7rem', lineHeight: 1.4 }}
+      {/* Action section — transfer-specific */}
+      <div
+        style={{
+          marginTop: 'var(--space-4)',
+          paddingTop: 'var(--space-4)',
+          borderTop: '1px solid var(--gray-200)',
+        }}
       >
-        Deposits on other networks (Base, Polygon, Ethereum, etc.) will not appear in your balance.
-        Only Arbitrum and Hyperliquid are supported.
-      </p>
+        {/* Deposit detected feedback */}
+        {refreshResult?.depositDetected && refreshResult.depositDetected > 0 && (
+          <div
+            style={{
+              marginBottom: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              backgroundColor: 'var(--green-light, #F0FFF4)',
+              border: '2px solid var(--green-primary)',
+              borderRadius: 'var(--radius-sm)',
+              textAlign: 'center',
+            }}
+          >
+            <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600 }}>
+              Deposit detected: +${refreshResult.depositDetected.toFixed(2)} USDC
+            </p>
+            <p
+              className="vela-body-sm vela-text-muted"
+              style={{ margin: 0, marginTop: 'var(--space-1)', fontSize: '0.75rem' }}
+            >
+              New balance: ${refreshResult.balance?.toFixed(2) ?? '—'}
+            </p>
+          </div>
+        )}
+
+        <button
+          className="vela-btn vela-btn-primary"
+          onClick={onConfirmSent}
+          style={{ width: '100%', marginBottom: 'var(--space-2)' }}
+        >
+          I&apos;ve sent the USDC
+        </button>
+
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{
+            textAlign: 'center',
+            margin: 0,
+            fontSize: '0.7rem',
+          }}
+        >
+          We&apos;ll check for your deposit automatically. It may take a few minutes to appear.
+        </p>
+
+        {/* Error feedback */}
+        {refreshError && (
+          <p
+            className="vela-body-sm"
+            style={{
+              textAlign: 'center',
+              marginTop: 'var(--space-2)',
+              marginBottom: 0,
+              fontSize: '0.75rem',
+              color: 'var(--red-primary)',
+            }}
+          >
+            {refreshError}
+          </p>
+        )}
+
+      </div>
     </>
   );
 }
@@ -549,67 +473,19 @@ function TransferTab({
 
 function CardTab() {
   return (
-    <div style={{ padding: 'var(--space-3) 0' }}>
-      {/* Coming soon section */}
-      <div style={{ textAlign: 'center', marginBottom: 'var(--space-4)' }}>
-        <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>💳</div>
-        <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
-          Card funding coming soon
-        </h4>
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
-        >
-          We&apos;re working on credit and debit card support so you can buy USDC directly in the
-          app.
-        </p>
-      </div>
-
-      {/* "Don't have USDC?" info banner — left aligned */}
-      <div
-        style={{
-          padding: 'var(--space-3)',
-          backgroundColor: 'var(--blue-light)',
-          border: '1.5px solid var(--blue-primary)',
-          borderRadius: 'var(--radius-sm)',
-        }}
+    <div style={{ padding: 'var(--space-3) 0', textAlign: 'center' }}>
+      <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>💳</div>
+      <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
+        Card funding coming soon
+      </h4>
+      <p
+        className="vela-body-sm vela-text-muted"
+        style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
       >
-        <p
-          className="vela-body-sm"
-          style={{
-            margin: 0,
-            marginBottom: 'var(--space-1)',
-            fontWeight: 600,
-            color: 'var(--blue-primary)',
-          }}
-        >
-          Don&apos;t have USDC?
-        </p>
-        <p
-          className="vela-body-sm"
-          style={{ margin: 0, color: 'var(--blue-primary)', fontSize: '0.8rem', lineHeight: 1.5 }}
-        >
-          You can buy USDC on Coinbase, Binance, or most major exchanges, then transfer it to your
-          deposit address using the &ldquo;Transfer USDC&rdquo; tab.
-        </p>
-      </div>
+        We&apos;re working on credit and debit card support so you can buy USDC directly in the
+        app.
+      </p>
     </div>
   );
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-function getTimeSince(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
-  const minutes = Math.floor(diff / 60_000);
-
-  if (minutes < 1) return 'just now';
-  if (minutes === 1) return '1 minute ago';
-  if (minutes < 60) return `${minutes} minutes ago`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours === 1) return '1 hour ago';
-  if (hours < 24) return `${hours} hours ago`;
-
-  return `${Math.floor(hours / 24)} days ago`;
-}

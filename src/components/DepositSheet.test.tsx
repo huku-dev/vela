@@ -67,12 +67,12 @@ describe('DepositSheet', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('aria-label', 'Deposit USDC');
+    expect(dialog).toHaveAttribute('aria-label', 'Deposit to Wallet');
   });
 
   it('shows deposit heading', () => {
     renderSheet();
-    expect(screen.getByText('Deposit USDC')).toBeInTheDocument();
+    expect(screen.getByText('Deposit to Wallet')).toBeInTheDocument();
   });
 
   it('renders two tabs: Transfer USDC and Fund with card', () => {
@@ -88,28 +88,24 @@ describe('DepositSheet', () => {
     expect(screen.getByText('YOUR DEPOSIT ADDRESS')).toBeInTheDocument();
   });
 
-  it('shows truncated wallet address', () => {
+  it('shows full wallet address (not truncated)', () => {
     renderSheet();
-    // master_address: 0x1234567890abcdef1234567890abcdef12345678
-    // truncated: 0x123456...345678
-    expect(screen.getByText('0x123456...345678')).toBeInTheDocument();
+    expect(
+      screen.getByText('0x1234567890abcdef1234567890abcdef12345678')
+    ).toBeInTheDocument();
   });
 
   it('renders QR code SVG', () => {
     renderSheet();
-    // QRCodeSVG renders an <svg> element
     const svgs = document.querySelectorAll('svg');
     expect(svgs.length).toBeGreaterThan(0);
   });
 
   it('copy button triggers clipboard write', async () => {
-    // Test that clicking copy shows "Copied!" feedback (proves handler ran)
-    // Direct clipboard mock in jsdom is unreliable, so test the side effect
     const user = userEvent.setup();
     renderSheet();
     const copyBtn = screen.getByRole('button', { name: /copy/i });
     await user.click(copyBtn);
-    // The handler calls navigator.clipboard.writeText and shows "Copied!" text
     await waitFor(() => {
       expect(screen.getByText('Copied!')).toBeInTheDocument();
     });
@@ -120,16 +116,33 @@ describe('DepositSheet', () => {
     expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
   });
 
-  it('shows network instructions', () => {
+  // ── Network Dropdown ──
+
+  it('shows network dropdown with placeholder', () => {
     renderSheet();
-    // Both networks mentioned — may appear in multiple elements
-    expect(screen.getAllByText(/hyperliquid/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/arbitrum/i).length).toBeGreaterThan(0);
+    const select = screen.getByLabelText('Select deposit network');
+    expect(select).toBeInTheDocument();
+    expect(select).toHaveValue('');
   });
 
-  it('shows USDC-only warning', () => {
+  it('does not show USDC warning when no network is selected', () => {
     renderSheet();
-    expect(screen.getByText(/only send usdc/i)).toBeInTheDocument();
+    expect(screen.queryByText(/only send usdc/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/only send via hyperliquid/i)).not.toBeInTheDocument();
+  });
+
+  it('shows Arbitrum warning when Arbitrum is selected', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.selectOptions(screen.getByLabelText('Select deposit network'), 'arbitrum');
+    expect(screen.getByText(/only send usdc on arbitrum/i)).toBeInTheDocument();
+  });
+
+  it('shows Hyperliquid warning when Hyperliquid is selected', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.selectOptions(screen.getByLabelText('Select deposit network'), 'hyperliquid');
+    expect(screen.getByText(/only send via hyperliquid usdsend/i)).toBeInTheDocument();
   });
 
   // ── Card Tab ──
@@ -141,37 +154,30 @@ describe('DepositSheet', () => {
     expect(screen.getByText(/card funding coming soon/i)).toBeInTheDocument();
   });
 
-  it('card tab explains alternatives', async () => {
+  it('card tab does not show "I\'ve sent the USDC" button', async () => {
     const user = userEvent.setup();
     renderSheet();
     await user.click(screen.getByText('Fund with card'));
-    expect(screen.getByText(/coinbase/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /i've sent the usdc/i })).not.toBeInTheDocument();
+  });
+
+  it('card tab does not show "Don\'t have USDC?" banner', async () => {
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByText('Fund with card'));
+    expect(screen.queryByText(/don't have usdc/i)).not.toBeInTheDocument();
   });
 
   // ── Refresh Balance ──
 
-  it('shows "I\'ve sent the USDC" button and "Check balance now" link', () => {
+  it('shows "I\'ve sent the USDC" button on transfer tab', () => {
     renderSheet();
     expect(screen.getByRole('button', { name: /i've sent the usdc/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /check balance now/i })).toBeInTheDocument();
   });
 
-  it('calls refresh-balance API when "Check balance now" clicked', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ balance: 600, deposit_detected: null }),
-    });
-
-    const user = userEvent.setup();
+  it('does not show "Check balance now" button', () => {
     renderSheet();
-    await user.click(screen.getByRole('button', { name: /check balance now/i }));
-
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/functions/v1/refresh-balance'),
-        expect.objectContaining({ method: 'POST' })
-      );
-    });
+    expect(screen.queryByRole('button', { name: /check balance now/i })).not.toBeInTheDocument();
   });
 
   it('shows deposit detected message when balance increases', async () => {
@@ -181,35 +187,25 @@ describe('DepositSheet', () => {
     });
 
     const user = userEvent.setup();
+    const onClose = vi.fn();
     const onRefresh = vi.fn();
-    render(<DepositSheet wallet={mockWallet} onClose={vi.fn()} onRefresh={onRefresh} />);
-    await user.click(screen.getByRole('button', { name: /check balance now/i }));
+    render(<DepositSheet wallet={mockWallet} onClose={onClose} onRefresh={onRefresh} />);
+
+    // "I've sent the USDC" triggers refresh + close
+    await user.click(screen.getByRole('button', { name: /i've sent the usdc/i }));
+    expect(onClose).toHaveBeenCalledOnce();
 
     await waitFor(() => {
-      expect(screen.getByText(/deposit detected/i)).toBeInTheDocument();
-      expect(screen.getByText(/\+\$100\.00/)).toBeInTheDocument();
-    });
-    expect(onRefresh).toHaveBeenCalledOnce();
-  });
-
-  it('shows "no new deposits" when balance unchanged', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ balance: 500, deposit_detected: null }),
-    });
-
-    const user = userEvent.setup();
-    renderSheet();
-    await user.click(screen.getByRole('button', { name: /check balance now/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/no new deposits/i)).toBeInTheDocument();
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/functions/v1/refresh-balance'),
+        expect.objectContaining({ method: 'POST' })
+      );
     });
   });
 
-  it('shows last synced time when available', () => {
+  it('does not show last synced time', () => {
     renderSheet();
-    expect(screen.getByText(/last synced/i)).toBeInTheDocument();
+    expect(screen.queryByText(/last synced/i)).not.toBeInTheDocument();
   });
 
   // ── Dismiss ──

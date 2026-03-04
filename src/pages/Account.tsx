@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
@@ -448,31 +448,59 @@ function BalanceCard({
 }
 
 function FundingHistory() {
-  const { supabaseClient, isAuthenticated } = useAuthContext();
+  const { supabaseClient, isAuthenticated, user } = useAuthContext();
   const [events, setEvents] = useState<import('../types').FundingEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchEvents = useCallback(async () => {
+    if (!supabaseClient || !isAuthenticated) return;
+    try {
+      const { data } = await supabaseClient
+        .from('funding_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      setEvents(data ?? []);
+    } catch {
+      // Non-critical — silently ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [supabaseClient, isAuthenticated]);
+
+  // Initial fetch
   useEffect(() => {
     if (!supabaseClient || !isAuthenticated) {
       setLoading(false);
       return;
     }
+    fetchEvents();
+  }, [supabaseClient, isAuthenticated, fetchEvents]);
 
-    (async () => {
-      try {
-        const { data } = await supabaseClient
-          .from('funding_events')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        setEvents(data ?? []);
-      } catch {
-        // Non-critical — silently ignore
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [supabaseClient, isAuthenticated]);
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!supabaseClient || !isAuthenticated || !user?.privyDid) return;
+
+    const channel = supabaseClient
+      .channel('funding-events')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'funding_events',
+          filter: `user_id=eq.${user.privyDid}`,
+        },
+        () => {
+          fetchEvents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [supabaseClient, isAuthenticated, user?.privyDid, fetchEvents]);
 
   if (loading || events.length === 0) return null;
 
@@ -512,6 +540,10 @@ function FundingHistory() {
                   {new Date(event.created_at).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
+                  })}{' '}
+                  {new Date(event.created_at).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
                   })}
                 </span>
               </div>
