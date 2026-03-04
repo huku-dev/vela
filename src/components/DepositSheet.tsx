@@ -463,7 +463,6 @@ function TransferTab({
             {refreshError}
           </p>
         )}
-
       </div>
     </>
   );
@@ -482,10 +481,8 @@ function CardTab() {
         className="vela-body-sm vela-text-muted"
         style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
       >
-        We&apos;re working on credit and debit card support so you can buy USDC directly in the
-        app.
+        We&apos;re working on credit and debit card support so you can buy USDC directly in the app.
       </p>
     </div>
   );
 }
-

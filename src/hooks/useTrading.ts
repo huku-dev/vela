@@ -132,7 +132,10 @@ export function useTrading(): TradingState {
       setProposals(proposalsRes.data ?? []);
       setPositions(openPosRes.data ?? []);
       setClosedPositions(closedPosRes.data ?? []);
-      setPreferences(prefsRes.data ?? (DEV_BYPASS ? { mode: 'semi_automated' } as unknown as UserPreferences : null));
+      setPreferences(
+        prefsRes.data ??
+          (DEV_BYPASS ? ({ mode: 'semi_automated' } as unknown as UserPreferences) : null)
+      );
       setWallet(walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null));
       setCircuitBreakers(cbRes.data ?? []);
       setError(null);

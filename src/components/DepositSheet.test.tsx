@@ -90,9 +90,7 @@ describe('DepositSheet', () => {
 
   it('shows full wallet address (not truncated)', () => {
     renderSheet();
-    expect(
-      screen.getByText('0x1234567890abcdef1234567890abcdef12345678')
-    ).toBeInTheDocument();
+    expect(screen.getByText('0x1234567890abcdef1234567890abcdef12345678')).toBeInTheDocument();
   });
 
   it('renders QR code SVG', () => {

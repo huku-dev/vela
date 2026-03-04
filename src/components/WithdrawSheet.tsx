@@ -66,7 +66,10 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
   const availableBalance = wallet.balance_usdc ?? 0;
   const netAmount = parsedAmount - WITHDRAWAL_FEE;
   const isAmountValid =
-    !isNaN(parsedAmount) && parsedAmount >= MIN_WITHDRAWAL && parsedAmount <= availableBalance && netAmount > 0;
+    !isNaN(parsedAmount) &&
+    parsedAmount >= MIN_WITHDRAWAL &&
+    parsedAmount <= availableBalance &&
+    netAmount > 0;
   const isAddressValid = ETH_ADDRESS_RE.test(destination);
   const isFormValid = isAmountValid && isAddressValid;
   const isOtpValid = otpCode.length === 6 && /^\d{6}$/.test(otpCode);
@@ -545,7 +548,11 @@ function FormStep({
               className="vela-body-sm"
               style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
             >
-              ${parsedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              $
+              {parsedAmount.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
           <div
@@ -562,7 +569,11 @@ function FormStep({
               className="vela-body-sm"
               style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
             >
-              -${WITHDRAWAL_FEE.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              -$
+              {WITHDRAWAL_FEE.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
           <div
@@ -580,7 +591,11 @@ function FormStep({
               className="vela-body-sm"
               style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 700 }}
             >
-              ${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              $
+              {netAmount.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
         </div>
@@ -723,7 +738,11 @@ function OtpStep({
             className="vela-body-sm"
             style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 700 }}
           >
-            ${netAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            $
+            {netAmount.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
