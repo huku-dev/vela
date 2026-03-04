@@ -309,6 +309,19 @@ grep -r "sk-" src/   # Check for API keys
 - All API responses must be validated before rendering
 - Use TypeScript interfaces to enforce data shapes
 
+### Backend & Database Security
+For all database, Edge Function, RLS, and API security rules, see:
+**`/Users/henry/crypto-agent/SECURITY.md`** (backend repo)
+
+Key rules enforced there:
+- All tables MUST have RLS enabled + policies (in the same migration file)
+- All views MUST use `security_invoker = on`
+- All functions MUST set `search_path = public`
+- Run Supabase Security Advisor after any migration (0 errors required)
+- Run `scripts/verify-migrations.sql` after every `db push` (all rows must be `true`)
+- Adversarial tests (`FEATURE-ADV:` prefix) required for any financial feature
+- Threat report in `docs/threat-reports/` required for new attack surfaces
+
 ---
 
 ## Common Commands
