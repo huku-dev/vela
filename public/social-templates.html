@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vela Social Templates</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a1a;
+      font-family: 'Inter', sans-serif;
+      padding: 40px;
+      color: #FFFBF5;
+    }
+
+    h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      text-transform: lowercase;
+    }
+
+    .subtitle {
+      color: #999;
+      font-size: 14px;
+      margin-bottom: 48px;
+    }
+
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+    }
+
+    .template-group {
+      margin-bottom: 60px;
+    }
+
+    .template-group h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #666;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ═══════════════════════════════════════
+       CARD FRAMES
+       ═══════════════════════════════════════ */
+
+    .card-x {
+      width: 800px;
+      height: 450px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-fb {
+      width: 486px;
+      height: 486px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── SIGNAL CARD ── */
+    .signal-card {
+      width: 100%;
+      height: 100%;
+      background: #FFFBF5;
+      border: 3px solid #0A0A0A;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sc-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 28px 0;
+    }
+
+    .sc-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sc-logo svg { width: 36px; height: 36px; }
+
+    .sc-logo span {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .sc-timestamp {
+      font-size: 13px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .sc-body {
+      padding: 0 28px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    /* Signal badge — now ABOVE the asset */
+    .sc-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 2px solid #0A0A0A;
+      width: fit-content;
+    }
+
+    .sc-badge.buy { background: #0FE68C; color: #0A0A0A; }
+    .sc-badge.sell { background: #FF4757; color: #FFFBF5; }
+    .sc-badge.wait { background: #EBEBEB; color: #6B7280; }
+
+    /* Asset row — icon + name/price block */
+    .sc-asset-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sc-asset-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid #E5E7EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F3F4F6;
+    }
+
+    .sc-asset-icon img {
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .sc-asset-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sc-asset-top {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .sc-ticker {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .sc-fullname {
+      font-size: 14px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    /* Price — sits below ticker, close to it */
+    .sc-price-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sc-price {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .sc-change {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .sc-change.up { color: #0FE68C; }
+    .sc-change.down { color: #FF4757; }
+
+    .sc-change .arrow-up {
+      display: inline-block;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-bottom: 8px solid #0FE68C;
+    }
+
+    .sc-change .arrow-down {
+      display: inline-block;
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 8px solid #FF4757;
+    }
+
+    .sc-change .period {
+      font-size: 11px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .sc-explanation {
+      font-size: 15px;
+      line-height: 1.5;
+      color: #374151;
+      max-width: 580px;
+    }
+
+    .sc-footer {
+      background: #0A0A0A;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .sc-footer span {
+      font-size: 13px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .sc-footer .cta {
+      font-size: 13px;
+      color: #0FE68C;
+      font-weight: 600;
+    }
+
+    /* ── MARKET DIGEST CARD ── */
+    .digest-card {
+      width: 100%;
+      height: 100%;
+      background: #FFFBF5;
+      border: 3px solid #0A0A0A;
+      color: #0A0A0A;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dc-header {
+      padding: 20px 28px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dc-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dc-logo svg { width: 36px; height: 36px; }
+
+    .dc-logo span {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .dc-date {
+      font-size: 13px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    /* Center the digest body between header and footer */
+    .dc-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 28px;
+    }
+
+    .dc-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 18px;
+    }
+
+    .dc-items {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .dc-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .dc-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      min-width: 28px;
+      color: #0FE68C;
+    }
+
+    .dc-content {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #374151;
+    }
+
+    .dc-content strong {
+      color: #0A0A0A;
+      font-weight: 600;
+    }
+
+    .dc-divider {
+      margin: 0;
+      height: 1px;
+      background: linear-gradient(to right, #0FE68C, transparent);
+      opacity: 0.3;
+    }
+
+    .dc-footer {
+      background: #0A0A0A;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .dc-footer span {
+      font-size: 13px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .dc-footer .cta {
+      font-size: 13px;
+      color: #0FE68C;
+      font-weight: 600;
+    }
+
+    /* ── Facebook square overrides ── */
+    .card-fb .sc-header { padding: 20px 22px 0; }
+    .card-fb .sc-logo svg { width: 34px; height: 34px; }
+    .card-fb .sc-logo span { font-size: 21px; }
+    .card-fb .sc-timestamp { font-size: 12px; }
+    .card-fb .sc-body { padding: 0 22px; gap: 10px; }
+    .card-fb .sc-asset-icon { width: 42px; height: 42px; }
+    .card-fb .sc-asset-icon img { width: 36px; height: 36px; }
+    .card-fb .sc-ticker { font-size: 26px; }
+    .card-fb .sc-fullname { font-size: 12px; }
+    .card-fb .sc-price { font-size: 18px; }
+    .card-fb .sc-change { font-size: 12px; }
+    .card-fb .sc-badge { font-size: 12px; padding: 5px 14px; }
+    .card-fb .sc-explanation { font-size: 13px; }
+    .card-fb .sc-footer { padding: 14px 22px; }
+    .card-fb .sc-footer span, .card-fb .sc-footer .cta { font-size: 12px; }
+
+    .card-fb .dc-header { padding: 20px 22px 0; }
+    .card-fb .dc-logo svg { width: 34px; height: 34px; }
+    .card-fb .dc-logo span { font-size: 21px; }
+    .card-fb .dc-date { font-size: 12px; }
+    .card-fb .dc-body { padding: 0 22px; }
+    .card-fb .dc-title { font-size: 20px; margin-bottom: 14px; }
+    .card-fb .dc-items { gap: 10px; }
+    .card-fb .dc-num { font-size: 22px; min-width: 22px; }
+    .card-fb .dc-content { font-size: 12px; }
+    .card-fb .dc-footer { padding: 14px 22px; }
+    .card-fb .dc-footer span, .card-fb .dc-footer .cta { font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <h1>vela social templates</h1>
+  <p class="subtitle">X format (1600 x 900, 16:9) shown at 50% · Facebook format (1080 x 1080, 1:1) shown at 45%</p>
+
+  <!-- ════════════════════════════════════════════
+       X FORMAT — SIGNAL CARDS (1600×900)
+       ════════════════════════════════════════════ -->
+  <div class="template-group">
+    <h2>Signal Cards — X Format (16:9)</h2>
+    <div class="grid">
+
+      <!-- BUY — BTC -->
+      <div class="card-x">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 4, 2026 · 3:15 AM EST</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge buy">Buy Signal</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">BTC</span>
+                  <span class="sc-fullname">Bitcoin</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$71,680</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Buying pressure building for 3 days. Momentum is strong and the upward trend just confirmed. Next level to watch: $74,000.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SELL — ETH -->
+      <div class="card-x">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 3, 2026 · 11:00 PM EST</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge sell">Sell Signal</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">ETH</span>
+                  <span class="sc-fullname">Ethereum</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$2,140</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Momentum fading after a 3-day rally. Selling pressure increasing and the trend is losing strength. Caution warranted here.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- WAIT — SOL -->
+      <div class="card-x">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 4, 2026 · 7:00 AM EST</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge wait">Wait</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/4128/small/solana.png" alt="SOL">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">SOL</span>
+                  <span class="sc-fullname">Solana</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$142.80</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Near local highs but momentum is mixed. No clear direction yet. Sometimes the smartest move is no move.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUY — HYPE (reactive with % change) -->
+      <div class="card-x">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 4, 2026 · 2:00 PM EST</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge buy">Buy Signal</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg" alt="HYPE">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">HYPE</span>
+                  <span class="sc-fullname">Hyperliquid</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$30.68</span>
+                  <span class="sc-change up"><span class="arrow-up"></span>12.2% <span class="period">24H</span></span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Whale bought ~$6M through Galaxy Digital OTC. OKX and Bybit added HYPE perpetuals. Strong momentum confirmed.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       X FORMAT — MARKET DIGEST (1600×900)
+       ════════════════════════════════════════════ -->
+  <div class="template-group">
+    <h2>Market Digest — X Format (16:9)</h2>
+    <div class="grid">
+
+      <div class="card-x">
+        <div class="digest-card">
+          <div class="dc-header">
+            <div class="dc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="dc-date">Mar 4, 2026</span>
+          </div>
+          <div class="dc-body">
+            <div class="dc-title">3 things moving markets today</div>
+            <div class="dc-items">
+              <div class="dc-item">
+                <span class="dc-num">1</span>
+                <p class="dc-content">
+                  <strong>Gold hit $5,400</strong>, another all-time high. Central banks are buying aggressively as geopolitical tensions persist.
+                </p>
+              </div>
+              <div class="dc-divider"></div>
+              <div class="dc-item">
+                <span class="dc-num">2</span>
+                <p class="dc-content">
+                  <strong>BTC through $71K</strong> while the S&P barely moved. Crypto is decoupling from traditional markets right now.
+                </p>
+              </div>
+              <div class="dc-divider"></div>
+              <div class="dc-item">
+                <span class="dc-num">3</span>
+                <p class="dc-content">
+                  <strong>ETH sentiment at Extreme Fear.</strong> Fear & Greed index hit 10. Historically, that's when the crowd gets it wrong.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="dc-footer">
+            <span>Markets never sleep. Neither does Vela.</span>
+            <span class="cta">Read full digest →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       X FORMAT — TRADE CLOSED (1600×900)
+       ════════════════════════════════════════════ -->
+  <div class="template-group">
+    <h2>Trade Closed — X Format (16:9)</h2>
+    <div class="grid">
+
+      <div class="card-x">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 4, 2026 · 10:30 AM EST</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge buy" style="background: #0FE68C; border-color: #0A0A0A;">Trade Closed · +$54 Profit</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">BTC</span>
+                  <span class="sc-fullname">Bitcoin</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$68,200 → $71,680</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Entry on Feb 28, exit today via trailing stop. 5 days held, +5.1% return. Every signal, every outcome.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       FACEBOOK FORMAT — SIGNAL CARDS (1080×1080)
+       ════════════════════════════════════════════ -->
+  <div class="template-group">
+    <h2>Signal Cards — Facebook Format (1:1 Square)</h2>
+    <div class="grid">
+
+      <!-- BUY — BTC (Square) -->
+      <div class="card-fb">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 4, 2026</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge buy">Buy Signal</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">BTC</span>
+                  <span class="sc-fullname">Bitcoin</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$71,680</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Buying pressure building for 3 days. Momentum is strong and the upward trend just confirmed. Next level to watch: $74,000.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SELL — ETH (Square) -->
+      <div class="card-fb">
+        <div class="signal-card">
+          <div class="sc-header">
+            <div class="sc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="sc-timestamp">Mar 3, 2026</span>
+          </div>
+          <div class="sc-body">
+            <div class="sc-badge sell">Sell Signal</div>
+            <div class="sc-asset-row">
+              <div class="sc-asset-icon">
+                <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+              </div>
+              <div class="sc-asset-info">
+                <div class="sc-asset-top">
+                  <span class="sc-ticker">ETH</span>
+                  <span class="sc-fullname">Ethereum</span>
+                </div>
+                <div class="sc-price-row">
+                  <span class="sc-price">$2,140</span>
+                </div>
+              </div>
+            </div>
+            <p class="sc-explanation">
+              Momentum fading after a 3-day rally. Selling pressure increasing and the trend is losing strength. Caution warranted here.
+            </p>
+          </div>
+          <div class="sc-footer">
+            <span>getvela.xyz</span>
+            <span class="cta">See full breakdown →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       FACEBOOK FORMAT — MARKET DIGEST (1080×1080)
+       ════════════════════════════════════════════ -->
+  <div class="template-group">
+    <h2>Market Digest — Facebook Format (1:1 Square)</h2>
+    <div class="grid">
+
+      <div class="card-fb">
+        <div class="digest-card">
+          <div class="dc-header">
+            <div class="dc-logo">
+              <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+              </svg>
+              <span>vela</span>
+            </div>
+            <span class="dc-date">Mar 4, 2026</span>
+          </div>
+          <div class="dc-body">
+            <div class="dc-title">3 things moving markets today</div>
+            <div class="dc-items">
+              <div class="dc-item">
+                <span class="dc-num">1</span>
+                <p class="dc-content">
+                  <strong>Gold hit $5,400</strong>, another all-time high. Central banks buying aggressively.
+                </p>
+              </div>
+              <div class="dc-divider"></div>
+              <div class="dc-item">
+                <span class="dc-num">2</span>
+                <p class="dc-content">
+                  <strong>BTC through $71K</strong> while the S&P barely moved. Crypto decoupling.
+                </p>
+              </div>
+              <div class="dc-divider"></div>
+              <div class="dc-item">
+                <span class="dc-num">3</span>
+                <p class="dc-content">
+                  <strong>ETH at Extreme Fear.</strong> Historically, that's when the crowd gets it wrong.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="dc-footer">
+            <span>Markets never sleep. Neither does Vela.</span>
+            <span class="cta">Full digest →</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>
