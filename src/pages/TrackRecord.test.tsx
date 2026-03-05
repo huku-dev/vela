@@ -137,14 +137,14 @@ beforeEach(() => {
 describe('TRACK-SRC: Source-verification — P&L colors', () => {
   const src = readFileSync(resolve(__dirname, './TrackRecord.tsx'), 'utf-8');
 
-  it('TRUST CRITICAL: ClosedTradeCard uses green-dark for pnl_pct >= 0', () => {
-    // The ClosedTradeCard must map positive P&L to green
-    expect(src).toContain("trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
+  it('TRUST CRITICAL: ClosedTradeCard uses green-dark for positive total P&L', () => {
+    // The ClosedTradeCard must map positive position P&L to green (totalDollarPnl-based)
+    expect(src).toContain("(totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
-  it('TRUST CRITICAL: ClosedTradeCard uses red-dark for negative pnl_pct', () => {
-    // Same ternary — red case is the else branch
-    expect(src).toContain("trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
+  it('TRUST CRITICAL: ClosedTradeCard uses red-dark for negative total P&L', () => {
+    // Same ternary — red case is the else branch (totalDollarPnl-based)
+    expect(src).toContain("(totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
   it('TRUST CRITICAL: BestCallCard uses green-dark for positive, red-dark for negative', () => {
@@ -381,7 +381,7 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
-    expect(screen.getByText(/3 trades/)).toBeInTheDocument();
+    expect(screen.getByText(/3 position/)).toBeInTheDocument();
     expect(screen.getByText(/2 profitable/)).toBeInTheDocument();
   });
 

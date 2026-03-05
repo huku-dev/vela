@@ -11,7 +11,8 @@ import { getCoinIcon, formatPrice, reasonCodeToPlainEnglish } from '../lib/helpe
 import {
   calculateUnrealizedPnL,
   pctToDollar,
-  aggregateTradeStats,
+  computePositionPnl,
+  aggregatePositionStats,
   computeDetailedStats,
   formatDurationMs,
 } from '../utils/calculations';
@@ -107,13 +108,34 @@ export default function TrackRecord() {
     (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null
   );
   const userOpen = userTrades.filter(t => t.status === 'open');
-  const userStats = aggregateTradeStats(userClosed, DEFAULT_POSITION_SIZE);
-  const userDetailedStats = computeDetailedStats(userClosed, DEFAULT_POSITION_SIZE);
+
+  // ── Position-level P&L: group trades with trims, compute total position P&L ──
+  const groupedUserClosed = groupTradesWithTrims(userTrades).filter(
+    g => g.trade.status === 'closed' && g.trade.pnl_pct != null
+  );
+  const userPositions = groupedUserClosed.map(g =>
+    computePositionPnl(
+      g.trade.pnl_pct!,
+      g.trims.map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
+      DEFAULT_POSITION_SIZE
+    )
+  );
+  const userStats = aggregatePositionStats(userPositions);
 
   const paperClosed = paperTrades.filter(
     (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null
   );
-  const paperStats = aggregateTradeStats(paperClosed, DEFAULT_POSITION_SIZE);
+  const groupedPaperClosed = groupTradesWithTrims(paperTrades).filter(
+    g => g.trade.status === 'closed' && g.trade.pnl_pct != null
+  );
+  const paperPositions = groupedPaperClosed.map(g =>
+    computePositionPnl(
+      g.trade.pnl_pct!,
+      g.trims.map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
+      DEFAULT_POSITION_SIZE
+    )
+  );
+  const paperStats = aggregatePositionStats(paperPositions);
   const paperDetailedStats = computeDetailedStats(paperClosed, DEFAULT_POSITION_SIZE);
 
   const hasUserTrades = userTrades.length > 0 || hasLivePositions;
@@ -232,11 +254,9 @@ export default function TrackRecord() {
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
               >
-                {userClosed.length + userOpen.length} trade
-                {userClosed.length + userOpen.length !== 1 ? 's' : ''} · {userDetailedStats.wins}{' '}
+                {userStats.totalClosed} position{userStats.totalClosed !== 1 ? 's' : ''} · {userStats.wins}{' '}
                 profitable
-                {userStats.totalClosed > 0 &&
-                  ` (${Math.round((userDetailedStats.wins / userStats.totalClosed) * 100)}%)`}
+                {userStats.totalClosed > 0 && ` (${userStats.winRate}%)`}
                 {(userOpen.length > 0 || hasLivePositions) &&
                   ` · ${userOpen.length + positions.length} open`}
               </p>
@@ -403,7 +423,7 @@ export default function TrackRecord() {
                     maximumFractionDigits: 0,
                   })}
                   {' · '}
-                  {paperStats.totalClosed} trades
+                  {paperStats.totalClosed} positions
                 </span>
               )}
               <svg
@@ -472,10 +492,9 @@ export default function TrackRecord() {
                       marginTop: 'var(--space-1)',
                     }}
                   >
-                    {paperStats.totalClosed} trade{paperStats.totalClosed !== 1 ? 's' : ''} ·{' '}
-                    {paperDetailedStats.wins} profitable
-                    {paperStats.totalClosed > 0 &&
-                      ` (${Math.round((paperDetailedStats.wins / paperStats.totalClosed) * 100)}%)`}
+                    {paperStats.totalClosed} position{paperStats.totalClosed !== 1 ? 's' : ''} ·{' '}
+                    {paperStats.wins} profitable
+                    {paperStats.totalClosed > 0 && ` (${paperStats.winRate}%)`}
                   </p>
                   <p
                     className="vela-body-sm"
@@ -967,8 +986,17 @@ function ClosedTradeCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const dollarPnl =
-    trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
+  // Position-level P&L: includes close P&L + all trim P&Ls
+  const positionPnl =
+    trade.pnl_pct != null
+      ? computePositionPnl(
+          trade.pnl_pct,
+          (trims ?? []).map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
+          DEFAULT_POSITION_SIZE
+        )
+      : null;
+  const totalDollarPnl = positionPnl?.totalDollarPnl ?? null;
+  const totalPnlPct = positionPnl?.totalPnlPct ?? null;
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
 
@@ -1011,34 +1039,34 @@ function ClosedTradeCard({
             </div>
           </div>
 
-          {trade.pnl_pct != null && (
+          {totalPnlPct != null && (
             <div style={{ textAlign: 'right' }}>
               <p
                 style={{
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 700,
                   fontSize: 'var(--text-base)',
-                  color: trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: (totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   lineHeight: 1.2,
                   margin: 0,
                 }}
               >
-                {trade.pnl_pct >= 0 ? '+' : ''}
-                {trade.pnl_pct.toFixed(1)}%
+                {totalPnlPct >= 0 ? '+' : ''}
+                {totalPnlPct.toFixed(1)}%
               </p>
-              {dollarPnl != null && (
+              {totalDollarPnl != null && (
                 <p
                   style={{
                     fontFamily: 'var(--type-mono-base-font)',
                     fontWeight: 600,
                     fontSize: 'var(--text-xs)',
-                    color: dollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                    color: totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                     margin: 0,
                   }}
                 >
-                  {dollarPnl >= 0 ? '+' : '-'}$
-                  {Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
-                  {dollarPnl >= 0 ? 'profit' : 'loss'}
+                  {totalDollarPnl >= 0 ? '+' : '-'}$
+                  {Math.abs(totalDollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
+                  {totalDollarPnl >= 0 ? 'profit' : 'loss'}
                 </p>
               )}
             </div>
@@ -1123,11 +1151,11 @@ function ClosedTradeCard({
               value={formatHoldingPeriod(trade.opened_at, trade.closed_at)}
             />
           )}
-          {trade.pnl_pct != null && dollarPnl != null && (
+          {positionPnl != null && totalPnlPct != null && totalDollarPnl != null && (
             <DetailRow
-              label="Realized P&L"
-              value={`${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}% · ${dollarPnl >= 0 ? '+' : '-'}$${Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${trade.pnl_pct >= 0 ? 'profit' : 'loss'}`}
-              valueColor={trade.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
+              label="Total Position P&L"
+              value={`${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}% · ${totalDollarPnl >= 0 ? '+' : '-'}$${Math.abs(totalDollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${totalDollarPnl >= 0 ? 'profit' : 'loss'}`}
+              valueColor={totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
             />
           )}
 
@@ -1198,61 +1226,224 @@ function ClosedTradeCard({
             </div>
           )}
 
-          {/* Trim history (grouped from separate trim records) */}
-          {trims && trims.length > 0 && (
+          {/* Position timeline: trims + close with running cost basis */}
+          {trims && trims.length > 0 && positionPnl && (
             <div
               style={{
-                marginTop: 'var(--space-2)',
-                padding: 'var(--space-2)',
-                backgroundColor: 'rgba(255, 215, 0, 0.08)',
+                marginTop: 'var(--space-3)',
+                padding: 'var(--space-3)',
+                backgroundColor: 'var(--gray-50)',
                 borderRadius: 'var(--radius-sm)',
-                borderLeft: '3px solid #FFD700',
+                border: '1px solid var(--gray-200)',
               }}
             >
               <span
                 className="vela-label-sm"
-                style={{ color: '#B8860B', display: 'block', marginBottom: 'var(--space-1)' }}
+                style={{
+                  color: 'var(--gray-600)',
+                  display: 'block',
+                  marginBottom: 'var(--space-2)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
               >
-                Trimmed {trims.length}x during trade
+                Position Timeline
               </span>
-              {trims.map(trim => {
-                const trimDollar =
-                  trim.pnl_pct != null ? pctToDollar(trim.pnl_pct, DEFAULT_POSITION_SIZE) : null;
-                return (
+
+              {/* Entry */}
+              <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                <div
+                  style={{
+                    width: 2,
+                    backgroundColor: isShortTrade(trade.direction)
+                      ? 'var(--red-primary)'
+                      : 'var(--green-primary)',
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1 }}>
                   <span
-                    key={trim.id}
                     className="vela-body-sm"
-                    style={{ color: 'var(--color-text-muted)', display: 'block' }}
+                    style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}
                   >
-                    {trim.trim_pct != null ? `${trim.trim_pct}%` : 'Trim'} at{' '}
-                    {trim.exit_price != null ? formatPrice(trim.exit_price) : '—'}
-                    {trim.pnl_pct != null && (
-                      <span
+                    Entry at {formatPrice(trade.entry_price)}
+                  </span>
+                  <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                    ${DEFAULT_POSITION_SIZE.toLocaleString()} position · Cost basis: 100%
+                  </span>
+                </div>
+              </div>
+
+              {/* Trims with running cost basis */}
+              {trims.map((trim, idx) => {
+                const breakdown = positionPnl.trimBreakdown[idx];
+                const trimDollar = breakdown?.dollarPnl ?? 0;
+                const costBasisAfter = breakdown?.costBasisAfter ?? 100;
+                const remainingDollars = Math.round(
+                  (costBasisAfter / 100) * DEFAULT_POSITION_SIZE
+                );
+                return (
+                  <div
+                    key={trim.id}
+                    style={{
+                      display: 'flex',
+                      gap: 'var(--space-2)',
+                      marginBottom: 'var(--space-2)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 2,
+                        backgroundColor: '#FFD700',
+                        borderRadius: 1,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div
                         style={{
-                          color: trim.pnl_pct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                          fontWeight: 600,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'baseline',
                         }}
                       >
-                        {' · '}
-                        {trim.pnl_pct >= 0 ? '+' : ''}
-                        {trim.pnl_pct.toFixed(1)}%
-                        {trimDollar != null &&
-                          ` (${trimDollar >= 0 ? '+' : '-'}$${Math.abs(trimDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })})`}
+                        <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+                          Trim {trim.trim_pct != null ? `${trim.trim_pct}%` : ''} at{' '}
+                          {trim.exit_price != null ? formatPrice(trim.exit_price) : '—'}
+                        </span>
+                        <span
+                          className="vela-body-sm"
+                          style={{
+                            fontFamily: 'var(--type-mono-base-font)',
+                            fontWeight: 600,
+                            color: trimDollar >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {trimDollar >= 0 ? '+' : '-'}$
+                          {Math.abs(trimDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                        {new Date(trim.opened_at).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                        {trim.pnl_pct != null &&
+                          ` · ${trim.pnl_pct >= 0 ? '+' : ''}${trim.pnl_pct.toFixed(1)}%`}
+                        {` · Cost basis: ${costBasisAfter}% ($${remainingDollars.toLocaleString()})`}
                       </span>
-                    )}
-                    {' · '}
-                    {new Date(trim.opened_at).toLocaleDateString('en-GB', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </span>
+                    </div>
+                  </div>
                 );
               })}
+
+              {/* Close */}
+              <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                <div
+                  style={{
+                    width: 2,
+                    backgroundColor: 'var(--gray-400)',
+                    borderRadius: 1,
+                    flexShrink: 0,
+                  }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                    }}
+                  >
+                    <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+                      Close {positionPnl.costBasisPct}% at{' '}
+                      {trade.exit_price != null ? formatPrice(trade.exit_price) : '—'}
+                    </span>
+                    <span
+                      className="vela-body-sm"
+                      style={{
+                        fontFamily: 'var(--type-mono-base-font)',
+                        fontWeight: 600,
+                        color:
+                          positionPnl.closeDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {positionPnl.closeDollarPnl >= 0 ? '+' : '-'}$
+                      {Math.abs(positionPnl.closeDollarPnl).toLocaleString('en-US', {
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
+                  </div>
+                  <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                    {trade.closed_at &&
+                      new Date(trade.closed_at).toLocaleDateString('en-GB', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    {trade.pnl_pct != null &&
+                      ` · ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}%`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Position P&L summary */}
+              <div
+                style={{
+                  marginTop: 'var(--space-2)',
+                  paddingTop: 'var(--space-2)',
+                  borderTop: '1px solid var(--gray-200)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
+                  Trim {positionPnl.trimDollarPnl >= 0 ? 'profit' : 'loss'}:{' '}
+                  <span style={{ fontWeight: 600, color: positionPnl.trimDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)' }}>
+                    {positionPnl.trimDollarPnl >= 0 ? '+' : '-'}$
+                    {Math.abs(positionPnl.trimDollarPnl).toLocaleString('en-US', {
+                      maximumFractionDigits: 0,
+                    })}
+                  </span>
+                </span>
+                <span
+                  className="vela-body-sm"
+                  style={{
+                    fontFamily: 'var(--type-mono-base-font)',
+                    fontWeight: 700,
+                    color: (totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                  }}
+                >
+                  Total: {(totalDollarPnl ?? 0) >= 0 ? '+' : '-'}$
+                  {Math.abs(totalDollarPnl ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
+                  {(totalDollarPnl ?? 0) >= 0 ? 'profit' : 'loss'}
+                </span>
+              </div>
+
+              {/* House money badge */}
+              {positionPnl.costBasisPct <= 0 && (
+                <div
+                  style={{
+                    marginTop: 'var(--space-2)',
+                    padding: 'var(--space-1) var(--space-2)',
+                    backgroundColor: 'rgba(0, 208, 132, 0.1)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'inline-block',
+                  }}
+                >
+                  <span className="vela-label-sm" style={{ color: 'var(--green-dark)' }}>
+                    Position is house money
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
           {/* Share trade card */}
-          {trade.exit_price != null && trade.pnl_pct != null && (
+          {trade.exit_price != null && totalPnlPct != null && (
             <div
               style={{
                 marginTop: 'var(--space-3)',
@@ -1266,7 +1457,7 @@ function ClosedTradeCard({
                   direction: trade.direction ?? 'long',
                   entryPrice: trade.entry_price,
                   exitPrice: trade.exit_price,
-                  pnlPct: trade.pnl_pct,
+                  pnlPct: totalPnlPct,
                   duration:
                     trade.opened_at && trade.closed_at
                       ? formatHoldingPeriod(trade.opened_at, trade.closed_at)

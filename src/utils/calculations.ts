@@ -112,11 +112,110 @@ export function pctToDollar(pnlPct: number, positionSize: number): number {
 }
 
 /**
- * Aggregate trade stats from a list of closed trades.
- * TRUST-CRITICAL: These numbers are displayed prominently on the Your Trades page.
- * @param closedTrades - Array of objects with pnl_pct (non-null)
- * @param positionSize - Dollar position size per trade
- * @returns Aggregated stats: totalClosed, totalDollarPnl, avgPnlPct
+ * Compute total position P&L from a parent close trade and its trims.
+ * TRUST-CRITICAL: This is the core position-level P&L calculation.
+ *
+ * A position = 1 entry + N trims + 1 close.
+ * Total P&L = close P&L (on remaining position) + sum of trim P&Ls.
+ * Win = totalDollarPnl >= 0.
+ *
+ * @param parentPnlPct - The close trade's pnl_pct (entry→exit price change %)
+ * @param trims - Array of trim trades with pnl_pct and trim_pct
+ * @param positionSize - Dollar position size (e.g., 1000)
+ * @returns Position-level P&L breakdown
+ */
+export function computePositionPnl(
+  parentPnlPct: number,
+  trims: { pnl_pct: number | null; trim_pct: number | null }[],
+  positionSize: number
+): {
+  totalDollarPnl: number;
+  totalPnlPct: number;
+  closeDollarPnl: number;
+  trimDollarPnl: number;
+  costBasisPct: number;
+  trimBreakdown: { dollarPnl: number; trimPct: number; costBasisAfter: number }[];
+} {
+  if (positionSize <= 0) {
+    return {
+      totalDollarPnl: 0, totalPnlPct: 0, closeDollarPnl: 0,
+      trimDollarPnl: 0, costBasisPct: 100, trimBreakdown: [],
+    };
+  }
+
+  // Each trim: dollar P&L = (trim.pnl_pct / 100) * (trim.trim_pct / 100) * positionSize
+  let cumulativeTrimPct = 0;
+  let trimDollarPnl = 0;
+  const trimBreakdown: { dollarPnl: number; trimPct: number; costBasisAfter: number }[] = [];
+
+  for (const trim of trims) {
+    const trimPnlPct = trim.pnl_pct ?? 0;
+    const trimPct = trim.trim_pct ?? 0;
+    const dollarPnl = Math.round((trimPnlPct / 100) * (trimPct / 100) * positionSize * 100) / 100;
+    trimDollarPnl += dollarPnl;
+    cumulativeTrimPct += trimPct;
+    trimBreakdown.push({
+      dollarPnl,
+      trimPct,
+      costBasisAfter: Math.round((100 - cumulativeTrimPct) * 10) / 10,
+    });
+  }
+
+  // Parent close: remaining fraction = 1 - cumulative trim fraction
+  const remainingFraction = 1.0 - cumulativeTrimPct / 100;
+  const closeDollarPnl = Math.round((parentPnlPct / 100) * remainingFraction * positionSize * 100) / 100;
+
+  const totalDollarPnl = Math.round((closeDollarPnl + trimDollarPnl) * 100) / 100;
+  const totalPnlPct = Math.round((totalDollarPnl / positionSize) * 100 * 10) / 10;
+  const costBasisPct = Math.round((100 - cumulativeTrimPct) * 10) / 10;
+
+  return {
+    totalDollarPnl,
+    totalPnlPct,
+    closeDollarPnl,
+    trimDollarPnl,
+    costBasisPct,
+    trimBreakdown,
+  };
+}
+
+/**
+ * Aggregate position-level stats from computed positions.
+ * TRUST-CRITICAL: These numbers are displayed prominently on the Track Record page.
+ * Replaces the old close-only aggregateTradeStats().
+ *
+ * @param positions - Array of position P&L results from computePositionPnl()
+ * @returns Aggregated stats: totalClosed, wins, winRate, totalDollarPnl, avgPnlPct
+ */
+export function aggregatePositionStats(
+  positions: { totalDollarPnl: number; totalPnlPct: number }[],
+): {
+  totalClosed: number;
+  wins: number;
+  winRate: number;
+  totalDollarPnl: number;
+  avgPnlPct: number;
+} {
+  const totalClosed = positions.length;
+  if (totalClosed === 0) {
+    return { totalClosed: 0, wins: 0, winRate: 0, totalDollarPnl: 0, avgPnlPct: 0 };
+  }
+
+  const wins = positions.filter(p => p.totalDollarPnl >= 0).length;
+  const winRate = Math.round((wins / totalClosed) * 100 * 10) / 10;
+  const totalDollarPnl = Math.round(
+    positions.reduce((sum, p) => sum + p.totalDollarPnl, 0) * 100
+  ) / 100;
+  const avgPnlPct = Math.round(
+    (positions.reduce((sum, p) => sum + p.totalPnlPct, 0) / totalClosed) * 10
+  ) / 10;
+
+  return { totalClosed, wins, winRate, totalDollarPnl, avgPnlPct };
+}
+
+/**
+ * @deprecated Use computePositionPnl() + aggregatePositionStats() instead.
+ * Kept temporarily for backward compatibility during migration.
  */
 export function aggregateTradeStats(
   closedTrades: { pnl_pct: number }[],

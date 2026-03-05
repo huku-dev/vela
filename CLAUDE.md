@@ -498,6 +498,12 @@ What did we choose? Why this approach?
 - Document the answer in a code comment (e.g. `// Email to user`, `// Telegram to admin (operator alert)`)
 - For multi-channel systems, build a **routing table** (function → channel → audience) during implementation, not after. This catches misrouted notifications before they ship.
 
+### 7. Design-First for Visual Assets
+- **Never generate visual assets (images, icons, banners, social graphics) programmatically as a first step.** Always start in Figma.
+- Programmatic generation (Pillow, Canvas, SVG scripts) produces "good enough" placeholders that linger. Figma-first ensures brand consistency from the start.
+- **Process:** Design in Figma → export assets → use in code. Only use programmatic generation for dynamic/templated content (e.g., trade cards with live data) where Figma templates can't cover it.
+- If Figma isn't available in the moment, explicitly mark the output as a **placeholder** and log a task to replace it with a proper Figma design.
+
 ---
 
 ## Performance Targets

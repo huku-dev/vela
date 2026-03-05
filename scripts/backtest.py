@@ -2856,98 +2856,174 @@ def write_to_supabase(
 
 
 # ---------------------------------------------------------------------------
-# 6. Summary statistics
+# 6. Position grouping & summary statistics
 # ---------------------------------------------------------------------------
 
 
+def group_into_positions(
+    trades: list[dict], position_size: float = POSITION_SIZE_USD
+) -> list[dict]:
+    """Group flat trade list into position-level records.
+
+    A position = 1 entry (long/short close) + N trims.
+    Trims are matched to their parent by (entry_date, entry_price, entry_signal_color).
+
+    Returns list of position dicts, each containing:
+      - close:         the full close trade dict
+      - trims:         list of matched trim trades (chronological)
+      - close_pnl_usd: dollar P&L from the final close only
+      - trim_pnl_usd:  sum of dollar P&L from all trims
+      - total_pnl_usd: close_pnl_usd + trim_pnl_usd (true position P&L)
+      - total_pnl_pct: total_pnl_usd / position_size * 100
+      - cost_basis_pct: remaining % of original position at close (100 - cumulative trim %)
+      - direction:     "long" or "short"
+    """
+    closed = [t for t in trades if t["status"] == "closed"]
+
+    # Separate full closes from supplementary trade types
+    supplementary_dirs = {
+        "trim", "bb_long", "bb_short", "bb2_long", "bb2_short", "reentry", "dca_entry"
+    }
+    full_closes = [t for t in closed if t.get("direction") not in supplementary_dirs]
+    trims = [t for t in closed if t.get("direction") == "trim"]
+
+    # Index trims by (entry_date, entry_price, entry_signal_color)
+    trim_index: dict[tuple, list[dict]] = {}
+    for trim in trims:
+        key = (trim["entry_date"], trim["entry_price"], trim.get("entry_signal_color"))
+        trim_index.setdefault(key, []).append(trim)
+
+    positions = []
+    for close_trade in full_closes:
+        key = (
+            close_trade["entry_date"],
+            close_trade["entry_price"],
+            close_trade.get("entry_signal_color"),
+        )
+        matched_trims = trim_index.get(key, [])
+        matched_trims = sorted(matched_trims, key=lambda t: t.get("exit_date", ""))
+
+        close_pnl_usd = close_trade.get("pnl_usd", 0)
+        trim_pnl_usd = sum(t.get("pnl_usd", 0) for t in matched_trims)
+        total_pnl_usd = close_pnl_usd + trim_pnl_usd
+
+        # Cost basis: what % of original position remained at close
+        trim_fractions = sum(t.get("trim_pct", 0) / 100 for t in matched_trims)
+        cost_basis_pct = round((1.0 - trim_fractions) * 100, 1)
+
+        positions.append({
+            "close": close_trade,
+            "trims": matched_trims,
+            "close_pnl_usd": close_pnl_usd,
+            "trim_pnl_usd": trim_pnl_usd,
+            "total_pnl_usd": total_pnl_usd,
+            "total_pnl_pct": round(total_pnl_usd / position_size * 100, 2)
+                if position_size > 0 else 0,
+            "cost_basis_pct": cost_basis_pct,
+            "direction": close_trade.get("direction", "long"),
+        })
+
+    return positions
+
+
 def print_summary(trades: list[dict], coingecko_id: str) -> None:
-    """Print a human-readable backtest summary with bidirectional + trim + BB breakdown."""
+    """Print a human-readable backtest summary with position-level P&L model."""
     closed = [t for t in trades if t["status"] == "closed"]
     open_trades = [t for t in trades if t["status"] == "open"]
 
-    # Separate trims, BB/BB2 trades, reentries, DCA fills, and full EMA closes
+    # Separate supplementary trade types
     trims = [t for t in closed if t.get("direction") == "trim"]
     bb_trades = [t for t in closed if t.get("direction", "").startswith("bb_")]
     bb2_trades = [t for t in closed if t.get("direction", "").startswith("bb2_")]
     reentry_trades = [t for t in closed if t.get("direction") == "reentry"]
-    supplementary_dirs = {"trim", "bb_long", "bb_short", "bb2_long", "bb2_short", "reentry", "dca_entry"}
-    full_closes = [t for t in closed if t.get("direction") not in supplementary_dirs]
 
-    if not full_closes and not open_trades and not trims:
+    # Group into positions (entry + trims + close = 1 position)
+    positions = group_into_positions(trades)
+
+    if not positions and not open_trades and not trims:
         print(f"\n  📊 {coingecko_id}: No trades generated")
         return
 
-    longs = [t for t in full_closes if t.get("direction") == "long"]
-    shorts = [t for t in full_closes if t.get("direction") == "short"]
+    long_positions = [p for p in positions if p["direction"] == "long"]
+    short_positions = [p for p in positions if p["direction"] == "short"]
 
-    long_wins = [t for t in longs if t["pnl_pct"] >= 0]
-    short_wins = [t for t in shorts if t["pnl_pct"] >= 0]
+    # Position-level win rate: win = total_pnl_usd >= 0 (trims + close)
+    long_wins = [p for p in long_positions if p["total_pnl_usd"] >= 0]
+    short_wins = [p for p in short_positions if p["total_pnl_usd"] >= 0]
 
     # USD P&L accounts for partial positions (trims reduce remaining size)
     total_pnl_usd = sum(t.get("pnl_usd", 0) for t in closed)
     trim_pnl_usd = sum(t.get("pnl_usd", 0) for t in trims)
 
-    long_pnl = sum(t["pnl_pct"] for t in longs)
-    short_pnl = sum(t["pnl_pct"] for t in shorts)
-
-    long_win_rate = len(long_wins) / len(longs) * 100 if longs else 0
-    short_win_rate = len(short_wins) / len(shorts) * 100 if shorts else 0
-    overall_win_rate = (len(long_wins) + len(short_wins)) / len(full_closes) * 100 if full_closes else 0
+    long_win_rate = len(long_wins) / len(long_positions) * 100 if long_positions else 0
+    short_win_rate = len(short_wins) / len(short_positions) * 100 if short_positions else 0
+    overall_win_rate = (
+        (len(long_wins) + len(short_wins)) / len(positions) * 100
+        if positions else 0
+    )
 
     bb_pnl_usd = sum(t.get("pnl_usd", 0) for t in bb_trades)
 
     print(f"\n  📊 Backtest Results: {coingecko_id}")
     print(f"  {'─' * 60}")
-    print(f"  Full trades closed:     {len(full_closes)} ({len(longs)} long, {len(shorts)} short)")
-    print(f"  Trim (partial) trades:  {len(trims)}")
+    print(f"  Positions closed:       {len(positions)} ({len(long_positions)} long, {len(short_positions)} short)")
+    print(f"  Total trims executed:   {len(trims)}")
     if bb_trades:
         print(f"  BB complementary:       {len(bb_trades)}")
     print(f"  Open trades:            {len(open_trades)}")
     print(f"  {'─' * 60}")
-    print(f"  Overall win rate:       {overall_win_rate:.0f}%")
-    print(f"  Total USD P&L:          ${total_pnl_usd:+,.0f} on ${POSITION_SIZE_USD:,} position")
+    print(f"  Position win rate:      {overall_win_rate:.0f}%  (win = total position P&L ≥ 0)")
+    print(f"  Total USD P&L:          ${total_pnl_usd:+,.0f} on ${POSITION_SIZE_USD:,} positions")
     if trims:
         print(f"    from trims:           ${trim_pnl_usd:+,.0f}")
-        print(f"    from EMA closes:      ${total_pnl_usd - trim_pnl_usd - bb_pnl_usd:+,.0f}")
+        print(f"    from closes:          ${total_pnl_usd - trim_pnl_usd - bb_pnl_usd:+,.0f}")
     if bb_trades:
         bb_win_rate = len([t for t in bb_trades if t["pnl_pct"] >= 0]) / len(bb_trades) * 100
         print(f"    from BB trades:       ${bb_pnl_usd:+,.0f} ({bb_win_rate:.0f}% win rate)")
     print(f"  {'─' * 60}")
 
-    if longs:
-        avg_long_win = sum(t["pnl_pct"] for t in long_wins) / len(long_wins) if long_wins else 0
-        avg_long_loss_list = [t for t in longs if t["pnl_pct"] < 0]
-        avg_long_loss = sum(t["pnl_pct"] for t in avg_long_loss_list) / len(avg_long_loss_list) if avg_long_loss_list else 0
-        print(f"  LONG trades:            {len(longs)} | Win rate: {long_win_rate:.0f}% | Return: {long_pnl:+.1f}%")
-        print(f"    Avg win: {avg_long_win:+.1f}% | Avg loss: {avg_long_loss:+.1f}%")
+    if long_positions:
+        avg_long_win_pnl = (
+            sum(p["total_pnl_pct"] for p in long_wins) / len(long_wins) if long_wins else 0
+        )
+        long_losses = [p for p in long_positions if p["total_pnl_usd"] < 0]
+        avg_long_loss_pnl = (
+            sum(p["total_pnl_pct"] for p in long_losses) / len(long_losses) if long_losses else 0
+        )
+        long_total_pnl_pct = sum(p["total_pnl_pct"] for p in long_positions)
+        print(f"  LONG positions:         {len(long_positions)} | Win rate: {long_win_rate:.0f}% | Return: {long_total_pnl_pct:+.1f}%")
+        print(f"    Avg win: {avg_long_win_pnl:+.1f}% | Avg loss: {avg_long_loss_pnl:+.1f}%")
 
-    if shorts:
-        avg_short_win = sum(t["pnl_pct"] for t in short_wins) / len(short_wins) if short_wins else 0
-        avg_short_loss_list = [t for t in shorts if t["pnl_pct"] < 0]
-        avg_short_loss = sum(t["pnl_pct"] for t in avg_short_loss_list) / len(avg_short_loss_list) if avg_short_loss_list else 0
-        print(f"  SHORT trades:           {len(shorts)} | Win rate: {short_win_rate:.0f}% | Return: {short_pnl:+.1f}%")
-        print(f"    Avg win: {avg_short_win:+.1f}% | Avg loss: {avg_short_loss:+.1f}%")
+    if short_positions:
+        avg_short_win_pnl = (
+            sum(p["total_pnl_pct"] for p in short_wins) / len(short_wins) if short_wins else 0
+        )
+        short_losses = [p for p in short_positions if p["total_pnl_usd"] < 0]
+        avg_short_loss_pnl = (
+            sum(p["total_pnl_pct"] for p in short_losses) / len(short_losses) if short_losses else 0
+        )
+        short_total_pnl_pct = sum(p["total_pnl_pct"] for p in short_positions)
+        print(f"  SHORT positions:        {len(short_positions)} | Win rate: {short_win_rate:.0f}% | Return: {short_total_pnl_pct:+.1f}%")
+        print(f"    Avg win: {avg_short_win_pnl:+.1f}% | Avg loss: {avg_short_loss_pnl:+.1f}%")
 
     print(f"  {'─' * 60}")
 
-    if full_closes or trims or bb_trades:
-        print(f"\n  Trade log:")
-        # Sort all trades chronologically by exit date
-        all_closed = sorted(closed, key=lambda t: t.get("exit_date", ""))
-        for t in all_closed:
-            direction = t.get("direction", "long")
-            if direction == "trim":
-                trim_pct = t.get("trim_pct", 0)
-                emoji = "🟡"
-                reason_out = t.get("exit_signal_reason", "")
-                remaining_tag = f" (trimmed {trim_pct:.0f}%, RSI {reason_out})"
-                print(
-                    f"    {emoji} TRIM   {t['entry_date']} -> {t['exit_date']}"
-                    f"  |  ${t['entry_price']:,.0f} -> ${t['exit_price']:,.0f}"
-                    f"  |  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd', 0):+,.0f}{remaining_tag}"
-                )
-            elif direction.startswith("bb_"):
-                bb_dir = "BB↑   " if direction == "bb_long" else "BB↓   "
+    if positions or bb_trades:
+        print(f"\n  Position log:")
+        # Sort positions by close exit_date, then interleave BB trades
+        sorted_positions = sorted(positions, key=lambda p: p["close"].get("exit_date", ""))
+        sorted_bb = sorted(bb_trades, key=lambda t: t.get("exit_date", ""))
+
+        # Merge positions and BB trades chronologically
+        pos_idx, bb_idx = 0, 0
+        while pos_idx < len(sorted_positions) or bb_idx < len(sorted_bb):
+            # Determine which comes next chronologically
+            pos_date = sorted_positions[pos_idx]["close"].get("exit_date", "9999") if pos_idx < len(sorted_positions) else "9999"
+            bb_date = sorted_bb[bb_idx].get("exit_date", "9999") if bb_idx < len(sorted_bb) else "9999"
+
+            if bb_date < pos_date and bb_idx < len(sorted_bb):
+                t = sorted_bb[bb_idx]
+                bb_dir = "BB↑   " if t.get("direction") == "bb_long" else "BB↓   "
                 emoji = "🔵" if t["pnl_pct"] >= 0 else "🔴"
                 reason_out = t.get("exit_signal_reason", "")
                 exit_tag = f" ({reason_out})" if reason_out else ""
@@ -2956,18 +3032,47 @@ def print_summary(trades: list[dict], coingecko_id: str) -> None:
                     f"  |  ${t['entry_price']:,.0f} -> ${t['exit_price']:,.0f}"
                     f"  |  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd', 0):+,.0f}{exit_tag}"
                 )
-            else:
+                bb_idx += 1
+            elif pos_idx < len(sorted_positions):
+                pos = sorted_positions[pos_idx]
+                close = pos["close"]
+                direction = pos["direction"]
                 arrow = "LONG " if direction == "long" else "SHORT"
-                emoji = "✅" if t["pnl_pct"] >= 0 else "❌"
-                reason_out = t.get("exit_signal_reason", "")
+                win = pos["total_pnl_usd"] >= 0
+                emoji = "✅" if win else "❌"
+                result = "WIN" if win else "LOSS"
+                reason_out = close.get("exit_signal_reason", "")
                 exit_tag = f" ({reason_out})" if reason_out else ""
-                remaining = t.get("remaining_pct")
-                remain_tag = f" [{remaining:.0f}% remaining]" if remaining is not None and remaining < 100 else ""
+
                 print(
-                    f"    {emoji} {arrow}  {t['entry_date']} -> {t['exit_date']}"
-                    f"  |  ${t['entry_price']:,.0f} -> ${t['exit_price']:,.0f}"
-                    f"  |  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd', 0):+,.0f}{exit_tag}{remain_tag}"
+                    f"    {emoji} {arrow}  {close['entry_date']} → {close['exit_date']}"
+                    f"  |  Total: ${pos['total_pnl_usd']:+,.0f} ({pos['total_pnl_pct']:+.1f}%) {result}"
                 )
+                print(
+                    f"         Entry: ${close['entry_price']:,.0f} (${POSITION_SIZE_USD:,} position)"
+                )
+
+                # Show each trim with running cost basis
+                running_cost_basis = 100.0
+                for trim in pos["trims"]:
+                    trim_pct = trim.get("trim_pct", 0)
+                    running_cost_basis -= trim_pct
+                    reason = trim.get("exit_signal_reason", "")
+                    print(
+                        f"         🟡 Trim {trim_pct:.0f}% @ ${trim['exit_price']:,.0f}:"
+                        f" ${trim.get('pnl_usd', 0):+,.0f}"
+                        f" (cost basis: {running_cost_basis:.0f}%)"
+                        f" [{reason}]"
+                    )
+
+                remaining = close.get("remaining_pct", pos["cost_basis_pct"])
+                print(
+                    f"         Close {remaining:.0f}% @ ${close['exit_price']:,.0f}:"
+                    f" ${pos['close_pnl_usd']:+,.0f}{exit_tag}"
+                )
+                pos_idx += 1
+            else:
+                break
 
     if open_trades:
         print(f"\n  Open trades (unrealized):")
@@ -3092,7 +3197,10 @@ def run_backtest(
 
 
 def extract_metrics(trades: list[dict]) -> dict:
-    """Extract summary metrics from a trade list for comparison."""
+    """Extract summary metrics from a trade list using position-level P&L model.
+
+    Win rate is determined by total position P&L (trims + close), not close-only.
+    """
     closed = [t for t in trades if t["status"] == "closed"]
     opens = [t for t in trades if t["status"] == "open"]
     trims = [t for t in closed if t.get("direction") == "trim"]
@@ -3101,14 +3209,15 @@ def extract_metrics(trades: list[dict]) -> dict:
     reentry_trades = [t for t in closed if t.get("direction") == "reentry"]
     dca_fills = [t for t in closed if t.get("direction") == "dca_entry"]
     trailing_stop_closes = [t for t in closed if t.get("exit_signal_reason") == "trailing_stop"]
-    # Supplementary types to exclude from "full closes" (EMA trades only)
-    supplementary_dirs = {"trim", "bb_long", "bb_short", "bb2_long", "bb2_short", "reentry", "dca_entry"}
-    full_closes = [t for t in closed if t.get("direction") not in supplementary_dirs]
-    longs = [t for t in full_closes if t.get("direction") == "long"]
-    shorts = [t for t in full_closes if t.get("direction") == "short"]
 
-    long_wins = [t for t in longs if t["pnl_pct"] >= 0]
-    short_wins = [t for t in shorts if t["pnl_pct"] >= 0]
+    # Group into positions for win rate calculation
+    positions = group_into_positions(trades)
+    long_positions = [p for p in positions if p["direction"] == "long"]
+    short_positions = [p for p in positions if p["direction"] == "short"]
+
+    # Position-level wins: total_pnl_usd >= 0 (trims + close combined)
+    long_wins = [p for p in long_positions if p["total_pnl_usd"] >= 0]
+    short_wins = [p for p in short_positions if p["total_pnl_usd"] >= 0]
     bb_wins = [t for t in bb_trades if t["pnl_pct"] >= 0]
     bb2_wins = [t for t in bb2_trades if t["pnl_pct"] >= 0]
     reentry_wins = [t for t in reentry_trades if t["pnl_pct"] >= 0]
@@ -3120,34 +3229,45 @@ def extract_metrics(trades: list[dict]) -> dict:
     reentry_pnl_usd = sum(t.get("pnl_usd", 0) for t in reentry_trades)
     open_pnl_usd = sum(t.get("pnl_usd", 0) for t in opens)
 
-    # Win rate includes EMA trades only (BB/BB2/reentry are supplementary)
+    # Position-level win rate
     win_rate = (
-        (len(long_wins) + len(short_wins)) / len(full_closes) * 100
-        if full_closes
+        (len(long_wins) + len(short_wins)) / len(positions) * 100
+        if positions
         else 0
     )
 
-    # Average trade duration in days (for full closes)
+    # Average position duration in days
     durations = []
-    for t in full_closes:
-        if t.get("entry_date") and t.get("exit_date"):
+    for pos in positions:
+        close = pos["close"]
+        if close.get("entry_date") and close.get("exit_date"):
             try:
-                d_in = datetime.strptime(t["entry_date"], "%Y-%m-%d")
-                d_out = datetime.strptime(t["exit_date"], "%Y-%m-%d")
+                d_in = datetime.strptime(close["entry_date"], "%Y-%m-%d")
+                d_out = datetime.strptime(close["exit_date"], "%Y-%m-%d")
                 durations.append((d_out - d_in).days)
             except (ValueError, TypeError):
                 pass
     avg_duration = sum(durations) / len(durations) if durations else 0
 
-    # Max drawdown on any single trade
-    all_pnls = [t["pnl_pct"] for t in full_closes]
-    max_loss = min(all_pnls) if all_pnls else 0
+    # Max drawdown on any single position (total position P&L)
+    all_pnl_pcts = [p["total_pnl_pct"] for p in positions]
+    max_loss = min(all_pnl_pcts) if all_pnl_pcts else 0
+
+    # Average position P&L
+    avg_position_pnl_usd = (
+        sum(p["total_pnl_usd"] for p in positions) / len(positions)
+        if positions else 0
+    )
+    avg_position_pnl_pct = (
+        sum(p["total_pnl_pct"] for p in positions) / len(positions)
+        if positions else 0
+    )
 
     # Total trade count (for frequency analysis — all actionable trades)
-    total_signals = len(full_closes) + len(bb_trades) + len(bb2_trades) + len(reentry_trades)
+    total_signals = len(positions) + len(bb_trades) + len(bb2_trades) + len(reentry_trades)
 
     return {
-        "full_trades": len(full_closes),
+        "positions": len(positions),
         "trims": len(trims),
         "bb_trades": len(bb_trades),
         "bb_wins": len(bb_wins),
@@ -3160,13 +3280,13 @@ def extract_metrics(trades: list[dict]) -> dict:
         "reentry_pnl_usd": reentry_pnl_usd,
         "dca_fills": len(dca_fills),
         "open_trades": len(opens),
-        "longs": len(longs),
-        "shorts": len(shorts),
+        "longs": len(long_positions),
+        "shorts": len(short_positions),
         "long_wins": len(long_wins),
         "short_wins": len(short_wins),
         "win_rate": win_rate,
-        "long_win_rate": len(long_wins) / len(longs) * 100 if longs else 0,
-        "short_win_rate": len(short_wins) / len(shorts) * 100 if shorts else 0,
+        "long_win_rate": len(long_wins) / len(long_positions) * 100 if long_positions else 0,
+        "short_win_rate": len(short_wins) / len(short_positions) * 100 if short_positions else 0,
         "trailing_stop_closes": len(trailing_stop_closes),
         "total_pnl_usd": total_pnl_usd,
         "trim_pnl_usd": trim_pnl_usd,
@@ -3174,6 +3294,8 @@ def extract_metrics(trades: list[dict]) -> dict:
         "open_pnl_usd": open_pnl_usd,
         "avg_duration_days": avg_duration,
         "max_single_loss_pct": max_loss,
+        "avg_position_pnl_usd": avg_position_pnl_usd,
+        "avg_position_pnl_pct": avg_position_pnl_pct,
         "total_signals": total_signals,
     }
 
@@ -3203,10 +3325,10 @@ def print_comparison(
     print(f"  {'─' * 72}")
 
     rows = [
-        ("Full trades (EMA)", f"{metrics_a['full_trades']}", f"{metrics_b['full_trades']}", None),
+        ("Positions closed", f"{metrics_a['positions']}", f"{metrics_b['positions']}", None),
         ("  Longs", f"{metrics_a['longs']}", f"{metrics_b['longs']}", None),
         ("  Shorts", f"{metrics_a['shorts']}", f"{metrics_b['shorts']}", None),
-        ("Trim trades", f"{metrics_a['trims']}", f"{metrics_b['trims']}", None),
+        ("Total trims", f"{metrics_a['trims']}", f"{metrics_b['trims']}", None),
         ("BB complementary trades", f"{metrics_a.get('bb_trades', 0)}", f"{metrics_b.get('bb_trades', 0)}",
          delta(metrics_a.get("bb_trades", 0), metrics_b.get("bb_trades", 0), "+.0f")),
         ("BB2 improved trades", f"{metrics_a.get('bb2_trades', 0)}", f"{metrics_b.get('bb2_trades', 0)}",
@@ -3219,12 +3341,14 @@ def print_comparison(
          delta(metrics_a.get("total_signals", 0), metrics_b.get("total_signals", 0), "+.0f")),
         ("Trailing stop closes", f"{metrics_a.get('trailing_stop_closes', 0)}", f"{metrics_b.get('trailing_stop_closes', 0)}",
          delta(metrics_a.get("trailing_stop_closes", 0), metrics_b.get("trailing_stop_closes", 0), "+.0f")),
-        ("Win rate (EMA)", f"{metrics_a['win_rate']:.0f}%", f"{metrics_b['win_rate']:.0f}%",
+        ("Position win rate", f"{metrics_a['win_rate']:.0f}%", f"{metrics_b['win_rate']:.0f}%",
          delta(metrics_a["win_rate"], metrics_b["win_rate"], "+.0f")),
         ("  Long win rate", f"{metrics_a.get('long_win_rate', 0):.0f}%", f"{metrics_b.get('long_win_rate', 0):.0f}%",
          delta(metrics_a.get("long_win_rate", 0), metrics_b.get("long_win_rate", 0), "+.0f")),
         ("  Short win rate", f"{metrics_a.get('short_win_rate', 0):.0f}%", f"{metrics_b.get('short_win_rate', 0):.0f}%",
          delta(metrics_a.get("short_win_rate", 0), metrics_b.get("short_win_rate", 0), "+.0f")),
+        ("Avg position P&L", f"${metrics_a.get('avg_position_pnl_usd', 0):+,.0f}", f"${metrics_b.get('avg_position_pnl_usd', 0):+,.0f}",
+         delta(metrics_a.get("avg_position_pnl_usd", 0), metrics_b.get("avg_position_pnl_usd", 0), "+,.0f")),
         ("Avg duration (days)", f"{metrics_a['avg_duration_days']:.0f}", f"{metrics_b['avg_duration_days']:.0f}",
          delta(metrics_a["avg_duration_days"], metrics_b["avg_duration_days"], "+.0f")),
         ("Max single loss", f"{metrics_a['max_single_loss_pct']:+.1f}%", f"{metrics_b['max_single_loss_pct']:+.1f}%",
@@ -3887,9 +4011,9 @@ def _print_trade_log(trades: list[dict]) -> None:
 
 
 def _aggregate_metrics(metrics_list: list[dict]) -> dict:
-    """Sum up metrics across multiple assets."""
+    """Sum up metrics across multiple assets (position-level)."""
     agg = {
-        "full_trades": sum(m["full_trades"] for m in metrics_list),
+        "positions": sum(m["positions"] for m in metrics_list),
         "trims": sum(m["trims"] for m in metrics_list),
         "bb_trades": sum(m.get("bb_trades", 0) for m in metrics_list),
         "bb_wins": sum(m.get("bb_wins", 0) for m in metrics_list),
@@ -3914,10 +4038,10 @@ def _aggregate_metrics(metrics_list: list[dict]) -> dict:
         "total_signals": sum(m.get("total_signals", 0) for m in metrics_list),
         "trailing_stop_closes": sum(m.get("trailing_stop_closes", 0) for m in metrics_list),
     }
-    total_full = agg["full_trades"]
+    total_positions = agg["positions"]
     agg["win_rate"] = (
-        (agg["long_wins"] + agg["short_wins"]) / total_full * 100
-        if total_full > 0
+        (agg["long_wins"] + agg["short_wins"]) / total_positions * 100
+        if total_positions > 0
         else 0
     )
     agg["long_win_rate"] = (
@@ -3930,7 +4054,12 @@ def _aggregate_metrics(metrics_list: list[dict]) -> dict:
         if agg["shorts"] > 0
         else 0
     )
-    durations = [m["avg_duration_days"] for m in metrics_list if m["full_trades"] > 0]
+    # Average position P&L across all assets
+    total_pnl_usd = agg["total_pnl_usd"]
+    agg["avg_position_pnl_usd"] = total_pnl_usd / total_positions if total_positions > 0 else 0
+    agg["avg_position_pnl_pct"] = agg["avg_position_pnl_usd"] / POSITION_SIZE_USD * 100 if total_positions > 0 else 0
+
+    durations = [m["avg_duration_days"] for m in metrics_list if m["positions"] > 0]
     agg["avg_duration_days"] = sum(durations) / len(durations) if durations else 0
     return agg
 
@@ -4929,15 +5058,16 @@ def run_late_entry_sweep(
 
         # Rows
         rows = [
-            ("Full trades", "full_trades", "{:>14.0f}", False),
-            ("Win rate (%)", "win_rate", "{:>14.0f}", True),
+            ("Positions", "positions", "{:>14.0f}", False),
+            ("Position win rate (%)", "win_rate", "{:>14.0f}", True),
             ("Total P&L ($)", "total_pnl_usd", "{:>+14,.0f}", True),
             ("  from closes", "close_pnl_usd", "{:>+14,.0f}", True),
             ("  from trims", "trim_pnl_usd", "{:>+14,.0f}", True),
             ("Long wins", "long_wins", "{:>14.0f}", True),
-            ("Long trades", "longs", "{:>14.0f}", False),
+            ("Long positions", "longs", "{:>14.0f}", False),
             ("Short wins", "short_wins", "{:>14.0f}", True),
-            ("Short trades", "shorts", "{:>14.0f}", False),
+            ("Short positions", "shorts", "{:>14.0f}", False),
+            ("Avg position P&L ($)", "avg_position_pnl_usd", "{:>+14,.0f}", True),
             ("Avg duration (days)", "avg_duration_days", "{:>14.1f}", False),
             ("Max single loss (%)", "max_single_loss_pct", "{:>14.1f}", False),
         ]
@@ -5022,9 +5152,10 @@ def run_late_entry_sweep(
     # ── Aggregate across all assets ──
     print(f"\n{'=' * 80}")
     print(f"  AGGREGATE LATE-ENTRY COMPARISON (all assets)")
+    print(f"  (Position-level P&L: win = total position P&L ≥ 0, including trims)")
     print(f"{'=' * 80}")
 
-    agg_header = f"  {'Config':<32} {'Trades':>7} {'Win%':>6} {'P&L':>10} {'Late#':>6} {'LateWin%':>9} {'LateP&L':>10}"
+    agg_header = f"  {'Config':<32} {'Pos':>5} {'Win%':>6} {'P&L':>10} {'Late#':>6} {'LateWin%':>9} {'LateP&L':>10}"
     print(agg_header)
     print(f"  {'─' * 82}")
 
@@ -5035,29 +5166,29 @@ def run_late_entry_sweep(
             all_trades.extend(config_results[cfg["name"]][cg_id])
 
         m = extract_metrics(all_trades)
-        late_closed = [
-            t for t in all_trades
-            if t.get("entry_signal_reason") == "late_entry"
-            and t.get("direction") in ("long", "short")
-            and t.get("status") == "closed"
+
+        # Late-entry positions: group late-entry trades into positions for correct win rate
+        late_positions = [
+            p for p in group_into_positions(all_trades)
+            if p["close"].get("entry_signal_reason") == "late_entry"
         ]
-        late_wins = [t for t in late_closed if t["pnl_pct"] >= 0]
-        late_count = len(late_closed)
+        late_wins = [p for p in late_positions if p["total_pnl_usd"] >= 0]
+        late_count = len(late_positions)
         late_win_rate = len(late_wins) / late_count * 100 if late_count > 0 else 0
-        late_pnl = sum(t.get("pnl_usd", 0) for t in late_closed)
+        late_pnl = sum(p["total_pnl_usd"] for p in late_positions)
 
         bars = cfg.get("late_entry_max_bars", 0)
         label = cfg["name"]
 
         if bars == 0:
             print(
-                f"  {label:<32} {m['full_trades']:>7} {m['win_rate']:>5.0f}%"
+                f"  {label:<32} {m['positions']:>5} {m['win_rate']:>5.0f}%"
                 f" ${m['total_pnl_usd']:>+8,.0f}"
                 f" {'n/a':>6} {'n/a':>9} {'n/a':>10}"
             )
         else:
             print(
-                f"  {label:<32} {m['full_trades']:>7} {m['win_rate']:>5.0f}%"
+                f"  {label:<32} {m['positions']:>5} {m['win_rate']:>5.0f}%"
                 f" ${m['total_pnl_usd']:>+8,.0f}"
                 f" {late_count:>6} {late_win_rate:>8.0f}%"
                 f" ${late_pnl:>+8,.0f}"
@@ -5254,22 +5385,23 @@ def main():
                 print(f"\n  ⏳ Sleeping {CG_SLEEP_SECONDS}s for CoinGecko rate limit...")
                 time.sleep(CG_SLEEP_SECONDS)
 
-        # Overall summary
+        # Overall summary (position-level)
         closed = [t for t in all_trades if t["status"] == "closed"]
         if closed:
+            positions = group_into_positions(all_trades)
             trims = [t for t in closed if t.get("direction") == "trim"]
-            full_closes = [t for t in closed if t.get("direction") != "trim"]
-            longs = [t for t in full_closes if t.get("direction") == "long"]
-            shorts = [t for t in full_closes if t.get("direction") == "short"]
-            long_wins = len([t for t in longs if t["pnl_pct"] >= 0])
-            short_wins = len([t for t in shorts if t["pnl_pct"] >= 0])
+            long_positions = [p for p in positions if p["direction"] == "long"]
+            short_positions = [p for p in positions if p["direction"] == "short"]
+            long_wins = len([p for p in long_positions if p["total_pnl_usd"] >= 0])
+            short_wins = len([p for p in short_positions if p["total_pnl_usd"] >= 0])
             total_wins = long_wins + short_wins
             total_pnl_usd = sum(t.get("pnl_usd", 0) for t in closed)
             trim_pnl_usd = sum(t.get("pnl_usd", 0) for t in trims)
+            win_rate = total_wins / len(positions) * 100 if positions else 0
             print(f"\n{'=' * 60}")
-            print(f"  OVERALL: {len(full_closes)} full trades | {total_wins}/{len(full_closes)} wins")
-            print(f"    LONG:  {len(longs)} trades | {long_wins} wins")
-            print(f"    SHORT: {len(shorts)} trades | {short_wins} wins")
+            print(f"  OVERALL: {len(positions)} positions | {total_wins}/{len(positions)} wins ({win_rate:.0f}%)")
+            print(f"    LONG:  {len(long_positions)} positions | {long_wins} wins")
+            print(f"    SHORT: {len(short_positions)} positions | {short_wins} wins")
             print(f"    TRIMS: {len(trims)} partial profit-takes")
             print(f"    USD P&L: ${total_pnl_usd:+,.0f} (trims: ${trim_pnl_usd:+,.0f}, closes: ${total_pnl_usd - trim_pnl_usd:+,.0f})")
             print(f"{'=' * 60}")

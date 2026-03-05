@@ -185,7 +185,11 @@ export default function SignalCard({ data, position }: SignalCardProps) {
         </div>
 
         {/* Signal chip */}
-        <SignalChip color={signal?.signal_color || 'grey'} size="small" nearConfirmation={signal?.near_confirmation} />
+        <SignalChip
+          color={signal?.signal_color || 'grey'}
+          size="small"
+          nearConfirmation={signal?.near_confirmation}
+        />
 
         {/* Chevron */}
         <svg
