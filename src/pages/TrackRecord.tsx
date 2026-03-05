@@ -254,8 +254,8 @@ export default function TrackRecord() {
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
               >
-                {userStats.totalClosed} position{userStats.totalClosed !== 1 ? 's' : ''} · {userStats.wins}{' '}
-                profitable
+                {userStats.totalClosed} position{userStats.totalClosed !== 1 ? 's' : ''} ·{' '}
+                {userStats.wins} profitable
                 {userStats.totalClosed > 0 && ` (${userStats.winRate}%)`}
                 {(userOpen.length > 0 || hasLivePositions) &&
                   ` · ${userOpen.length + positions.length} open`}
@@ -1251,7 +1251,9 @@ function ClosedTradeCard({
               </span>
 
               {/* Entry */}
-              <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+              <div
+                style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
+              >
                 <div
                   style={{
                     width: 2,
@@ -1269,7 +1271,10 @@ function ClosedTradeCard({
                   >
                     Entry at {formatPrice(trade.entry_price)}
                   </span>
-                  <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                  <span
+                    className="vela-body-sm"
+                    style={{ color: 'var(--gray-400)', display: 'block' }}
+                  >
                     ${DEFAULT_POSITION_SIZE.toLocaleString()} position · Cost basis: 100%
                   </span>
                 </div>
@@ -1280,9 +1285,7 @@ function ClosedTradeCard({
                 const breakdown = positionPnl.trimBreakdown[idx];
                 const trimDollar = breakdown?.dollarPnl ?? 0;
                 const costBasisAfter = breakdown?.costBasisAfter ?? 100;
-                const remainingDollars = Math.round(
-                  (costBasisAfter / 100) * DEFAULT_POSITION_SIZE
-                );
+                const remainingDollars = Math.round((costBasisAfter / 100) * DEFAULT_POSITION_SIZE);
                 return (
                   <div
                     key={trim.id}
@@ -1322,10 +1325,15 @@ function ClosedTradeCard({
                           }}
                         >
                           {trimDollar >= 0 ? '+' : '-'}$
-                          {Math.abs(trimDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                          {Math.abs(trimDollar).toLocaleString('en-US', {
+                            maximumFractionDigits: 0,
+                          })}
                         </span>
                       </div>
-                      <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                      <span
+                        className="vela-body-sm"
+                        style={{ color: 'var(--gray-400)', display: 'block' }}
+                      >
                         {new Date(trim.opened_at).toLocaleDateString('en-GB', {
                           month: 'short',
                           day: 'numeric',
@@ -1340,7 +1348,9 @@ function ClosedTradeCard({
               })}
 
               {/* Close */}
-              <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+              <div
+                style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
+              >
                 <div
                   style={{
                     width: 2,
@@ -1377,7 +1387,10 @@ function ClosedTradeCard({
                       })}
                     </span>
                   </div>
-                  <span className="vela-body-sm" style={{ color: 'var(--gray-400)', display: 'block' }}>
+                  <span
+                    className="vela-body-sm"
+                    style={{ color: 'var(--gray-400)', display: 'block' }}
+                  >
                     {trade.closed_at &&
                       new Date(trade.closed_at).toLocaleDateString('en-GB', {
                         month: 'short',
@@ -1402,7 +1415,13 @@ function ClosedTradeCard({
               >
                 <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
                   Trim {positionPnl.trimDollarPnl >= 0 ? 'profit' : 'loss'}:{' '}
-                  <span style={{ fontWeight: 600, color: positionPnl.trimDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)' }}>
+                  <span
+                    style={{
+                      fontWeight: 600,
+                      color:
+                        positionPnl.trimDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                    }}
+                  >
                     {positionPnl.trimDollarPnl >= 0 ? '+' : '-'}$
                     {Math.abs(positionPnl.trimDollarPnl).toLocaleString('en-US', {
                       maximumFractionDigits: 0,
@@ -1418,7 +1437,9 @@ function ClosedTradeCard({
                   }}
                 >
                   Total: {(totalDollarPnl ?? 0) >= 0 ? '+' : '-'}$
-                  {Math.abs(totalDollarPnl ?? 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
+                  {Math.abs(totalDollarPnl ?? 0).toLocaleString('en-US', {
+                    maximumFractionDigits: 0,
+                  })}{' '}
                   {(totalDollarPnl ?? 0) >= 0 ? 'profit' : 'loss'}
                 </span>
               </div>

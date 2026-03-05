@@ -390,6 +390,7 @@ V6D_TRAILING_BOTH = {
     **V6A_TRAILING_STOP,
     "name": "V6d: Trailing Stop (Both Directions)",
     "trailing_stop_long": True,
+    "late_entry_max_bars": 6,
 }
 
 # ── V7: EMA stop-loss cooldown sweep ──

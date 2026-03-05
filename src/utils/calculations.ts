@@ -138,8 +138,12 @@ export function computePositionPnl(
 } {
   if (positionSize <= 0) {
     return {
-      totalDollarPnl: 0, totalPnlPct: 0, closeDollarPnl: 0,
-      trimDollarPnl: 0, costBasisPct: 100, trimBreakdown: [],
+      totalDollarPnl: 0,
+      totalPnlPct: 0,
+      closeDollarPnl: 0,
+      trimDollarPnl: 0,
+      costBasisPct: 100,
+      trimBreakdown: [],
     };
   }
 
@@ -163,7 +167,8 @@ export function computePositionPnl(
 
   // Parent close: remaining fraction = 1 - cumulative trim fraction
   const remainingFraction = 1.0 - cumulativeTrimPct / 100;
-  const closeDollarPnl = Math.round((parentPnlPct / 100) * remainingFraction * positionSize * 100) / 100;
+  const closeDollarPnl =
+    Math.round((parentPnlPct / 100) * remainingFraction * positionSize * 100) / 100;
 
   const totalDollarPnl = Math.round((closeDollarPnl + trimDollarPnl) * 100) / 100;
   const totalPnlPct = Math.round((totalDollarPnl / positionSize) * 100 * 10) / 10;
@@ -188,7 +193,7 @@ export function computePositionPnl(
  * @returns Aggregated stats: totalClosed, wins, winRate, totalDollarPnl, avgPnlPct
  */
 export function aggregatePositionStats(
-  positions: { totalDollarPnl: number; totalPnlPct: number }[],
+  positions: { totalDollarPnl: number; totalPnlPct: number }[]
 ): {
   totalClosed: number;
   wins: number;
@@ -203,12 +208,10 @@ export function aggregatePositionStats(
 
   const wins = positions.filter(p => p.totalDollarPnl >= 0).length;
   const winRate = Math.round((wins / totalClosed) * 100 * 10) / 10;
-  const totalDollarPnl = Math.round(
-    positions.reduce((sum, p) => sum + p.totalDollarPnl, 0) * 100
-  ) / 100;
-  const avgPnlPct = Math.round(
-    (positions.reduce((sum, p) => sum + p.totalPnlPct, 0) / totalClosed) * 10
-  ) / 10;
+  const totalDollarPnl =
+    Math.round(positions.reduce((sum, p) => sum + p.totalDollarPnl, 0) * 100) / 100;
+  const avgPnlPct =
+    Math.round((positions.reduce((sum, p) => sum + p.totalPnlPct, 0) / totalClosed) * 10) / 10;
 
   return { totalClosed, wins, winRate, totalDollarPnl, avgPnlPct };
 }

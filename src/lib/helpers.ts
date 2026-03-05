@@ -276,6 +276,7 @@ const reasonCodeMap: Record<string, string> = {
   rsi_out_of_range: 'Buying pressure hit extreme levels',
   trend_disagree: 'Short-term and long-term trends conflicted',
   anti_whipsaw: 'Signal held steady through market noise',
+  late_entry: 'All indicators now align — trend confirmed',
   no_change: 'No significant change in conditions',
 };
 
