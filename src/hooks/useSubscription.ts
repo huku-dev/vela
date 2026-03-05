@@ -5,6 +5,42 @@ import type { UserSubscription, SubscriptionTier } from '../types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
+// ── Subscription cache ──
+// Prevents the "free tier flash" on page navigation by seeding initial state
+// from the last known subscription. The background fetch still runs to keep it
+// fresh, but the UI renders the correct tier immediately.
+const CACHE_KEY = 'vela_subscription_cache';
+
+function getCachedSubscription(): UserSubscription | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserSubscription;
+  } catch {
+    return null;
+  }
+}
+
+function cacheSubscription(sub: UserSubscription | null): void {
+  try {
+    if (sub) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(sub));
+    } else {
+      localStorage.removeItem(CACHE_KEY);
+    }
+  } catch {
+    // localStorage may be unavailable — silently ignore
+  }
+}
+
+export function clearSubscriptionCache(): void {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // noop
+  }
+}
+
 export interface SubscriptionState {
   subscription: UserSubscription | null;
   tier: SubscriptionTier;
@@ -28,7 +64,8 @@ export interface SubscriptionState {
 export function useSubscription(): SubscriptionState {
   const { isAuthenticated, supabaseClient, getToken } = useAuthContext();
 
-  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  // Seed from cache so the first render uses the last known tier (no flash)
+  const [subscription, setSubscription] = useState<UserSubscription | null>(getCachedSubscription);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +86,9 @@ export function useSubscription(): SubscriptionState {
         return;
       }
 
-      setSubscription(data as UserSubscription);
+      const sub = data as UserSubscription;
+      setSubscription(sub);
+      cacheSubscription(sub);
     } catch (err) {
       console.error('[useSubscription] Fetch error:', err);
       setError('Could not load subscription');

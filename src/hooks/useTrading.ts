@@ -50,6 +50,41 @@ const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 /** Polling interval for position updates (30 seconds) */
 const POLL_INTERVAL_MS = 30_000;
 
+// ── Wallet cache ──
+// Prevents "$0.00 balance" flash on Account page by seeding wallet state
+// from the last known value. Background fetch still runs to keep it fresh.
+const WALLET_CACHE_KEY = 'vela_wallet_cache';
+
+function getCachedWallet(): UserWallet | null {
+  try {
+    const raw = localStorage.getItem(WALLET_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as UserWallet;
+  } catch {
+    return null;
+  }
+}
+
+function cacheWallet(w: UserWallet | null): void {
+  try {
+    if (w) {
+      localStorage.setItem(WALLET_CACHE_KEY, JSON.stringify(w));
+    } else {
+      localStorage.removeItem(WALLET_CACHE_KEY);
+    }
+  } catch {
+    // noop
+  }
+}
+
+export function clearWalletCache(): void {
+  try {
+    localStorage.removeItem(WALLET_CACHE_KEY);
+  } catch {
+    // noop
+  }
+}
+
 /** Mock wallet for dev bypass so the Deposit/Withdraw UI is testable */
 const DEV_MOCK_WALLET: UserWallet = {
   id: 'dev-wallet',
@@ -76,7 +111,7 @@ export function useTrading(): TradingState {
   const [positions, setPositions] = useState<Position[]>([]);
   const [closedPositions, setClosedPositions] = useState<Position[]>([]);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [wallet, setWallet] = useState<UserWallet | null>(null);
+  const [wallet, setWallet] = useState<UserWallet | null>(getCachedWallet);
   const [circuitBreakers, setCircuitBreakers] = useState<CircuitBreakerEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +171,9 @@ export function useTrading(): TradingState {
         prefsRes.data ??
           (DEV_BYPASS ? ({ mode: 'semi_automated' } as unknown as UserPreferences) : null)
       );
-      setWallet(walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null));
+      const fetchedWallet = walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null);
+      setWallet(fetchedWallet);
+      cacheWallet(fetchedWallet);
       setCircuitBreakers(cbRes.data ?? []);
       setError(null);
     } catch (err) {

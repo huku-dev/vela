@@ -1,6 +1,6 @@
 # Vela — Project Context for Claude Code
 
-> **Last Updated:** February 2026
+> **Last Updated:** March 2026
 > **Project:** Vela Crypto Market Intelligence Platform
 > **Stack:** React + TypeScript + Vite + Supabase + Vercel
 
@@ -191,6 +191,26 @@ try {
 - **Utilities:** camelCase (`formatPrice.ts`)
 - **CSS files:** kebab-case (`vela-design-system.css`)
 - **Database tables:** snake_case (`track_record`)
+
+---
+
+## Engineering Preferences
+
+These principles guide judgment calls when multiple valid approaches exist:
+
+1. **Explicit over clever.** Code should be readable at a glance. No magic, no tricks. If someone reading the code has to pause and think "wait, how does this work?", it's too clever.
+
+2. **Minimal diff.** Achieve the goal with the fewest new abstractions and files touched. Before creating a new helper, component, or module — check if an existing one can be extended. Adding a parameter to an existing function beats creating a new one.
+
+3. **DRY, but not premature abstraction.** Flag repetition aggressively. But don't extract a shared abstraction until you see the same pattern three times. Two instances can diverge; three confirm a pattern.
+
+4. **Thoughtfulness over speed on edge cases.** Especially for financial data, P&L, and signal logic. Getting edge cases right is more important than shipping fast. Ask "what happens when this is null / zero / negative / stale?"
+
+5. **Too many tests rather than too few.** Well-tested code is non-negotiable. When in doubt about whether something needs a test, write the test.
+
+6. **Diagrams for non-trivial flows.** Use ASCII diagrams in plan files and code comments for data flow, state machines, and multi-step pipelines. A diagram catches misunderstandings that prose misses. **Stale diagrams are worse than no diagrams** — if you touch code with an inline diagram, verify it's still accurate and update it in the same commit.
+
+7. **Balanced engineering.** Avoid both under-engineering (fragile, no error handling, no tests) and over-engineering (premature abstraction, speculative generality, config-driven everything). The test: "would I be embarrassed showing this to a senior engineer?" catches under-engineering. "Would a new contributor understand this in 10 minutes?" catches over-engineering.
 
 ---
 
@@ -506,6 +526,21 @@ What did we choose? Why this approach?
 
 ---
 
+## Deferred Work Standards
+
+Work that's explicitly deferred (via plan scope challenge or mid-session decisions) must be captured in MEMORY.md's "Pending Decisions" section with structured entries:
+
+- **What:** One-line description of the work
+- **Why:** Concrete problem solved or value unlocked — not vague ("improve UX") but specific ("users can't tell which trades are BB2 vs EMA at a glance")
+- **Context:** Enough detail to pick up the work in 3 months without re-deriving motivation, current state, or starting point. Include relevant file paths, data shapes, and constraints discovered during the session
+- **Blocked by / depends on:** Prerequisites and ordering constraints, if any
+
+**A deferred item without context is worse than no deferred item.** It creates phantom tasks that nobody can action.
+
+Every plan must include a **"NOT in scope"** section listing deferred items with a one-line rationale per item. This prevents scope from silently expanding and creates an explicit record of what was considered and intentionally left out.
+
+---
+
 ## Performance Targets
 
 ### Load Time
@@ -573,6 +608,32 @@ Use Claude Code's **plan mode** for:
 - Breaking changes or refactors
 - Database schema changes
 
+### Plan Mode Protocol: Scope Challenge First
+
+Before writing any plan, explicitly answer these three questions:
+
+1. **What already exists?** Search the codebase for code that partially or fully solves sub-problems. List it. Note whether the plan reuses it or unnecessarily rebuilds it.
+
+2. **What is the minimum viable change?** Identify the smallest set of changes that achieves the core goal. Flag anything that's valuable but deferrable — it goes in "NOT in scope", not in the plan.
+
+3. **Complexity smell check:** If the plan touches **>8 files** or introduces **>2 new components/modules**, flag it and justify. This threshold often means scope has crept.
+
+Present scope challenge findings to the user before proceeding with the full plan.
+
+### Plan Review: Phased with Checkpoints
+
+For plans rated as "big change" (multi-file, new architecture), review in phases and **pause for user feedback between each**:
+
+1. **Architecture** — System design, data flow, dependencies, failure scenarios. For each new integration point, describe one realistic production failure and verify the plan accounts for it.
+
+2. **Code Quality** — Organization, DRY violations, error handling gaps, over/under-engineering.
+
+3. **Test Coverage** — Map new codepaths, new branching, new UX. Verify each has a test. Flag gaps.
+
+4. **Performance** — N+1 queries, memory concerns, caching opportunities, slow paths.
+
+For smaller changes, compress into a single pass but still answer the three scope questions.
+
 ### When to Ask for Review
 Before merging code that affects:
 - P&L calculations or signal status logic
@@ -613,9 +674,10 @@ Before merging code that affects:
 ## Notes for Claude Code Sessions
 
 ### Session Start Routine
-1. Run `vela-start` to see project status
-2. Review any "Next" priority tasks from Notion
-3. Check git status for uncommitted changes
+1. **Read CLAUDE.md and MEMORY.md in full (MANDATORY).** Every session starts by reading both files end-to-end. This ensures all engineering preferences, processes, conventions, completed work, and pending decisions are fresh in context — not assumed from prior sessions.
+2. Run `vela-start` to see project status
+3. Review any "Next" priority tasks from Notion
+4. Check git status for uncommitted changes on both repos
 
 ### Session End Routine
 1. Ensure all tests pass and CI is green

@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { supabase, createAuthenticatedClient } from '../lib/supabase';
+import { clearSubscriptionCache } from './useSubscription';
+import { clearWalletCache } from './useTrading';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exchange`;
@@ -133,9 +135,11 @@ export function useAuth(): AuthState {
     return createAuthenticatedClient(exchangeToken);
   }, [authenticated, exchangeToken]);
 
-  // Wrap logout to clear onboarding flag — user sees onboarding screens, not dashboard
+  // Wrap logout to clear onboarding flag + cached subscription
   const handleLogout = useCallback(async () => {
     localStorage.removeItem('vela_onboarded');
+    clearSubscriptionCache();
+    clearWalletCache();
     tokenCacheRef.current = null;
     setUser(null);
     await logout();
