@@ -282,7 +282,8 @@ export interface DetailedTradeStats {
  * Compute detailed trade stats for the Performance Breakdown section.
  * TRUST-CRITICAL: All financial metrics must be accurate.
  * @param closedTrades - Array of closed trades with required fields
- * @param positionSize - Dollar position size per trade
+ * @param positionSize - Dollar position size per standard trade
+ * @param bb2PositionSize - Optional position size for BB2 (quick opportunity) trades
  * @returns Detailed stats breakdown
  */
 export function computeDetailedStats(
@@ -294,7 +295,8 @@ export function computeDetailedStats(
     closed_at?: string | null;
     opened_at: string;
   }[],
-  positionSize: number
+  positionSize: number,
+  bb2PositionSize?: number
 ): DetailedTradeStats {
   const empty: DetailedTradeStats = {
     wins: 0,
@@ -316,16 +318,27 @@ export function computeDetailedStats(
 
   if (closedTrades.length === 0) return empty;
 
-  // Win/loss counts
-  const wins = closedTrades.filter(t => t.pnl_pct >= 0).length;
+  /** Get the correct position size for a given trade direction */
+  const sizeForDirection = (d?: string | null): number =>
+    bb2PositionSize != null && (d === 'bb2_long' || d === 'bb2_short')
+      ? bb2PositionSize
+      : positionSize;
+
+  // Win/loss counts (by dollar P&L, respecting variable sizing)
+  const wins = closedTrades.filter(
+    t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0
+  ).length;
   const losses = closedTrades.length - wins;
 
-  // Best/worst trade by dollar P&L
+  // Best/worst trade by dollar P&L (respecting variable sizing)
   let bestTrade = closedTrades[0];
+  let bestDollar = pctToDollar(bestTrade.pnl_pct, sizeForDirection(bestTrade.direction));
   let worstTrade = closedTrades[0];
+  let worstDollar = bestDollar;
   for (const t of closedTrades) {
-    if (t.pnl_pct > bestTrade.pnl_pct) bestTrade = t;
-    if (t.pnl_pct < worstTrade.pnl_pct) worstTrade = t;
+    const dollar = pctToDollar(t.pnl_pct, sizeForDirection(t.direction));
+    if (dollar > bestDollar) { bestTrade = t; bestDollar = dollar; }
+    if (dollar < worstDollar) { worstTrade = t; worstDollar = dollar; }
   }
 
   const formatDate = (dateStr: string | null | undefined): string => {
@@ -338,9 +351,11 @@ export function computeDetailedStats(
   // Direction breakdown — exclude trims (partial exits, not directional bets)
   const nonTrimTrades = closedTrades.filter(t => t.direction !== 'trim');
   const longs = nonTrimTrades.filter(
-    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long'
+    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long' || t.direction === 'bb2_long'
   );
-  const shorts = nonTrimTrades.filter(t => t.direction === 'short' || t.direction === 'bb_short');
+  const shorts = nonTrimTrades.filter(
+    t => t.direction === 'short' || t.direction === 'bb_short' || t.direction === 'bb2_short'
+  );
 
   // Duration stats — only trades with both dates
   const durations = closedTrades
@@ -356,16 +371,16 @@ export function computeDetailedStats(
   return {
     wins,
     losses,
-    bestTradeDollar: pctToDollar(bestTrade.pnl_pct, positionSize),
+    bestTradeDollar: bestDollar,
     bestTradeAsset: bestTrade.asset_symbol || bestTrade.asset_id.toUpperCase(),
     bestTradeDate: formatDate(bestTrade.closed_at),
-    worstTradeDollar: pctToDollar(worstTrade.pnl_pct, positionSize),
+    worstTradeDollar: worstDollar,
     worstTradeAsset: worstTrade.asset_symbol || worstTrade.asset_id.toUpperCase(),
     worstTradeDate: formatDate(worstTrade.closed_at),
     longCount: longs.length,
-    longWins: longs.filter(t => t.pnl_pct >= 0).length,
+    longWins: longs.filter(t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0).length,
     shortCount: shorts.length,
-    shortWins: shorts.filter(t => t.pnl_pct >= 0).length,
+    shortWins: shorts.filter(t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0).length,
     avgDurationMs,
     longestDurationMs,
     shortestDurationMs,

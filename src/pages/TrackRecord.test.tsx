@@ -13,8 +13,8 @@
  * - P&L color mapping: green = positive, red = negative (NEVER reversed)
  * - Profit/loss terminology: always says "profit"/"loss", never bare dollars
  * - Signal headline rendering: entry headline visible, exit headline on expand
- * - BestCallCard: correct selection, rendering, color-border direction
- * - bestTrade computation: highest pnl_pct among closed trades
+ * - BestTradeCard: correct selection, rendering, color-border direction
+ * - bestTrade computation: highest total position P&L among closed positions
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
@@ -147,7 +147,7 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
     expect(src).toContain("(totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
-  it('TRUST CRITICAL: BestCallCard uses green-dark for positive, red-dark for negative', () => {
+  it('TRUST CRITICAL: BestTradeCard uses green-dark for positive, red-dark for negative', () => {
     expect(src).toContain("isPositive ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
@@ -159,7 +159,7 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
   it('TRUST CRITICAL: dollar P&L always says "profit" or "loss", never bare dollars', () => {
     // In ClosedTradeCard
     expect(src).toContain("{dollarPnl >= 0 ? 'profit' : 'loss'}");
-    // In BestCallCard
+    // In BestTradeCard
     expect(src).toContain("{dollarPnl >= 0 ? 'profit' : 'loss'}");
     // In narrative stats (both user and paper zones)
     expect(src).toContain("totalDollarPnl >= 0 ? 'profit' : 'loss'");
@@ -193,13 +193,13 @@ describe('TRACK-SRC: Source-verification — headline rendering', () => {
     );
   });
 
-  it('BestCallCard shows star label', () => {
-    expect(src).toContain('Best call');
+  it('BestTradeCard shows star label', () => {
+    expect(src).toContain('Best trade');
     expect(src).toContain('&#9733;'); // star character
   });
 
-  it('BestCallCard in paper zone only renders when paperStats.totalClosed >= 3', () => {
-    expect(src).toContain('bestPaperTrade && paperStats.totalClosed >= 3');
+  it('BestTradeCard in paper zone only renders when paperStats.totalClosed >= 3', () => {
+    expect(src).toContain('bestPaperGroup && bestPaperPnl && paperStats.totalClosed >= 3');
   });
 });
 
@@ -211,7 +211,7 @@ describe('TRACK-SRC: Source-verification — two-zone layout', () => {
   });
 
   it('page has "Vela\'s signal history" zone label', () => {
-    expect(src).toContain("Vela's signal history");
+    expect(src).toContain("Vela&rsquo;s signal history");
   });
 
   it('paper trades section contains "Simulated trades since" disclaimer', () => {
@@ -223,7 +223,7 @@ describe('TRACK-SRC: Source-verification — two-zone layout', () => {
   });
 
   it('Performance Breakdown appears inside Vela signal history zone', () => {
-    const velaHistoryPos = src.indexOf("Vela's signal history");
+    const velaHistoryPos = src.indexOf("Vela&rsquo;s signal history");
     const breakdownPos = src.indexOf('Performance breakdown');
     expect(velaHistoryPos).toBeGreaterThan(-1);
     expect(breakdownPos).toBeGreaterThan(-1);
@@ -453,8 +453,8 @@ describe('TRACK: Zone 2 — Vela Signal History (paper trades)', () => {
   });
 });
 
-describe('TRACK: BestCallCard rendering', () => {
-  it('renders BestCallCard in Vela signal history when >= 3 closed paper trades', async () => {
+describe('TRACK: BestTradeCard rendering', () => {
+  it('renders BestTradeCard in Vela signal history when >= 3 closed paper trades', async () => {
     const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 52.5, entry_headline: 'Momentum shifting up' }),
@@ -473,10 +473,10 @@ describe('TRACK: BestCallCard rendering', () => {
     const expandBtn = screen.getByText(/Vela.s signal history/i);
     await user.click(expandBtn);
 
-    expect(screen.getByText('Best call')).toBeInTheDocument();
+    expect(screen.getByText('Best trade')).toBeInTheDocument();
   });
 
-  it('does NOT render BestCallCard with fewer than 3 closed paper trades', async () => {
+  it('does NOT render BestTradeCard with fewer than 3 closed paper trades', async () => {
     const user = userEvent.setup();
     const trades = [makeTrade({ id: '1', pnl_pct: 52.5 }), makeTrade({ id: '2', pnl_pct: 10.0 })];
     mockUseTrackRecord.mockReturnValue({
@@ -489,10 +489,10 @@ describe('TRACK: BestCallCard rendering', () => {
     const expandBtn = screen.getByText(/Vela.s signal history/i);
     await user.click(expandBtn);
 
-    expect(screen.queryByText('Best call')).not.toBeInTheDocument();
+    expect(screen.queryByText('Best trade')).not.toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: BestCallCard shows profit/loss labels, not bare dollars', async () => {
+  it('TRUST CRITICAL: BestTradeCard shows profit/loss labels, not bare dollars', async () => {
     const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 52.5 }),
@@ -509,10 +509,10 @@ describe('TRACK: BestCallCard rendering', () => {
     const expandBtn = screen.getByText(/Vela.s signal history/i);
     await user.click(expandBtn);
 
-    // BestCallCard + trade card both render — use getAllByText
+    // BestTradeCard + trade card both render — use getAllByText
     const profitLabels = screen.getAllByText(/\+\$525 profit/);
     expect(profitLabels.length).toBeGreaterThanOrEqual(1);
-    // Verify at least one is inside the BestCallCard (mint variant)
+    // Verify at least one is inside the BestTradeCard (mint variant)
     const mintCard = document.querySelector('.vela-card-mint') as HTMLElement;
     expect(mintCard).not.toBeNull();
     expect(within(mintCard!).getByText(/\+\$525 profit/)).toBeInTheDocument();
@@ -539,10 +539,10 @@ describe('TRACK: BestCallCard rendering', () => {
     const expandBtn = screen.getByText(/Vela.s signal history/i);
     await user.click(expandBtn);
 
-    // Headline appears in both BestCallCard and trade card — use getAllByText
+    // Headline appears in both BestTradeCard and trade card — use getAllByText
     const headlines = screen.getAllByText(/Short-term trend crossed above medium-term/);
     expect(headlines.length).toBeGreaterThanOrEqual(1);
-    // Verify it's in the BestCallCard
+    // Verify it's in the BestTradeCard
     const mintCard = document.querySelector('.vela-card-mint') as HTMLElement;
     expect(
       within(mintCard!).getByText(/Short-term trend crossed above medium-term/)
@@ -795,5 +795,152 @@ describe('TRACK: Loading state', () => {
     render(<TrackRecord />);
     // LoadingSpinner renders an SVG animation
     expect(screen.queryByText('Track Record')).not.toBeInTheDocument();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 5: BB2 (Quick Opportunity) Tests
+// BB2 trades are standalone positions with $300 sizing
+// ═══════════════════════════════════════════════════════════════════
+
+describe('TRACK-SRC: BB2 source verification', () => {
+  const src = readFileSync(resolve(__dirname, './TrackRecord.tsx'), 'utf-8');
+
+  it('TRUST CRITICAL: bb2_short maps to "Short" in directionLabel', () => {
+    expect(src).toContain("d === 'short' || d === 'bb_short' || d === 'bb2_short'");
+  });
+
+  it('TRUST CRITICAL: BB2 position size is 30% of standard', () => {
+    expect(src).toContain('BB2_POSITION_MULT = 0.3');
+    expect(src).toContain('BB2_POSITION_SIZE = DEFAULT_POSITION_SIZE * BB2_POSITION_MULT');
+  });
+
+  it('FastTradeBadge component exists for BB2 trades', () => {
+    expect(src).toContain('FastTradeBadge');
+    expect(src).toContain('Fast trade');
+  });
+
+  it('never shows "BB2" text to users in JSX string literals', () => {
+    // BB2 should only appear in variable names, type checks, and comments — never in
+    // user-facing JSX string content (quoted strings rendered to the DOM).
+    // Check that no JSX string literal like "BB2" or 'BB2' appears in rendered text:
+    const jsxStringPattern = /['"]BB2['"]/;
+    expect(jsxStringPattern.test(src)).toBe(false);
+  });
+
+  it('explainer text mentions $300 fast trade sizing', () => {
+    expect(src).toContain('per fast trade');
+  });
+});
+
+describe('TRACK: BB2 rendering', () => {
+  it('BB2 trades appear as standalone positions in paper zone', async () => {
+    const user = userEvent.setup();
+    const trades = [
+      makeTrade({ id: 'ema-1', pnl_pct: 10.0, direction: 'long' }),
+      makeTrade({
+        id: 'bb2-1',
+        pnl_pct: 5.0,
+        direction: 'bb2_long',
+        opened_at: '2025-12-02T00:00:00Z',
+        closed_at: '2025-12-02T08:00:00Z',
+      }),
+      makeTrade({
+        id: 'bb2-2',
+        pnl_pct: -3.0,
+        direction: 'bb2_short',
+        opened_at: '2025-12-03T00:00:00Z',
+        closed_at: '2025-12-03T06:00:00Z',
+      }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+      bestTrade: trades[0],
+    });
+
+    render(<TrackRecord />);
+
+    // Expand Vela signal history
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
+    // All 3 trades should render as positions (3 positions total)
+    const positionTexts = screen.getAllByText(/3 position/);
+    expect(positionTexts.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('TRUST CRITICAL: BB2 trade P&L uses $300 sizing, not $1,000', async () => {
+    const user = userEvent.setup();
+    const trades = [
+      makeTrade({
+        id: 'bb2-1',
+        pnl_pct: 10.0, // +10% × $300 = +$30 (NOT +$100)
+        direction: 'bb2_long',
+        opened_at: '2025-12-02T00:00:00Z',
+        closed_at: '2025-12-02T08:00:00Z',
+      }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+    });
+
+    render(<TrackRecord />);
+
+    // Expand Vela signal history
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
+    // Should show +$30, not +$100
+    expect(screen.getByText(/\+\$30 profit/)).toBeInTheDocument();
+    expect(screen.queryByText(/\+\$100/)).not.toBeInTheDocument();
+  });
+
+  it('"Fast trade" badge renders for BB2 trades in paper zone', async () => {
+    const user = userEvent.setup();
+    const trades = [
+      makeTrade({
+        id: 'bb2-1',
+        pnl_pct: 5.0,
+        direction: 'bb2_long',
+        opened_at: '2025-12-02T00:00:00Z',
+        closed_at: '2025-12-02T08:00:00Z',
+      }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+    });
+
+    render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
+    expect(screen.getByText(/Fast trade/)).toBeInTheDocument();
+  });
+
+  it('BB2 short trades show "Short" direction label', async () => {
+    const user = userEvent.setup();
+    const trades = [
+      makeTrade({
+        id: 'bb2-short-1',
+        pnl_pct: 3.0,
+        direction: 'bb2_short',
+        opened_at: '2025-12-02T00:00:00Z',
+        closed_at: '2025-12-02T08:00:00Z',
+      }),
+    ];
+    mockUseTrackRecord.mockReturnValue({
+      ...defaultHookReturn,
+      trades,
+    });
+
+    render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    await user.click(expandBtn);
+
+    // Should show "Short", not "Long" or "BB2"
+    expect(screen.getByText(/Short/)).toBeInTheDocument();
   });
 });

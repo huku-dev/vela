@@ -612,4 +612,106 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
     expect(stats.longCount).toBe(1);
     expect(stats.shortCount).toBe(0);
   });
+
+  it('TRUST CRITICAL: bb2_long counts as long in direction breakdown', () => {
+    const trades = [
+      {
+        pnl_pct: 5.0,
+        direction: 'bb2_long',
+        asset_id: 'btc',
+        asset_symbol: 'BTC',
+        opened_at: '2025-01-01T00:00:00Z',
+        closed_at: '2025-01-02T00:00:00Z',
+      },
+      {
+        pnl_pct: 8.0,
+        direction: 'long',
+        asset_id: 'eth',
+        asset_symbol: 'ETH',
+        opened_at: '2025-01-03T00:00:00Z',
+        closed_at: '2025-01-04T00:00:00Z',
+      },
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.longCount).toBe(2); // both bb2_long and long count
+    expect(stats.shortCount).toBe(0);
+  });
+
+  it('TRUST CRITICAL: bb2_short counts as short in direction breakdown', () => {
+    const trades = [
+      {
+        pnl_pct: 3.0,
+        direction: 'bb2_short',
+        asset_id: 'btc',
+        asset_symbol: 'BTC',
+        opened_at: '2025-01-01T00:00:00Z',
+        closed_at: '2025-01-02T00:00:00Z',
+      },
+      {
+        pnl_pct: -2.0,
+        direction: 'short',
+        asset_id: 'sol',
+        asset_symbol: 'SOL',
+        opened_at: '2025-01-05T00:00:00Z',
+        closed_at: '2025-01-06T00:00:00Z',
+      },
+    ];
+    const stats = computeDetailedStats(trades, 1000);
+    expect(stats.shortCount).toBe(2); // both bb2_short and short count
+    expect(stats.longCount).toBe(0);
+  });
+
+  it('TRUST CRITICAL: best/worst trade dollar P&L uses bb2PositionSize for BB2 trades', () => {
+    const trades = [
+      {
+        pnl_pct: 50.0, // +50% on $300 = +$150
+        direction: 'bb2_long',
+        asset_id: 'btc',
+        asset_symbol: 'BTC',
+        opened_at: '2025-01-01T00:00:00Z',
+        closed_at: '2025-01-02T00:00:00Z',
+      },
+      {
+        pnl_pct: 10.0, // +10% on $1000 = +$100
+        direction: 'long',
+        asset_id: 'eth',
+        asset_symbol: 'ETH',
+        opened_at: '2025-01-03T00:00:00Z',
+        closed_at: '2025-01-10T00:00:00Z',
+      },
+      {
+        pnl_pct: -20.0, // -20% on $1000 = -$200
+        direction: 'short',
+        asset_id: 'sol',
+        asset_symbol: 'SOL',
+        opened_at: '2025-01-05T00:00:00Z',
+        closed_at: '2025-01-06T00:00:00Z',
+      },
+    ];
+    const stats = computeDetailedStats(trades, 1000, 300);
+
+    // Best: bb2_long +50% × $300 = +$150 (NOT +50% × $1000 = +$500)
+    expect(stats.bestTradeDollar).toBe(150);
+    expect(stats.bestTradeAsset).toBe('BTC');
+
+    // Worst: short -20% × $1000 = -$200
+    expect(stats.worstTradeDollar).toBe(-200);
+    expect(stats.worstTradeAsset).toBe('SOL');
+  });
+
+  it('bb2PositionSize does not affect non-BB2 trades', () => {
+    const trades = [
+      {
+        pnl_pct: 10.0,
+        direction: 'long',
+        asset_id: 'btc',
+        asset_symbol: 'BTC',
+        opened_at: '2025-01-01T00:00:00Z',
+        closed_at: '2025-01-10T00:00:00Z',
+      },
+    ];
+    // With bb2PositionSize=300 — should not affect regular longs
+    const stats = computeDetailedStats(trades, 1000, 300);
+    expect(stats.bestTradeDollar).toBe(100); // 10% × $1000 = $100
+  });
 });

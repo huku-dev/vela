@@ -56,7 +56,7 @@ export interface Brief {
 }
 
 export type TradeSource = 'live' | 'backtest';
-export type TradeDirection = 'long' | 'short' | 'trim' | 'bb_long' | 'bb_short';
+export type TradeDirection = 'long' | 'short' | 'trim' | 'bb_long' | 'bb_short' | 'bb2_long' | 'bb2_short';
 
 export interface PaperTrade {
   id: string;

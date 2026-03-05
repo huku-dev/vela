@@ -340,6 +340,18 @@ export function useTrackRecord() {
       asset_coingecko_id: t.assets?.coingecko_id,
     }));
 
+  /** Deduplicate trades that have the same fingerprint (duplicate backtest rows) */
+  const dedup = (trades: EnrichedTrade[]): EnrichedTrade[] => {
+    const seen = new Set<string>();
+    return trades.filter(t => {
+      const openHour = t.opened_at?.slice(0, 13) ?? '';
+      const key = `${t.asset_id}|${t.direction ?? ''}|${openHour}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+
   /** Batch-fetch signals + briefs for a set of trades and enrich them */
   const enrichTrades = async (rawTrades: EnrichedTrade[]): Promise<EnrichedTrade[]> => {
     const signalIds = [
@@ -393,14 +405,13 @@ export function useTrackRecord() {
         supabase
           .from('paper_trades')
           .select('*, assets(symbol, coingecko_id)')
-          .order('opened_at', { ascending: false })
-          .limit(PAGE_SIZE + 1),
+          .order('opened_at', { ascending: false }),
         supabase.from('paper_trade_stats').select('*'),
       ]);
 
       const rows = tradesRes.data || [];
-      setHasMore(rows.length > PAGE_SIZE);
-      const mapped = mapTrades(rows.slice(0, PAGE_SIZE));
+      const mapped = dedup(mapTrades(rows));
+      setHasMore(false);
       setStats(statsRes.data || []);
 
       // Build asset map for logos
@@ -446,13 +457,13 @@ export function useTrackRecord() {
 
     const rows = res.data || [];
     setHasMore(rows.length === PAGE_SIZE + 1);
-    const mapped = mapTrades(rows.slice(0, PAGE_SIZE));
+    const mapped = dedup(mapTrades(rows.slice(0, PAGE_SIZE)));
 
     try {
       const enriched = await enrichTrades(mapped);
-      setTrades(prev => [...prev, ...enriched]);
+      setTrades(prev => dedup([...prev, ...enriched]));
     } catch {
-      setTrades(prev => [...prev, ...mapped]);
+      setTrades(prev => dedup([...prev, ...mapped]));
     }
     setLoadingMore(false);
   }, [trades.length]);

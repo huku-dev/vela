@@ -18,52 +18,144 @@ import {
 } from '../utils/calculations';
 import type { TradeDirection, Position } from '../types';
 
+// BB2 trades use 30% of standard position size
+const BB2_POSITION_MULT = 0.3;
+const BB2_POSITION_SIZE = DEFAULT_POSITION_SIZE * BB2_POSITION_MULT; // $300
+
+/** Is this a BB2 (short-term mean-reversion) trade? */
+function isBB2Direction(d: TradeDirection | null | undefined): boolean {
+  return d === 'bb2_long' || d === 'bb2_short';
+}
+
+/** Old BB overlays (bb_long/bb_short) — attached to parent EMA positions */
+const isOldOverlayDirection = (d?: string | null) =>
+  d === 'bb_long' || d === 'bb_short';
+
 /** Map raw direction to user-facing label */
 function directionLabel(d: TradeDirection | null | undefined): string {
   if (!d) return 'Long';
-  if (d === 'short' || d === 'bb_short') return 'Short';
+  if (d === 'short' || d === 'bb_short' || d === 'bb2_short') return 'Short';
   if (d === 'trim') return 'Trim';
   return 'Long';
 }
 
 /** Is this a short-side trade? */
 function isShortTrade(d: TradeDirection | null | undefined): boolean {
-  return d === 'short' || d === 'bb_short';
+  return d === 'short' || d === 'bb_short' || d === 'bb2_short';
+}
+
+/** Position size for a given trade direction */
+function tradePositionSize(d: TradeDirection | null | undefined): number {
+  return isBB2Direction(d) ? BB2_POSITION_SIZE : DEFAULT_POSITION_SIZE;
+}
+
+/** Format a date range: omit year on the first date if both are in the same year */
+const fmtDate = (d: Date, includeYear: boolean) =>
+  d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(includeYear ? { year: '2-digit' } : {}),
+  });
+
+function formatDateRange(openedAt: string, closedAt?: string | null): string {
+  const open = new Date(openedAt);
+  if (!closedAt) return fmtDate(open, true);
+  const close = new Date(closedAt);
+  const sameYear = open.getFullYear() === close.getFullYear();
+  return `${fmtDate(open, !sameYear)} — ${fmtDate(close, true)}`;
+}
+
+/** Inline "⚡ Fast trade" label shown on BB2 date lines */
+function FastTradeBadge() {
+  return <span style={{ whiteSpace: 'nowrap' }}>{' · '}&#9889; Fast trade</span>;
+}
+
+/** Info card shown in expanded BB2 cards — connects to the ⚡ badge */
+function FastTradeInfoCard() {
+  return (
+    <div
+      style={{
+        background: 'var(--cream-dark, #f5f0e8)',
+        borderRadius: '8px',
+        padding: '8px 10px',
+        marginTop: 'var(--space-2)',
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          fontSize: '0.68rem',
+          fontWeight: 600,
+          color: 'var(--gray-600, #6b6b6b)',
+          lineHeight: 1.3,
+        }}
+      >
+        &#9889; Fast trade
+      </p>
+      <p
+        style={{
+          margin: 0,
+          marginTop: '2px',
+          fontSize: '0.65rem',
+          color: 'var(--gray-500, #8a8a8a)',
+          lineHeight: 1.4,
+        }}
+      >
+        Vela spotted a short-term market opportunity and placed a smaller trade to try to take advantage.
+      </p>
+    </div>
+  );
 }
 
 /** A parent trade with its associated trims grouped together */
 interface GroupedTrade {
   trade: EnrichedTrade;
   trims: EnrichedTrade[];
+  overlays: EnrichedTrade[];
 }
 
 /**
- * Group trim trades with their parent position.
- * Trims share the same asset_id and their opened_at falls within the
- * parent trade's time window (opened_at → closed_at or now if still open).
+ * Group trades into positions:
+ * - EMA trades (long/short) are parents with trims matched by time window
+ * - BB2 trades (bb2_long/bb2_short) are standalone atomic positions
+ * - Old BB overlays (bb_long/bb_short) are attached to EMA parents or dropped
+ * - Trims without a parent show as standalone cards
  */
 function groupTradesWithTrims(trades: EnrichedTrade[]): GroupedTrade[] {
-  const parents = trades.filter(t => t.direction !== 'trim');
+  const parents = trades.filter(
+    t => t.direction !== 'trim' && !isOldOverlayDirection(t.direction)
+  );
   const trims = trades.filter(t => t.direction === 'trim');
+  const overlays = trades.filter(t => isOldOverlayDirection(t.direction));
 
   const grouped: GroupedTrade[] = parents.map(parent => {
+    // BB2 trades are atomic — no trims or overlays
+    if (isBB2Direction(parent.direction)) {
+      return { trade: parent, trims: [], overlays: [] };
+    }
+
+    // EMA parents: match trims and old overlays by asset + time window
     const parentOpen = new Date(parent.opened_at).getTime();
     const parentClose = parent.closed_at ? new Date(parent.closed_at).getTime() : Date.now();
 
-    const matchingTrims = trims.filter(trim => {
-      if (trim.asset_id !== parent.asset_id) return false;
-      const trimTime = new Date(trim.opened_at).getTime();
-      return trimTime >= parentOpen && trimTime <= parentClose;
-    });
+    const inWindow = (child: EnrichedTrade) => {
+      if (child.asset_id !== parent.asset_id) return false;
+      const t = new Date(child.opened_at).getTime();
+      return t >= parentOpen && t <= parentClose;
+    };
 
-    return { trade: parent, trims: matchingTrims };
+    return {
+      trade: parent,
+      trims: trims.filter(inWindow),
+      overlays: overlays.filter(inWindow),
+    };
   });
 
-  // Collect any orphaned trims (no matching parent) and show them standalone
+  // Orphaned trims → standalone cards
   const assignedTrimIds = new Set(grouped.flatMap(g => g.trims.map(t => t.id)));
   const orphanedTrims = trims.filter(t => !assignedTrimIds.has(t.id));
   for (const trim of orphanedTrims) {
-    grouped.push({ trade: trim, trims: [] });
+    grouped.push({ trade: trim, trims: [], overlays: [] });
   }
 
   return grouped;
@@ -117,7 +209,7 @@ export default function TrackRecord() {
     computePositionPnl(
       g.trade.pnl_pct!,
       g.trims.map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
-      DEFAULT_POSITION_SIZE
+      tradePositionSize(g.trade.direction)
     )
   );
   const userStats = aggregatePositionStats(userPositions);
@@ -132,23 +224,24 @@ export default function TrackRecord() {
     computePositionPnl(
       g.trade.pnl_pct!,
       g.trims.map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
-      DEFAULT_POSITION_SIZE
+      tradePositionSize(g.trade.direction)
     )
   );
   const paperStats = aggregatePositionStats(paperPositions);
-  const paperDetailedStats = computeDetailedStats(paperClosed, DEFAULT_POSITION_SIZE);
+  const paperDetailedStats = computeDetailedStats(paperClosed, DEFAULT_POSITION_SIZE, BB2_POSITION_SIZE);
 
   const hasUserTrades = userTrades.length > 0 || hasLivePositions;
 
   // ── Group paper trades: attach trims to their parent trade ──
   const groupedPaperTrades = groupTradesWithTrims(paperTrades);
 
-  // Best paper trade for the "Vela's signal history" hero card
-  const bestPaperTrade = paperTrades.reduce<EnrichedTrade | null>((best, t) => {
-    if (t.status !== 'closed' || t.pnl_pct == null) return best;
-    if (!best || (best.pnl_pct ?? 0) < t.pnl_pct) return t;
-    return best;
-  }, null);
+  // Best paper POSITION by total position P&L (parent + trims, not individual trade pnl_pct)
+  const bestPaperIdx = paperPositions.reduce<number | null>((bestIdx, pos, idx) => {
+    if (bestIdx === null || pos.totalDollarPnl > paperPositions[bestIdx].totalDollarPnl) return idx;
+    return bestIdx;
+  }, paperPositions.length > 0 ? 0 : null);
+  const bestPaperGroup = bestPaperIdx != null ? groupedPaperClosed[bestPaperIdx] : null;
+  const bestPaperPnl = bestPaperIdx != null ? paperPositions[bestPaperIdx] : null;
 
   // ── Helper: get live price for an asset ──
   const getLivePrice = (coingeckoId: string | undefined): number | null => {
@@ -319,6 +412,7 @@ export default function TrackRecord() {
                     onToggle={() =>
                       setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
                     }
+                    positionSize={tradePositionSize(trade.direction)}
                   />
                 ))}
               </div>
@@ -358,6 +452,7 @@ export default function TrackRecord() {
                     onToggle={() =>
                       setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
                     }
+                    positionSize={tradePositionSize(trade.direction)}
                   />
                 ))}
               </div>
@@ -505,63 +600,75 @@ export default function TrackRecord() {
                       fontSize: '0.7rem',
                     }}
                   >
-                    Based on ${DEFAULT_POSITION_SIZE.toLocaleString()} per trade. Total is
+                    Based on ${DEFAULT_POSITION_SIZE.toLocaleString()} per standard trade, ${BB2_POSITION_SIZE.toLocaleString()} per fast trade. Total is
                     cumulative across all closed trades.
                   </p>
                 </Card>
               )}
 
-              {/* Best call (paper) */}
-              {bestPaperTrade && paperStats.totalClosed >= 3 && (
-                <BestCallCard
-                  trade={bestPaperTrade}
-                  coingeckoId={assetMap[bestPaperTrade.asset_id]?.coingecko_id}
+              {/* Best trade (paper) */}
+              {bestPaperGroup && bestPaperPnl && paperStats.totalClosed >= 3 && (
+                <BestTradeCard
+                  group={bestPaperGroup}
+                  positionPnl={bestPaperPnl}
+                  coingeckoId={assetMap[bestPaperGroup.trade.asset_id]?.coingecko_id}
+                  onTap={() => {
+                    setExpandedTradeId(bestPaperGroup.trade.id);
+                    if (!showVelaHistory) setShowVelaHistory(true);
+                    setTimeout(() => {
+                      document
+                        .querySelector(`[data-trade-id="${bestPaperGroup.trade.id}"]`)
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                  }}
                 />
               )}
 
               {/* Paper trade list (trims grouped with parent) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {groupedPaperTrades.map(({ trade, trims }) =>
-                  trade.status === 'open' ? (
-                    <OpenTradeCard
-                      key={trade.id}
-                      trade={trade}
-                      currentPrice={getLivePrice(trade.asset_coingecko_id)}
-                      coingeckoId={trade.asset_coingecko_id}
-                      formatDuration={formatDuration}
-                      entryHeadline={
-                        trade.entry_headline ??
-                        reasonCodeToPlainEnglish(trade.entry_reason_code) ??
-                        undefined
-                      }
-                      expanded={expandedTradeId === trade.id}
-                      onToggle={() =>
-                        setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                      }
-                    />
-                  ) : (
-                    <ClosedTradeCard
-                      key={trade.id}
-                      trade={trade}
-                      trims={trims}
-                      coingeckoId={trade.asset_coingecko_id}
-                      entryHeadline={
-                        trade.entry_headline ??
-                        reasonCodeToPlainEnglish(trade.entry_reason_code) ??
-                        undefined
-                      }
-                      exitHeadline={
-                        trade.exit_headline ??
-                        reasonCodeToPlainEnglish(trade.exit_reason_code) ??
-                        undefined
-                      }
-                      expanded={expandedTradeId === trade.id}
-                      onToggle={() =>
-                        setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                      }
-                    />
-                  )
-                )}
+                {groupedPaperTrades.map(({ trade, trims }) => (
+                  <div key={trade.id} data-trade-id={trade.id}>
+                    {trade.status === 'open' ? (
+                      <OpenTradeCard
+                        trade={trade}
+                        currentPrice={getLivePrice(trade.asset_coingecko_id)}
+                        coingeckoId={trade.asset_coingecko_id}
+                        formatDuration={formatDuration}
+                        entryHeadline={
+                          trade.entry_headline ??
+                          reasonCodeToPlainEnglish(trade.entry_reason_code) ??
+                          undefined
+                        }
+                        expanded={expandedTradeId === trade.id}
+                        onToggle={() =>
+                          setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
+                        }
+                        positionSize={tradePositionSize(trade.direction)}
+                      />
+                    ) : (
+                      <ClosedTradeCard
+                        trade={trade}
+                        trims={trims}
+                        coingeckoId={trade.asset_coingecko_id}
+                        entryHeadline={
+                          trade.entry_headline ??
+                          reasonCodeToPlainEnglish(trade.entry_reason_code) ??
+                          undefined
+                        }
+                        exitHeadline={
+                          trade.exit_headline ??
+                          reasonCodeToPlainEnglish(trade.exit_reason_code) ??
+                          undefined
+                        }
+                        expanded={expandedTradeId === trade.id}
+                        onToggle={() =>
+                          setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
+                        }
+                        positionSize={tradePositionSize(trade.direction)}
+                      />
+                    )}
+                  </div>
+                ))}
 
                 {hasMore && (
                   <button
@@ -721,6 +828,7 @@ function OpenTradeCard({
   entryHeadline,
   expanded,
   onToggle,
+  positionSize = DEFAULT_POSITION_SIZE,
 }: {
   trade: EnrichedTrade;
   currentPrice: number | null;
@@ -729,6 +837,7 @@ function OpenTradeCard({
   entryHeadline?: string;
   expanded: boolean;
   onToggle: () => void;
+  positionSize?: number;
 }) {
   const short = isShortTrade(trade.direction);
   const unrealizedPct =
@@ -736,7 +845,7 @@ function OpenTradeCard({
       ? calculateUnrealizedPnL(trade.entry_price, currentPrice, short ? 'short' : 'long')
       : null;
   const unrealizedDollar =
-    unrealizedPct != null ? pctToDollar(unrealizedPct, DEFAULT_POSITION_SIZE) : null;
+    unrealizedPct != null ? pctToDollar(unrealizedPct, positionSize) : null;
 
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
@@ -856,11 +965,8 @@ function OpenTradeCard({
           className="vela-body-sm"
           style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
         >
-          {new Date(trade.opened_at).toLocaleDateString('en-GB', {
-            month: 'short',
-            day: 'numeric',
-            year: '2-digit',
-          })}
+          {formatDateRange(trade.opened_at)}
+          {isBB2Direction(trade.direction) && <FastTradeBadge />}
         </p>
       </div>
 
@@ -874,7 +980,7 @@ function OpenTradeCard({
           }}
         >
           {/* Position line items */}
-          <DetailRow label="Position size" value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`} />
+          <DetailRow label="Position size" value={`$${positionSize.toLocaleString()}`} />
           <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
           {currentPrice != null && (
             <DetailRow label="Current price" value={formatPrice(currentPrice)} />
@@ -961,6 +1067,9 @@ function OpenTradeCard({
               Position closes when signal flips to {short ? 'Buy' : 'Sell'}
             </p>
           </div>
+
+          {/* Fast trade info card — at bottom of expanded detail */}
+          {isBB2Direction(trade.direction) && <FastTradeInfoCard />}
         </div>
       )}
     </Card>
@@ -977,6 +1086,7 @@ function ClosedTradeCard({
   exitHeadline,
   expanded,
   onToggle,
+  positionSize = DEFAULT_POSITION_SIZE,
 }: {
   trade: EnrichedTrade;
   trims?: EnrichedTrade[];
@@ -985,6 +1095,7 @@ function ClosedTradeCard({
   exitHeadline?: string;
   expanded: boolean;
   onToggle: () => void;
+  positionSize?: number;
 }) {
   // Position-level P&L: includes close P&L + all trim P&Ls
   const positionPnl =
@@ -992,7 +1103,7 @@ function ClosedTradeCard({
       ? computePositionPnl(
           trade.pnl_pct,
           (trims ?? []).map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
-          DEFAULT_POSITION_SIZE
+          positionSize
         )
       : null;
   const totalDollarPnl = positionPnl?.totalDollarPnl ?? null;
@@ -1110,17 +1221,8 @@ function ClosedTradeCard({
           className="vela-body-sm"
           style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
         >
-          {new Date(trade.opened_at).toLocaleDateString('en-GB', {
-            month: 'short',
-            day: 'numeric',
-            year: '2-digit',
-          })}
-          {trade.closed_at &&
-            ` — ${new Date(trade.closed_at).toLocaleDateString('en-GB', {
-              month: 'short',
-              day: 'numeric',
-              year: '2-digit',
-            })}`}
+          {formatDateRange(trade.opened_at, trade.closed_at)}
+          {isBB2Direction(trade.direction) && <FastTradeBadge />}
         </p>
       </div>
 
@@ -1134,11 +1236,11 @@ function ClosedTradeCard({
           }}
         >
           {/* Position line items */}
-          <DetailRow label="Position size" value={`$${DEFAULT_POSITION_SIZE.toLocaleString()}`} />
+          <DetailRow label="Position size" value={`$${positionSize.toLocaleString()}`} />
           {trade.trim_pct != null && (
             <DetailRow
               label="Trimmed"
-              value={`${trade.trim_pct}% of position · $${Math.round((DEFAULT_POSITION_SIZE * trade.trim_pct) / 100).toLocaleString()}`}
+              value={`${trade.trim_pct}% of position · $${Math.round((positionSize * trade.trim_pct) / 100).toLocaleString()}`}
             />
           )}
           <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
@@ -1275,7 +1377,7 @@ function ClosedTradeCard({
                     className="vela-body-sm"
                     style={{ color: 'var(--gray-400)', display: 'block' }}
                   >
-                    ${DEFAULT_POSITION_SIZE.toLocaleString()} position · Cost basis: 100%
+                    ${positionSize.toLocaleString()} position
                   </span>
                 </div>
               </div>
@@ -1285,7 +1387,7 @@ function ClosedTradeCard({
                 const breakdown = positionPnl.trimBreakdown[idx];
                 const trimDollar = breakdown?.dollarPnl ?? 0;
                 const costBasisAfter = breakdown?.costBasisAfter ?? 100;
-                const remainingDollars = Math.round((costBasisAfter / 100) * DEFAULT_POSITION_SIZE);
+                const remainingDollars = Math.round((costBasisAfter / 100) * positionSize);
                 return (
                   <div
                     key={trim.id}
@@ -1312,7 +1414,7 @@ function ClosedTradeCard({
                         }}
                       >
                         <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                          Trim {trim.trim_pct != null ? `${trim.trim_pct}%` : ''} at{' '}
+                          Trimmed {trim.trim_pct != null ? `${trim.trim_pct}%` : ''} at{' '}
                           {trim.exit_price != null ? formatPrice(trim.exit_price) : '—'}
                         </span>
                         <span
@@ -1338,9 +1440,9 @@ function ClosedTradeCard({
                           month: 'short',
                           day: 'numeric',
                         })}
-                        {trim.pnl_pct != null &&
-                          ` · ${trim.pnl_pct >= 0 ? '+' : ''}${trim.pnl_pct.toFixed(1)}%`}
-                        {` · Cost basis: ${costBasisAfter}% ($${remainingDollars.toLocaleString()})`}
+                        {costBasisAfter <= 0
+                          ? ' · Fully in the money'
+                          : ` · Initial capital: $${remainingDollars.toLocaleString()} left`}
                       </span>
                     </div>
                   </div>
@@ -1368,7 +1470,7 @@ function ClosedTradeCard({
                     }}
                   >
                     <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                      Close {positionPnl.costBasisPct}% at{' '}
+                      Closed {positionPnl.costBasisPct}% at{' '}
                       {trade.exit_price != null ? formatPrice(trade.exit_price) : '—'}
                     </span>
                     <span
@@ -1396,8 +1498,6 @@ function ClosedTradeCard({
                         month: 'short',
                         day: 'numeric',
                       })}
-                    {trade.pnl_pct != null &&
-                      ` · ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}%`}
                   </span>
                 </div>
               </div>
@@ -1463,7 +1563,10 @@ function ClosedTradeCard({
             </div>
           )}
 
-          {/* Share trade card */}
+          {/* Fast trade info card — before share */}
+          {isBB2Direction(trade.direction) && <FastTradeInfoCard />}
+
+          {/* Share trade card — always last */}
           {trade.exit_price != null && totalPnlPct != null && (
             <div
               style={{
@@ -1493,21 +1596,26 @@ function ClosedTradeCard({
   );
 }
 
-// ── Best Call Hero Card ──
+// ── Best Trade Hero Card ──
 
-function BestCallCard({
-  trade,
+function BestTradeCard({
+  group,
+  positionPnl,
   coingeckoId,
+  onTap,
 }: {
-  trade: EnrichedTrade;
+  group: GroupedTrade;
+  positionPnl: ReturnType<typeof computePositionPnl>;
   coingeckoId: string | undefined;
+  onTap?: () => void;
 }) {
-  const dollarPnl =
-    trade.pnl_pct != null ? pctToDollar(trade.pnl_pct, DEFAULT_POSITION_SIZE) : null;
+  const trade = group.trade;
+  const dollarPnl = positionPnl.totalDollarPnl;
+  const pnlPct = positionPnl.totalPnlPct;
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
   const short = isShortTrade(trade.direction);
-  const isPositive = (trade.pnl_pct ?? 0) >= 0;
+  const isPositive = dollarPnl >= 0;
 
   const entryText =
     trade.entry_headline ?? reasonCodeToPlainEnglish(trade.entry_reason_code) ?? null;
@@ -1519,7 +1627,11 @@ function BestCallCard({
       : null;
 
   return (
-    <Card variant={isPositive ? 'mint' : 'peach'} style={{ marginBottom: 'var(--space-3)' }}>
+    <Card
+      variant={isPositive ? 'mint' : 'peach'}
+      style={{ marginBottom: 'var(--space-3)', cursor: onTap ? 'pointer' : undefined }}
+      onClick={onTap}
+    >
       {/* Label */}
       <p
         className="vela-label"
@@ -1533,7 +1645,7 @@ function BestCallCard({
         }}
       >
         <span style={{ fontSize: 'var(--text-sm)' }}>&#9733;</span>
-        Best call
+        Best trade
       </p>
 
       {/* Asset + direction + P&L */}
@@ -1553,38 +1665,34 @@ function BestCallCard({
           </div>
         </div>
 
-        {trade.pnl_pct != null && (
-          <div style={{ textAlign: 'right' }}>
-            <p
-              style={{
-                fontFamily: 'var(--type-mono-base-font)',
-                fontWeight: 700,
-                fontSize: 'var(--text-lg)',
-                color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
-                lineHeight: 1.2,
-                margin: 0,
-              }}
-            >
-              {isPositive ? '+' : ''}
-              {trade.pnl_pct.toFixed(1)}%
-            </p>
-            {dollarPnl != null && (
-              <p
-                style={{
-                  fontFamily: 'var(--type-mono-base-font)',
-                  fontWeight: 600,
-                  fontSize: 'var(--text-sm)',
-                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
-                  margin: 0,
-                }}
-              >
-                {dollarPnl >= 0 ? '+' : '-'}$
-                {Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
-                {dollarPnl >= 0 ? 'profit' : 'loss'}
-              </p>
-            )}
-          </div>
-        )}
+        <div style={{ textAlign: 'right' }}>
+          <p
+            style={{
+              fontFamily: 'var(--type-mono-base-font)',
+              fontWeight: 700,
+              fontSize: 'var(--text-lg)',
+              color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+              lineHeight: 1.2,
+              margin: 0,
+            }}
+          >
+            {isPositive ? '+' : ''}
+            {pnlPct.toFixed(1)}%
+          </p>
+          <p
+            style={{
+              fontFamily: 'var(--type-mono-base-font)',
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
+              color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+              margin: 0,
+            }}
+          >
+            {dollarPnl >= 0 ? '+' : '-'}$
+            {Math.abs(dollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
+            {dollarPnl >= 0 ? 'profit' : 'loss'}
+          </p>
+        </div>
       </div>
 
       {/* Entry headline */}
@@ -1622,17 +1730,9 @@ function BestCallCard({
         className="vela-body-sm"
         style={{ color: 'var(--gray-400)', marginTop: 'var(--space-1)', marginBottom: 0 }}
       >
-        {new Date(trade.opened_at).toLocaleDateString('en-GB', {
-          month: 'short',
-          day: 'numeric',
-        })}
-        {trade.closed_at &&
-          ` — ${new Date(trade.closed_at).toLocaleDateString('en-GB', {
-            month: 'short',
-            day: 'numeric',
-            year: '2-digit',
-          })}`}
+        {formatDateRange(trade.opened_at, trade.closed_at)}
         {holdingPeriod && ` · ${holdingPeriod}`}
+        {isBB2Direction(trade.direction) && <FastTradeBadge />}
       </p>
 
       {/* Exit headline */}
