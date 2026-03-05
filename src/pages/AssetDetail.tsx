@@ -386,7 +386,7 @@ export default function AssetDetail() {
             <h1 className="vela-heading-xl" style={{ fontSize: 'var(--text-xl)' }}>
               {asset.symbol}
             </h1>
-            <SignalChip color={signalColor} size="small" />
+            <SignalChip color={signalColor} size="small" nearConfirmation={signal?.near_confirmation} />
           </div>
           <span className="vela-body-sm vela-text-muted" style={{ fontSize: 'var(--text-xs)' }}>
             {asset.name}

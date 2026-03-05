@@ -138,6 +138,12 @@
   --color-status-wait-text: var(--amber-dark);
   --color-status-wait-border: var(--amber-primary);
 
+  /* Near-confirmation WAIT — subtle green tint to indicate "heating up" */
+  --color-status-wait-near-bg: #ecfdf5;
+  --color-status-wait-near-text: #065f46;
+  --color-status-wait-near-border: #6ee7b7;
+  --color-status-wait-near-dot: #10b981;
+
   --color-status-neutral-bg: var(--gray-50);
   --color-status-neutral-text: var(--gray-700);
   --color-status-neutral-border: var(--gray-400);
@@ -779,6 +785,11 @@ body {
 
     --color-status-wait-bg: #78350f;
     --color-status-wait-text: #fde68a;
+
+    --color-status-wait-near-bg: #064e3b;
+    --color-status-wait-near-text: #a7f3d0;
+    --color-status-wait-near-border: #059669;
+    --color-status-wait-near-dot: #34d399;
 
     --shadow-xs: 2px 2px 0 #334155;
     --shadow-sm: 3px 3px 0 #334155;

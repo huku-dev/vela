@@ -22,6 +22,7 @@ export interface Signal {
   rsi_14: number;
   sma_50_daily: number;
   adx_4h: number;
+  near_confirmation: boolean;
   created_at: string;
 }
 

@@ -91,6 +91,7 @@ ASSETS_HL = {
     "bitcoin": "BTC",
     "ethereum": "ETH",
     "hyperliquid": "HYPE",
+    "solana": "SOL",
 }
 
 # Default position size for P&L calculations (matches frontend DEFAULT_POSITION_SIZE)
@@ -562,6 +563,43 @@ V9_ATR_2_0X = {
     "atr_stop_multiplier": 2.0,
 }
 
+# ---------------------------------------------------------------------------
+# V10: Late Entry — allow entries N bars after the original EMA cross
+# if all gates (ADX, RSI, SMA-50, anti-whipsaw) now pass.
+# Tests whether catching missed crosses is profitable or catches reversals.
+# All variants inherit from V6D_TRAILING_BOTH (production baseline).
+# ---------------------------------------------------------------------------
+
+V10_LATE_0 = {
+    **V6D_TRAILING_BOTH,
+    "name": "V10: No late entry (baseline)",
+    "late_entry_max_bars": 0,
+}
+
+V10_LATE_1BAR = {
+    **V6D_TRAILING_BOTH,
+    "name": "V10: Late entry 1 bar (4H)",
+    "late_entry_max_bars": 1,
+}
+
+V10_LATE_2BAR = {
+    **V6D_TRAILING_BOTH,
+    "name": "V10: Late entry 2 bars (8H)",
+    "late_entry_max_bars": 2,
+}
+
+V10_LATE_3BAR = {
+    **V6D_TRAILING_BOTH,
+    "name": "V10: Late entry 3 bars (12H)",
+    "late_entry_max_bars": 3,
+}
+
+V10_LATE_6BAR = {
+    **V6D_TRAILING_BOTH,
+    "name": "V10: Late entry 6 bars (24H)",
+    "late_entry_max_bars": 6,
+}
+
 # Registry for CLI --config-a / --config-b selection
 NAMED_CONFIGS = {
     "current": SIGNAL_CONFIG,
@@ -609,6 +647,12 @@ NAMED_CONFIGS = {
     "v9_atr_1_5x": V9_ATR_1_5X,
     "v9_atr_1_75x": V9_ATR_1_75X,
     "v9_atr_2_0x": V9_ATR_2_0X,
+    # ── V10: Late entry experiments ──
+    "v10_late_0": V10_LATE_0,
+    "v10_late_1bar": V10_LATE_1BAR,
+    "v10_late_2bar": V10_LATE_2BAR,
+    "v10_late_3bar": V10_LATE_3BAR,
+    "v10_late_6bar": V10_LATE_6BAR,
     # ── V9: Equities/Commodities tuning experiments ──
     # All based on V6d (production), tuned for lower-volatility non-crypto assets.
     # Hypothesis: crypto-calibrated thresholds are too wide for equities.
@@ -1123,6 +1167,34 @@ def calculate_indicators(df: pd.DataFrame, config: dict = SIGNAL_CONFIG) -> pd.D
         .astype(bool)
     )
 
+    # --- Bars since last EMA cross (for late-entry logic) ---
+    # Counts how many bars have elapsed since the last bullish/bearish cross.
+    # Resets to 0 on cross bar, increments each bar after (while EMA alignment holds).
+    bars_since_bull = []
+    bars_since_bear = []
+    bull_counter = 999  # large = no recent cross
+    bear_counter = 999
+    for idx in df.index:
+        if df.loc[idx, "ema_crossed_up"]:
+            bull_counter = 0
+        elif df.loc[idx, "ema_9"] > df.loc[idx, "ema_21"] and bull_counter < 999:
+            bull_counter += 1
+        else:
+            bull_counter = 999  # EMA alignment broken, reset
+
+        if df.loc[idx, "ema_crossed_down"]:
+            bear_counter = 0
+        elif df.loc[idx, "ema_9"] < df.loc[idx, "ema_21"] and bear_counter < 999:
+            bear_counter += 1
+        else:
+            bear_counter = 999  # EMA alignment broken, reset
+
+        bars_since_bull.append(bull_counter)
+        bars_since_bear.append(bear_counter)
+
+    df["bars_since_bullish_cross"] = bars_since_bull
+    df["bars_since_bearish_cross"] = bars_since_bear
+
     # --- Consecutive days below SMA-50 (for trend-break confirmation) ---
     below_sma = (df["close"] < df["sma_50"]).astype(int)
     df["days_below_sma50"] = below_sma.groupby(
@@ -1298,6 +1370,77 @@ def evaluate_signal(
                 return ("grey", "low_volume")
         # All conditions met
         return ("red", "ema_cross_down")
+
+    # ── LATE ENTRY: No fresh cross, but EMA alignment + all gates pass ──
+    # When late_entry_max_bars > 0, check if a recent cross happened within
+    # the window and all four gates (ADX, RSI, SMA-50, anti-whipsaw) now pass.
+    # This catches entries where the cross fired while a gate was blocking.
+
+    late_entry_max = config.get("late_entry_max_bars", 0)
+    if late_entry_max > 0:
+        bars_since_bull = row.get("bars_since_bullish_cross", 999)
+        bars_since_bear = row.get("bars_since_bearish_cross", 999)
+
+        # Bullish late entry: cross happened 1..N bars ago, EMA9 > EMA21, all gates pass
+        if (0 < bars_since_bull <= late_entry_max
+                and ema9 > ema21
+                and open_trade is None):  # only enter if no open position context
+            # Check ADX gate (with graduated scaling if configured)
+            adx_base = config["adx_threshold"]
+            adx_scaling = config.get("adx_spread_scaling")
+            if adx_scaling:
+                spread_abs = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+                adx_boost = 0
+                for spread_cutoff, boost in adx_scaling:
+                    if spread_abs < spread_cutoff:
+                        adx_boost = max(adx_boost, boost)
+                adx_required = adx_base + adx_boost
+            else:
+                adx_required = adx_base
+            adx_ok = adx4h >= adx_required
+            # Check RSI gate
+            rsi_ok = config["rsi_long_entry_min"] <= rsi14 <= config["rsi_long_entry_max"]
+            # Check trend filter
+            trend_ok = price >= sma50
+            # Check anti-whipsaw
+            whipsaw_ok = not recent_bearish_cross
+            # Volume confirmation (if enabled)
+            vol_ok = True
+            if config.get("volume_confirm") and not pd.isna(volume_ratio):
+                threshold = config.get("volume_entry_threshold", 1.2)
+                if volume_ratio < threshold:
+                    vol_ok = False
+
+            if adx_ok and rsi_ok and trend_ok and whipsaw_ok and vol_ok:
+                return ("green", "late_entry")
+
+        # Bearish late entry: cross happened 1..N bars ago, EMA9 < EMA21, all gates pass
+        if (0 < bars_since_bear <= late_entry_max
+                and ema9 < ema21
+                and open_trade is None):
+            adx_base = config["adx_threshold"]
+            adx_scaling = config.get("adx_spread_scaling_short", config.get("adx_spread_scaling"))
+            if adx_scaling:
+                spread_abs = abs((ema9 - ema21) / ema21) * 100 if ema21 != 0 else 0
+                adx_boost = 0
+                for spread_cutoff, boost in adx_scaling:
+                    if spread_abs < spread_cutoff:
+                        adx_boost = max(adx_boost, boost)
+                adx_required = adx_base + adx_boost
+            else:
+                adx_required = adx_base
+            adx_ok = adx4h >= adx_required
+            rsi_ok = config["rsi_short_entry_min"] <= rsi14 <= config["rsi_short_entry_max"]
+            trend_ok = price <= sma50
+            whipsaw_ok = not recent_bullish_cross
+            vol_ok = True
+            if config.get("volume_confirm") and not pd.isna(volume_ratio):
+                threshold = config.get("volume_entry_threshold", 1.2)
+                if volume_ratio < threshold:
+                    vol_ok = False
+
+            if adx_ok and rsi_ok and trend_ok and whipsaw_ok and vol_ok:
+                return ("red", "late_entry")
 
     # ── NO CROSS: Grey (no change) ──
 
@@ -2102,6 +2245,42 @@ def simulate_trades(
                         short_remaining_frac = 1.0
                         short_peak_profit = 0.0
                     consecutive_red = 0  # Reset after entry
+
+        # ── Late entry: open positions on delayed cross recognition ──
+        # Late entries bypass the confirmation gate (they ARE a delayed mechanism).
+        # Respects EMA cooldown. Tags entry_signal_reason as "late_entry".
+        if reason == "late_entry":
+            if color == "green" and open_long is None:
+                if ema_cooldown_bars > 0 and bar_idx <= ema_long_cooldown_until:
+                    pass  # Cooldown active
+                else:
+                    open_long = {
+                        "direction": "long",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "green",
+                        "entry_signal_reason": "late_entry",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "entry_bar_index": bar_idx,
+                    }
+                    long_remaining_frac = 1.0
+                    long_peak_profit = 0.0
+
+            elif color == "red" and open_short is None:
+                if ema_cooldown_bars > 0 and bar_idx <= ema_short_cooldown_until:
+                    pass  # Cooldown active
+                else:
+                    open_short = {
+                        "direction": "short",
+                        "entry_date": str(date),
+                        "entry_price": round(price, 2),
+                        "entry_signal_color": "red",
+                        "entry_signal_reason": "late_entry",
+                        "entry_indicators": _snapshot_indicators(row),
+                        "entry_bar_index": bar_idx,
+                    }
+                    short_remaining_frac = 1.0
+                    short_peak_profit = 0.0
 
         # ── V5 Strategy 3: DCA Tranche Fill ──
         # Fill subsequent tranches if DCA is active, signal holds, and interval met
@@ -3460,6 +3639,8 @@ def run_comparison(
         ("bb_improved_position_mult", "BB2 position mult"),
         ("bb_improved_cooldown_days", "BB2 cooldown days"),
         ("ema_cooldown_bars", "EMA cooldown (bars × 4h)"),
+        # V10 late entry params
+        ("late_entry_max_bars", "Late entry window (bars)"),
         # V6 short profit capture params
         ("trailing_stop_short", "Trailing stop (shorts)"),
         ("trailing_stop_long", "Trailing stop (longs)"),
@@ -4669,6 +4850,220 @@ def run_stress_test(assets: list[dict], days: int, event_date: str, source: str 
     print(f"\n{'=' * 74}")
 
 
+# ---------------------------------------------------------------------------
+# Late-entry sweep — compare baseline vs 1/2/3/6 bar late-entry windows
+# ---------------------------------------------------------------------------
+
+
+def run_late_entry_sweep(
+    assets: list[dict],
+    days: int,
+    configs: list[dict],
+    source: str = "hyperliquid",
+) -> None:
+    """
+    Run all late-entry configs on same price data. For each asset, compare
+    baseline (no late entry) against each window. Break out late-entry-only
+    trades for granular analysis.
+    """
+    print("\n" + "=" * 80)
+    print("  LATE-ENTRY SWEEP")
+    print(f"  Windows: {', '.join(str(c.get('late_entry_max_bars', 0)) + ' bars' for c in configs)}")
+    print(f"  Lookback: {days} days | Position: ${POSITION_SIZE_USD:,}")
+    print("=" * 80)
+
+    # Per-config, per-asset results
+    # config_results[config_name][cg_id] = trades list
+    config_results: dict[str, dict[str, list[dict]]] = {}
+    for cfg in configs:
+        config_results[cfg["name"]] = {}
+
+    for i, asset in enumerate(assets):
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+
+        print(f"\n{'─' * 80}")
+        print(f"  [{i + 1}/{len(assets)}] Fetching {symbol} ({cg_id})...")
+        print(f"{'─' * 80}")
+
+        # Fetch price data ONCE
+        df_raw = fetch_ohlc(cg_id, days, source=source)
+
+        for cfg in configs:
+            print(f"  Running {cfg['name']}...")
+            trades = run_backtest(
+                cg_id, asset["id"], days, dry_run=True, config=cfg,
+                df_cached=df_raw, quiet=True,
+            )
+            config_results[cfg["name"]][cg_id] = trades
+
+        if i < len(assets) - 1 and source == "coingecko":
+            time.sleep(CG_SLEEP_SECONDS)
+
+    # ── Per-asset comparison table ──
+    baseline_name = configs[0]["name"]
+    baseline_bars = configs[0].get("late_entry_max_bars", 0)
+
+    for asset in assets:
+        cg_id = asset["coingecko_id"]
+        symbol = asset["symbol"]
+
+        print(f"\n{'=' * 80}")
+        print(f"  {symbol} ({cg_id}) — LATE ENTRY COMPARISON")
+        print(f"{'=' * 80}")
+
+        # Header
+        col_names = [c["name"].split(":")[1].strip() if ":" in c["name"] else c["name"] for c in configs]
+        header = f"  {'Metric':<28}"
+        for name in col_names:
+            header += f"  {name:>14}"
+        print(header)
+        print(f"  {'─' * (28 + 16 * len(configs))}")
+
+        metrics_list = []
+        for cfg in configs:
+            trades = config_results[cfg["name"]][cg_id]
+            m = extract_metrics(trades)
+            m["_trades"] = trades  # stash for late-entry analysis
+            metrics_list.append(m)
+
+        # Rows
+        rows = [
+            ("Full trades", "full_trades", "{:>14.0f}", False),
+            ("Win rate (%)", "win_rate", "{:>14.0f}", True),
+            ("Total P&L ($)", "total_pnl_usd", "{:>+14,.0f}", True),
+            ("  from closes", "close_pnl_usd", "{:>+14,.0f}", True),
+            ("  from trims", "trim_pnl_usd", "{:>+14,.0f}", True),
+            ("Long wins", "long_wins", "{:>14.0f}", True),
+            ("Long trades", "longs", "{:>14.0f}", False),
+            ("Short wins", "short_wins", "{:>14.0f}", True),
+            ("Short trades", "shorts", "{:>14.0f}", False),
+            ("Avg duration (days)", "avg_duration_days", "{:>14.1f}", False),
+            ("Max single loss (%)", "max_single_loss_pct", "{:>14.1f}", False),
+        ]
+
+        for label, key, fmt, higher_better in rows:
+            line = f"  {label:<28}"
+            for mi, m in enumerate(metrics_list):
+                val = m.get(key, 0)
+                cell = fmt.format(val)
+                # Delta indicator vs baseline
+                if mi > 0 and higher_better:
+                    diff = val - metrics_list[0].get(key, 0)
+                    if diff > 0.5:
+                        cell += " +"
+                    elif diff < -0.5:
+                        cell += " -"
+                line += f"  {cell:>14}" if mi == 0 else f"  {cell}"
+            print(line)
+
+        # ── Late-entry-only trade summary ──
+        print(f"\n  Late-entry-only trade summary:")
+        print(f"  {'Config':<32} {'Count':>6} {'Win%':>6} {'P&L':>10} {'Avg P&L':>10} {'Rev<=2d':>8}")
+        print(f"  {'─' * 74}")
+
+        for cfg, m in zip(configs, metrics_list):
+            trades = m["_trades"]
+            late_trades = [
+                t for t in trades
+                if t.get("entry_signal_reason") == "late_entry"
+                and t.get("direction") in ("long", "short")
+            ]
+            late_closed = [t for t in late_trades if t["status"] == "closed"]
+            late_wins = [t for t in late_closed if t["pnl_pct"] >= 0]
+            late_count = len(late_closed)
+            late_win_rate = len(late_wins) / late_count * 100 if late_count > 0 else 0
+            late_pnl = sum(t.get("pnl_usd", 0) for t in late_closed)
+            late_avg_pnl = late_pnl / late_count if late_count > 0 else 0
+
+            reversed_count = 0
+            for t in late_closed:
+                if t.get("entry_date") and t.get("exit_date"):
+                    try:
+                        d_in = datetime.strptime(t["entry_date"], "%Y-%m-%d")
+                        d_out = datetime.strptime(t["exit_date"], "%Y-%m-%d")
+                        if (d_out - d_in).days <= 2:
+                            reversed_count += 1
+                    except (ValueError, TypeError):
+                        pass
+
+            bars = cfg.get("late_entry_max_bars", 0)
+            label = cfg["name"]
+            if bars == 0:
+                print(f"  {label:<32} {'n/a':>6} {'n/a':>6} {'n/a':>10} {'n/a':>10} {'n/a':>8}")
+            else:
+                print(f"  {label:<32} {late_count:>6} {late_win_rate:>5.0f}% ${late_pnl:>+8,.0f} ${late_avg_pnl:>+8,.0f} {reversed_count:>8}")
+
+        # Print late-entry trade log for each non-baseline config
+        for cfg, m in zip(configs, metrics_list):
+            bars = cfg.get("late_entry_max_bars", 0)
+            if bars == 0:
+                continue
+            trades = m["_trades"]
+            late_trades = [
+                t for t in trades
+                if t.get("entry_signal_reason") == "late_entry"
+                and t.get("direction") in ("long", "short")
+                and t.get("status") == "closed"
+            ]
+            if late_trades:
+                print(f"\n  {cfg['name']} — late-entry trades:")
+                for t in sorted(late_trades, key=lambda x: x.get("entry_date", "")):
+                    direction = "LONG " if t.get("direction") == "long" else "SHORT"
+                    emoji = "+" if t["pnl_pct"] >= 0 else "-"
+                    exit_reason = t.get("exit_signal_reason", "")
+                    print(
+                        f"    [{emoji}] {direction}  {t['entry_date']} -> {t['exit_date']}"
+                        f"  |  ${t['entry_price']:,.0f} -> ${t['exit_price']:,.0f}"
+                        f"  |  {t['pnl_pct']:+.1f}% ${t.get('pnl_usd', 0):+,.0f}"
+                        f"  ({exit_reason})"
+                    )
+
+    # ── Aggregate across all assets ──
+    print(f"\n{'=' * 80}")
+    print(f"  AGGREGATE LATE-ENTRY COMPARISON (all assets)")
+    print(f"{'=' * 80}")
+
+    agg_header = f"  {'Config':<32} {'Trades':>7} {'Win%':>6} {'P&L':>10} {'Late#':>6} {'LateWin%':>9} {'LateP&L':>10}"
+    print(agg_header)
+    print(f"  {'─' * 82}")
+
+    for cfg in configs:
+        all_trades = []
+        for asset in assets:
+            cg_id = asset["coingecko_id"]
+            all_trades.extend(config_results[cfg["name"]][cg_id])
+
+        m = extract_metrics(all_trades)
+        late_closed = [
+            t for t in all_trades
+            if t.get("entry_signal_reason") == "late_entry"
+            and t.get("direction") in ("long", "short")
+            and t.get("status") == "closed"
+        ]
+        late_wins = [t for t in late_closed if t["pnl_pct"] >= 0]
+        late_count = len(late_closed)
+        late_win_rate = len(late_wins) / late_count * 100 if late_count > 0 else 0
+        late_pnl = sum(t.get("pnl_usd", 0) for t in late_closed)
+
+        bars = cfg.get("late_entry_max_bars", 0)
+        label = cfg["name"]
+
+        if bars == 0:
+            print(
+                f"  {label:<32} {m['full_trades']:>7} {m['win_rate']:>5.0f}%"
+                f" ${m['total_pnl_usd']:>+8,.0f}"
+                f" {'n/a':>6} {'n/a':>9} {'n/a':>10}"
+            )
+        else:
+            print(
+                f"  {label:<32} {m['full_trades']:>7} {m['win_rate']:>5.0f}%"
+                f" ${m['total_pnl_usd']:>+8,.0f}"
+                f" {late_count:>6} {late_win_rate:>8.0f}%"
+                f" ${late_pnl:>+8,.0f}"
+            )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Vela Backtesting Engine")
     parser.add_argument("--asset", type=str, help="CoinGecko ID (e.g. 'bitcoin')")
@@ -4695,6 +5090,8 @@ def main():
                         help="Starting capital for compounding/leverage simulation (default: $1,000)")
     parser.add_argument("--clear", action="store_true",
                         help="Delete existing backtest trades before writing new ones")
+    parser.add_argument("--late-entry", action="store_true",
+                        help="Run late-entry sweep: compare 0/1/2/3/6 bar late-entry windows")
     args = parser.parse_args()
 
     # Validate Supabase keys are available (deferred from module-level for testability)
@@ -4742,6 +5139,22 @@ def main():
             print("  No assets found.")
             sys.exit(1)
         run_stress_test(assets, args.days, args.stress_test, source=args.source)
+        return
+
+    # ── Late-entry sweep mode ──
+    if args.late_entry:
+        assets = fetch_assets()
+        if args.asset:
+            asset = next((a for a in assets if a["coingecko_id"] == args.asset), None)
+            if not asset:
+                asset = {"id": "unknown", "symbol": args.asset.upper(), "coingecko_id": args.asset}
+            assets = [asset]
+        if not assets:
+            print("  No assets found.")
+            sys.exit(1)
+
+        late_configs = [V10_LATE_0, V10_LATE_1BAR, V10_LATE_2BAR, V10_LATE_3BAR, V10_LATE_6BAR]
+        run_late_entry_sweep(assets, args.days, late_configs, source=args.source)
         return
 
     # ── Compare mode ──
