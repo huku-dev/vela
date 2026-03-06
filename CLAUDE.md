@@ -391,6 +391,17 @@ git commit -m "feat: add signal detail page"  # Conventional commits format
 git push origin main  # Auto-deploys to Vercel
 ```
 
+### Backend Deployment
+```bash
+cd /Users/henry/crypto-agent
+./scripts/deploy.sh --staging                # Apply migrations + deploy functions to staging
+./scripts/deploy.sh --prod                   # Apply migrations + deploy functions to production
+./scripts/deploy.sh --staging --skip-migrations  # Functions only
+./scripts/verify-deployment.sh --staging     # Verify staging is in sync
+./scripts/verify-deployment.sh --prod        # Verify production is in sync
+./scripts/verify-deployment.sh --both        # Verify both environments
+```
+
 ### Post-Push CI Verification (MANDATORY)
 After every `git push`, you **must** verify the CI pipeline passes before marking a task as complete:
 
@@ -405,6 +416,28 @@ gh run view <run-id> --log-failed        # Inspect failures
 2. If a build fails, investigate and fix immediately — do not move on to the next task
 3. After fixing, push the fix and verify the new run passes
 4. Keep the `develop` branch in sync with `main` after fixes (`git checkout develop && git merge main && git push`)
+
+### Backend Deployment Verification (MANDATORY)
+After any backend change (migration, edge function, shared code), verify deployment parity:
+
+```bash
+cd /Users/henry/crypto-agent
+
+# Single command to deploy: applies pending migrations + deploys functions
+./scripts/deploy.sh --staging               # Staging first
+./scripts/deploy.sh --prod                  # Production after staging verified
+
+# Verify everything is in sync
+./scripts/verify-deployment.sh --staging    # Check staging
+./scripts/verify-deployment.sh --prod       # Check production
+```
+
+**Rules:**
+1. `deploy.sh` now automatically runs `db push` before deploying functions — one command does both
+2. Never mark a backend task as done until `verify-deployment.sh` passes for the target environment
+3. Migrations written but not pushed to staging WILL accumulate silently — the verification script catches this
+4. At session end, always run `verify-deployment.sh --staging` to confirm nothing is stuck locally
+5. For cross-repo changes (migration + frontend), verify BOTH repos are deployed before marking complete
 
 ### Pre-Deploy QA Smoke Test (MANDATORY)
 Before merging `develop` → `main`, you **must** perform a visual smoke test on staging:
