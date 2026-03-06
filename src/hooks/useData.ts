@@ -340,14 +340,17 @@ export function useTrackRecord() {
       asset_coingecko_id: t.assets?.coingecko_id,
     }));
 
-  /** Deduplicate trades that have the same fingerprint (duplicate backtest rows) */
+  /**
+   * Deduplicate trades that are exact duplicates (same DB row inserted twice).
+   * Uses the database primary key (id) — each trade has a unique UUID.
+   * Previous fingerprint (asset|direction|hour) was too aggressive and collapsed
+   * legitimately distinct trades that opened in the same hour.
+   */
   const dedup = (trades: EnrichedTrade[]): EnrichedTrade[] => {
     const seen = new Set<string>();
     return trades.filter(t => {
-      const openHour = t.opened_at?.slice(0, 13) ?? '';
-      const key = `${t.asset_id}|${t.direction ?? ''}|${openHour}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
       return true;
     });
   };
