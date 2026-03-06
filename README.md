@@ -1,6 +1,6 @@
 # Vela - Crypto Trading Agent
 
-Always watching the markets for you.
+Smarter trading starts here.
 
 ## 🚀 Deployment Status
 

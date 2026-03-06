@@ -97,7 +97,7 @@ Follow the implementation plan:
 ✅ **Three-pillar framework** - Always Watching, You Stay in Control, Plain English
 ✅ **Trust language** - Control statements, risk disclaimers
 ✅ **Reusable patterns** - Alert pattern, "Why we think this", etc.
-✅ **Updated taglines** - "Always watching the markets for you"
+✅ **Updated taglines** - "Smarter trading starts here"
 ✅ **Data viz semantics** - Each color has meaning, not just sequencing
 
 ---
@@ -217,7 +217,7 @@ import {
 // Page header
 <PageHeader
   title="Vela"
-  subtitle="Always watching the markets for you"
+  subtitle="Smarter trading starts here"
 />
 
 // Signal card
@@ -319,7 +319,7 @@ import {
 ## 🎯 Key Decisions Made
 
 ### Tagline
-**"Always watching the markets for you"**
+**"Smarter trading starts here"**
 - Reduces surveillance connotation
 - Emphasizes service ("for you")
 - Specific about what's being watched

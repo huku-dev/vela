@@ -127,7 +127,7 @@ Every feature maps to one of these:
 
 ### Updated Taglines
 
-**Primary:** "Always watching the markets for you"
+**Primary:** "Smarter trading starts here"
 **Why:** Adds "markets" to reduce surveillance connotation
 
 **Secondary:** "Always watching, you stay in control"
@@ -315,7 +315,7 @@ import {
 
 <PageHeader
   title="Vela"
-  subtitle="Always watching the markets for you"
+  subtitle="Smarter trading starts here"
 />
 
 <SignalCard

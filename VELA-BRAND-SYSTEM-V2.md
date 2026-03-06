@@ -206,7 +206,7 @@
 
 ### Updated Taglines
 
-**Primary:** "Always watching the markets for you"
+**Primary:** "Smarter trading starts here"
 **Secondary:** "Always watching, you stay in control"
 
 **Why:** Adds "the markets" to reduce surveillance connotation, emphasizes user control.
@@ -384,7 +384,7 @@ import {
 // In your component
 <PageHeader
   title="Vela"
-  subtitle="Always watching the markets for you"
+  subtitle="Smarter trading starts here"
 />
 
 <SignalCard
@@ -512,7 +512,7 @@ Imagine the app background subtly changing based on portfolio trend:
 
 ### For You (Product Owner)
 1. ✅ Review this document
-2. ✅ Approve tagline choice ("Always watching the markets for you")
+2. ✅ Approve tagline choice ("Smarter trading starts here")
 3. ✅ Decide on any customizations
 4. ✅ Ready to implement
 

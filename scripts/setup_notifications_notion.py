@@ -222,7 +222,7 @@ TEMPLATES = [
                     "Body: {headline} — one-line Plain English summary",
                     "CTA buttons (BUY/SELL only): ✅ ACCEPT {label} | ❌ DECLINE",
                     "Footer link: \"View full brief →\"",
-                    "Brand footer: \"Vela — Always watching the markets for you\"",
+                    "Brand footer: \"Vela — Smarter trading starts here\"",
                 ]
             },
             {
@@ -308,7 +308,7 @@ TEMPLATES = [
                     "Header: \"📰 Daily Digest — {date}\"",
                     "Body: {summary_truncated} — first 200 characters of digest",
                     "CTA button: \"Read full digest →\" (black background, cream text)",
-                    "Brand footer: \"Vela — Always watching the markets for you\"",
+                    "Brand footer: \"Vela — Smarter trading starts here\"",
                 ]
             },
             {

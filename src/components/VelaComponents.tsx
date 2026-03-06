@@ -567,7 +567,7 @@ if (typeof document !== 'undefined') {
  * <PageContainer>
  *   <PageHeader
  *     title="Your Signals"
- *     subtitle="Always watching the markets for you"
+ *     subtitle="Smarter trading starts here"
  *   />
  *   <Grid columns={2}>
  *     <StatCard label="Portfolio Value" value="$12,450" change="+5.2%" />

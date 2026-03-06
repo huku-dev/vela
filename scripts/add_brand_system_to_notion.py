@@ -141,7 +141,7 @@ def main():
         heading(2, '📝 Brand Voice'),
 
         heading(3, 'Updated Taglines'),
-        paragraph('Primary: "Always watching the markets for you"'),
+        paragraph('Primary: "Smarter trading starts here"'),
         paragraph('Secondary: "Always watching, you stay in control"'),
 
         heading(3, 'Trust & Safety Language'),
@@ -194,7 +194,7 @@ def main():
         code_block('<!-- In index.html -->\n<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">', 'html'),
 
         heading(3, 'Use Components'),
-        code_block('import { Button, SignalCard, PageHeader } from \'./components/VelaComponents\';\n\n<PageHeader\n  title="Vela"\n  subtitle="Always watching the markets for you"\n/>\n\n<SignalCard\n  asset="Bitcoin"\n  signal="BUY"\n  price="$45,230"\n  priceChange="+2.3%"\n  reason="Price broke above resistance"\n/>\n\n<Button variant="buy" onClick={handleBuy}>\n  Execute Trade\n</Button>', 'typescript'),
+        code_block('import { Button, SignalCard, PageHeader } from \'./components/VelaComponents\';\n\n<PageHeader\n  title="Vela"\n  subtitle="Smarter trading starts here"\n/>\n\n<SignalCard\n  asset="Bitcoin"\n  signal="BUY"\n  price="$45,230"\n  priceChange="+2.3%"\n  reason="Price broke above resistance"\n/>\n\n<Button variant="buy" onClick={handleBuy}>\n  Execute Trade\n</Button>', 'typescript'),
 
         heading(2, '🎯 Key Design Decisions'),
 

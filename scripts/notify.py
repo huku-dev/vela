@@ -212,7 +212,7 @@ def format_signal_email(
     <a href="{brief_url}" style="color: #0A0A0A; font-size: 14px; font-weight: 600;">View full brief →</a>
   </div>
   <hr style="border: none; border-top: 2px solid #EBEBEB; margin: 24px 0;">
-  <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Always watching the markets for you</p>
+  <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Smarter trading starts here</p>
 </div>"""
     return subject, html
 
@@ -253,7 +253,7 @@ def format_digest_email(headline: str, summary: str) -> tuple[str, str]:
     <a href="{APP_BASE_URL}" style="display: inline-block; background: #0A0A0A; color: #FFFBF5; padding: 12px 28px; border: 3px solid #0A0A0A; text-decoration: none; font-weight: 700; font-size: 14px;">Read full digest →</a>
   </div>
   <hr style="border: none; border-top: 2px solid #EBEBEB; margin: 24px 0;">
-  <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Always watching the markets for you</p>
+  <p style="font-size: 12px; color: #9CA3AF; margin: 0;">Vela — Smarter trading starts here</p>
 </div>"""
     return subject, html
 

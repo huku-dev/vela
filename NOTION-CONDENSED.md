@@ -85,7 +85,7 @@
 ## 📝 Brand Voice
 
 ### Updated Taglines
-**Primary:** "Always watching the markets for you"
+**Primary:** "Smarter trading starts here"
 **Secondary:** "Always watching, you stay in control"
 
 ### Trust & Safety Language
@@ -166,7 +166,7 @@ import { Button, SignalCard, PageHeader } from './components/VelaComponents';
 
 <PageHeader
   title="Vela"
-  subtitle="Always watching the markets for you"
+  subtitle="Smarter trading starts here"
 />
 
 <SignalCard
