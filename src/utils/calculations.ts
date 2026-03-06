@@ -337,8 +337,14 @@ export function computeDetailedStats(
   let worstDollar = bestDollar;
   for (const t of closedTrades) {
     const dollar = pctToDollar(t.pnl_pct, sizeForDirection(t.direction));
-    if (dollar > bestDollar) { bestTrade = t; bestDollar = dollar; }
-    if (dollar < worstDollar) { worstTrade = t; worstDollar = dollar; }
+    if (dollar > bestDollar) {
+      bestTrade = t;
+      bestDollar = dollar;
+    }
+    if (dollar < worstDollar) {
+      worstTrade = t;
+      worstDollar = dollar;
+    }
   }
 
   const formatDate = (dateStr: string | null | undefined): string => {
@@ -351,7 +357,11 @@ export function computeDetailedStats(
   // Direction breakdown — exclude trims (partial exits, not directional bets)
   const nonTrimTrades = closedTrades.filter(t => t.direction !== 'trim');
   const longs = nonTrimTrades.filter(
-    t => !t.direction || t.direction === 'long' || t.direction === 'bb_long' || t.direction === 'bb2_long'
+    t =>
+      !t.direction ||
+      t.direction === 'long' ||
+      t.direction === 'bb_long' ||
+      t.direction === 'bb2_long'
   );
   const shorts = nonTrimTrades.filter(
     t => t.direction === 'short' || t.direction === 'bb_short' || t.direction === 'bb2_short'
@@ -380,7 +390,8 @@ export function computeDetailedStats(
     longCount: longs.length,
     longWins: longs.filter(t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0).length,
     shortCount: shorts.length,
-    shortWins: shorts.filter(t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0).length,
+    shortWins: shorts.filter(t => pctToDollar(t.pnl_pct, sizeForDirection(t.direction)) >= 0)
+      .length,
     avgDurationMs,
     longestDurationMs,
     shortestDurationMs,

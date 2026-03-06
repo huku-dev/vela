@@ -67,5 +67,12 @@ export function useOnboarding() {
     }
   }, [supabaseClient]);
 
-  return { isOnboarded, isChecking, completeOnboarding };
+  /** Roll back onboarding completion (e.g. when Stripe checkout fails mid-flow).
+   *  Clears localStorage + state so the user stays in the onboarding flow. */
+  const resetOnboarding = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setIsOnboarded(false);
+  }, []);
+
+  return { isOnboarded, isChecking, completeOnboarding, resetOnboarding };
 }

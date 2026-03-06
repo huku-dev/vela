@@ -1226,7 +1226,16 @@ function TradingPanel({
     );
   }
 
-  const currentMode = preferences?.mode ?? 'view_only';
+  // Clamp to highest mode the current tier allows. If a user's saved mode
+  // exceeds their tier (e.g. selected full_auto during onboarding but never
+  // subscribed to Premium), fall back to the highest allowed mode.
+  const savedMode = preferences?.mode ?? 'view_only';
+  const currentMode: TradingMode = (() => {
+    if (tierFeatures[MODE_FEATURE_KEY[savedMode]]) return savedMode;
+    // Walk down: full_auto → semi_auto → view_only
+    if (savedMode === 'full_auto' && tierFeatures.semi_auto) return 'semi_auto';
+    return 'view_only';
+  })();
 
   return (
     <div style={{ padding: 'var(--space-4)' }}>

@@ -11,13 +11,23 @@ All email notifications are sent via **Resend API** from `supabase/functions/_sh
 
 All user-facing emails use `wrapEmailHtml(bodyHtml, opts?)` — a shared wrapper that provides:
 
-- **Header:** Vela angular eye SVG logomark + "vela" wordmark (Space Grotesk 800)
+- **Header:** Vela angular eye logomark (hosted PNG) + "vela" wordmark (Space Grotesk 800)
 - **Body:** Cream `#FFFBF5` background, 3px `#0A0A0A` border, Inter font
-- **Footer:** Dark `#0A0A0A` bar with [getvela.xyz](https://getvela.xyz) + [@vela_HQ](https://x.com/vela_HQ) links, tagline below
+- **Footer:** Dark `#0A0A0A` bar with globe icon + [getvela.xyz](https://getvela.xyz), X icon + [@vela_HQ](https://x.com/vela_HQ), tagline below
 
 **Layout:** Table-based for Gmail compatibility (Gmail strips `<style>` tags). Fonts imported via `<link>` in `<head>` with graceful fallback to system sans-serif.
 
-**Logo:** Inline SVG (works in Apple Mail, iOS Mail). Gmail strips SVG — wordmark text `<span>` is always visible as fallback.
+**Images:** Hosted PNGs at `getvela.xyz/email/` (served from vela-marketing `public/email/`). Gmail renders `<img>` tags reliably; inline SVG was stripped.
+
+### Hosted Assets
+
+| File | Size | Usage |
+|------|------|-------|
+| `getvela.xyz/email/logo.png` | 28×28 (56×56 source) | Header logomark |
+| `getvela.xyz/email/icon-globe.png` | 14×14 (28×28 source) | Footer website link |
+| `getvela.xyz/email/icon-x.png` | 14×14 (28×28 source) | Footer X link |
+
+SVG sources alongside each PNG in `vela-marketing/public/email/`.
 
 ### Brand Tokens
 
@@ -69,3 +79,4 @@ All user-facing emails use `wrapEmailHtml(bodyHtml, opts?)` — a shared wrapper
 |------|--------|
 | 2026-03-06 | Fixed `EMAIL_FROM_ADDRESS`: `alerts@vela.trade` (unverified) to `Vela <alerts@getvela.xyz>` (verified). All emails had returned 403 from Resend for ~7 days. |
 | 2026-03-06 | Brand overhaul: Added `wrapEmailHtml()` shared wrapper with logo + dark footer. Fixed `ACCENT.green` from `#00D084` to `#0FE68C`. Updated tagline to "Smarter trading starts here". Aligned funding templates (withdrawal, deposit, OTP) to neobrutalist style. |
+| 2026-03-06 | Hosted PNG images: Replaced inline SVG logo (stripped by Gmail) with hosted PNG at `getvela.xyz/email/logo.png`. Added globe + X icons to footer links. Assets in vela-marketing `public/email/`. |

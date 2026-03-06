@@ -211,7 +211,7 @@ describe('TRACK-SRC: Source-verification — two-zone layout', () => {
   });
 
   it('page has "Vela\'s signal history" zone label', () => {
-    expect(src).toContain("Vela&rsquo;s signal history");
+    expect(src).toContain('Vela&rsquo;s signal history');
   });
 
   it('paper trades section contains "Simulated trades since" disclaimer', () => {
@@ -223,7 +223,7 @@ describe('TRACK-SRC: Source-verification — two-zone layout', () => {
   });
 
   it('Performance Breakdown appears inside Vela signal history zone', () => {
-    const velaHistoryPos = src.indexOf("Vela&rsquo;s signal history");
+    const velaHistoryPos = src.indexOf('Vela&rsquo;s signal history');
     const breakdownPos = src.indexOf('Performance breakdown');
     expect(velaHistoryPos).toBeGreaterThan(-1);
     expect(breakdownPos).toBeGreaterThan(-1);

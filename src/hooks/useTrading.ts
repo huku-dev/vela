@@ -155,7 +155,7 @@ export function useTrading(): TradingState {
           supabaseClient
             .from('user_wallets')
             .select('*')
-            .eq('environment', import.meta.env.VITE_WALLET_ENVIRONMENT ?? 'testnet')
+            .eq('environment', import.meta.env.VITE_WALLET_ENVIRONMENT || 'mainnet')
             .limit(1),
           supabaseClient
             .from('circuit_breaker_events')
@@ -315,7 +315,14 @@ export function useTrading(): TradingState {
         .select()
         .single();
 
-      if (upsertErr) throw new Error(upsertErr.message);
+      if (upsertErr) {
+        // DB trigger returns a descriptive error for tier violations
+        if (upsertErr.message?.includes('not available on the')) {
+          console.warn('[useTrading] Mode rejected by tier:', upsertErr.message);
+          throw new Error('This trading mode requires a paid plan. Upgrade to unlock.');
+        }
+        throw new Error(upsertErr.message);
+      }
 
       setPreferences(data);
     },

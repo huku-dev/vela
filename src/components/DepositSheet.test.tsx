@@ -178,7 +178,7 @@ describe('DepositSheet', () => {
     expect(screen.queryByRole('button', { name: /check balance now/i })).not.toBeInTheDocument();
   });
 
-  it('shows deposit detected message when balance increases', async () => {
+  it('shows confirmation message after clicking "I\'ve sent the USDC"', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ balance: 600, deposit_detected: 100 }),
@@ -189,9 +189,18 @@ describe('DepositSheet', () => {
     const onRefresh = vi.fn();
     render(<DepositSheet wallet={mockWallet} onClose={onClose} onRefresh={onRefresh} />);
 
-    // "I've sent the USDC" triggers refresh + close
+    // Must select a network first — button is disabled until network chosen
+    await user.selectOptions(screen.getByLabelText('Select deposit network'), 'arbitrum');
+
+    // "I've sent the USDC" shows confirmation message (does NOT close sheet)
     await user.click(screen.getByRole('button', { name: /i've sent the usdc/i }));
-    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
+
+    // Confirmation message appears
+    expect(screen.getByText(/we'll check for deposits to your wallet/i)).toBeInTheDocument();
+
+    // Button is replaced — no longer visible
+    expect(screen.queryByRole('button', { name: /i've sent the usdc/i })).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
@@ -199,6 +208,12 @@ describe('DepositSheet', () => {
         expect.objectContaining({ method: 'POST' })
       );
     });
+  });
+
+  it('"I\'ve sent the USDC" button is disabled until network is selected', () => {
+    renderSheet();
+    const btn = screen.getByRole('button', { name: /i've sent the usdc/i });
+    expect(btn).toBeDisabled();
   });
 
   it('does not show last synced time', () => {

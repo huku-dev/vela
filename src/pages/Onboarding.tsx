@@ -373,8 +373,18 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
   );
 }
 
-function WalletSetup({ onComplete }: { onComplete: () => void }) {
-  const isTestnet = (import.meta.env.VITE_WALLET_ENVIRONMENT ?? 'testnet') === 'testnet';
+function WalletSetup({
+  onComplete,
+  checkoutError,
+}: {
+  onComplete: () => void;
+  checkoutError?: string | null;
+}) {
+  const walletEnv = import.meta.env.VITE_WALLET_ENVIRONMENT;
+  if (!walletEnv) {
+    console.error('[WalletSetup] VITE_WALLET_ENVIRONMENT is not set');
+  }
+  const isTestnet = walletEnv === 'testnet';
 
   const handleFundNow = () => {
     if (isTestnet) {
@@ -499,6 +509,25 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
         </div>
       </div>
 
+      {/* Checkout error feedback */}
+      {checkoutError && (
+        <div
+          style={{
+            maxWidth: 440,
+            margin: '0 auto var(--space-3)',
+            width: '100%',
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--red-light, #FFF0F0)',
+            border: '2px solid var(--red-primary)',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <p className="vela-body-sm" style={{ margin: 0, color: 'var(--red-primary)' }}>
+            {checkoutError}
+          </p>
+        </div>
+      )}
+
       {/* Action buttons */}
       <div style={{ maxWidth: 440, margin: '0 auto', width: '100%' }}>
         <button
@@ -506,7 +535,7 @@ function WalletSetup({ onComplete }: { onComplete: () => void }) {
           onClick={handleFundNow}
           style={{ width: '100%', marginBottom: 'var(--space-3)' }}
         >
-          {isTestnet ? 'Get test USDC' : 'Continue'}
+          {isTestnet ? 'Get test USDC' : 'Fund wallet'}
         </button>
         <button className="vela-btn vela-btn-ghost" onClick={onComplete} style={{ width: '100%' }}>
           Skip — I&apos;ll do this later
@@ -524,12 +553,19 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthContext();
   const { updatePreferences } = useTrading();
-  const { isOnboarded, completeOnboarding } = useOnboarding();
+  const { isOnboarded, completeOnboarding, resetOnboarding } = useOnboarding();
   const { startCheckout } = useSubscription();
 
+  // Track whether we're in the middle of a Stripe checkout redirect.
+  // Without this guard, completeOnboarding() sets isOnboarded=true which
+  // triggers the useEffect below to navigate('/') — preempting the
+  // Stripe redirect and sending the user to the dashboard instead.
+  const checkoutInProgressRef = useRef(false);
+
   // If already onboarded (e.g. direct /welcome visit), redirect to dashboard
+  // — but NOT if a Stripe checkout redirect is in progress.
   useEffect(() => {
-    if (isOnboarded) {
+    if (isOnboarded && !checkoutInProgressRef.current) {
       navigate('/', { replace: true });
     }
   }, [isOnboarded, navigate]);
@@ -537,6 +573,7 @@ export default function Onboarding() {
   // Determine starting step based on auth state
   const [step, setStep] = useState<OnboardingStep>('splash');
   const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   // When user authenticates (after Privy login), advance to next step
   useEffect(() => {
@@ -571,23 +608,37 @@ export default function Onboarding() {
       setPendingCheckout(null);
     }
 
+    setCheckoutError(null);
     setStep('wallet');
   };
 
   const handleComplete = async () => {
-    await completeOnboarding();
-
     if (pendingCheckout) {
-      // User selected a paid mode — redirect to Stripe checkout
+      // User selected a paid mode — redirect to Stripe checkout.
+      // We must mark as onboarded BEFORE the Stripe redirect so the user
+      // can return to /account after checkout (OnboardingGate would block
+      // them otherwise). If checkout fails, we roll back with resetOnboarding().
+      checkoutInProgressRef.current = true;
+      setCheckoutError(null);
+
+      await completeOnboarding();
+
       try {
         await startCheckout(pendingCheckout, 'monthly');
-        // startCheckout redirects to Stripe, so this line may not execute
-      } catch {
-        // If checkout fails, just go to dashboard — they can upgrade later via CTAs
-        console.warn('[Onboarding] Checkout redirect failed, navigating to dashboard');
-        navigate('/', { replace: true });
+        // startCheckout sets window.location.href → hard redirect to Stripe
+      } catch (err) {
+        // Checkout failed — roll back onboarding so the user stays in the
+        // flow instead of landing on the dashboard in a limbo state.
+        resetOnboarding();
+        checkoutInProgressRef.current = false;
+        const msg = err instanceof Error ? err.message : 'Checkout failed';
+        console.error('[Onboarding] Checkout redirect failed:', msg);
+        setCheckoutError(
+          `Couldn\u2019t start checkout: ${msg}. You can try again or skip for now.`
+        );
       }
     } else {
+      await completeOnboarding();
       navigate('/', { replace: true });
     }
   };
@@ -600,5 +651,5 @@ export default function Onboarding() {
     return <TradingModeSetup onContinue={handleModeSelected} />;
   }
 
-  return <WalletSetup onComplete={handleComplete} />;
+  return <WalletSetup onComplete={handleComplete} checkoutError={checkoutError} />;
 }

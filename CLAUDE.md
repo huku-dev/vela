@@ -324,6 +324,25 @@ grep -r "ntn_" src/  # Check for Notion tokens
 grep -r "sk-" src/   # Check for API keys
 ```
 
+### Environment Variable Safety (MANDATORY — learned from 2026-03-06 production incident)
+
+A missing `WALLET_ENVIRONMENT` env var silently provisioned all production wallets on testnet, making user deposits invisible. This rule exists to prevent that class of failure from ever recurring.
+
+**When adding ANY new `Deno.env.get()` or `import.meta.env.VITE_*` to code, the SAME commit/PR MUST also:**
+
+1. **Backend env var** → add to `.env.example` (backend repo) AND `DEPLOY.md` step 4 secrets list AND step 4f checklist table
+2. **Frontend env var** → add to `DEPLOY.md` step 9b Vercel env vars table (both production AND preview sections)
+3. **Set the value** in both staging and production (Supabase secrets or Vercel env vars). If you can't set it now, log it as a blocking task — never leave it for later.
+4. **Update MEMORY.md** with the new total secret count
+
+**Critical env vars (network/environment selectors) MUST fail loud:**
+- Backend: return 500 / throw if not set. NEVER use `?? "testnet"` or any silent default.
+- Frontend: log `console.error` if not set. Use production-safe default (`mainnet`) only as last resort.
+
+**After every production deployment:** run `supabase secrets list` and cross-reference against the `DEPLOY.md` step 4f table. Any missing secret is a potential silent production failure.
+
+**Canonical secret count:** 37 backend secrets (as of 2026-03-06). Full checklist: `DEPLOY.md` step 4f.
+
 ### Input Validation
 - All user inputs must be validated (XSS prevention)
 - All API responses must be validated before rendering
@@ -685,10 +704,15 @@ Before merging code that affects:
 3. Push to trigger Vercel deployment
 4. Verify CI passes after push (`gh run list`)
 5. Update MEMORY.md with completed items, new patterns, changed facts
-6. **Session retrospective (MANDATORY):** Before closing out, review the session's work with the user:
-   - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework?
-   - **Efficiency feedback:** Where could Claude have been better? Wasted steps, missed patterns, over-engineering, wrong assumptions?
-   - **Learnings:** Align on any reusable insights, then update CLAUDE.md and/or MEMORY.md with agreed improvements so future sessions benefit.
+6. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. Cover every section below with specific examples and honest reflection:
+   - **What was accomplished:** List each distinct piece of work with enough detail that someone reading it cold understands what shipped. Include file paths, deployment targets, and what changed.
+   - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework? Call out specific moments. Be honest — don't just say "your prompts were great."
+   - **Efficiency feedback:** Where could Claude have been better? Identify specific wasted steps, wrong approaches tried first, things that should have been anticipated, unnecessary round-trips. This is the most important section — be self-critical.
+   - **Learnings:** Concrete reusable insights from this session. Not vague takeaways — specific patterns, gotchas, or decisions that future sessions should know about.
+   - **CLAUDE.md / MEMORY.md updates needed:** Explicitly state what was updated and whether anything still needs updating. If nothing, say so.
+   - **Open items:** Anything left unfinished, blocked, or deferred. If nothing, say so.
+
+   **DO NOT summarize or abbreviate the retro.** The user has repeatedly asked for full retrospectives. A 3-bullet summary is not a retro.
 7. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
 
 ### Notion Integration

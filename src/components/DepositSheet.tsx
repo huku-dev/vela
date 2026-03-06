@@ -190,7 +190,6 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
             refreshError={refreshError}
             onConfirmSent={() => {
               handleRefreshBalance();
-              onClose();
             }}
           />
         )}
@@ -252,6 +251,12 @@ function TransferTab({
   onConfirmSent: () => void;
 }) {
   const [selectedNetwork, setSelectedNetwork] = useState<'arbitrum' | 'hyperliquid' | null>(null);
+  const [sentConfirmed, setSentConfirmed] = useState(false);
+
+  const handleConfirm = () => {
+    setSentConfirmed(true);
+    onConfirmSent(); // Triggers immediate balance check
+  };
 
   return (
     <>
@@ -429,24 +434,46 @@ function TransferTab({
           </div>
         )}
 
-        <button
-          className="vela-btn vela-btn-primary"
-          onClick={onConfirmSent}
-          style={{ width: '100%', marginBottom: 'var(--space-2)' }}
-        >
-          I&apos;ve sent the USDC
-        </button>
+        {!sentConfirmed ? (
+          <>
+            <button
+              className="vela-btn vela-btn-primary"
+              onClick={handleConfirm}
+              disabled={!selectedNetwork}
+              style={{
+                width: '100%',
+                marginBottom: 'var(--space-2)',
+                opacity: selectedNetwork ? 1 : 0.5,
+                cursor: selectedNetwork ? 'pointer' : 'not-allowed',
+              }}
+            >
+              I&apos;ve sent the USDC
+            </button>
 
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{
-            textAlign: 'center',
-            margin: 0,
-            fontSize: '0.7rem',
-          }}
-        >
-          We&apos;ll check for your deposit automatically. It may take a few minutes to appear.
-        </p>
+            <p
+              className="vela-body-sm vela-text-muted"
+              style={{
+                textAlign: 'center',
+                margin: 0,
+                fontSize: '0.7rem',
+              }}
+            >
+              We&apos;ll check for your deposit automatically. It may take a few minutes to appear.
+            </p>
+          </>
+        ) : (
+          <p
+            className="vela-body-sm"
+            style={{
+              textAlign: 'center',
+              color: 'var(--green-primary)',
+              fontWeight: 600,
+              margin: 0,
+            }}
+          >
+            ✓ We&apos;ll check for deposits to your wallet
+          </p>
+        )}
 
         {/* Error feedback */}
         {refreshError && (

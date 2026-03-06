@@ -5,6 +5,7 @@ import LockedSignalCard from '../components/LockedSignalCard';
 import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
 import PendingProposalsBanner from '../components/PendingProposalsBanner';
+import UpgradeNudgeBanner from '../components/UpgradeNudgeBanner';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import { useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
@@ -108,6 +109,11 @@ export default function Home() {
           </span>
         )}
       </div>
+
+      {/* Upgrade nudge for free-tier users */}
+      {isAuthenticated && tier === 'free' && (
+        <UpgradeNudgeBanner onUpgrade={() => setShowTierSheet(true)} />
+      )}
 
       {/* Pending trade proposals banner */}
       <div style={{ marginBottom: 'var(--space-4)' }}>

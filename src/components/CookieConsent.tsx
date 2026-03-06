@@ -3,9 +3,33 @@ import { useState, useEffect } from 'react';
 const STORAGE_KEY = 'vela_cookie_consent';
 
 /**
- * Minimal cookie consent banner. Shows once, persists acceptance in localStorage.
- * Vela only uses essential cookies (auth via Privy), so no "decline" is needed —
- * GDPR allows essential cookies without consent, but transparency is good practice.
+ * Detect if the user is likely in the EU/EEA based on their timezone.
+ * Covers all EU member states + EEA (Iceland, Norway, Liechtenstein) + UK.
+ * No API call needed — uses the browser's Intl API.
+ */
+function isLikelyEU(): boolean {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!tz) return false;
+    // All EU/EEA timezones are under Europe/ or Atlantic/ (Iceland, Canaries, Azores)
+    if (tz.startsWith('Europe/')) return true;
+    // Iceland (EEA)
+    if (tz === 'Atlantic/Reykjavik') return true;
+    // Canary Islands (Spain/EU), Azores + Madeira (Portugal/EU)
+    if (tz === 'Atlantic/Canary' || tz === 'Atlantic/Azores' || tz === 'Atlantic/Madeira')
+      return true;
+    return false;
+  } catch {
+    // If timezone detection fails, don't show banner (err on side of less intrusion)
+    return false;
+  }
+}
+
+/**
+ * Minimal cookie consent banner. Shows once (EU/EEA only), persists acceptance
+ * in localStorage. Vela only uses essential cookies (auth via Privy), so no
+ * "decline" is needed — GDPR allows essential cookies without consent, but
+ * transparency is good practice for EU users.
  */
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -13,7 +37,7 @@ export default function CookieConsent() {
   useEffect(() => {
     // Small delay to avoid layout shift during page load
     const timer = setTimeout(() => {
-      if (!localStorage.getItem(STORAGE_KEY)) {
+      if (!localStorage.getItem(STORAGE_KEY) && isLikelyEU()) {
         setVisible(true);
       }
     }, 1000);

@@ -28,8 +28,7 @@ function isBB2Direction(d: TradeDirection | null | undefined): boolean {
 }
 
 /** Old BB overlays (bb_long/bb_short) — attached to parent EMA positions */
-const isOldOverlayDirection = (d?: string | null) =>
-  d === 'bb_long' || d === 'bb_short';
+const isOldOverlayDirection = (d?: string | null) => d === 'bb_long' || d === 'bb_short';
 
 /** Map raw direction to user-facing label */
 function directionLabel(d: TradeDirection | null | undefined): string {
@@ -101,7 +100,8 @@ function FastTradeInfoCard() {
           lineHeight: 1.4,
         }}
       >
-        Vela spotted a short-term market opportunity and placed a smaller trade to try to take advantage.
+        Vela spotted a short-term market opportunity and placed a smaller trade to try to take
+        advantage.
       </p>
     </div>
   );
@@ -122,9 +122,7 @@ interface GroupedTrade {
  * - Trims without a parent show as standalone cards
  */
 function groupTradesWithTrims(trades: EnrichedTrade[]): GroupedTrade[] {
-  const parents = trades.filter(
-    t => t.direction !== 'trim' && !isOldOverlayDirection(t.direction)
-  );
+  const parents = trades.filter(t => t.direction !== 'trim' && !isOldOverlayDirection(t.direction));
   const trims = trades.filter(t => t.direction === 'trim');
   const overlays = trades.filter(t => isOldOverlayDirection(t.direction));
 
@@ -228,7 +226,11 @@ export default function TrackRecord() {
     )
   );
   const paperStats = aggregatePositionStats(paperPositions);
-  const paperDetailedStats = computeDetailedStats(paperClosed, DEFAULT_POSITION_SIZE, BB2_POSITION_SIZE);
+  const paperDetailedStats = computeDetailedStats(
+    paperClosed,
+    DEFAULT_POSITION_SIZE,
+    BB2_POSITION_SIZE
+  );
 
   const hasUserTrades = userTrades.length > 0 || hasLivePositions;
 
@@ -236,10 +238,14 @@ export default function TrackRecord() {
   const groupedPaperTrades = groupTradesWithTrims(paperTrades);
 
   // Best paper POSITION by total position P&L (parent + trims, not individual trade pnl_pct)
-  const bestPaperIdx = paperPositions.reduce<number | null>((bestIdx, pos, idx) => {
-    if (bestIdx === null || pos.totalDollarPnl > paperPositions[bestIdx].totalDollarPnl) return idx;
-    return bestIdx;
-  }, paperPositions.length > 0 ? 0 : null);
+  const bestPaperIdx = paperPositions.reduce<number | null>(
+    (bestIdx, pos, idx) => {
+      if (bestIdx === null || pos.totalDollarPnl > paperPositions[bestIdx].totalDollarPnl)
+        return idx;
+      return bestIdx;
+    },
+    paperPositions.length > 0 ? 0 : null
+  );
   const bestPaperGroup = bestPaperIdx != null ? groupedPaperClosed[bestPaperIdx] : null;
   const bestPaperPnl = bestPaperIdx != null ? paperPositions[bestPaperIdx] : null;
 
@@ -600,8 +606,9 @@ export default function TrackRecord() {
                       fontSize: '0.7rem',
                     }}
                   >
-                    Based on ${DEFAULT_POSITION_SIZE.toLocaleString()} per standard trade, ${BB2_POSITION_SIZE.toLocaleString()} per fast trade. Total is
-                    cumulative across all closed trades.
+                    Based on ${DEFAULT_POSITION_SIZE.toLocaleString()} per standard trade, $
+                    {BB2_POSITION_SIZE.toLocaleString()} per fast trade. Total is cumulative across
+                    all closed trades.
                   </p>
                 </Card>
               )}
@@ -844,8 +851,7 @@ function OpenTradeCard({
     currentPrice != null
       ? calculateUnrealizedPnL(trade.entry_price, currentPrice, short ? 'short' : 'long')
       : null;
-  const unrealizedDollar =
-    unrealizedPct != null ? pctToDollar(unrealizedPct, positionSize) : null;
+  const unrealizedDollar = unrealizedPct != null ? pctToDollar(unrealizedPct, positionSize) : null;
 
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
