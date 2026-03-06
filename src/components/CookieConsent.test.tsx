@@ -29,10 +29,26 @@ function createLocalStorageMock() {
 describe('CookieConsent', () => {
   let storageMock: ReturnType<typeof createLocalStorageMock>;
 
+  let originalDateTimeFormat: typeof Intl.DateTimeFormat;
+
   beforeEach(() => {
     storageMock = createLocalStorageMock();
     vi.stubGlobal('localStorage', storageMock);
     vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    // Mock timezone to EU so isLikelyEU() returns true in CI (GitHub Actions uses UTC/Etc)
+    originalDateTimeFormat = Intl.DateTimeFormat;
+    const MockDateTimeFormat = function (
+      this: Intl.DateTimeFormat,
+      ...args: ConstructorParameters<typeof Intl.DateTimeFormat>
+    ) {
+      const instance = new originalDateTimeFormat(...args);
+      const origResolved = instance.resolvedOptions();
+      instance.resolvedOptions = () => ({ ...origResolved, timeZone: 'Europe/London' });
+      return instance;
+    } as unknown as typeof Intl.DateTimeFormat;
+    MockDateTimeFormat.supportedLocalesOf = originalDateTimeFormat.supportedLocalesOf;
+    vi.stubGlobal('Intl', { ...Intl, DateTimeFormat: MockDateTimeFormat });
   });
 
   afterEach(() => {
