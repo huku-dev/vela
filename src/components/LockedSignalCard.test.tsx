@@ -247,9 +247,7 @@ describe('LockedSignalCard', () => {
 
     it('renders different upgrade labels for different features', () => {
       renderCard({ upgradeLabel: 'Upgrade your plan to unlock auto-trading' });
-      expect(
-        screen.getByText(/Upgrade your plan to unlock auto-trading/)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Upgrade your plan to unlock auto-trading/)).toBeInTheDocument();
     });
   });
 });

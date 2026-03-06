@@ -81,10 +81,7 @@ describe('TIER: Source verification — guards exist in source code', () => {
   it('TIER: free tier has auto_mode: false in definition', () => {
     const src = readFileSync('src/lib/tier-definitions.ts', 'utf-8');
     // Find the free tier block and verify auto_mode is false
-    const freeBlock = src.substring(
-      src.indexOf("tier: 'free'"),
-      src.indexOf("tier: 'standard'")
-    );
+    const freeBlock = src.substring(src.indexOf("tier: 'free'"), src.indexOf("tier: 'standard'"));
     expect(freeBlock).toContain('auto_mode: false');
   });
 
@@ -123,7 +120,10 @@ describe('TIER: Source verification — guards exist in source code', () => {
   });
 
   it('TIER: Backend tier validation trigger exists in migrations', () => {
-    const migrationPath = resolve(BACKEND_ROOT, 'supabase/migrations/20260306000002_validate_user_mode.sql');
+    const migrationPath = resolve(
+      BACKEND_ROOT,
+      'supabase/migrations/20260306000002_validate_user_mode.sql'
+    );
     if (!existsSync(migrationPath)) {
       // Skip if backend repo not available (e.g. CI without cross-repo checkout)
       console.warn('Skipping: backend repo not available at', BACKEND_ROOT);
@@ -132,7 +132,7 @@ describe('TIER: Source verification — guards exist in source code', () => {
     const src = readFileSync(migrationPath, 'utf-8');
     expect(src).toContain('validate_user_mode_against_tier');
     expect(src).toContain('BEFORE UPDATE');
-    expect(src).toContain("RAISE EXCEPTION");
+    expect(src).toContain('RAISE EXCEPTION');
   });
 });
 
@@ -316,7 +316,10 @@ describe('TIER-ADV: getTierConfig — cannot be tricked with invalid inputs', ()
 
 describe('TIER-ADV: Defense-in-depth — multiple layers of protection', () => {
   it('TIER-ADV: Layer 1 (DB trigger) exists for mode validation on UPDATE', () => {
-    const migrationPath = resolve(BACKEND_ROOT, 'supabase/migrations/20260306000002_validate_user_mode.sql');
+    const migrationPath = resolve(
+      BACKEND_ROOT,
+      'supabase/migrations/20260306000002_validate_user_mode.sql'
+    );
     if (!existsSync(migrationPath)) {
       console.warn('Skipping: backend repo not available at', BACKEND_ROOT);
       return;
@@ -326,14 +329,17 @@ describe('TIER-ADV: Defense-in-depth — multiple layers of protection', () => {
     expect(src).toContain('BEFORE UPDATE ON public.user_preferences');
     // Checks full_auto against tier
     expect(src).toContain("NEW.mode = 'full_auto'");
-    expect(src).toContain("auto_mode");
+    expect(src).toContain('auto_mode');
     // Checks semi_auto for free tier
     expect(src).toContain("NEW.mode = 'semi_auto'");
     expect(src).toContain("user_tier = 'free'");
   });
 
   it('TIER-ADV: Layer 1 (DB trigger) uses SECURITY DEFINER + search_path', () => {
-    const migrationPath = resolve(BACKEND_ROOT, 'supabase/migrations/20260306000002_validate_user_mode.sql');
+    const migrationPath = resolve(
+      BACKEND_ROOT,
+      'supabase/migrations/20260306000002_validate_user_mode.sql'
+    );
     if (!existsSync(migrationPath)) {
       console.warn('Skipping: backend repo not available at', BACKEND_ROOT);
       return;

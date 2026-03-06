@@ -360,7 +360,7 @@ describe('useAuth', () => {
       const src = readFileSync('src/hooks/useAuth.ts', 'utf-8');
       expect(src).toContain('clearSubscriptionCache');
       expect(src).toContain('clearWalletCache');
-      expect(src).toContain("vela_onboarded");
+      expect(src).toContain('vela_onboarded');
     });
 
     it('AUTH: useAuth creates authenticated Supabase client', () => {
