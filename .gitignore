@@ -11,6 +11,14 @@ __pycache__/
 
 # Claude Code local settings (may contain sensitive tool permissions)
 .claude/settings.local.json
+.claude/hookify.*.local.md
+.claude/plans/
+
+# Test coverage output
+coverage/
+
+# Temporary files
+tmp-screenshots/
 
 # Bundle analysis output
 stats.html

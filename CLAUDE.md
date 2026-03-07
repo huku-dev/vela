@@ -25,9 +25,7 @@ Vela is a **crypto market intelligence platform** that monitors 24/7 and surface
 - **Frontend:** React 18 + TypeScript + Vite
 - **Styling:** Custom CSS (Vela Design System) + Material-UI components
 - **Backend:** Supabase (PostgreSQL database + real-time subscriptions)
-- **External APIs:**
-  - CoinGecko API for live price data
-  - Fear & Greed Index API for market sentiment
+- **External APIs:** CoinGecko (prices), Fear & Greed Index (sentiment)
 - **Deployment:** Vercel (main branch auto-deploys to production)
 - **Version Control:** Git + GitHub
 
@@ -48,149 +46,9 @@ crypto-agent-frontend/
 ```
 
 ### Database Schema (Supabase)
-- **signals** table: Stores trading signals (asset, status, timestamp, indicators)
+- **signals** table: Trading signals (asset, status, timestamp, indicators)
 - **track_record** table: Paper trading history (entry price, exit price, P&L)
 - **market_digest** table: Daily market summaries
-
----
-
-## Design System & Brand Identity
-
-### Visual Language: Neobrutalism
-Vela uses a **neobrutalist design system** characterized by:
-- Thick black borders (3px solid)
-- High-contrast colors (cream backgrounds #FFFBF5, black text #0A0A0A)
-- Bold typography (Instrument Sans for headings, Inter for body)
-- No subtle shadows or gradients — everything is flat and bold
-
-### Semantic Color Tokens (Three-Layer System)
-**DO NOT hardcode colors.** Always use semantic tokens from `vela-design-system.css`:
-
-**Layer 1: Primitives** (base palette)
-```css
---green-primary: #00D084
---red-primary: #FF4757
---gray-primary: #EBEBEB
-```
-
-**Layer 2: Semantic Tokens** (intent-based)
-```css
---color-signal-buy: var(--green-primary)
---color-signal-sell: var(--red-primary)
---color-signal-wait: var(--gray-primary)
-```
-
-**Layer 3: Component Usage**
-```jsx
-// ✅ CORRECT: Use semantic tokens
-<div style={{ backgroundColor: 'var(--color-signal-buy)' }}>BUY</div>
-
-// ❌ WRONG: Don't hardcode colors
-<div style={{ backgroundColor: '#00D084' }}>BUY</div>
-```
-
-### Typography Standards
-- **Headings:** Instrument Sans, 700 weight
-- **Body:** Inter, 400 weight (500 for emphasis)
-- **Signal Status Labels:** 700 weight, uppercase, 14px
-
-### Dark Mode Support
-All design tokens have dark mode variants using `prefers-color-scheme`:
-```css
-@media (prefers-color-scheme: dark) {
-  --background-primary: #0A0A0A;
-  --text-primary: #FFFBF5;
-}
-```
-
-**Accessibility:** Vela targets **WCAG AA+ compliance** (7.8:1 contrast ratio minimum).
-
----
-
-## Coding Standards & Conventions
-
-### TypeScript
-- **Always use explicit types.** No `any` unless absolutely necessary.
-- Define interfaces in `src/types/` for shared data structures:
-  ```typescript
-  // src/types/Signal.ts
-  export interface Signal {
-    id: string;
-    asset: string;
-    status: 'BUY' | 'SELL' | 'WAIT';
-    timestamp: string;
-    indicators: {
-      ema9: number;
-      rsi14: number;
-      adx4h: number;
-    };
-  }
-  ```
-
-### Component Standards
-1. **Use VelaComponents.tsx whenever possible** instead of raw MUI
-   - `<VelaButton>` instead of `<Button>`
-   - `<SignalCard>` for displaying signals
-   - `<Badge>` for status indicators
-
-2. **Component file structure:**
-   ```typescript
-   // Imports
-   import React from 'react';
-   import { Signal } from '../types/Signal';
-
-   // Props interface
-   interface SignalCardProps {
-     signal: Signal;
-     onClick?: () => void;
-   }
-
-   // Component
-   export const SignalCard: React.FC<SignalCardProps> = ({ signal, onClick }) => {
-     // Implementation
-   };
-   ```
-
-3. **Error boundaries required** for all data-dependent pages:
-   ```jsx
-   <ErrorBoundary fallback={<ErrorFallbackUI />}>
-     <AssetDetail />
-   </ErrorBoundary>
-   ```
-
-### API Calls & Data Fetching
-- **Always show loading states** while fetching data
-- **Always handle errors gracefully** with user-friendly messages
-- **Show stale data warnings** if data is >5 minutes old (critical for price data)
-
-Example:
-```typescript
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState<string | null>(null);
-const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-// Fetch with error handling
-try {
-  const data = await fetchSignals();
-  setLastUpdated(new Date());
-} catch (err) {
-  setError('Unable to load signals. Please try again.');
-  console.error(err);
-} finally {
-  setLoading(false);
-}
-
-// Show stale data indicator
-{lastUpdated && isStale(lastUpdated) && (
-  <div className="stale-indicator">⚠️ Data may be outdated</div>
-)}
-```
-
-### Naming Conventions
-- **Components:** PascalCase (`SignalCard.tsx`)
-- **Utilities:** camelCase (`formatPrice.ts`)
-- **CSS files:** kebab-case (`vela-design-system.css`)
-- **Database tables:** snake_case (`track_record`)
 
 ---
 
@@ -199,499 +57,68 @@ try {
 These principles guide judgment calls when multiple valid approaches exist:
 
 1. **Explicit over clever.** Code should be readable at a glance. No magic, no tricks. If someone reading the code has to pause and think "wait, how does this work?", it's too clever.
-
-2. **Minimal diff.** Achieve the goal with the fewest new abstractions and files touched. Before creating a new helper, component, or module — check if an existing one can be extended. Adding a parameter to an existing function beats creating a new one.
-
-3. **DRY, but not premature abstraction.** Flag repetition aggressively. But don't extract a shared abstraction until you see the same pattern three times. Two instances can diverge; three confirm a pattern.
-
-4. **Thoughtfulness over speed on edge cases.** Especially for financial data, P&L, and signal logic. Getting edge cases right is more important than shipping fast. Ask "what happens when this is null / zero / negative / stale?"
-
-5. **Too many tests rather than too few.** Well-tested code is non-negotiable. When in doubt about whether something needs a test, write the test.
-
-6. **Diagrams for non-trivial flows.** Use ASCII diagrams in plan files and code comments for data flow, state machines, and multi-step pipelines. A diagram catches misunderstandings that prose misses. **Stale diagrams are worse than no diagrams** — if you touch code with an inline diagram, verify it's still accurate and update it in the same commit.
-
-7. **Balanced engineering.** Avoid both under-engineering (fragile, no error handling, no tests) and over-engineering (premature abstraction, speculative generality, config-driven everything). The test: "would I be embarrassed showing this to a senior engineer?" catches under-engineering. "Would a new contributor understand this in 10 minutes?" catches over-engineering.
+2. **Minimal diff.** Achieve the goal with the fewest new abstractions and files touched. Adding a parameter to an existing function beats creating a new one.
+3. **DRY, but not premature abstraction.** Don't extract a shared abstraction until you see the same pattern three times.
+4. **Thoughtfulness over speed on edge cases.** Especially for financial data, P&L, and signal logic. Ask "what happens when this is null / zero / negative / stale?"
+5. **Too many tests rather than too few.** When in doubt about whether something needs a test, write the test.
+6. **Diagrams for non-trivial flows.** Use ASCII diagrams in plan files and code comments. **Stale diagrams are worse than no diagrams** — if you touch code with an inline diagram, update it in the same commit.
+7. **Balanced engineering.** "Would I be embarrassed showing this to a senior engineer?" catches under-engineering. "Would a new contributor understand this in 10 minutes?" catches over-engineering.
 
 ---
 
-## Brand Voice Guidelines
+## Core Coding Standards
 
-Every user-facing string must align with one of the **Three Pillars**:
-
-### 1. Always Watching
-Emphasizes 24/7 monitoring, automation, proactive alerting.
-- ✅ "Vela monitors Bitcoin 24/7 and flags key moments"
-- ✅ "We're watching the market so you don't have to"
-- ❌ "Check back later for updates"
-
-### 2. You Stay in Control
-Emphasizes user agency, transparency, no auto-trading.
-- ✅ "You approve every trade. Vela brings you the right moments."
-- ✅ "Here's why we think this: [clear explanation]"
-- ❌ "Vela automatically executes when conditions are met"
-
-### 3. Plain English, No Noise
-Clear, jargon-free explanations that anyone can understand.
-- ✅ "Price broke above $45,000, trend is up"
-- ✅ "Strong buying pressure, momentum is building"
-- ❌ "EMA-9 crossed SMA-50 with bullish MACD divergence"
-
-**When in doubt:** Ask yourself if your grandmother would understand the message. If not, simplify.
+- **TypeScript:** Explicit types always. No `any` unless absolutely necessary. Interfaces in `src/types/`.
+- **Components:** Use VelaComponents.tsx over raw MUI. Structure: Imports -> Props interface -> Component.
+- **Error boundaries:** Required on all data-dependent pages.
+- **Data fetching:** Always show loading states, handle errors gracefully, show stale data warnings (>5 min).
+- **Naming:** PascalCase components, camelCase utils, kebab-case CSS, snake_case DB tables.
 
 ---
 
-## Testing Standards
+## Critical Rules — NEVER VIOLATE
 
-### Critical Test Coverage Areas
-Vela handles financial data — bugs in these areas directly harm user trust:
+These 15 rules have caused production incidents or major regressions when forgotten:
 
-**Priority 1: Trust-Critical Calculations**
-- Track record P&L calculations (must be exact, never misleading)
-- Signal status rendering (never show "BUY" for a bearish signal)
-- Price change percentages (must match source data)
-
-**Priority 2: Data Handling**
-- API error handling (CoinGecko, Supabase)
-- Stale data detection (>5 min old)
-- Loading states for all async operations
-
-**Priority 3: UI Consistency**
-- Design token usage (no hardcoded colors)
-- Dark mode rendering
-- Accessibility (ARIA labels, keyboard navigation)
-
-### Adversarial Testing (Required for all financial/trading features)
-Every feature that touches money, positions, or proposals **must** include adversarial tests.
-These go beyond "does it work?" to ask **"can it be exploited?"**
-
-**Naming convention:** `FEATURENAME-ADV:` prefix (e.g., `TRIM-ADV:`, `CLOSE-ADV:`)
-
-**Required attack vectors to test for each new feature:**
-1. **Fund extraction** — Can this be used to steal or inflate balances?
-2. **Race conditions** — What happens if two concurrent actors trigger this?
-3. **Authorization bypass** — Can user A affect user B's data?
-4. **Phantom operations** — Can this act on entities that no longer exist?
-5. **Scope leakage** — Are DB queries scoped to user_id + asset_id?
-6. **Auto-approval abuse** — Does auto-mode still require full_auto + tier check?
-7. **Guard bypass** — Do cooldowns, circuit breakers, and limits apply?
-8. **Accidental amplification** — Can a partial operation accidentally become a full one?
-
-**Two test layers:**
-- **Source-verification tests** (`TRIM:` prefix) — Read source files, assert patterns exist. Fast, catches regressions when code is refactored.
-- **Adversarial tests** (`TRIM-ADV:` prefix) — Verify defense-in-depth: that guards exist at multiple layers, ordering is correct, scoping is tight.
-
-**When to write adversarial tests:**
-- Any new `proposal_type` or trade action
-- Any change to execution, position update, or P&L logic
-- Any change to auto-approval or tier enforcement
-- Any new DB mutation in the trading pipeline
-
-**Threat report required:** Every adversarial test session must produce a written threat report (saved to `docs/threat-reports/`) documenting each threat, its severity, the defense mechanism, and any residual risk. See `docs/threat-reports/TEMPLATE.md` for format.
-
-### Test File Naming
-```
-src/components/SignalCard.tsx
-src/components/SignalCard.test.tsx  ← Test file
-```
-
-### Running Tests
-```bash
-# Frontend
-npm run test           # Run all tests (vitest)
-npm run test:watch     # Watch mode during development
-npm run test:coverage  # Generate coverage report (target: >70% on critical paths)
-
-# Backend (Deno)
-deno test --no-check --allow-env --allow-read supabase/functions/_shared/trade-executor.test.ts
-deno test --no-check --allow-env --allow-read --filter "TRIM" ...  # Run subset
-```
-
----
-
-## Security Checklist
-
-### API Keys & Secrets
-- ✅ All API keys in environment variables (`.env.local`, never committed)
-- ✅ Notion token in `~/.notion-config.json` (outside repo)
-- ✅ Supabase keys in Vercel environment variables
-- ❌ **NEVER** hardcode API keys in source code
-- ❌ **NEVER** commit `.env.local` to git
-
-### Pre-commit security check:
-```bash
-# This should be automated in git hooks
-grep -r "ntn_" src/  # Check for Notion tokens
-grep -r "sk-" src/   # Check for API keys
-```
-
-### Environment Variable Safety (MANDATORY — learned from 2026-03-06 production incident)
-
-A missing `WALLET_ENVIRONMENT` env var silently provisioned all production wallets on testnet, making user deposits invisible. This rule exists to prevent that class of failure from ever recurring.
-
-**When adding ANY new `Deno.env.get()` or `import.meta.env.VITE_*` to code, the SAME commit/PR MUST also:**
-
-1. **Backend env var** → add to `.env.example` (backend repo) AND `DEPLOY.md` step 4 secrets list AND step 4f checklist table
-2. **Frontend env var** → add to `DEPLOY.md` step 9b Vercel env vars table (both production AND preview sections)
-3. **Set the value** in both staging and production (Supabase secrets or Vercel env vars). If you can't set it now, log it as a blocking task — never leave it for later.
-4. **Update MEMORY.md** with the new total secret count
-
-**Critical env vars (network/environment selectors) MUST fail loud:**
-- Backend: return 500 / throw if not set. NEVER use `?? "testnet"` or any silent default.
-- Frontend: log `console.error` if not set. Use production-safe default (`mainnet`) only as last resort.
-
-**After every production deployment:** run `supabase secrets list` and cross-reference against the `DEPLOY.md` step 4f table. Any missing secret is a potential silent production failure.
-
-**Canonical secret count:** 37 backend secrets (as of 2026-03-06). Full checklist: `DEPLOY.md` step 4f.
-
-### Input Validation
-- All user inputs must be validated (XSS prevention)
-- All API responses must be validated before rendering
-- Use TypeScript interfaces to enforce data shapes
-
-### Backend & Database Security
-For all database, Edge Function, RLS, and API security rules, see:
-**`/Users/henry/crypto-agent/SECURITY.md`** (backend repo)
-
-Key rules enforced there:
-- All tables MUST have RLS enabled + policies (in the same migration file)
-- All views MUST use `security_invoker = on`
-- All functions MUST set `search_path = public`
-- Run Supabase Security Advisor after any migration (0 errors required)
-- Run `scripts/verify-migrations.sql` after every `db push` (all rows must be `true`)
-- Adversarial tests (`FEATURE-ADV:` prefix) required for any financial feature
-- Threat report in `docs/threat-reports/` required for new attack surfaces
+1. **Never hardcode colors** — use semantic tokens from `vela-design-system.css`
+2. **Signal colors are semantic:** Green=BUY, Red=SELL, Gray=WAIT — never misuse
+3. **Never hardcode API keys** — env vars only, never commit `.env.local`
+4. **New env vars: same commit must update** `.env.example` + `DEPLOY.md` + set staging/prod values
+5. **Critical env vars MUST fail loud** — never `?? "testnet"` or any silent default
+6. **Post-push CI:** never mark task done until CI green
+7. **Post-ship:** update MEMORY.md + CLAUDE.md immediately after shipping (routing rules + line budgets in `docs/claude-reference/documentation-maintenance.md` — main files must stay ≤200 lines)
+8. **Session retro is MANDATORY and FULL** (6 sections, never abbreviated)
+9. **Adversarial tests required** for financial/trading features (`FEATURE-ADV:` prefix)
+10. **Design-first for visual assets** — Figma, not programmatic
+11. **Notification audience check:** always ask "user, admin, or both?"
+12. **Supabase subscriptions:** always unsubscribe in useEffect cleanup
+13. **All timestamps UTC in DB,** convert to local for display, always show timezone
+14. **Backend deploy via deploy.sh only** (`--staging` or `--prod`, never bare)
+15. **Deferred work needs** What/Why/Context/Blocked-by (no phantom tasks)
 
 ---
 
 ## Common Commands
 
-### Development
 ```bash
-npm run dev           # Start dev server (localhost:5173)
-npm run build         # Build for production
-npm run preview       # Preview production build locally
-npm run type-check    # Run TypeScript compiler (no output)
-npm run lint          # Run ESLint (when configured)
-```
+# Development
+npm run dev | build | preview | type-check | lint
 
-### Notion Integration (Session Management)
-```bash
-vela-start            # Show session status: git changes, tasks, recent activity
-vela-end              # Log decisions and tasks to Notion
-vela-tasks list       # List all tasks from Notion
-vela-tasks add        # Add a new task
-vela                  # cd to project directory
-```
+# Tests
+npm run test | test:watch | test:coverage
 
-### Git Workflow
-```bash
-git add [files]
-git commit -m "feat: add signal detail page"  # Conventional commits format
-# Post-commit hook automatically logs to Notion changelog
+# Notion
+vela-start | vela-end | vela-tasks list | vela-tasks add
+
+# Git (conventional commits, post-commit hook logs to Notion)
 git push origin main  # Auto-deploys to Vercel
-```
 
-### Backend Deployment
-```bash
+# Backend deploy (full pipeline in docs/claude-reference/deploy-workflow.md)
 cd /Users/henry/crypto-agent
-./scripts/deploy.sh --staging                # Apply migrations + deploy functions to staging
-./scripts/deploy.sh --prod                   # Apply migrations + deploy functions to production
-./scripts/deploy.sh --staging --skip-migrations  # Functions only
-./scripts/verify-deployment.sh --staging     # Verify staging is in sync
-./scripts/verify-deployment.sh --prod        # Verify production is in sync
-./scripts/verify-deployment.sh --both        # Verify both environments
+./scripts/deploy.sh --staging    # Migrations + functions
+./scripts/deploy.sh --prod       # After staging verified
+./scripts/verify-deployment.sh --both
 ```
-
-### Post-Push CI Verification (MANDATORY)
-After every `git push`, you **must** verify the CI pipeline passes before marking a task as complete:
-
-```bash
-# Check CI status after push
-gh run list --limit 3                    # See recent runs
-gh run view <run-id> --log-failed        # Inspect failures
-```
-
-**Rules:**
-1. Never mark a task as done until the corresponding CI run is green
-2. If a build fails, investigate and fix immediately — do not move on to the next task
-3. After fixing, push the fix and verify the new run passes
-4. Keep the `develop` branch in sync with `main` after fixes (`git checkout develop && git merge main && git push`)
-
-### Backend Deployment Verification (MANDATORY)
-After any backend change (migration, edge function, shared code), verify deployment parity:
-
-```bash
-cd /Users/henry/crypto-agent
-
-# Single command to deploy: applies pending migrations + deploys functions
-./scripts/deploy.sh --staging               # Staging first
-./scripts/deploy.sh --prod                  # Production after staging verified
-
-# Verify everything is in sync
-./scripts/verify-deployment.sh --staging    # Check staging
-./scripts/verify-deployment.sh --prod       # Check production
-```
-
-**Rules:**
-1. `deploy.sh` now automatically runs `db push` before deploying functions — one command does both
-2. Never mark a backend task as done until `verify-deployment.sh` passes for the target environment
-3. Migrations written but not pushed to staging WILL accumulate silently — the verification script catches this
-4. At session end, always run `verify-deployment.sh --staging` to confirm nothing is stuck locally
-5. For cross-repo changes (migration + frontend), verify BOTH repos are deployed before marking complete
-
-### Pre-Deploy QA Smoke Test (MANDATORY)
-Before merging `develop` → `main`, you **must** perform a visual smoke test on staging:
-
-**Process:**
-1. Push changes to `develop` → wait for CI green
-2. Open staging app (`staging.getvela.xyz` or `localhost:5173` via dev bypass)
-3. Walk through **every page** and verify:
-
-**Dashboard (Home)**
-- Daily digest renders with content
-- All asset cards load (BTC, ETH, HYPE, SOL)
-- Signal colors match status (green=BUY, red=SELL, gray=WAIT)
-- Price data is fresh
-
-**Asset Detail** (at least one asset)
-- Key Signal card with correct color
-- "What's Happening" has content
-- "Events Moving the Asset" shows real news
-- Indicators render
-- Signal history expandable
-
-**Track Record**
-- "Your Trades" loads (or empty state)
-- "Vela's Signal History" loads with stats
-- P&L displays correctly ("+$X profit" / "-$X loss")
-
-**Account**
-- User info displays
-- Tier badge correct
-- Notification label matches tier access
-- All sections expand/collapse
-- Legal links work
-
-**Cross-cutting**
-- No console errors in DevTools
-- Dark mode (if applicable)
-- Mobile responsive (375px) — no overflow
-- Loading states appear
-
-4. If backend changes: run `verify-environment.sh` on staging
-5. After merge to `main`: spot-check production (dashboard + changed pages)
-
-**Rules:**
-- If ANY page has a regression, fix before merging
-- Screenshot evidence of QA pass is encouraged in PR descriptions
-- Use the PR template (`.github/pull_request_template.md`) which includes the full checklist
-
-### Post-Ship Documentation Updates (MANDATORY)
-After every completed feature, fix, or ship, **immediately update documentation** before moving on:
-
-1. **MEMORY.md** — Update test counts, completed items, new patterns, and remove stale info
-2. **CLAUDE.md** — Update if conventions, commands, or architecture changed
-3. **Completed Plan Items** in MEMORY.md — Move shipped work from pending to completed
-
-Documentation must never be outdated. If a fact has changed (test count, file paths, process rules), update it in the same session.
-
----
-
-## Architectural Decision Records (ADRs)
-
-For significant architectural choices, document in Notion "Decisions" database using this format:
-
-**Template:**
-```markdown
-# ADR-XXX: [Decision Title]
-
-## Context
-What problem are we solving? What constraints exist?
-
-## Decision
-What did we choose? Why this approach?
-
-## Consequences
-**Pros:** What do we gain?
-**Cons:** What are the tradeoffs?
-**Alternatives Considered:** What did we reject and why?
-
-## Status
-✅ Implemented | 🟡 In Progress | ❌ Rejected
-```
-
-**Example ADRs logged so far:**
-- ADR-001: Semantic Color Tokens for Signal Status
-- ADR-002: Supabase for Backend (vs. custom API)
-- ADR-003: Paper Trading Before Real Trading
-
----
-
-## Common Pitfalls & Gotchas
-
-### 1. CoinGecko API Rate Limits
-- **Free tier:** 10-50 calls/minute (varies)
-- **Solution:** Cache price data for 60 seconds minimum
-- **Fallback:** Show stale data with warning instead of crashing
-
-### 2. Supabase Real-Time Subscriptions
-- Don't forget to unsubscribe in `useEffect` cleanup:
-  ```typescript
-  useEffect(() => {
-    const subscription = supabase
-      .channel('signals')
-      .on('postgres_changes', { ... }, handleChange)
-      .subscribe();
-
-    return () => subscription.unsubscribe(); // ← Critical
-  }, []);
-  ```
-
-### 3. Design System Adoption Inconsistency
-- **Problem:** Some pages use VelaComponents, others use raw MUI
-- **Solution:** When editing a page, migrate MUI components to Vela equivalents
-- **Check:** Run `grep -r "from '@mui'" src/` to find raw MUI usage
-
-### 4. Signal Status Color Mapping
-- **CRITICAL:** Signal status colors have semantic meaning:
-  - Green = BUY
-  - Red = SELL
-  - Gray = WAIT
-- **Never** use green for anything except bullish signals
-- **Never** use red for anything except bearish signals
-
-### 5. Time Zone Handling
-- All timestamps in Supabase are UTC
-- Convert to user's local time for display
-- Always show time zone in UI: "Last updated: 2:34 PM PST"
-
-### 6. Notification Audience Check
-- **Before implementing any notification**, explicitly ask: "Who is the audience — user, admin, or both?"
-- Document the answer in a code comment (e.g. `// Email to user`, `// Telegram to admin (operator alert)`)
-- For multi-channel systems, build a **routing table** (function → channel → audience) during implementation, not after. This catches misrouted notifications before they ship.
-
-### 7. Design-First for Visual Assets
-- **Never generate visual assets (images, icons, banners, social graphics) programmatically as a first step.** Always start in Figma.
-- Programmatic generation (Pillow, Canvas, SVG scripts) produces "good enough" placeholders that linger. Figma-first ensures brand consistency from the start.
-- **Process:** Design in Figma → export assets → use in code. Only use programmatic generation for dynamic/templated content (e.g., trade cards with live data) where Figma templates can't cover it.
-- If Figma isn't available in the moment, explicitly mark the output as a **placeholder** and log a task to replace it with a proper Figma design.
-
----
-
-## Deferred Work Standards
-
-Work that's explicitly deferred (via plan scope challenge or mid-session decisions) must be captured in MEMORY.md's "Pending Decisions" section with structured entries:
-
-- **What:** One-line description of the work
-- **Why:** Concrete problem solved or value unlocked — not vague ("improve UX") but specific ("users can't tell which trades are BB2 vs EMA at a glance")
-- **Context:** Enough detail to pick up the work in 3 months without re-deriving motivation, current state, or starting point. Include relevant file paths, data shapes, and constraints discovered during the session
-- **Blocked by / depends on:** Prerequisites and ordering constraints, if any
-
-**A deferred item without context is worse than no deferred item.** It creates phantom tasks that nobody can action.
-
-Every plan must include a **"NOT in scope"** section listing deferred items with a one-line rationale per item. This prevents scope from silently expanding and creates an explicit record of what was considered and intentionally left out.
-
----
-
-## Performance Targets
-
-### Load Time
-- **LCP (Largest Contentful Paint):** < 2.5 seconds
-- **FID (First Input Delay):** < 100ms
-- **CLS (Cumulative Layout Shift):** < 0.1
-
-### Bundle Size
-- **Main bundle:** < 200KB gzipped
-- **Lazy load** AssetDetail page components
-- **Code split** by route
-
-### API Response Times
-- **CoinGecko price fetch:** < 1 second
-- **Supabase query:** < 500ms
-- **Show loading spinner** after 300ms (don't flash for fast loads)
-
----
-
-## Pre-Launch Checklist
-
-Before deploying to production, verify:
-
-**Security:**
-- [ ] All API keys in environment variables (not hardcoded)
-- [ ] `.env.local` in `.gitignore`
-- [ ] No sensitive data in git history
-
-**Quality:**
-- [ ] Test coverage >70% on trust-critical paths (P&L, signal status)
-- [ ] All TypeScript errors resolved (`npm run type-check`)
-- [ ] Build succeeds without warnings (`npm run build`)
-
-**UX:**
-- [ ] Error boundaries on all data-dependent pages
-- [ ] Loading states for all async operations
-- [ ] Stale data indicators (>5 min) on price data
-- [ ] Dark mode tested on all pages
-- [ ] Mobile responsive (375px, 768px, 1024px breakpoints)
-
-**Accessibility:**
-- [ ] Lighthouse accessibility score > 90
-- [ ] Keyboard navigation works for all workflows
-- [ ] All interactive elements have focus states
-- [ ] Color is not the only signal differentiator (use icons + text)
-
-**Brand:**
-- [ ] All user-facing copy reviewed against Three Pillar framework
-- [ ] Design system tokens used (no hardcoded colors)
-- [ ] Typography consistent (Instrument Sans for headings, Inter for body)
-
----
-
-## Getting Help
-
-### Key Documentation
-- **Design System:** See `VELA-README.md` and `src/styles/vela-design-system.css`
-- **Notion Workspace:** [Vela Project Hub](https://notion.so/vela) (Product, Design, Engineering, Activity Log)
-- **Brand System V2.0:** See Notion > Design > Brand System page
-
-### When to Use Plan Mode
-Use Claude Code's **plan mode** for:
-- Changes affecting 3+ files
-- New feature architecture
-- Breaking changes or refactors
-- Database schema changes
-
-### Plan Mode Protocol: Scope Challenge First
-
-Before writing any plan, explicitly answer these three questions:
-
-1. **What already exists?** Search the codebase for code that partially or fully solves sub-problems. List it. Note whether the plan reuses it or unnecessarily rebuilds it.
-
-2. **What is the minimum viable change?** Identify the smallest set of changes that achieves the core goal. Flag anything that's valuable but deferrable — it goes in "NOT in scope", not in the plan.
-
-3. **Complexity smell check:** If the plan touches **>8 files** or introduces **>2 new components/modules**, flag it and justify. This threshold often means scope has crept.
-
-Present scope challenge findings to the user before proceeding with the full plan.
-
-### Plan Review: Phased with Checkpoints
-
-For plans rated as "big change" (multi-file, new architecture), review in phases and **pause for user feedback between each**:
-
-1. **Architecture** — System design, data flow, dependencies, failure scenarios. For each new integration point, describe one realistic production failure and verify the plan accounts for it.
-
-2. **Code Quality** — Organization, DRY violations, error handling gaps, over/under-engineering.
-
-3. **Test Coverage** — Map new codepaths, new branching, new UX. Verify each has a test. Flag gaps.
-
-4. **Performance** — N+1 queries, memory concerns, caching opportunities, slow paths.
-
-For smaller changes, compress into a single pass but still answer the three scope questions.
-
-### When to Ask for Review
-Before merging code that affects:
-- P&L calculations or signal status logic
-- API key handling or security
-- Design system breaking changes
-- Database schema migrations
 
 ---
 
@@ -701,64 +128,49 @@ Before merging code that affects:
 **Goal:** Launch a functional paper trading dashboard that demonstrates Vela's value.
 
 **In Progress:**
-- ✅ Signal dashboard (Home page)
-- ✅ Asset detail pages
-- ✅ Track record / paper trading history
-- ✅ Daily market digest
-- 🟡 Real-time notifications (Telegram)
-- 🟡 Customizable signal parameters UI
-
-### Next Phase: Production Launch
-- [ ] Test infrastructure (Jest + React Testing Library)
-- [ ] Error tracking (Sentry integration)
-- [ ] Performance monitoring (bundle size, load times)
-- [ ] User feedback collection
-- [ ] Marketing landing pages
+- Signal dashboard, asset detail pages, track record, daily digest (all done)
+- Real-time notifications (Telegram) — in progress
+- Customizable signal parameters UI — in progress
 
 ### Future Phases
-- Real money integration (after paper trading proves accurate)
-- Multi-asset support (expand beyond BTC/ETH)
-- Mobile app (React Native)
-- Advanced charting and technical analysis tools
+- Production launch (Sentry, performance monitoring, user feedback)
+- Real money integration, multi-asset support, mobile app
 
 ---
 
-## Notes for Claude Code Sessions
+## Plan Mode Protocol
 
-### Session Start Routine
-1. **Read CLAUDE.md and MEMORY.md in full (MANDATORY).** Every session starts by reading both files end-to-end. This ensures all engineering preferences, processes, conventions, completed work, and pending decisions are fresh in context — not assumed from prior sessions.
-2. Run `vela-start` to see project status
-3. Review any "Next" priority tasks from Notion
-4. Check git status for uncommitted changes on both repos
+### Scope Challenge First (3 questions before any plan)
+1. **What already exists?** Search for code that solves sub-problems. List it.
+2. **What is the minimum viable change?** Flag anything deferrable -> "NOT in scope."
+3. **Complexity smell:** >8 files or >2 new modules? Flag and justify.
 
-### Session End Routine
-1. Ensure all tests pass and CI is green
-2. Commit with conventional commit message
-3. Push to trigger Vercel deployment
-4. Verify CI passes after push (`gh run list`)
-5. Update MEMORY.md with completed items, new patterns, changed facts
-6. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. Cover every section below with specific examples and honest reflection:
-   - **What was accomplished:** List each distinct piece of work with enough detail that someone reading it cold understands what shipped. Include file paths, deployment targets, and what changed.
-   - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework? Call out specific moments. Be honest — don't just say "your prompts were great."
-   - **Efficiency feedback:** Where could Claude have been better? Identify specific wasted steps, wrong approaches tried first, things that should have been anticipated, unnecessary round-trips. This is the most important section — be self-critical.
-   - **Learnings:** Concrete reusable insights from this session. Not vague takeaways — specific patterns, gotchas, or decisions that future sessions should know about.
-   - **CLAUDE.md / MEMORY.md updates needed:** Explicitly state what was updated and whether anything still needs updating. If nothing, say so.
-   - **Open items:** Anything left unfinished, blocked, or deferred. If nothing, say so.
+### Review Phases (for big changes)
+Architecture -> Code Quality -> Tests -> Performance. Pause for user feedback between each.
 
-   **DO NOT summarize or abbreviate the retro.** The user has repeatedly asked for full retrospectives. A 3-bullet summary is not a retro.
-7. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
+### When to Ask for Review
+Before merging code that affects: P&L calculations, signal status logic, API key handling, design system breaking changes, database schema migrations.
 
-### Notion Integration
-- **Automatic:** Every `git commit` triggers `scripts/git_to_notion.py` via post-commit hook, logging the commit to the Notion changelog
-- **Manual (user runs):** `vela-end` logs session decisions + follow-up tasks to Notion (interactive — uses `input()` prompts)
-- **Manual (user runs):** `vela-start` shows project status from Notion
-- Claude Code should **remind the user** to run `vela-end` at the end of every session
+---
 
-### If You're Stuck
-- Check this file (CLAUDE.md) for conventions
-- Review recent Notion changelog for context
-- Check Notion Decisions database for past architectural choices
-- Read relevant ADRs before proposing alternative approaches
+## Reference Documentation
+
+Detailed procedures extracted into reference docs (Claude reads on-demand when relevant):
+
+| Document | Contents |
+|----------|----------|
+| `docs/claude-reference/design-system-guide.md` | Tokens, brand voice, typography, a11y, neobrutalism |
+| `docs/claude-reference/testing-standards.md` | Test priorities, adversarial protocol, commands |
+| `docs/claude-reference/security-checklist.md` | API keys, env var safety, RLS rules |
+| `docs/claude-reference/deploy-workflow.md` | deploy.sh, CI verification, Notion commands |
+| `docs/claude-reference/qa-checklist.md` | Smoke test, pre-launch checklist, perf targets |
+| `docs/claude-reference/session-routines.md` | Start/end routines, retro format, ADRs, deferred work |
+| `docs/claude-reference/documentation-maintenance.md` | CLAUDE.md/MEMORY.md update procedures, routing rules, topic file lifecycle, line budgets |
+
+Existing project docs:
+- `VELA-BRAND-SYSTEM-V2.md` — Full design system implementation specs
+- `docs/brand-identity.md` — Logo/color decisions (ADR-006)
+- `docs/threat-reports/TEMPLATE.md` — Adversarial test threat report format
 
 ---
 
