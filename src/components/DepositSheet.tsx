@@ -396,7 +396,7 @@ function TransferTab({
             }}
           >
             {selectedNetwork === 'arbitrum'
-              ? 'Only send USDC on Arbitrum. Other tokens or chains sent to this address will not appear in your balance.'
+              ? 'Only send USDC on Arbitrum. Minimum deposit: $5 USDC. Deposits below $5 may not appear in your balance. Other tokens or chains will also not be detected.'
               : 'Only send via Hyperliquid usdSend. Regular token transfers on other networks will not appear in your balance.'}
           </p>
         </div>
