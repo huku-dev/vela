@@ -99,3 +99,21 @@ deno test --no-check --allow-env --allow-read --filter "TRIM" ...  # Run subset
 - **DEV_BYPASS:** `useAuth.ts` returns mock state when `VITE_DEV_BYPASS_AUTH=true`. Tests use `it.skipIf(IS_DEV_BYPASS)` for non-bypass tests and `it.skipIf(!IS_DEV_BYPASS)` for bypass-specific tests. Source-verification tests (`readFileSync`) run regardless.
 - **localStorage mock:** Use `createLocalStorageMock()` + `vi.stubGlobal('localStorage', storageMock)` (same as CookieConsent.test.tsx). jsdom's native localStorage doesn't have `.clear()` in vitest.
 - **Backend unit tests mandatory for signal engine changes:** Any change to signal-rules.ts, signal-engine.ts, or indicators.ts MUST include Deno unit tests before commit. Not optional.
+
+---
+
+## Known Structural QA Gaps
+
+### 1. Auth-Exchange → Email Delivery (Identified 2026-03-09)
+**Gap:** Dev bypass auth (`VITE_DEV_BYPASS_AUTH=true`) skips `auth-exchange` entirely, so the full signup → profile creation → email delivery pipeline is never tested in local QA or CI.
+
+**Root cause of incident:** `profiles.email` was never populated by `auth-exchange`, so Resend calls silently sent to `null`. This went undetected because dev bypass creates a mock auth state that never calls the edge function.
+
+**Mitigation (deployed):** Fixed `auth-exchange` to correctly populate `profiles.email` from the Privy token.
+
+**Remaining gap:** No automated E2E test covers the real auth-exchange flow. Manual staging test required:
+1. Sign up with a real email on staging
+2. Verify `profiles.email` is populated in Supabase
+3. Trigger a signal flip and verify email is delivered
+
+**Future fix:** Add a staging-only integration test that calls `auth-exchange` with a test Privy token and asserts `profiles.email` is written. Track in `memory/outstanding-testing.md` when created.

@@ -129,4 +129,4 @@ Maintained in MEMORY.md's Topic File Index section. As of March 2026, 15 topic f
 | `research-v8-entry-filters.md` | REJECTED entry filter research |
 | `multi-agent-system.md` | Health Monitor + Signal Triage + Content Pipeline |
 | `cron-schedule.md` | Cron job timing + spacing |
-| `draft-posts-v1.md` | Social post templates + voice |
+| `social-media-playbook.md` | Social media rules, templates, voice, image strategy |
