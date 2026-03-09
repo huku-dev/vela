@@ -458,6 +458,7 @@ function FundingHistory() {
       const { data } = await supabaseClient
         .from('funding_events')
         .select('*')
+        .neq('status', 'failed')
         .order('created_at', { ascending: false })
         .limit(5);
       setEvents(data ?? []);
