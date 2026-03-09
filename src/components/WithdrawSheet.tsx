@@ -45,9 +45,39 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successAmount, setSuccessAmount] = useState(0);
+  /** Live available balance from exchange (fetched on mount) */
+  const [liveBalance, setLiveBalance] = useState<number | null>(null);
+  /** USDC currently locked in open positions */
+  const [marginUsed, setMarginUsed] = useState(0);
 
   const otpInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch live balance on mount so we show accurate withdrawal limits
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token || cancelled) return;
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/refresh-balance`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          setLiveBalance(data.balance ?? wallet.balance_usdc ?? 0);
+          setMarginUsed(data.margin_used ?? 0);
+        }
+      } catch {
+        // Fallback to cached balance — non-critical
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [getToken, wallet.balance_usdc]);
 
   // Auto-focus amount input on mount
   useEffect(() => {
@@ -61,9 +91,24 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
     }
   }, [step]);
 
+  // Auto-validate OTP: trigger confirmation as soon as 6 digits are entered/pasted
+  const autoValidateTriggered = useRef(false);
+  useEffect(() => {
+    const isValid = otpCode.length === 6 && /^\d{6}$/.test(otpCode);
+    if (isValid && step === 'otp_sent' && !loading && !autoValidateTriggered.current) {
+      autoValidateTriggered.current = true;
+      handleConfirm();
+    }
+    // Reset guard when OTP changes to a non-complete value (e.g. user clears and re-enters)
+    if (otpCode.length < 6) {
+      autoValidateTriggered.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otpCode, step, loading]);
+
   // ── Derived values ──
   const parsedAmount = parseFloat(amount);
-  const availableBalance = wallet.balance_usdc ?? 0;
+  const availableBalance = liveBalance ?? (wallet.balance_usdc ?? 0);
   const netAmount = parsedAmount - WITHDRAWAL_FEE;
   const isAmountValid =
     !isNaN(parsedAmount) &&
@@ -232,6 +277,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
             amount={amount}
             destination={destination}
             availableBalance={availableBalance}
+            marginUsed={marginUsed}
             isAmountValid={isAmountValid}
             isAddressValid={isAddressValid}
             isFormValid={isFormValid}
@@ -293,6 +339,7 @@ interface FormStepProps {
   amount: string;
   destination: string;
   availableBalance: number;
+  marginUsed: number;
   isAmountValid: boolean;
   isAddressValid: boolean;
   isFormValid: boolean;
@@ -309,6 +356,7 @@ function FormStep({
   amount,
   destination,
   availableBalance,
+  marginUsed,
   isAmountValid,
   isAddressValid,
   isFormValid,
@@ -356,6 +404,14 @@ function FormStep({
             maximumFractionDigits: 2,
           })}
         </div>
+        {marginUsed > 0 && (
+          <span
+            className="vela-body-sm"
+            style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}
+          >
+            ${marginUsed.toFixed(2)} locked in open trades
+          </span>
+        )}
       </div>
 
       {/* Amount input */}

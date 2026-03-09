@@ -52,6 +52,12 @@ function renderSheet(props?: Partial<Parameters<typeof WithdrawSheet>[0]>) {
 describe('WithdrawSheet', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // First fetch call is refresh-balance on component mount
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ balance: 1000, margin_used: 0 }),
+    });
+    // Default for subsequent calls (OTP requests, etc.)
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ otp_sent: true }),
@@ -317,12 +323,12 @@ describe('WithdrawSheet', () => {
   // ── Success Flow ──
 
   it('shows success state after confirmed withdrawal', async () => {
-    // First call: request_otp success
+    // First call after refresh-balance: request_otp success
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ otp_sent: true }),
     });
-    // Second call: confirm success
+    // Second call: confirm success (triggered by auto-validation when 6 digits entered)
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve({ ok: true, amount: 100, completed_at: '2026-01-01T00:00:00Z' }),
@@ -337,14 +343,13 @@ describe('WithdrawSheet', () => {
     await user.type(screen.getByLabelText(/destination/i), validEthAddress);
     await user.click(screen.getByRole('button', { name: /send verification code/i }));
 
-    // Enter OTP
+    // Enter OTP — auto-validation triggers confirm when 6 digits are entered
     await waitFor(() => {
       expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
     });
     await user.type(screen.getByLabelText(/verification code/i), '123456');
-    await user.click(screen.getByRole('button', { name: /confirm withdrawal/i }));
 
-    // Check success — shows net amount ($100 - $1 fee = $99)
+    // Check success — auto-validate fires handleConfirm, shows net amount ($100 - $1 fee = $99)
     await waitFor(() => {
       expect(screen.getByText(/withdrawal sent/i)).toBeInTheDocument();
     });

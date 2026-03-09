@@ -497,8 +497,14 @@ function FundingHistory() {
       )
       .subscribe();
 
+    // Polling fallback — realtime can miss events, so poll every 30s
+    const pollInterval = setInterval(() => {
+      fetchEvents();
+    }, 30_000);
+
     return () => {
       channel.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [supabaseClient, isAuthenticated, user?.privyDid, fetchEvents]);
 
