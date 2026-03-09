@@ -872,7 +872,11 @@ function OtpStep({
             fontSize: '1.5rem',
             textAlign: 'center',
             letterSpacing: '0.3em',
-            backgroundColor: isConfirming ? 'rgba(15, 230, 140, 0.06)' : errorMessage ? 'rgba(255, 0, 0, 0.03)' : 'var(--color-bg-surface)',
+            backgroundColor: isConfirming
+              ? 'rgba(15, 230, 140, 0.06)'
+              : errorMessage
+                ? 'rgba(255, 0, 0, 0.03)'
+                : 'var(--color-bg-surface)',
             color: 'var(--color-text-primary)',
             boxSizing: 'border-box',
             transition: 'border-color 0.2s ease, background-color 0.2s ease',
