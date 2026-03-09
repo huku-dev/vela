@@ -19,11 +19,17 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 /** Ethereum address format: 0x followed by 40 hex characters */
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
-/** Flat withdrawal fee in USDC (matches tier_config default; backend enforces actual value) */
+/** Vela platform fee in USDC (from tier_config; backend enforces actual value) */
 const WITHDRAWAL_FEE = 1.0;
 
-/** Minimum withdrawal amount in USDC */
-const MIN_WITHDRAWAL = 2.0;
+/** Hyperliquid's flat withdrawal fee in USDC (deducted by HL from the sent amount) */
+const HYPERLIQUID_FEE = 1.0;
+
+/** Total fee presented to users: Vela fee + Hyperliquid fee */
+const TOTAL_FEE = WITHDRAWAL_FEE + HYPERLIQUID_FEE;
+
+/** Minimum withdrawal amount in USDC (must exceed total fee so user receives something) */
+const MIN_WITHDRAWAL = TOTAL_FEE + 1;
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -111,7 +117,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
   // ── Derived values ──
   const parsedAmount = parseFloat(amount);
   const availableBalance = liveBalance ?? wallet.balance_usdc ?? 0;
-  const netAmount = parsedAmount - WITHDRAWAL_FEE;
+  const netAmount = parsedAmount - TOTAL_FEE;
   const isAmountValid =
     !isNaN(parsedAmount) &&
     parsedAmount >= MIN_WITHDRAWAL &&
@@ -177,7 +183,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         destination_address: destination,
         otp_code: otpCode,
       });
-      setSuccessAmount(parsedAmount - WITHDRAWAL_FEE);
+      setSuccessAmount(parsedAmount - TOTAL_FEE);
       setStep('success');
       onSuccess?.();
     } catch (err) {
@@ -302,7 +308,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
             otpInputRef={otpInputRef}
             isConfirming={step === 'confirming'}
             amount={parsedAmount}
-            fee={WITHDRAWAL_FEE}
+            fee={TOTAL_FEE}
             destination={destination}
             onOtpChange={setOtpCode}
             onConfirm={handleConfirm}
@@ -372,7 +378,7 @@ function FormStep({
 }: FormStepProps) {
   const [showArbitrumInfo, setShowArbitrumInfo] = useState(false);
   const parsedAmount = parseFloat(amount);
-  const netAmount = parsedAmount - WITHDRAWAL_FEE;
+  const netAmount = parsedAmount - TOTAL_FEE;
   const showAmountError = amount !== '' && !isAmountValid;
   const showAddressError = destination !== '' && !isAddressValid;
 
@@ -621,14 +627,14 @@ function FormStep({
             }}
           >
             <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
-              Network fee
+              Withdrawal fee
             </span>
             <span
               className="vela-body-sm"
               style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
             >
               -$
-              {WITHDRAWAL_FEE.toLocaleString('en-US', {
+              {TOTAL_FEE.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -771,7 +777,7 @@ function OtpStep({
           }}
         >
           <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
-            Network fee
+            Withdrawal fee
           </span>
           <span
             className="vela-body-sm"
@@ -860,15 +866,16 @@ function OtpStep({
           style={{
             width: '100%',
             padding: 'var(--space-4)',
-            border: `2px solid ${errorMessage ? 'var(--red-primary)' : 'var(--gray-200)'}`,
+            border: `2px solid ${errorMessage ? 'var(--red-primary)' : isConfirming ? 'var(--vela-signal-green, #0FE68C)' : 'var(--gray-200)'}`,
             borderRadius: 'var(--radius-sm)',
             fontFamily: 'var(--type-mono-base-font)',
             fontSize: '1.5rem',
             textAlign: 'center',
             letterSpacing: '0.3em',
-            backgroundColor: 'var(--color-bg-surface)',
+            backgroundColor: isConfirming ? 'rgba(15, 230, 140, 0.06)' : errorMessage ? 'rgba(255, 0, 0, 0.03)' : 'var(--color-bg-surface)',
             color: 'var(--color-text-primary)',
             boxSizing: 'border-box',
+            transition: 'border-color 0.2s ease, background-color 0.2s ease',
           }}
           aria-label="Verification code"
         />
