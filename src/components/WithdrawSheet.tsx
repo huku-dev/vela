@@ -76,7 +76,9 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         // Fallback to cached balance — non-critical
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [getToken, wallet.balance_usdc]);
 
   // Auto-focus amount input on mount
@@ -103,12 +105,12 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
     if (otpCode.length < 6) {
       autoValidateTriggered.current = false;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otpCode, step, loading]);
 
   // ── Derived values ──
   const parsedAmount = parseFloat(amount);
-  const availableBalance = liveBalance ?? (wallet.balance_usdc ?? 0);
+  const availableBalance = liveBalance ?? wallet.balance_usdc ?? 0;
   const netAmount = parsedAmount - WITHDRAWAL_FEE;
   const isAmountValid =
     !isNaN(parsedAmount) &&
