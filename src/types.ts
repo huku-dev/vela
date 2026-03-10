@@ -40,6 +40,7 @@ export interface Brief {
       title: string;
       impact: string;
       source?: string;
+      url?: string;
     }>;
     what_would_change?: string;
     indicators?: {

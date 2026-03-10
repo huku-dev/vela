@@ -870,7 +870,7 @@ export default function AssetDetail() {
               </p>
               {event.source && (
                 <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`}
+                  href={event.url || `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="vela-label-sm"
