@@ -17,7 +17,7 @@ function getStatusConfig(status: TradeProposalStatus): {
     case 'auto_approved':
       return {
         label: 'Approved',
-        description: 'Approved — sending to exchange...',
+        description: 'Approved. Sending to exchange...',
         color: 'var(--green-primary)',
         dimmed: false,
       };
@@ -73,9 +73,9 @@ interface TradeProposalCardProps {
   onDecline: (proposalId: string) => Promise<void>;
   /** Wallet balance for insufficient funds warning */
   walletBalance?: number;
-  /** Wallet environment — controls fund link (testnet faucet vs deposit) */
+  /** Wallet environment controls fund link (testnet faucet vs deposit) */
   walletEnvironment?: string;
-  /** Whether this user's tier allows trading (hide action buttons for free/view-only) */
+  /** Whether this user's tier allows trading */
   canTrade?: boolean;
   /** Label for the upgrade CTA when user can't trade */
   upgradeLabel?: string;
@@ -83,6 +83,12 @@ interface TradeProposalCardProps {
   onUpgradeClick?: () => void;
   /** Current live price for delta display */
   currentPrice?: number;
+  /** Asset icon URL (from getCoinIcon) */
+  iconUrl?: string;
+  /** Position entry price for trim P&L context */
+  positionEntryPrice?: number;
+  /** Current total position size in USD for trim context */
+  positionSizeUsd?: number;
 }
 
 /**
@@ -102,11 +108,16 @@ export default function TradeProposalCard({
   upgradeLabel,
   onUpgradeClick,
   currentPrice,
+  iconUrl,
+  positionEntryPrice,
+  positionSizeUsd,
 }: TradeProposalCardProps) {
   const [acting, setActing] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showBalanceWarning, setShowBalanceWarning] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showLeverageWarning, setShowLeverageWarning] = useState(false);
+  const [iconError, setIconError] = useState(false);
   const { tierConfig } = useTierAccess();
 
   const isTrim = proposal.proposal_type === 'trim';
@@ -139,7 +150,6 @@ export default function TradeProposalCard({
       setShowBalanceWarning(true);
       return;
     }
-    // Show confirmation dialog instead of executing immediately
     setShowConfirmation(true);
   };
 
@@ -165,6 +175,7 @@ export default function TradeProposalCard({
     }
   };
 
+  // ── Non-pending card (compact status feedback) ──
   if (proposal.status !== 'pending') {
     const statusConfig = getStatusConfig(proposal.status);
     const isInFlight =
@@ -218,7 +229,6 @@ export default function TradeProposalCard({
           </span>
         </div>
 
-        {/* Status description */}
         <p
           className="vela-body-sm vela-text-muted"
           style={{ margin: 0, marginTop: 'var(--space-1)' }}
@@ -228,15 +238,29 @@ export default function TradeProposalCard({
             : statusConfig.description}
         </p>
 
-        {/* Auto-trading nudge — only for non-premium users */}
+        {/* Auto-trading nudge for non-premium users */}
         {tierConfig?.tier !== 'premium' && (
           <>
-            {proposal.status === 'executed' && (
-              <AutoTradingNudge
-                message="Nice catch! With auto-trading, Vela executes instantly at the best entry."
-                onUpgradeClick={onUpgradeClick}
-              />
-            )}
+            {proposal.status === 'executed' &&
+              (() => {
+                const delta =
+                  currentPrice != null && proposal.entry_price_at_proposal
+                    ? ((currentPrice - proposal.entry_price_at_proposal) /
+                        proposal.entry_price_at_proposal) *
+                      100
+                    : undefined;
+                const hasMoved = delta != null && Math.abs(delta) >= 0.5;
+                return (
+                  <AutoTradingNudge
+                    message={
+                      hasMoved
+                        ? `Trade executed! But price moved ${Math.abs(delta!).toFixed(1)}% while you were deciding. With auto-trading, Vela executes instantly at the best price.`
+                        : 'Nice catch! With auto-trading, Vela executes instantly at the best entry.'
+                    }
+                    onUpgradeClick={onUpgradeClick}
+                  />
+                );
+              })()}
             {proposal.status === 'expired' && (
               <AutoTradingNudge
                 message="This trade expired before you saw it. Auto-trading never misses a signal."
@@ -244,11 +268,29 @@ export default function TradeProposalCard({
                 strong
               />
             )}
+            {proposal.status === 'declined' && (
+              <AutoTradingNudge
+                message="No problem. With auto-trading, Vela acts instantly on the best setups so you never have to worry about timing."
+                onUpgradeClick={onUpgradeClick}
+              />
+            )}
           </>
         )}
       </Card>
     );
   }
+
+  // ── Pending card (actionable) ──
+
+  // Compute current price delta for display
+  const proposalPrice = proposal.entry_price_at_proposal;
+  const referencePrice = isTrim ? positionEntryPrice : proposalPrice;
+  const priceDelta =
+    currentPrice != null && referencePrice != null
+      ? ((currentPrice - referencePrice) / referencePrice) * 100
+      : undefined;
+
+  const sizeStr = formatDollarAmount(proposal.proposed_size_usd);
 
   return (
     <Card
@@ -258,7 +300,7 @@ export default function TradeProposalCard({
       }}
       compact
     >
-      {/* Header */}
+      {/* Header: badge + icon + asset name + expiry */}
       <div
         style={{
           display: 'flex',
@@ -283,29 +325,38 @@ export default function TradeProposalCard({
           >
             {badgeText}
           </span>
-          <span className="vela-heading-base">{assetSymbol}</span>
-          {isBB2 && (
+          {iconUrl && !iconError ? (
+            <img
+              src={iconUrl}
+              alt={assetSymbol}
+              onError={() => setIconError(true)}
+              style={{ width: 24, height: 24, borderRadius: '50%' }}
+            />
+          ) : (
             <span
-              className="vela-label-sm"
               style={{
-                backgroundColor: 'var(--gray-100)',
-                color: 'var(--color-text-muted)',
-                padding: '2px 6px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: 11,
-                fontWeight: 600,
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                backgroundColor: 'var(--gray-200)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 700,
               }}
             >
-              Short-term
+              {assetSymbol.charAt(0)}
             </span>
           )}
+          <span className="vela-heading-base">{assetSymbol}</span>
         </div>
 
-        {/* Expiry countdown */}
         {!expired && (
           <span
             className="vela-label-sm"
             style={{
+              fontWeight: 400,
               color: timeLeft < 30 * 60 * 1000 ? 'var(--red-dark)' : 'var(--color-text-muted)',
             }}
           >
@@ -319,27 +370,148 @@ export default function TradeProposalCard({
         )}
       </div>
 
-      {/* Details */}
+      {/* Detail rows: different for trim vs non-trim */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <DetailRow
-          label={isTrim ? 'Current price' : 'Entry price'}
-          value={formatPrice(proposal.entry_price_at_proposal)}
-        />
-        {currentPrice != null && currentPrice !== proposal.entry_price_at_proposal && (
-          <PriceDeltaRow
-            proposalPrice={proposal.entry_price_at_proposal}
-            currentPrice={currentPrice}
-          />
-        )}
-        <DetailRow
-          label={isTrim ? 'Trim amount' : 'Position size'}
-          value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
-        />
-        {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
-        {estimatedFee > 0 && (
-          <DetailRow label={`Est. fee (${feeRatePct}%)`} value={`$${estimatedFee.toFixed(2)}`} />
+        {isTrim ? (
+          <>
+            <DetailRow
+              label="Your entry"
+              value={positionEntryPrice != null ? formatPrice(positionEntryPrice) : '--'}
+            />
+            {currentPrice != null && (
+              <DetailRow
+                label="Current price"
+                value={`${formatPrice(currentPrice)}${priceDelta != null ? ` (${priceDelta >= 0 ? '+' : ''}${priceDelta.toFixed(1)}%)` : ''}`}
+                valueColor={
+                  priceDelta != null && priceDelta >= 0
+                    ? 'var(--green-primary)'
+                    : 'var(--red-primary)'
+                }
+              />
+            )}
+            {positionSizeUsd != null && (
+              <div style={{ marginTop: 'var(--space-1)' }}>
+                <DetailRow
+                  label={`Your ${assetSymbol} position`}
+                  value={formatDollarAmount(positionSizeUsd)}
+                />
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <DetailRow label="Proposal price" value={formatPrice(proposalPrice)} />
+            {currentPrice != null && (
+              <DetailRow
+                label="Current price"
+                value={`${formatPrice(currentPrice)}${priceDelta != null ? ` (${priceDelta >= 0 ? '+' : ''}${priceDelta.toFixed(1)}%)` : ''}`}
+                valueColor={
+                  priceDelta != null
+                    ? priceDelta >= 0
+                      ? 'var(--green-primary)'
+                      : 'var(--red-primary)'
+                    : undefined
+                }
+              />
+            )}
+            {proposal.proposed_leverage > 1 && (
+              <div
+                style={{
+                  marginTop: 'var(--space-1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'var(--space-2)',
+                }}
+              >
+                <LeverageRow
+                  leverage={proposal.proposed_leverage}
+                  showWarning={showLeverageWarning}
+                  onToggleWarning={() => setShowLeverageWarning(prev => !prev)}
+                />
+                <DetailRow
+                  label="Est. liquidation"
+                  value={formatPrice(
+                    estimateLiquidationPrice(proposalPrice, proposal.proposed_leverage, isLong)
+                  )}
+                  valueColor="var(--red-primary)"
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Trade size line + action buttons */}
+      {!canTrade ? (
+        <div
+          style={{
+            marginTop: 'var(--space-3)',
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--gray-50)',
+            borderRadius: 'var(--radius-sm)',
+            textAlign: 'center',
+          }}
+        >
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 0, marginBottom: 'var(--space-2)' }}
+          >
+            Upgrade your plan to act on trade proposals
+          </p>
+          {upgradeLabel && onUpgradeClick && (
+            <button
+              className="vela-btn vela-btn-primary vela-btn-sm"
+              onClick={onUpgradeClick}
+              style={{ width: '100%' }}
+            >
+              {upgradeLabel}
+            </button>
+          )}
+        </div>
+      ) : (
+        !expired && (
+          <div style={{ marginTop: 'var(--space-3)' }}>
+            {/* Prominent trade size label */}
+            <p
+              className="vela-body-sm"
+              style={{
+                fontWeight: 700,
+                margin: 0,
+                marginBottom: 'var(--space-2)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              {isTrim
+                ? `Trim ${proposal.trim_pct}% of position (${sizeStr})`
+                : `Place a ${sizeStr}${!isLong ? ' short' : ''} trade`}
+            </p>
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <button
+                className="vela-btn vela-btn-buy vela-btn-sm"
+                onClick={handleAcceptClick}
+                disabled={acting !== null}
+                style={{ flex: 1, border: '1px solid var(--green-primary)' }}
+              >
+                {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
+              </button>
+              <button
+                className="vela-btn vela-btn-ghost vela-btn-sm"
+                onClick={() => handleAction('decline')}
+                disabled={acting !== null}
+                style={{
+                  flex: 1,
+                  color: 'var(--red-primary)',
+                  border: '1px solid var(--gray-200, #E5E7EB)',
+                }}
+              >
+                {acting === 'decline' ? 'Declining...' : 'Decline'}
+              </button>
+            </div>
+          </div>
+        )
+      )}
 
       {/* Insufficient balance warning */}
       {showBalanceWarning && insufficientBalance && (
@@ -416,85 +588,15 @@ export default function TradeProposalCard({
         </div>
       )}
 
-      {/* Action buttons — only for users with trading capability */}
-      {!canTrade ? (
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            padding: 'var(--space-3)',
-            backgroundColor: 'var(--gray-50)',
-            borderRadius: 'var(--radius-sm)',
-            textAlign: 'center',
-          }}
-        >
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-          >
-            Upgrade your plan to act on trade proposals
-          </p>
-          {upgradeLabel && onUpgradeClick && (
-            <button
-              className="vela-btn vela-btn-primary vela-btn-sm"
-              onClick={onUpgradeClick}
-              style={{ width: '100%' }}
-            >
-              {upgradeLabel}
-            </button>
-          )}
-        </div>
-      ) : (
-        !expired && (
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-2)',
-              marginTop: 'var(--space-3)',
-            }}
-          >
-            <button
-              className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-buy'} vela-btn-sm`}
-              onClick={handleAcceptClick}
-              disabled={acting !== null}
-              style={{
-                flex: 1,
-                ...(isTrim && { backgroundColor: '#FFD700', color: 'var(--black)' }),
-              }}
-            >
-              {acting === 'accept' ? 'Approving...' : isTrim ? 'Accept trim' : 'Accept trade'}
-            </button>
-            <button
-              className="vela-btn vela-btn-ghost vela-btn-sm"
-              onClick={() => handleAction('decline')}
-              disabled={acting !== null}
-              style={{ flex: 1 }}
-            >
-              {acting === 'decline' ? 'Declining...' : 'Decline'}
-            </button>
-          </div>
-        )
-      )}
-
-      {/* Plain English context */}
-      <p
-        className="vela-body-sm"
-        style={{
-          color: 'var(--color-text-muted)',
-          marginTop: 'var(--space-2)',
-          marginBottom: 0,
-          fontStyle: 'italic',
-        }}
-      >
-        {isTrim
-          ? 'Lock in partial profits while keeping the rest of your position running.'
-          : isBB2
-            ? isLong
-              ? 'Short-term trade — a quick buying opportunity based on recent price action.'
-              : 'Short-term trade — a quick selling opportunity based on recent price action.'
-            : isLong
-              ? 'This will open a long position — profit if price goes up.'
-              : 'This will open a short position — profit if price goes down.'}
-      </p>
+      {/* Dynamic price context */}
+      <PriceContextMessage
+        proposal={proposal}
+        currentPrice={currentPrice}
+        isLong={isLong}
+        isTrim={isTrim}
+        isBB2={isBB2}
+        positionEntryPrice={positionEntryPrice}
+      />
 
       {/* Trade confirmation overlay */}
       {showConfirmation && (
@@ -514,7 +616,15 @@ export default function TradeProposalCard({
 
 // ── Helpers ──
 
-function DetailRow({ label, value }: { label: string; value: string }) {
+function DetailRow({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
       <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -522,7 +632,11 @@ function DetailRow({ label, value }: { label: string; value: string }) {
       </span>
       <span
         className="vela-body-sm"
-        style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontWeight: 600,
+          ...(valueColor && { color: valueColor }),
+        }}
       >
         {value}
       </span>
@@ -530,31 +644,193 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PriceDeltaRow({
-  proposalPrice,
+/** Dynamic context message below buttons */
+function PriceContextMessage({
+  proposal,
   currentPrice,
+  isLong,
+  isTrim,
+  isBB2,
+  positionEntryPrice,
 }: {
-  proposalPrice: number;
-  currentPrice: number;
+  proposal: TradeProposal;
+  currentPrice?: number;
+  isLong: boolean;
+  isTrim: boolean;
+  isBB2: boolean;
+  positionEntryPrice?: number;
 }) {
+  // Trims: info card with profit context
+  if (isTrim) {
+    if (positionEntryPrice != null && currentPrice != null) {
+      const pnlPct = ((currentPrice - positionEntryPrice) / positionEntryPrice) * 100;
+      if (pnlPct >= 0) {
+        return (
+          <InfoCard>
+            Locking in some profit. You&apos;re up {pnlPct.toFixed(1)}% on this position since
+            entry.
+          </InfoCard>
+        );
+      }
+      return (
+        <InfoCard>
+          Reducing exposure. You&apos;re down {Math.abs(pnlPct).toFixed(1)}% on this position since
+          entry.
+        </InfoCard>
+      );
+    }
+    return (
+      <InfoCard>
+        Locking in partial profits while keeping the rest of your position running.
+      </InfoCard>
+    );
+  }
+
+  if (currentPrice == null) {
+    return <InfoCard>{getStaticContext(isBB2, isLong)}</InfoCard>;
+  }
+
+  const proposalPrice = proposal.entry_price_at_proposal;
   const deltaPct = ((currentPrice - proposalPrice) / proposalPrice) * 100;
+  const absDelta = Math.abs(deltaPct);
+
+  if (absDelta < 0.5) {
+    return <InfoCard>{getStaticContext(isBB2, isLong)}</InfoCard>;
+  }
+
   const isUp = deltaPct > 0;
-  const color = isUp ? 'var(--green-dark)' : 'var(--red-dark)';
+  const deltaStr = `${isUp ? '+' : ''}${deltaPct.toFixed(1)}%`;
+  const priceStr = formatPrice(currentPrice);
+  // For shorts, price going down confirms the thesis (favorable)
+  const isFavorableMove = isLong ? deltaPct > 0 : deltaPct < 0;
+
+  if (absDelta < 3) {
+    if (isFavorableMove) {
+      return (
+        <InfoCard>
+          Price is now {priceStr} ({deltaStr} since this proposal), confirming the trade thesis.
+        </InfoCard>
+      );
+    }
+    return (
+      <InfoCard>
+        Heads up: price is now {priceStr} ({deltaStr} since this proposal). Our analysis still
+        suggests potential. You can still proceed.
+      </InfoCard>
+    );
+  }
+
+  if (isFavorableMove) {
+    return (
+      <InfoCard>
+        Price has moved significantly ({deltaStr}). Some of the expected move may have already
+        happened.
+      </InfoCard>
+    );
+  }
+
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
-        Current price
-      </span>
-      <span
-        className="vela-body-sm"
-        style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+    <InfoCard>
+      Note: price has shifted to {priceStr} ({deltaStr} since this proposal). It might be better to
+      wait for the next proposal for a better entry.
+    </InfoCard>
+  );
+}
+
+/** Styled info card with bulb emoji and smaller text */
+function InfoCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginTop: 'var(--space-3)',
+        padding: 'var(--space-2) var(--space-3)',
+        backgroundColor: 'var(--gray-50, #F9FAFB)',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--gray-200, #E5E7EB)',
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          color: 'var(--color-text-muted)',
+          fontSize: 12,
+          lineHeight: 1.5,
+          fontFamily: 'inherit',
+        }}
       >
-        {formatPrice(currentPrice)}{' '}
-        <span style={{ color, fontSize: 12 }}>
-          ({isUp ? '+' : ''}
-          {deltaPct.toFixed(1)}%)
+        {'💡 '}
+        {children}
+      </p>
+    </div>
+  );
+}
+
+function getStaticContext(isBB2: boolean, isLong: boolean): string {
+  if (isBB2) {
+    return isLong
+      ? 'Short-term trade. A quick buying opportunity based on recent price action.'
+      : 'Short-term trade. Indicators suggest price may drop, opportunity to profit from it.';
+  }
+  return isLong
+    ? 'This will open a long position. Profit if price goes up.'
+    : 'This will open a short position. Profit if price goes down.';
+}
+
+/** Leverage row with warning — only shown for leverage > 1 */
+function LeverageRow({
+  leverage,
+  showWarning,
+  onToggleWarning,
+}: {
+  leverage: number;
+  showWarning: boolean;
+  onToggleWarning: () => void;
+}) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+          Leverage
         </span>
-      </span>
+        <button
+          type="button"
+          onClick={onToggleWarning}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontFamily: 'var(--type-mono-base-font)',
+            fontWeight: 600,
+            fontSize: 'inherit',
+            color: 'inherit',
+          }}
+        >
+          {leverage}x{' '}
+          <span style={{ fontSize: 12, color: 'var(--color-status-yellow, #f59e0b)' }}>⚠️</span>
+        </button>
+      </div>
+      {showWarning && (
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-muted)',
+            marginTop: 'var(--space-1)',
+            marginBottom: 0,
+            padding: 'var(--space-2)',
+            backgroundColor: 'var(--color-status-yellow-bg, #fffbeb)',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: 12,
+            lineHeight: 1.5,
+          }}
+        >
+          Leveraged trades amplify both gains and losses. A {leverage}x position means your profit
+          or loss is multiplied by {leverage}.
+        </p>
+      )}
     </div>
   );
 }
@@ -563,8 +839,20 @@ function formatTimeLeft(ms: number): string {
   if (ms <= 0) return 'Expired';
   const hours = Math.floor(ms / (1000 * 60 * 60));
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  if (hours > 0) return `${hours}h ${minutes}m left`;
-  return `${minutes}m left`;
+  if (hours > 0) return `Expires in ${hours}h ${minutes}m`;
+  return `Expires in ${minutes}m`;
+}
+
+/** Format dollar amount — omit .00 for whole numbers */
+function formatDollarAmount(amount: number): string {
+  if (amount === Math.floor(amount)) return `$${amount.toLocaleString('en-US')}`;
+  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Estimated liquidation price (simplified: ignores maintenance margin) */
+function estimateLiquidationPrice(entryPrice: number, leverage: number, isLong: boolean): number {
+  if (isLong) return entryPrice * (1 - 1 / leverage);
+  return entryPrice * (1 + 1 / leverage);
 }
 
 /** Auto-trading upgrade nudge shown after trade execution or expiry */

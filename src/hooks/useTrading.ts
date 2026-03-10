@@ -137,7 +137,15 @@ export function useTrading(): TradingState {
           supabaseClient
             .from('trade_proposals')
             .select('*')
-            .in('status', ['pending', 'approved', 'auto_approved', 'executing', 'executed', 'failed'])
+            .in('status', [
+              'pending',
+              'approved',
+              'auto_approved',
+              'executing',
+              'executed',
+              'failed',
+              'declined',
+            ])
             .order('created_at', { ascending: false })
             .limit(20),
           supabaseClient

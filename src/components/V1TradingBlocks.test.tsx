@@ -320,12 +320,14 @@ describe('ASSET-ADV: AssetDetail proposal rendering adversarial checks', () => {
   it('ADV: proposals only shown for authenticated users', () => {
     // Both pending and active proposals check isAuthenticated
     expect(assetDetailSrc).toMatch(/const pendingProposals = isAuthenticated/);
-    expect(assetDetailSrc).toMatch(/const activeProposals = isAuthenticated/);
+    expect(assetDetailSrc).toMatch(/const allActiveProposals = isAuthenticated/);
   });
 
   it('ADV: in-flight statuses are explicitly listed (not a wildcard)', () => {
-    expect(assetDetailSrc).toContain(
-      "'approved', 'auto_approved', 'executing', 'executed', 'failed'"
-    );
+    // Statuses may be multi-line (prettier) — check each individually
+    for (const status of ['approved', 'auto_approved', 'executing', 'executed', 'failed', 'declined']) {
+      expect(assetDetailSrc).toContain(`'${status}'`);
+    }
+    expect(assetDetailSrc).toContain('IN_FLIGHT_STATUSES');
   });
 });

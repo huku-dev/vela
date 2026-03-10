@@ -117,7 +117,7 @@ export default function TradeConfirmationSheet({
           {/* Detail rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
             <ConfirmRow
-              label={isTrim ? 'Current price' : 'Entry price'}
+              label={isTrim ? 'Current price' : 'Proposal price'}
               value={`~${formatPrice(proposal.entry_price_at_proposal)}`}
             />
             <ConfirmRow

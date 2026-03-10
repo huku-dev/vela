@@ -81,10 +81,35 @@ export default function AssetDetail() {
   const pendingProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && p.status === 'pending')
     : [];
-  const IN_FLIGHT_STATUSES = ['approved', 'auto_approved', 'executing', 'executed', 'failed'];
-  const activeProposals = isAuthenticated
+  const IN_FLIGHT_STATUSES = [
+    'approved',
+    'auto_approved',
+    'executing',
+    'executed',
+    'failed',
+    'declined',
+  ];
+  const TERMINAL_STATUSES = ['executed', 'failed', 'expired', 'declined'];
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const allActiveProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && IN_FLIGHT_STATUSES.includes(p.status))
     : [];
+  const activeProposals = allActiveProposals.filter(p => !dismissedIds.has(p.id));
+
+  // Auto-dismiss terminal-state cards after 2s
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    for (const p of allActiveProposals) {
+      if (TERMINAL_STATUSES.includes(p.status) && !dismissedIds.has(p.id)) {
+        timers.push(
+          setTimeout(() => {
+            setDismissedIds(prev => new Set(prev).add(p.id));
+          }, 2000)
+        );
+      }
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [allActiveProposals.map(p => `${p.id}:${p.status}`).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Open position for this asset (if any)
   const assetPosition = isAuthenticated
@@ -478,6 +503,9 @@ export default function AssetDetail() {
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
             currentPrice={price ?? undefined}
+            iconUrl={iconUrl}
+            positionEntryPrice={assetPosition?.entry_price}
+            positionSizeUsd={assetPosition?.size_usd}
           />
         </div>
       ))}
@@ -494,6 +522,9 @@ export default function AssetDetail() {
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
             currentPrice={price ?? undefined}
+            iconUrl={iconUrl}
+            positionEntryPrice={assetPosition?.entry_price}
+            positionSizeUsd={assetPosition?.size_usd}
           />
         </div>
       ))}

@@ -90,7 +90,7 @@ deno test --no-check --allow-env --allow-read --filter "TRIM" ...  # Run subset
 ## Current Test Counts
 
 - **Frontend:** 522 tests (as of 2026-03-06)
-- **Backend:** 538 Deno tests (as of 2026-03-07)
+- **Backend:** 559 Deno tests (as of 2026-03-09)
 
 ---
 
