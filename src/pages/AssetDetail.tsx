@@ -477,6 +477,7 @@ export default function AssetDetail() {
             canTrade={canTrade}
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
+            currentPrice={price ?? undefined}
           />
         </div>
       ))}
@@ -492,6 +493,7 @@ export default function AssetDetail() {
             canTrade={canTrade}
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
+            currentPrice={price ?? undefined}
           />
         </div>
       ))}

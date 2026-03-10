@@ -81,6 +81,8 @@ interface TradeProposalCardProps {
   upgradeLabel?: string;
   /** Called when user clicks the upgrade CTA */
   onUpgradeClick?: () => void;
+  /** Current live price for delta display */
+  currentPrice?: number;
 }
 
 /**
@@ -99,6 +101,7 @@ export default function TradeProposalCard({
   canTrade = true,
   upgradeLabel,
   onUpgradeClick,
+  currentPrice,
 }: TradeProposalCardProps) {
   const [acting, setActing] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,6 +111,7 @@ export default function TradeProposalCard({
 
   const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';
+  const isBB2 = proposal.position_type === 'bb2' || proposal.position_type === 'bb2_30m';
   const expiresAt = new Date(proposal.expires_at);
   const timeLeft = expiresAt.getTime() - Date.now();
   const expired = timeLeft <= 0;
@@ -219,7 +223,9 @@ export default function TradeProposalCard({
           className="vela-body-sm vela-text-muted"
           style={{ margin: 0, marginTop: 'var(--space-1)' }}
         >
-          {statusConfig.description}
+          {proposal.status === 'failed' && proposal.error_message
+            ? proposal.error_message
+            : statusConfig.description}
         </p>
 
         {/* Auto-trading nudge — only for non-premium users */}
@@ -278,6 +284,21 @@ export default function TradeProposalCard({
             {badgeText}
           </span>
           <span className="vela-heading-base">{assetSymbol}</span>
+          {isBB2 && (
+            <span
+              className="vela-label-sm"
+              style={{
+                backgroundColor: 'var(--gray-100)',
+                color: 'var(--color-text-muted)',
+                padding: '2px 6px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              Short-term
+            </span>
+          )}
         </div>
 
         {/* Expiry countdown */}
@@ -304,9 +325,15 @@ export default function TradeProposalCard({
           label={isTrim ? 'Current price' : 'Entry price'}
           value={formatPrice(proposal.entry_price_at_proposal)}
         />
+        {currentPrice != null && currentPrice !== proposal.entry_price_at_proposal && (
+          <PriceDeltaRow
+            proposalPrice={proposal.entry_price_at_proposal}
+            currentPrice={currentPrice}
+          />
+        )}
         <DetailRow
           label={isTrim ? 'Trim amount' : 'Position size'}
-          value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
+          value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}${isTrim && proposal.trim_pct ? ` (${proposal.trim_pct}%)` : ''}`}
         />
         {!isTrim && <DetailRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
         {estimatedFee > 0 && (
@@ -336,7 +363,7 @@ export default function TradeProposalCard({
             style={{ margin: 0, marginBottom: 'var(--space-2)' }}
           >
             This trade needs $
-            {proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })} USDC.
+            {proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDC.
             Your balance: ${walletBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
             USDC.
           </p>
@@ -460,9 +487,13 @@ export default function TradeProposalCard({
       >
         {isTrim
           ? 'Lock in partial profits while keeping the rest of your position running.'
-          : isLong
-            ? 'This will open a long position — profit if price goes up.'
-            : 'This will open a short position — profit if price goes down.'}
+          : isBB2
+            ? isLong
+              ? 'Short-term trade — a quick buying opportunity based on recent price action.'
+              : 'Short-term trade — a quick selling opportunity based on recent price action.'
+            : isLong
+              ? 'This will open a long position — profit if price goes up.'
+              : 'This will open a short position — profit if price goes down.'}
       </p>
 
       {/* Trade confirmation overlay */}
@@ -494,6 +525,35 @@ function DetailRow({ label, value }: { label: string; value: string }) {
         style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
       >
         {value}
+      </span>
+    </div>
+  );
+}
+
+function PriceDeltaRow({
+  proposalPrice,
+  currentPrice,
+}: {
+  proposalPrice: number;
+  currentPrice: number;
+}) {
+  const deltaPct = ((currentPrice - proposalPrice) / proposalPrice) * 100;
+  const isUp = deltaPct > 0;
+  const color = isUp ? 'var(--green-dark)' : 'var(--red-dark)';
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+        Current price
+      </span>
+      <span
+        className="vela-body-sm"
+        style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+      >
+        {formatPrice(currentPrice)}{' '}
+        <span style={{ color, fontSize: 12 }}>
+          ({isUp ? '+' : ''}
+          {deltaPct.toFixed(1)}%)
+        </span>
       </span>
     </div>
   );

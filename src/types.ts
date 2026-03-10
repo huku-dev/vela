@@ -271,6 +271,9 @@ export interface TradeProposal {
   proposal_type: ProposalType;
   trim_pct: number | null;
   parent_position_id: string | null;
+  position_type: 'main' | 'bb2' | 'bb2_30m';
+  use_spot: boolean;
+  error_message: string | null;
   created_at: string;
   updated_at: string;
 }

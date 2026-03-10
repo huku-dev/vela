@@ -122,7 +122,7 @@ export default function TradeConfirmationSheet({
             />
             <ConfirmRow
               label={isTrim ? 'Trim amount' : 'Position size'}
-              value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+              value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
             />
             {!isTrim && <ConfirmRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
             {estimatedFee > 0 && (
