@@ -239,8 +239,7 @@ export default function TrackRecord() {
     BB2_POSITION_SIZE
   );
 
-  const hasUserTrades =
-    userTrades.length > 0 || hasLivePositions || pendingProposals.length > 0;
+  const hasUserTrades = userTrades.length > 0 || hasLivePositions || pendingProposals.length > 0;
 
   // ── Group paper trades: attach trims to their parent trade ──
   const groupedPaperTrades = groupTradesWithTrims(paperTrades);
