@@ -241,8 +241,8 @@ describe('BANNER-SRC: PendingProposalsBanner renders correctly', () => {
     expect(bannerSrc).toContain('if (pending.length === 0) return null');
   });
 
-  it('navigates to asset detail page', () => {
-    expect(bannerSrc).toContain('/asset/${');
+  it('navigates to trades page', () => {
+    expect(bannerSrc).toContain("'/trades'");
   });
 
   it('shows correct singular/plural label', () => {
@@ -263,11 +263,9 @@ describe('BANNER-ADV: PendingProposalsBanner adversarial checks', () => {
     expect(bannerSrc).not.toContain('.startsWith');
   });
 
-  it('ADV: handles single-asset and multi-asset proposals correctly', () => {
-    // Uses unique asset set logic
-    expect(bannerSrc).toContain('new Set(pending.map(p => p.asset_id))');
-    // Falls back to first proposal asset when multiple assets
-    expect(bannerSrc).toContain('pending[0].asset_id');
+  it('ADV: navigates to /trades to show all pending proposals', () => {
+    // Banner navigates to the trades page (not a single asset page)
+    expect(bannerSrc).toContain("'/trades'");
   });
 });
 
@@ -325,7 +323,14 @@ describe('ASSET-ADV: AssetDetail proposal rendering adversarial checks', () => {
 
   it('ADV: in-flight statuses are explicitly listed (not a wildcard)', () => {
     // Statuses may be multi-line (prettier) — check each individually
-    for (const status of ['approved', 'auto_approved', 'executing', 'executed', 'failed', 'declined']) {
+    for (const status of [
+      'approved',
+      'auto_approved',
+      'executing',
+      'executed',
+      'failed',
+      'declined',
+    ]) {
       expect(assetDetailSrc).toContain(`'${status}'`);
     }
     expect(assetDetailSrc).toContain('IN_FLIGHT_STATUSES');

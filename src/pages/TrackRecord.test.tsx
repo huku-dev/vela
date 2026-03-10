@@ -116,7 +116,13 @@ const defaultHookReturn = {
 };
 
 beforeEach(() => {
-  mockUseTrading.mockReturnValue({ positions: [] as Position[] });
+  mockUseTrading.mockReturnValue({
+    positions: [] as Position[],
+    proposals: [],
+    acceptProposal: vi.fn(),
+    declineProposal: vi.fn(),
+    wallet: null,
+  });
   mockUseAuthContext.mockReturnValue({ isAuthenticated: false });
   mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
   mockUseTierAccess.mockReturnValue({

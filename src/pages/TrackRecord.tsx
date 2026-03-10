@@ -7,6 +7,7 @@ import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
 import TierComparisonSheet from '../components/TierComparisonSheet';
+import TradeProposalCard from '../components/TradeProposalCard';
 import { getCoinIcon, formatPrice, reasonCodeToPlainEnglish } from '../lib/helpers';
 import {
   calculateUnrealizedPnL,
@@ -163,7 +164,7 @@ export default function TrackRecord() {
   const { trades, livePrices, assetMap, loading, loadingMore, hasMore, loadMore } =
     useTrackRecord();
   const { isAuthenticated } = useAuthContext();
-  const { positions } = useTrading();
+  const { positions, proposals, acceptProposal, declineProposal, wallet } = useTrading();
   const { canTrade, tier, upgradeLabel, startCheckout } = useTierAccess();
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [showVelaHistory, setShowVelaHistory] = useState(false);
@@ -171,6 +172,12 @@ export default function TrackRecord() {
   const [showTierSheet, setShowTierSheet] = useState(false);
 
   const hasLivePositions = isAuthenticated && positions.length > 0;
+
+  // Pending + in-flight proposals (show on this page so user can act on them)
+  const pendingProposals = proposals.filter(p => p.status === 'pending');
+  const activeProposals = proposals.filter(
+    p => p.status === 'approved' || p.status === 'auto_approved' || p.status === 'executing'
+  );
 
   if (loading) {
     return (
@@ -232,7 +239,8 @@ export default function TrackRecord() {
     BB2_POSITION_SIZE
   );
 
-  const hasUserTrades = userTrades.length > 0 || hasLivePositions;
+  const hasUserTrades =
+    userTrades.length > 0 || hasLivePositions || pendingProposals.length > 0;
 
   // ── Group paper trades: attach trims to their parent trade ──
   const groupedPaperTrades = groupTradesWithTrims(paperTrades);
@@ -360,6 +368,62 @@ export default function TrackRecord() {
                   ` · ${userOpen.length + positions.length} open`}
               </p>
             </Card>
+          )}
+
+          {/* Pending proposals — actionable trades waiting for approval */}
+          {(pendingProposals.length > 0 || activeProposals.length > 0) && (
+            <div style={{ marginBottom: 'var(--space-3)' }}>
+              <p
+                className="vela-label-sm"
+                style={{
+                  color: 'var(--gray-400)',
+                  marginBottom: 'var(--space-2)',
+                  paddingLeft: 'var(--space-1)',
+                }}
+              >
+                Pending trades
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {pendingProposals.map(proposal => {
+                  const asset = assetMap[proposal.asset_id];
+                  const symbol = asset?.symbol ?? proposal.asset_id.toUpperCase();
+                  const coingeckoId = asset?.coingecko_id;
+                  const livePrice = coingeckoId ? livePrices[coingeckoId]?.price : undefined;
+                  const assetPosition = positions.find(p => p.asset_id === proposal.asset_id);
+                  return (
+                    <TradeProposalCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      assetSymbol={symbol}
+                      onAccept={acceptProposal}
+                      onDecline={declineProposal}
+                      walletBalance={wallet?.balance_usdc}
+                      walletEnvironment={wallet?.environment}
+                      canTrade={canTrade}
+                      upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
+                      onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
+                      currentPrice={livePrice ?? undefined}
+                      iconUrl={getCoinIcon(coingeckoId)}
+                      positionEntryPrice={assetPosition?.entry_price}
+                      positionSizeUsd={assetPosition?.size_usd}
+                    />
+                  );
+                })}
+                {activeProposals.map(proposal => {
+                  const asset = assetMap[proposal.asset_id];
+                  const symbol = asset?.symbol ?? proposal.asset_id.toUpperCase();
+                  return (
+                    <TradeProposalCard
+                      key={proposal.id}
+                      proposal={proposal}
+                      assetSymbol={symbol}
+                      onAccept={acceptProposal}
+                      onDecline={declineProposal}
+                    />
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* Live positions */}

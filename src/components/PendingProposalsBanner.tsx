@@ -10,10 +10,8 @@ export default function PendingProposalsBanner() {
 
   if (pending.length === 0) return null;
 
-  // If all pending proposals are for the same asset, link directly there
-  const uniqueAssets = [...new Set(pending.map(p => p.asset_id))];
-  const targetPath =
-    uniqueAssets.length === 1 ? `/asset/${uniqueAssets[0]}` : `/asset/${pending[0].asset_id}`;
+  // Navigate to /trades which now shows all pending proposals
+  const targetPath = '/trades';
 
   const label =
     pending.length === 1
