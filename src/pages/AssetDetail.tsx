@@ -870,7 +870,10 @@ export default function AssetDetail() {
               </p>
               {event.source && (
                 <a
-                  href={event.url || `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`}
+                  href={
+                    event.url ||
+                    `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`
+                  }
                   target="_blank"
                   rel="noopener noreferrer"
                   className="vela-label-sm"
@@ -883,7 +886,9 @@ export default function AssetDetail() {
                     textUnderlineOffset: '2px',
                   }}
                 >
-                  {event.source}
+                  {event.date
+                    ? `${new Date(event.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${event.source}`
+                    : event.source}
                 </a>
               )}
             </div>

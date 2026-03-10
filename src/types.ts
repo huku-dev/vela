@@ -41,6 +41,7 @@ export interface Brief {
       impact: string;
       source?: string;
       url?: string;
+      date?: string;
     }>;
     what_would_change?: string;
     indicators?: {
