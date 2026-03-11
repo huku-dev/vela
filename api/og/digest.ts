@@ -71,7 +71,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
     .join("");
 
-  const markup = html`
+  // IMPORTANT: Use html() as a function call, NOT as a tagged template literal.
+  // Tagged template `html\`...\`` escapes interpolated strings as text content,
+  // which causes itemsHtml's <div>/<span> tags to render as "&lt;div&gt;" etc.
+  // Calling html(string) parses the entire string as HTML markup.
+  // User-provided text is already escaped via escapeHtml() above.
+  const markup = html(`
     <div
       style="display: flex; flex-direction: column; width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; background-color: ${CREAM}; border: 6px solid ${INK}; position: relative; font-family: Inter;"
     >
@@ -121,7 +126,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         >
       </div>
     </div>
-  `;
+  `);
 
   try {
     const svg = await satori(markup as unknown as React.ReactNode, {
