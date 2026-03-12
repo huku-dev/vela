@@ -263,8 +263,8 @@ export function groupBriefsBySignalState(
 // ── Signal reason code → plain English (fallback when no brief headline exists) ──
 
 const reasonCodeMap: Record<string, string> = {
-  ema_cross_up: 'Short-term trend crossed above medium-term — momentum shifting up',
-  ema_cross_down: 'Short-term trend crossed below medium-term — momentum shifting down',
+  ema_cross_up: 'Short-term trend crossed above medium-term. Momentum shifting up',
+  ema_cross_down: 'Short-term trend crossed below medium-term. Momentum shifting down',
   stop_loss: 'Price dropped below safety threshold',
   trend_break: 'Underlying trend reversed direction',
   chop: 'Market choppy with no clear direction',
@@ -276,7 +276,7 @@ const reasonCodeMap: Record<string, string> = {
   rsi_out_of_range: 'Buying pressure hit extreme levels',
   trend_disagree: 'Short-term and long-term trends conflicted',
   anti_whipsaw: 'Signal held steady through market noise',
-  late_entry: 'All indicators now align — trend confirmed',
+  late_entry: 'All indicators now align. Trend confirmed',
   no_change: 'No significant change in conditions',
 };
 

@@ -127,8 +127,8 @@ describe('parsePriceSegments', () => {
 
 describe('reasonCodeToPlainEnglish', () => {
   it('maps known reason codes to plain English strings', () => {
-    expect(reasonCodeToPlainEnglish('ema_cross_up')).toContain('momentum shifting up');
-    expect(reasonCodeToPlainEnglish('ema_cross_down')).toContain('momentum shifting down');
+    expect(reasonCodeToPlainEnglish('ema_cross_up')).toContain('Momentum shifting up');
+    expect(reasonCodeToPlainEnglish('ema_cross_down')).toContain('Momentum shifting down');
     expect(reasonCodeToPlainEnglish('stop_loss')).toContain('safety threshold');
     expect(reasonCodeToPlainEnglish('trend_break')).toContain('reversed direction');
     expect(reasonCodeToPlainEnglish('chop')).toContain('choppy');

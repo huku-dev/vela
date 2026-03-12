@@ -673,8 +673,8 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     await user.click(expandBtn);
 
     // The fallback chain: headline → reasonCodeToPlainEnglish → nothing
-    // ema_cross_up maps to "Short-term trend crossed above medium-term — momentum shifting up"
-    expect(screen.getByText(/momentum shifting up/)).toBeInTheDocument();
+    // ema_cross_up maps to "Short-term trend crossed above medium-term. Momentum shifting up"
+    expect(screen.getByText(/Momentum shifting up/)).toBeInTheDocument();
   });
 
   it('hides headline area when no headline and no reason code (paper, expanded zone)', async () => {

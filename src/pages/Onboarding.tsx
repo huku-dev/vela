@@ -46,7 +46,7 @@ const MODE_OPTIONS: {
     mode: 'view_only',
     label: 'View only',
     description: 'See signals and analysis. Includes 1 free trade to try it out.',
-    tier: 'Free — included with your account',
+    tier: 'Free · included with your account',
   },
   {
     mode: 'semi_auto',
@@ -538,7 +538,7 @@ function WalletSetup({
           {isTestnet ? 'Get test USDC' : 'Fund wallet'}
         </button>
         <button className="vela-btn vela-btn-ghost" onClick={onComplete} style={{ width: '100%' }}>
-          Skip — I&apos;ll do this later
+          Skip for now
         </button>
       </div>
     </div>

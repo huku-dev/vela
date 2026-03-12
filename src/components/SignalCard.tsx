@@ -22,21 +22,21 @@ function getPositionHeadline(position: Position, symbol: string): string {
   const pnlSign = pnl >= 0 ? '+' : '-';
 
   if (pnl >= 20) {
-    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}% — looking great, consider taking some profit`;
+    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking great, consider taking some profit`;
   }
   if (pnl >= 5) {
-    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}% — looking good!`;
+    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking good!`;
   }
   if (pnl >= 0) {
-    return `${symbol} ${side} position open — ${pnlSign}${pnlAbs}% so far`;
+    return `${symbol} ${side} position open, ${pnlSign}${pnlAbs}% so far`;
   }
   if (pnl > -5) {
-    return `${symbol} ${side} position open — ${pnlSign}${pnlAbs}%. Still early, Vela is watching`;
+    return `${symbol} ${side} position open, ${pnlSign}${pnlAbs}%. Still early, Vela is watching`;
   }
   if (pnl > -8) {
-    return `${symbol} ${side} is ${pnlSign}${pnlAbs}% — Vela is monitoring and will act if needed`;
+    return `${symbol} ${side} is ${pnlSign}${pnlAbs}%. Vela is monitoring and will act if needed`;
   }
-  return `${symbol} ${side} position — stop-loss level approaching. Vela has you covered`;
+  return `${symbol} ${side} position nearing stop-loss level. Vela has you covered`;
 }
 
 export default function SignalCard({ data, position }: SignalCardProps) {

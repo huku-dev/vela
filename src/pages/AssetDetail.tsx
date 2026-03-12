@@ -275,7 +275,7 @@ export default function AssetDetail() {
             className="vela-body-sm vela-text-muted"
             style={{ marginBottom: 'var(--space-5)', lineHeight: 1.6 }}
           >
-            Get trend analysis, AI briefs, and trade proposals for {asset.name} — upgrade your plan
+            Get trend analysis, AI briefs, and trade proposals for {asset.name}. Upgrade your plan
             to access more assets.
           </p>
           <button
@@ -956,10 +956,10 @@ function buildSignalBreakdown(
 
   result.rsi =
     rsi > 70
-      ? `Buying pressure at ${rsi.toFixed(0)} indicates overbought conditions — price may be due for a pullback.`
+      ? `Buying pressure at ${rsi.toFixed(0)} indicates overbought conditions. Price may be due for a pullback.`
       : rsi < 30
-        ? `Buying pressure at ${rsi.toFixed(0)} indicates oversold conditions — price may be due for a bounce.`
-        : `Buying pressure at ${rsi.toFixed(0)} is in neutral territory — no extreme buying or selling pressure.`;
+        ? `Buying pressure at ${rsi.toFixed(0)} indicates oversold conditions. Price may be due for a bounce.`
+        : `Buying pressure at ${rsi.toFixed(0)} is in neutral territory. No extreme buying or selling pressure.`;
 
   result.trend_filter =
     price > sma50
@@ -971,7 +971,7 @@ function buildSignalBreakdown(
       ? `Trend strength at ${adx.toFixed(0)} shows a strong directional move in progress.`
       : adx > 20
         ? `Trend strength at ${adx.toFixed(0)} shows moderate directional momentum.`
-        : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend — choppy conditions.`;
+        : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend. Choppy conditions.`;
 
   return result;
 }
@@ -1010,7 +1010,7 @@ function buildWhatWouldChange(
   }
 
   if (conditions.length === 0) {
-    return 'Current conditions are close to triggering a signal — Vela is watching for confirmation.';
+    return 'Current conditions are close to triggering a signal. Vela is watching for confirmation.';
   }
 
   const joined =
@@ -1430,7 +1430,7 @@ function PriceLevelTriggers({
           active={aboveBull}
           label={
             aboveBull
-              ? 'Price is above short-term averages — maintaining this with rising momentum could shift towards Buy'
+              ? 'Price is above short-term averages. Maintaining this with rising momentum could shift towards Buy'
               : 'A sustained break above short-term averages with rising momentum could shift the signal towards Buy'
           }
         />
@@ -1440,7 +1440,7 @@ function PriceLevelTriggers({
           active={belowBear}
           label={
             belowBear
-              ? `Price is already ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level — continued weakness here adds bearish pressure`
+              ? `Price is already ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. Continued weakness here adds bearish pressure`
               : 'A break below the 50-day average would signal meaningful bearish pressure and could trigger a Sell'
           }
         />
@@ -2039,7 +2039,7 @@ function SignalHistoryCard({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <SectionLabel style={{ marginBottom: 0 }}>
-            Key Signal — {signalTitles[signalColor]}
+            Key Signal · {signalTitles[signalColor]}
           </SectionLabel>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             {isNew && !expanded && (
