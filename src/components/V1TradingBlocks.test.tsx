@@ -287,6 +287,24 @@ describe('NAV-SRC: Layout nav badge for pending proposals', () => {
 });
 
 // ════════════════════════════════════════════════════════════
+// TOAST-SRC: Source-verification — Global Failure Toast
+// ════════════════════════════════════════════════════════════
+describe('TOAST-SRC: Layout global failure toast', () => {
+  it('detects transitions to failed status', () => {
+    expect(layoutSrc).toContain("p.status === 'failed'");
+  });
+
+  it('only toasts on status transition (not initial load)', () => {
+    expect(layoutSrc).toContain('prevStatus && prevStatus !==');
+  });
+
+  it('renders VelaToast for failures', () => {
+    expect(layoutSrc).toContain('failureToast');
+    expect(layoutSrc).toContain("variant=\"error\"");
+  });
+});
+
+// ════════════════════════════════════════════════════════════
 // NAV-ADV: Adversarial — Nav Badge
 // ════════════════════════════════════════════════════════════
 describe('NAV-ADV: Nav badge adversarial checks', () => {
@@ -323,12 +341,12 @@ describe('ASSET-ADV: AssetDetail proposal rendering adversarial checks', () => {
 
   it('ADV: in-flight statuses are explicitly listed (not a wildcard)', () => {
     // Statuses may be multi-line (prettier) — check each individually
+    // Note: 'failed' is handled globally in Layout.tsx, not in AssetDetail
     for (const status of [
       'approved',
       'auto_approved',
       'executing',
       'executed',
-      'failed',
       'declined',
     ]) {
       expect(assetDetailSrc).toContain(`'${status}'`);

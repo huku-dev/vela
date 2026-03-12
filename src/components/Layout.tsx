@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useTierAccess } from '../hooks/useTierAccess';
+import VelaToast from './VelaToast';
 
 const navItems = [
   {
@@ -85,6 +86,33 @@ export default function Layout() {
   const { needsFunding } = useTierAccess();
   const pendingCount = proposals.filter(p => p.status === 'pending').length;
 
+  // Global failure toast — detect when any proposal transitions to 'failed'
+  const [failureToast, setFailureToast] = useState<string | null>(null);
+  const prevProposalStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const prevStatuses = prevProposalStatusesRef.current;
+
+    for (const p of proposals) {
+      const prevStatus = prevStatuses.get(p.id);
+      // Only show toast when we see a transition TO 'failed' (not on initial load)
+      if (p.status === 'failed' && prevStatus && prevStatus !== 'failed') {
+        const asset = p.asset_id?.toUpperCase() ?? '';
+        const side = p.side?.toUpperCase() ?? '';
+        const reason = p.error_message || 'Check your balance and try again.';
+        setFailureToast(`${asset} ${side} failed: ${reason}`);
+        break; // one toast at a time
+      }
+    }
+
+    // Update ref with current statuses
+    const nextStatuses = new Map<string, string>();
+    for (const p of proposals) {
+      nextStatuses.set(p.id, p.status);
+    }
+    prevProposalStatusesRef.current = nextStatuses;
+  }, [proposals]);
+
   // Red dot on Account tab: show when funding is needed, clear once user visits /account
   const fundingNeeded = needsFunding(wallet?.balance_usdc);
   const accountDotSeenRef = useRef(false);
@@ -151,6 +179,15 @@ export default function Layout() {
       >
         Skip to main content
       </a>
+      {/* Global failure toast — shown when any trade proposal fails */}
+      {failureToast && (
+        <VelaToast
+          message={failureToast}
+          variant="error"
+          autoDismissMs={5000}
+          onDismiss={() => setFailureToast(null)}
+        />
+      )}
       <main id="main-content">
         <Outlet />
       </main>

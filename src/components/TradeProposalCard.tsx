@@ -694,21 +694,39 @@ function PriceContextMessage({
   const deltaPct = ((currentPrice - proposalPrice) / proposalPrice) * 100;
   const absDelta = Math.abs(deltaPct);
 
-  if (absDelta < 0.5) {
-    return <InfoCard>{getStaticContext(isBB2, isLong)}</InfoCard>;
-  }
-
   const isUp = deltaPct > 0;
   const deltaStr = `${isUp ? '+' : ''}${deltaPct.toFixed(1)}%`;
   const priceStr = formatPrice(currentPrice);
   // For shorts, price going down confirms the thesis (favorable)
   const isFavorableMove = isLong ? deltaPct > 0 : deltaPct < 0;
+  const isOpen = proposal.proposal_type === 'open';
+
+  // Small movement (<0.5%) — show static context, or "better entry" nudge for opens
+  if (absDelta < 0.5) {
+    if (!isFavorableMove && absDelta > 0.05 && isOpen) {
+      return (
+        <InfoCard>
+          Price dipped slightly since this proposal, so you&apos;d be entering at an even better
+          price.
+        </InfoCard>
+      );
+    }
+    return <InfoCard>{getStaticContext(isBB2, isLong)}</InfoCard>;
+  }
 
   if (absDelta < 3) {
     if (isFavorableMove) {
       return (
         <InfoCard>
           Price is now {priceStr} ({deltaStr} since this proposal), confirming the trade thesis.
+        </InfoCard>
+      );
+    }
+    if (isOpen) {
+      return (
+        <InfoCard>
+          Price is now {priceStr} ({deltaStr} since this proposal). You&apos;d be entering at a
+          better price than when Vela first flagged this.
         </InfoCard>
       );
     }
