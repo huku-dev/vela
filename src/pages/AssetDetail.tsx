@@ -7,6 +7,7 @@ import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
 import TradeProposalCard from '../components/TradeProposalCard';
 import TierComparisonSheet from '../components/TierComparisonSheet';
+import VelaToast from '../components/VelaToast';
 import { useAssetDetail, useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -81,15 +82,9 @@ export default function AssetDetail() {
   const pendingProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && p.status === 'pending')
     : [];
-  const IN_FLIGHT_STATUSES = [
-    'approved',
-    'auto_approved',
-    'executing',
-    'executed',
-    'failed',
-    'declined',
-  ];
-  const TERMINAL_STATUSES = ['executed', 'failed', 'expired', 'declined'];
+  // Failed proposals are shown as toasts, not persistent cards
+  const IN_FLIGHT_STATUSES = ['approved', 'auto_approved', 'executing', 'executed', 'declined'];
+  const TERMINAL_STATUSES = ['executed', 'expired', 'declined'];
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const allActiveProposals = isAuthenticated
     ? proposals.filter(p => p.asset_id === assetId && IN_FLIGHT_STATUSES.includes(p.status))
@@ -110,6 +105,30 @@ export default function AssetDetail() {
     }
     return () => timers.forEach(clearTimeout);
   }, [allActiveProposals.map(p => `${p.id}:${p.status}`).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show toast when a proposal transitions to 'failed' in real-time
+  const [failureToast, setFailureToast] = useState<string | null>(null);
+  const prevProposalStatusesRef = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const assetProposals = proposals.filter(p => p.asset_id === assetId);
+    const prevStatuses = prevProposalStatusesRef.current;
+
+    for (const p of assetProposals) {
+      const prevStatus = prevStatuses.get(p.id);
+      // Only show toast when we see a transition TO 'failed' (not on initial load)
+      if (p.status === 'failed' && prevStatus && prevStatus !== 'failed') {
+        setFailureToast(p.error_message || 'Trade execution failed. Check your balance and try again.');
+      }
+    }
+
+    // Update ref with current statuses
+    const nextStatuses = new Map<string, string>();
+    for (const p of assetProposals) {
+      nextStatuses.set(p.id, p.status);
+    }
+    prevProposalStatusesRef.current = nextStatuses;
+  }, [proposals, assetId]);
 
   // Open position for this asset (if any)
   const assetPosition = isAuthenticated
@@ -487,6 +506,16 @@ export default function AssetDetail() {
             {actionBanner.includes('approved') ? '✅' : '❌'} {actionBanner}
           </Alert>
         </div>
+      )}
+
+      {/* Failure toast — shown when a proposal fails in real-time */}
+      {failureToast && (
+        <VelaToast
+          message={failureToast}
+          variant="error"
+          autoDismissMs={5000}
+          onDismiss={() => setFailureToast(null)}
+        />
       )}
 
       {/* Trade proposals — pending (actionable) + in-flight (status feedback) */}
