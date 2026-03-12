@@ -39,6 +39,8 @@ Apply this decision tree for any new piece of information:
 - **Don't** leave a pointer in MEMORY.md for a deleted topic file — broken reference
 - **Don't** let MEMORY.md exceed 200 lines "just this once" — silent truncation = data loss
 - **Don't** add the same fact to both CLAUDE.md and MEMORY.md — single source of truth
+- **Don't** write "explanatory" entries in MEMORY.md — if you're explaining *why* or *how*, it belongs in a topic file. MEMORY.md entries are *pointers* and *facts*, not explanations.
+- **Don't** batch multiple updates into MEMORY.md without checking each one individually — every entry must pass the ≤2 line check independently
 
 ---
 
@@ -85,14 +87,21 @@ If a topic becomes irrelevant (feature removed, decision reversed):
 
 1. **Read** current MEMORY.md — note line count
 2. **Identify** what changed this session: completed items, new patterns, new facts
-3. **Route** each change:
-   - ≤2 lines → update MEMORY.md directly
-   - >2 lines detail → create/update topic file, add 1-line pointer in MEMORY.md
-4. **Compress** if line count exceeds 180:
+3. **Draft** each entry — write it out before adding to MEMORY.md
+4. **Enforce line limit per entry (MANDATORY self-check):**
+   - Count the lines in each drafted entry
+   - If **any single entry exceeds 2 lines** → STOP → create/update a topic file instead, add a 1-line pointer in MEMORY.md
+   - If the entry has technical detail (code patterns, architecture, incident context) → it almost certainly belongs in a topic file, even if it fits in 2 lines
+   - Ask: "Could a future session understand this from the 1-line pointer + topic file?" If yes → topic file
+5. **Route** each change:
+   - ≤2 lines AND no technical detail → update MEMORY.md directly
+   - >2 lines OR has technical detail → topic file + 1-line pointer in MEMORY.md
+6. **Compress** if line count exceeds 180:
    - Move completed plan items older than 2 sessions to a topic file
    - Collapse verbose entries to 1-line summaries + topic file links
    - Remove stale information (counts that changed, decisions that were reversed)
-5. **Verify** final line count is **≤200**
+7. **Verify** final line count is **≤200**
+8. **Review** — re-read all new entries. If any entry reads like a paragraph of explanation rather than a concise fact, it needs a topic file
 
 ---
 
