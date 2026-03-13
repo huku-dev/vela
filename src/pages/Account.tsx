@@ -450,14 +450,20 @@ function BalanceCard({
 /** Map audit_log payment actions to user-friendly labels */
 function auditActionToLabel(action: string, details: Record<string, unknown> | null): string {
   switch (action) {
-    case 'payment_event_checkout_completed':
-      return `Subscribed to ${(details?.tier as string) ?? 'Premium'}`;
+    case 'payment_event_checkout_completed': {
+      const tier = (details?.tier as string) ?? 'Premium';
+      const displayTier = tier.charAt(0).toUpperCase() + tier.slice(1);
+      return `Subscribed to ${displayTier}`;
+    }
     case 'payment_event_payment_succeeded':
       return 'Plan renewed';
     case 'payment_event_subscription_updated':
-      return (details?.tier_changed as boolean)
-        ? `Upgraded to ${(details?.new_tier as string) ?? 'Premium'}`
-        : 'Subscription updated';
+      if (details?.tier_changed as boolean) {
+        const tier = (details?.new_tier as string) ?? 'Premium';
+        const displayTier = tier.charAt(0).toUpperCase() + tier.slice(1);
+        return `Upgraded to ${displayTier}`;
+      }
+      return 'Subscription updated';
     case 'payment_event_subscription_deleted':
       return 'Subscription cancelled';
     case 'payment_event_payment_failed':
@@ -1077,7 +1083,13 @@ function NotificationsPanel({
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      const msg = err instanceof Error ? err.message : 'Failed to save';
+      // Translate raw DB errors into user-friendly messages
+      if (msg.includes('telegram_chat_id') || msg.includes('schema cache')) {
+        setError('Telegram notifications are not yet available. We are working on enabling this.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -1268,8 +1280,8 @@ function NotificationsPanel({
               className="vela-body-sm vela-text-muted"
               style={{ marginTop: 'var(--space-1)', marginBottom: 0, fontSize: 'var(--text-xs)' }}
             >
-              Open Telegram &rarr; search @VelaTradesBot &rarr; send /start &rarr; paste your chat
-              ID here
+              Open Telegram, search <strong>@VelaNotifBot</strong>, send /start, then paste your
+              chat ID here
             </p>
           </div>
         )}

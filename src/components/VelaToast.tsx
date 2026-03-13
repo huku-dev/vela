@@ -52,7 +52,8 @@ export default function VelaToast({
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--space-3)',
-        maxWidth: 400,
+        maxWidth: 480,
+        width: 'calc(100% - var(--space-6) * 2)',
         transition: 'opacity 200ms ease, transform 200ms ease',
       }}
     >

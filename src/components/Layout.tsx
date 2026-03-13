@@ -78,6 +78,22 @@ const navItems = [
   },
 ];
 
+/** Map raw Hyperliquid / backend errors to plain-English messages */
+function friendlyTradeError(raw: string): string {
+  if (!raw) return 'Something went wrong. Please try again.';
+  const lower = raw.toLowerCase();
+  if (lower.includes('builder fee has not been approved'))
+    return 'Trade setup in progress. Vela will retry automatically.';
+  if (lower.includes('95% away from the reference price'))
+    return 'Price moved too far. Vela will retry at a better price.';
+  if (lower.includes('insufficient') || lower.includes('balance'))
+    return 'Insufficient balance. Check your wallet and try again.';
+  if (lower.includes('rate limit'))
+    return 'Too many requests. Please wait a moment.';
+  // Fallback: return raw but cap length
+  return raw.length > 80 ? raw.slice(0, 77) + '...' : raw;
+}
+
 export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -99,7 +115,9 @@ export default function Layout() {
       if (p.status === 'failed' && prevStatus && prevStatus !== 'failed') {
         const asset = p.asset_id?.toUpperCase() ?? '';
         const side = p.side?.toUpperCase() ?? '';
-        const reason = p.error_message || 'Check your balance and try again.';
+        const rawReason = p.error_message || '';
+        // Translate technical errors into user-friendly messages
+        const reason = friendlyTradeError(rawReason);
         setFailureToast(`${asset} ${side} failed: ${reason}`);
         break; // one toast at a time
       }
