@@ -88,8 +88,7 @@ function friendlyTradeError(raw: string): string {
     return 'Price moved too far. Vela will retry at a better price.';
   if (lower.includes('insufficient') || lower.includes('balance'))
     return 'Insufficient balance. Check your wallet and try again.';
-  if (lower.includes('rate limit'))
-    return 'Too many requests. Please wait a moment.';
+  if (lower.includes('rate limit')) return 'Too many requests. Please wait a moment.';
   // Fallback: return raw but cap length
   return raw.length > 80 ? raw.slice(0, 77) + '...' : raw;
 }

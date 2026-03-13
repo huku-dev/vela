@@ -40,6 +40,8 @@ export interface TradingState {
   updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
   /** Enable trading (provisions wallet + sets mode) */
   enableTrading: (mode: TradingMode) => Promise<void>;
+  /** Generate a Telegram deep link for one-tap bot connection */
+  generateTelegramLink: () => Promise<string>;
   /** Refresh all trading data */
   refresh: () => Promise<void>;
 }
@@ -337,6 +339,31 @@ export function useTrading(): TradingState {
     [supabaseClient, user?.privyDid]
   );
 
+  // ── Generate Telegram deep link for one-tap connection ──
+  const generateTelegramLink = useCallback(async (): Promise<string> => {
+    const token = await getToken();
+    if (!token) throw new Error('Not authenticated');
+
+    const resp = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-link`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(body.error ?? 'Failed to generate Telegram link');
+    }
+
+    const { deepLink } = await resp.json();
+    return deepLink as string;
+  }, [getToken]);
+
   // ── Enable trading ──
   const enableTrading = useCallback(
     async (mode: TradingMode) => {
@@ -382,6 +409,7 @@ export function useTrading(): TradingState {
     declineProposal,
     updatePreferences,
     enableTrading,
+    generateTelegramLink,
     refresh: fetchTradingData,
   };
 }

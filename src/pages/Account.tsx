@@ -6,6 +6,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { useTierAccess } from '../hooks/useTierAccess';
 import VelaLogo from '../components/VelaLogo';
 import VelaToast from '../components/VelaToast';
+import TelegramConnectButton from '../components/TelegramConnectButton';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import WithdrawSheet from '../components/WithdrawSheet';
 import DepositSheet from '../components/DepositSheet';
@@ -1257,32 +1258,44 @@ function NotificationsPanel({
           )}
         </div>
 
-        {/* Telegram chat ID input — only shown when Telegram is toggled on */}
+        {/* Telegram connection — only shown when Telegram is toggled on */}
         {telegramAllowed && telegramEnabled && (
           <div style={{ marginBottom: 'var(--space-2)' }}>
-            <label
-              htmlFor="telegram-chat-id"
-              className="vela-body-sm vela-text-muted"
-              style={{ display: 'block', marginBottom: 'var(--space-1)' }}
-            >
-              Telegram chat ID
-            </label>
-            <input
-              id="telegram-chat-id"
-              type="text"
-              className="vela-input"
-              placeholder="e.g. 123456789"
-              value={chatId}
-              onChange={e => setChatId(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box' }}
+            <TelegramConnectButton
+              chatId={preferences?.telegram_chat_id ?? null}
+              onStatusChange={() => {
+                // Refresh preferences to pick up new chat_id
+              }}
             />
-            <p
-              className="vela-body-sm vela-text-muted"
-              style={{ marginTop: 'var(--space-1)', marginBottom: 0, fontSize: 'var(--text-xs)' }}
-            >
-              Open Telegram, search <strong>@VelaNotifBot</strong>, send /start, then paste your
-              chat ID here
-            </p>
+            {/* Manual fallback for users who can't use deep linking */}
+            {!preferences?.telegram_chat_id && (
+              <details style={{ marginTop: 'var(--space-2)' }}>
+                <summary
+                  className="vela-body-sm vela-text-muted"
+                  style={{ cursor: 'pointer', fontSize: 'var(--text-xs)' }}
+                >
+                  Enter chat ID manually
+                </summary>
+                <div style={{ marginTop: 'var(--space-1)' }}>
+                  <input
+                    id="telegram-chat-id"
+                    type="text"
+                    className="vela-input"
+                    placeholder="e.g. 123456789"
+                    value={chatId}
+                    onChange={e => setChatId(e.target.value)}
+                    style={{ width: '100%', boxSizing: 'border-box' }}
+                  />
+                  <p
+                    className="vela-body-sm vela-text-muted"
+                    style={{ marginTop: 'var(--space-1)', marginBottom: 0, fontSize: 'var(--text-xs)' }}
+                  >
+                    Open Telegram, search <strong>@VelaNotifBot</strong>, send /start, then paste your
+                    chat ID here
+                  </p>
+                </div>
+              </details>
+            )}
           </div>
         )}
       </div>

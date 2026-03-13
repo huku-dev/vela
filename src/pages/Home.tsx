@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
 import LockedSignalCard from '../components/LockedSignalCard';
@@ -6,22 +6,73 @@ import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
 import PendingProposalsBanner from '../components/PendingProposalsBanner';
 import UpgradeNudgeBanner from '../components/UpgradeNudgeBanner';
+import TelegramConnectButton from '../components/TelegramConnectButton';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import { useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
 import { breakIntoParagraphs } from '../lib/helpers';
+import { getTierConfig } from '../lib/tier-definitions';
+
+function telegramIcon(size: number) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="var(--color-text-muted)" style={{ flexShrink: 0 }}>
+      <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+    </svg>
+  );
+}
 
 const DIGEST_COLLAPSED_HEIGHT = 96; // ~4 lines at 0.85rem with 1.7 line-height
+const TG_NUDGE_DISMISSED_KEY = 'vela_telegram_nudge_dismissed';
+const TG_CHECKOUT_PROMPT_KEY = 'vela_show_telegram_prompt';
 
 export default function Home() {
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
-  const { positions } = useTrading();
+  const { positions, preferences } = useTrading();
   const { tier, partitionAssets, upgradeLabel, startCheckout } = useTierAccess();
   const [digestExpanded, setDigestExpanded] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [tgNudgeDismissed, setTgNudgeDismissed] = useState(() => {
+    try { return localStorage.getItem(TG_NUDGE_DISMISSED_KEY) === 'true'; } catch { return false; }
+  });
+  const [showCheckoutPrompt, setShowCheckoutPrompt] = useState(() => {
+    try { return localStorage.getItem(TG_CHECKOUT_PROMPT_KEY) === 'true'; } catch { return false; }
+  });
+
+  // Set post-checkout prompt flag when returning from successful checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') !== 'success') return;
+    // Wait for tier to settle, then check if new tier has telegram_alerts
+    const tierConfig = getTierConfig(tier);
+    if (tierConfig.features.telegram_alerts && !preferences?.telegram_chat_id) {
+      try { localStorage.setItem(TG_CHECKOUT_PROMPT_KEY, 'true'); } catch { /* noop */ }
+      setShowCheckoutPrompt(true);
+    }
+  }, [tier, preferences?.telegram_chat_id]);
+
+  const dismissTgNudge = () => {
+    setTgNudgeDismissed(true);
+    try { localStorage.setItem(TG_NUDGE_DISMISSED_KEY, 'true'); } catch { /* noop */ }
+  };
+
+  const dismissCheckoutPrompt = () => {
+    setShowCheckoutPrompt(false);
+    try { localStorage.removeItem(TG_CHECKOUT_PROMPT_KEY); } catch { /* noop */ }
+  };
+
+  // Show Telegram nudge only for paid users who haven't connected and haven't dismissed.
+  // Wait for preferences to load (not null) to prevent flash.
+  const tierConfig = getTierConfig(tier);
+  const showTgNudge =
+    isAuthenticated &&
+    tierConfig.features.telegram_alerts &&
+    preferences !== null &&
+    !preferences.telegram_chat_id &&
+    !tgNudgeDismissed &&
+    !showCheckoutPrompt; // Don't show both nudge and checkout prompt
 
   if (loading) {
     return (
@@ -119,6 +170,116 @@ export default function Home() {
       <div style={{ marginBottom: 'var(--space-4)' }}>
         <PendingProposalsBanner />
       </div>
+
+      {/* Post-checkout Telegram prompt (one-time, after upgrade) */}
+      {showCheckoutPrompt && (
+        <div
+          style={{
+            position: 'relative',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            border: '1px solid var(--green-primary)',
+            background: 'var(--color-status-buy-bg)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              margin: 0,
+              paddingRight: 'var(--space-6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+            }}
+          >
+            {telegramIcon(16)}
+            Get Telegram alerts
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 'var(--space-1) 0 0' }}>
+            Signals and account updates sent to your phone in real time.
+          </p>
+          <div style={{ marginTop: 'var(--space-2)' }}>
+            <TelegramConnectButton
+              chatId={preferences?.telegram_chat_id ?? null}
+              onStatusChange={dismissCheckoutPrompt}
+              compact
+            />
+          </div>
+          <button
+            onClick={dismissCheckoutPrompt}
+            aria-label="Dismiss"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-muted)',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '4px',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Telegram nudge for paid users without Telegram connected */}
+      {showTgNudge && (
+        <div
+          style={{
+            position: 'relative',
+            padding: 'var(--space-3) var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            border: '1px solid var(--green-primary)',
+            background: 'var(--color-status-buy-bg)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              margin: 0,
+              paddingRight: 'var(--space-6)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+            }}
+          >
+            {telegramIcon(16)}
+            Get alerts on Telegram
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 'var(--space-1) 0 0' }}>
+            Trading signals and account updates sent to your phone.
+          </p>
+          <div style={{ marginTop: 'var(--space-2)' }}>
+            <TelegramConnectButton chatId={null} onStatusChange={dismissTgNudge} compact />
+          </div>
+          <button
+            onClick={dismissTgNudge}
+            aria-label="Dismiss"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-muted)',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '4px',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Daily Digest — at top, with paragraph breaks */}
       {digest && (
