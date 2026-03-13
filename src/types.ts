@@ -337,6 +337,22 @@ export interface FundingEvent {
   updated_at: string;
 }
 
+// ── Activity Feed (Recent Activity on Account page) ──
+
+export type ActivityCategory = 'funding' | 'subscription' | 'trade';
+
+export interface ActivityEvent {
+  id: string;
+  category: ActivityCategory;
+  event_type: string;
+  label: string;
+  amount: number | null;
+  /** Positive = money in (deposit, trade profit), negative = money out (withdrawal, trade cost) */
+  amountSign: '+' | '-' | null;
+  status: string;
+  created_at: string;
+}
+
 export interface TrimHistoryEntry {
   timestamp: string;
   trim_pct: number;

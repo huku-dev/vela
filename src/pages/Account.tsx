@@ -447,23 +447,150 @@ function BalanceCard({
   );
 }
 
-function FundingHistory() {
+/** Map audit_log payment actions to user-friendly labels */
+function auditActionToLabel(action: string, details: Record<string, unknown> | null): string {
+  switch (action) {
+    case 'payment_event_checkout_completed':
+      return `Subscribed to ${(details?.tier as string) ?? 'Premium'}`;
+    case 'payment_event_payment_succeeded':
+      return 'Plan renewed';
+    case 'payment_event_subscription_updated':
+      return (details?.tier_changed as boolean)
+        ? `Upgraded to ${(details?.new_tier as string) ?? 'Premium'}`
+        : 'Subscription updated';
+    case 'payment_event_subscription_deleted':
+      return 'Subscription cancelled';
+    case 'payment_event_payment_failed':
+      return 'Payment failed';
+    default:
+      return 'Account event';
+  }
+}
+
+/** Build unified activity events from 3 data sources */
+function buildActivityEvents(
+  funding: import('../types').FundingEvent[],
+  auditRows: Array<{
+    id: string;
+    action: string;
+    details: Record<string, unknown> | null;
+    created_at: string;
+  }>,
+  positions: Array<{
+    id: string;
+    asset_id: string;
+    side: string;
+    size_usd: number | null;
+    original_size_usd: number | null;
+    total_pnl: number | null;
+    status: string;
+    created_at: string;
+    closed_at: string | null;
+  }>
+): import('../types').ActivityEvent[] {
+  const events: import('../types').ActivityEvent[] = [];
+
+  // Funding events
+  for (const f of funding) {
+    events.push({
+      id: `funding-${f.id}`,
+      category: 'funding',
+      event_type: f.event_type,
+      label: f.event_type === 'deposit' ? 'Deposit' : 'Withdrawal',
+      amount: Number(f.amount_usdc),
+      amountSign: f.event_type === 'deposit' ? '+' : '-',
+      status: f.status,
+      created_at: f.created_at,
+    });
+  }
+
+  // Subscription events from audit_log
+  for (const a of auditRows) {
+    events.push({
+      id: `sub-${a.id}`,
+      category: 'subscription',
+      event_type: a.action.replace('payment_event_', ''),
+      label: auditActionToLabel(a.action, a.details),
+      amount: null,
+      amountSign: null,
+      status: 'completed',
+      created_at: a.created_at,
+    });
+  }
+
+  // Trade events from positions
+  for (const p of positions) {
+    const assetUpper = (p.asset_id ?? '').toUpperCase();
+    const sizeUsd = Number(p.original_size_usd ?? p.size_usd ?? 0);
+    if (p.status === 'open') {
+      // Position opened = debit (money into trade)
+      events.push({
+        id: `trade-open-${p.id}`,
+        category: 'trade',
+        event_type: 'trade_opened',
+        label: `${assetUpper} ${p.side === 'short' ? 'Short' : 'Long'} opened`,
+        amount: sizeUsd,
+        amountSign: '-',
+        status: 'completed',
+        created_at: p.created_at,
+      });
+    } else if (p.status === 'closed' && p.closed_at) {
+      // Position closed = credit (money returned + P&L)
+      const pnl = Number(p.total_pnl ?? 0);
+      const returnedAmount = sizeUsd + pnl;
+      events.push({
+        id: `trade-close-${p.id}`,
+        category: 'trade',
+        event_type: 'trade_closed',
+        label: `${assetUpper} position closed`,
+        amount: returnedAmount > 0 ? returnedAmount : Math.abs(returnedAmount),
+        amountSign: pnl >= 0 ? '+' : '-',
+        status: 'completed',
+        created_at: p.closed_at,
+      });
+    }
+  }
+
+  // Sort by most recent first
+  events.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return events;
+}
+
+function RecentActivity() {
   const { supabaseClient, isAuthenticated, user } = useAuthContext();
-  const [events, setEvents] = useState<import('../types').FundingEvent[]>([]);
+  const [events, setEvents] = useState<import('../types').ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     if (!supabaseClient || !isAuthenticated) return;
     try {
-      const { data } = await supabaseClient
-        .from('funding_events')
-        .select('*')
-        .neq('status', 'failed')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      setEvents(data ?? []);
+      const [fundingRes, auditRes, positionsRes] = await Promise.all([
+        supabaseClient
+          .from('funding_events')
+          .select('*')
+          .neq('status', 'failed')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabaseClient
+          .from('audit_log')
+          .select('id, action, details, created_at')
+          .like('action', 'payment_event_%')
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabaseClient
+          .from('positions')
+          .select(
+            'id, asset_id, side, size_usd, original_size_usd, total_pnl, status, created_at, closed_at'
+          )
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ]);
+      setEvents(
+        buildActivityEvents(fundingRes.data ?? [], auditRes.data ?? [], positionsRes.data ?? [])
+      );
     } catch {
-      // Non-critical — silently ignore
+      // Non-critical
     } finally {
       setLoading(false);
     }
@@ -478,12 +605,12 @@ function FundingHistory() {
     fetchEvents();
   }, [supabaseClient, isAuthenticated, fetchEvents]);
 
-  // Real-time subscription for live updates
+  // Real-time subscriptions on source tables + polling fallback
   useEffect(() => {
     if (!supabaseClient || !isAuthenticated || !user?.privyDid) return;
 
     const channel = supabaseClient
-      .channel('funding-events')
+      .channel('recent-activity')
       .on(
         'postgres_changes',
         {
@@ -492,16 +619,31 @@ function FundingHistory() {
           table: 'funding_events',
           filter: `user_id=eq.${user.privyDid}`,
         },
-        () => {
-          fetchEvents();
-        }
+        () => fetchEvents()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'audit_log',
+          filter: `user_id=eq.${user.privyDid}`,
+        },
+        () => fetchEvents()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'positions',
+          filter: `user_id=eq.${user.privyDid}`,
+        },
+        () => fetchEvents()
       )
       .subscribe();
 
-    // Polling fallback — realtime can miss events, so poll every 30s
-    const pollInterval = setInterval(() => {
-      fetchEvents();
-    }, 30_000);
+    const pollInterval = setInterval(() => fetchEvents(), 30_000);
 
     return () => {
       channel.unsubscribe();
@@ -510,6 +652,8 @@ function FundingHistory() {
   }, [supabaseClient, isAuthenticated, user?.privyDid, fetchEvents]);
 
   if (loading || events.length === 0) return null;
+
+  const visibleEvents = showAll ? events : events.slice(0, 5);
 
   return (
     <div
@@ -523,57 +667,101 @@ function FundingHistory() {
         RECENT ACTIVITY
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        {events.map(event => (
-          <div
-            key={event.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 'var(--space-2) 0',
-              borderBottom: '1px solid var(--gray-100)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span style={{ fontSize: '1rem' }}>{event.event_type === 'deposit' ? '↓' : '↑'}</span>
-              <div>
-                <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                  {event.event_type === 'deposit' ? 'Deposit' : 'Withdrawal'}
-                </span>
-                <span
-                  className="vela-body-sm vela-text-muted"
-                  style={{ marginLeft: 'var(--space-2)', fontSize: '0.75rem' }}
-                >
-                  {new Date(event.created_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}{' '}
-                  {new Date(event.created_at).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <span
-                className="vela-body-sm"
-                style={{
-                  fontFamily: 'var(--type-mono-base-font)',
-                  fontWeight: 600,
-                  color:
-                    event.event_type === 'deposit'
-                      ? 'var(--green-primary)'
-                      : 'var(--color-text-primary)',
-                }}
-              >
-                {event.event_type === 'deposit' ? '+' : '-'}${Number(event.amount_usdc).toFixed(2)}
-              </span>
-              <FundingStatusBadge status={event.status} />
-            </div>
-          </div>
+        {visibleEvents.map(event => (
+          <ActivityRow key={event.id} event={event} />
         ))}
       </div>
+      {!showAll && events.length > 5 && (
+        <button
+          onClick={() => setShowAll(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--green-primary)',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            padding: 'var(--space-2) 0 0',
+            width: '100%',
+            textAlign: 'center',
+          }}
+        >
+          View all activity
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Icon + color config per activity category */
+function activityIcon(event: import('../types').ActivityEvent): { icon: string; color: string } {
+  switch (event.category) {
+    case 'funding':
+      return {
+        icon: event.event_type === 'deposit' ? '\u2193' : '\u2191', // ↓ ↑
+        color: 'var(--color-text-primary)',
+      };
+    case 'subscription':
+      return { icon: '\u2605', color: 'var(--green-primary)' }; // ★
+    case 'trade':
+      return {
+        icon: event.event_type === 'trade_opened' ? '\u2192' : '\u2190', // → ←
+        color: 'var(--color-text-primary)',
+      };
+    default:
+      return { icon: '\u00B7', color: 'var(--color-text-primary)' }; // ·
+  }
+}
+
+function ActivityRow({ event }: { event: import('../types').ActivityEvent }) {
+  const { icon, color: iconColor } = activityIcon(event);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 'var(--space-2) 0',
+        borderBottom: '1px solid var(--gray-100)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+        <span style={{ fontSize: '1rem', color: iconColor }}>{icon}</span>
+        <div>
+          <span className="vela-body-sm" style={{ fontWeight: 600 }}>
+            {event.label}
+          </span>
+          <span
+            className="vela-body-sm vela-text-muted"
+            style={{ marginLeft: 'var(--space-2)', fontSize: '0.75rem' }}
+          >
+            {new Date(event.created_at).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+            })}{' '}
+            {new Date(event.created_at).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}
+          </span>
+        </div>
+      </div>
+      {event.amount != null && event.amountSign != null && (
+        <span
+          className="vela-body-sm"
+          style={{
+            fontFamily: 'var(--type-mono-base-font)',
+            fontWeight: 600,
+            color: event.amountSign === '+' ? 'var(--green-primary)' : 'var(--color-text-primary)',
+          }}
+        >
+          {event.amountSign}${event.amount.toFixed(2)}
+        </span>
+      )}
+      {event.category === 'funding' && (
+        <FundingStatusBadge status={event.status as import('../types').FundingEventStatus} />
+      )}
     </div>
   );
 }
@@ -2414,7 +2602,7 @@ export default function Account() {
       />
 
       {/* Recent funding activity */}
-      {hasWallet && <FundingHistory />}
+      {hasWallet && <RecentActivity />}
 
       {/* Checkout toast */}
       {checkoutToast && (

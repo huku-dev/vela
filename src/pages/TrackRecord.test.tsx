@@ -7,7 +7,7 @@
  *
  * The page is split into two zones:
  * - Zone 1 "Your trades" (live trades + positions) — always visible
- * - Zone 2 "Vela's signal history" (backtest trades) — collapsible, hidden by default
+ * - Zone 2 "Vela's track record" (curated metrics + best trade) — collapsible, hidden by default
  *
  * Trust-critical areas tested:
  * - P&L color mapping: green = positive, red = negative (NEVER reversed)
@@ -15,6 +15,7 @@
  * - Signal headline rendering: entry headline visible, exit headline on expand
  * - BestTradeCard: correct selection, rendering, color-border direction
  * - bestTrade computation: highest total position P&L among closed positions
+ * - Curated metrics: hardcoded marketing metrics render correctly
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
@@ -204,9 +205,6 @@ describe('TRACK-SRC: Source-verification — headline rendering', () => {
     expect(src).toContain('&#9733;'); // star character
   });
 
-  it('BestTradeCard in paper zone only renders when paperStats.totalClosed >= 3', () => {
-    expect(src).toContain('bestPaperGroup && bestPaperPnl && paperStats.totalClosed >= 3');
-  });
 });
 
 describe('TRACK-SRC: Source-verification — two-zone layout', () => {
@@ -216,24 +214,24 @@ describe('TRACK-SRC: Source-verification — two-zone layout', () => {
     expect(src).toContain('Your trades');
   });
 
-  it('page has "Vela\'s signal history" zone label', () => {
-    expect(src).toContain('Vela&rsquo;s signal history');
+  it('page has "Vela\'s track record" zone label', () => {
+    expect(src).toContain('Vela&rsquo;s track record');
   });
 
-  it('paper trades section contains "Simulated trades since" disclaimer', () => {
-    expect(src).toContain('Simulated trades since');
-  });
-
-  it('paper trades section contains "not real money" disclaimer', () => {
+  it('track record section contains "not real money" disclaimer', () => {
     expect(src).toContain('not real money');
   });
 
-  it('Performance Breakdown appears inside Vela signal history zone', () => {
-    const velaHistoryPos = src.indexOf('Vela&rsquo;s signal history');
-    const breakdownPos = src.indexOf('Performance breakdown');
-    expect(velaHistoryPos).toBeGreaterThan(-1);
-    expect(breakdownPos).toBeGreaterThan(-1);
-    expect(breakdownPos).toBeGreaterThan(velaHistoryPos);
+  it('track record section contains curated metrics constant', () => {
+    expect(src).toContain('CURATED_METRICS');
+    expect(src).toContain('winRate:');
+    expect(src).toContain('totalPositions:');
+    expect(src).toContain('avgReturnPct:');
+    expect(src).toContain('avgHoldingPeriod:');
+  });
+
+  it('BestTradeCard in track record only renders when paperStats.totalClosed >= 3', () => {
+    expect(src).toContain('bestPaperGroup && bestPaperPnl && paperStats.totalClosed >= 3');
   });
 });
 
@@ -415,52 +413,66 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
   });
 });
 
-describe('TRACK: Zone 2 — Vela Signal History (paper trades)', () => {
-  it('paper trade stats are visible after expanding Vela signal history', async () => {
+describe('TRACK: Zone 2 — Vela Track Record (curated metrics)', () => {
+  it('curated metrics are visible after expanding track record', async () => {
     const user = userEvent.setup();
-    const trades = [
-      makeTrade({ id: '1', pnl_pct: 20.0 }),
-      makeTrade({ id: '2', pnl_pct: 15.0 }),
-      makeTrade({ id: '3', pnl_pct: -5.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
-    });
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
 
     render(<TrackRecord />);
 
-    // Stats should NOT be visible yet (collapsed)
-    expect(screen.queryByText(/total profit/i)).not.toBeInTheDocument();
+    // Metrics should NOT be visible yet (collapsed)
+    expect(screen.queryByText('Win rate')).not.toBeInTheDocument();
 
-    // Expand "Vela's signal history"
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    // Expand "Vela's track record"
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
-    // Now paper stats should be visible
-    expect(screen.getByText(/total profit/i)).toBeInTheDocument();
-    expect(screen.getByText(/not real money/i)).toBeInTheDocument();
+    // Now curated metrics should be visible
+    expect(screen.getByText('Win rate')).toBeInTheDocument();
+    expect(screen.getByText('73%')).toBeInTheDocument();
+    expect(screen.getByText('Total positions')).toBeInTheDocument();
+    expect(screen.getByText('94')).toBeInTheDocument();
+    expect(screen.getByText('Avg return per trade')).toBeInTheDocument();
+    expect(screen.getByText('+4.2%')).toBeInTheDocument();
+    expect(screen.getByText('Avg holding period')).toBeInTheDocument();
+    expect(screen.getByText('3.1 days')).toBeInTheDocument();
   });
 
-  it('shows cumulative explainer text when expanded', async () => {
+  it('shows disclaimer about backtested performance when expanded', async () => {
     const user = userEvent.setup();
-    const trades = [makeTrade({ id: '1', pnl_pct: 10.0 })];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
 
     render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
-    expect(screen.getByText(/Total is cumulative across all closed trades/i)).toBeInTheDocument();
+    expect(screen.getByText(/not real money/i)).toBeInTheDocument();
+    expect(screen.getByText(/Past performance does not guarantee/i)).toBeInTheDocument();
+  });
+
+  it('shows "Last updated" date when expanded', async () => {
+    const user = userEvent.setup();
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
+
+    render(<TrackRecord />);
+    const expandBtn = screen.getByText(/Vela.s track record/i);
+    await user.click(expandBtn);
+
+    expect(screen.getByText(/Last updated Mar 2026/)).toBeInTheDocument();
+  });
+
+  it('shows win rate preview in collapsed header', () => {
+    mockUseTrackRecord.mockReturnValue({ ...defaultHookReturn });
+
+    render(<TrackRecord />);
+
+    // Win rate teaser visible even when collapsed
+    expect(screen.getByText('73% win rate')).toBeInTheDocument();
   });
 });
 
 describe('TRACK: BestTradeCard rendering', () => {
-  it('renders BestTradeCard in Vela signal history when >= 3 closed paper trades', async () => {
+  it('renders BestTradeCard in Vela track record when >= 3 closed paper trades', async () => {
     const user = userEvent.setup();
     const trades = [
       makeTrade({ id: '1', pnl_pct: 52.5, entry_headline: 'Momentum shifting up' }),
@@ -475,8 +487,8 @@ describe('TRACK: BestTradeCard rendering', () => {
 
     render(<TrackRecord />);
 
-    // Expand Vela signal history
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    // Expand Vela track record
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
     expect(screen.getByText('Best trade')).toBeInTheDocument();
@@ -492,7 +504,7 @@ describe('TRACK: BestTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
     expect(screen.queryByText('Best trade')).not.toBeInTheDocument();
@@ -512,13 +524,10 @@ describe('TRACK: BestTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
-    // BestTradeCard + trade card both render — use getAllByText
-    const profitLabels = screen.getAllByText(/\+\$525 profit/);
-    expect(profitLabels.length).toBeGreaterThanOrEqual(1);
-    // Verify at least one is inside the BestTradeCard (mint variant)
+    // BestTradeCard renders inside a mint-variant card
     const mintCard = document.querySelector('.vela-card-mint') as HTMLElement;
     expect(mintCard).not.toBeNull();
     expect(within(mintCard!).getByText(/\+\$525 profit/)).toBeInTheDocument();
@@ -542,13 +551,10 @@ describe('TRACK: BestTradeCard rendering', () => {
     });
 
     render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
+    const expandBtn = screen.getByText(/Vela.s track record/i);
     await user.click(expandBtn);
 
-    // Headline appears in both BestTradeCard and trade card — use getAllByText
-    const headlines = screen.getAllByText(/Short-term trend crossed above medium-term/);
-    expect(headlines.length).toBeGreaterThanOrEqual(1);
-    // Verify it's in the BestTradeCard
+    // Headline appears in BestTradeCard
     const mintCard = document.querySelector('.vela-card-mint') as HTMLElement;
     expect(
       within(mintCard!).getByText(/Short-term trend crossed above medium-term/)
@@ -597,186 +603,11 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     expect(screen.getByText(/\$88 loss/)).toBeInTheDocument();
   });
 
-  it('shows entry headline in collapsed state (paper, expanded zone)', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: '1',
-        pnl_pct: 10.0,
-        entry_headline: 'Price broke above resistance level',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    expect(screen.getByText(/Price broke above resistance level/)).toBeInTheDocument();
-  });
-
-  it('shows exit headline only when expanded', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: '1',
-        pnl_pct: 10.0,
-        exit_headline: 'Underlying trend reversed direction',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-
-    // Expand Vela signal history first
-    const expandZone = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandZone);
-
-    // Exit headline should NOT be visible in collapsed card state
-    expect(screen.queryByText(/Underlying trend reversed direction/)).not.toBeInTheDocument();
-
-    // Click to expand the trade card — find the trade card's clickable role=button (not the breakdown toggle)
-    const cardButtons = screen.getAllByRole('button');
-    const tradeCard = cardButtons.find(btn => btn.tagName !== 'BUTTON');
-    expect(tradeCard).toBeDefined();
-    await user.click(tradeCard!);
-
-    // Now exit headline should be visible
-    expect(screen.getByText(/Underlying trend reversed direction/)).toBeInTheDocument();
-    // And labeled as "Exit reason"
-    expect(screen.getByText('Exit reason')).toBeInTheDocument();
-  });
-
-  it('uses reasonCodeToPlainEnglish fallback when no headline (paper, expanded zone)', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: '1',
-        pnl_pct: 10.0,
-        entry_headline: undefined,
-        entry_reason_code: 'ema_cross_up',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // The fallback chain: headline → reasonCodeToPlainEnglish → nothing
-    // ema_cross_up maps to "Short-term trend crossed above medium-term. Momentum shifting up"
-    expect(screen.getByText(/Momentum shifting up/)).toBeInTheDocument();
-  });
-
-  it('hides headline area when no headline and no reason code (paper, expanded zone)', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: '1',
-        pnl_pct: 10.0,
-        entry_headline: undefined,
-        entry_reason_code: undefined,
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // Should not have any italic quoted text (the headline container)
-    const italicElements = document.querySelectorAll('[style*="italic"]');
-    let hasQuotedText = false;
-    italicElements.forEach(el => {
-      if (el.textContent?.includes('\u201C')) hasQuotedText = true; // left double quote
-    });
-    expect(hasQuotedText).toBe(false);
-  });
 });
 
-describe('TRACK: OpenTradeCard rendering', () => {
-  it('shows entry headline for open paper trades (expanded zone)', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeOpenTrade({
-        id: '1',
-        entry_headline: 'Strong buying pressure detected',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      livePrices: { bitcoin: { price: 45000, change24h: 2.5 } },
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    expect(screen.getByText(/Strong buying pressure detected/)).toBeInTheDocument();
-  });
-
-  it('TRUST CRITICAL: unrealized P&L shows profit/loss label (paper, expanded zone)', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeOpenTrade({
-        id: '1',
-        entry_price: 42000,
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      livePrices: { bitcoin: { price: 46200, change24h: 2.5 } },
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // 46200 vs 42000 = +10% → +$100 profit
-    expect(screen.getByText(/profit/)).toBeInTheDocument();
-  });
-});
-
-describe('TRACK: Performance Breakdown', () => {
-  it('shows breakdown toggle in Vela signal history when expanded', async () => {
-    const user = userEvent.setup();
-    const trades = [makeTrade({ id: '1', pnl_pct: 20.0 }), makeTrade({ id: '2', pnl_pct: -5.0 })];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-
-    // Expand Vela signal history
-    const expandZone = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandZone);
-
-    const breakdownBtn = screen.getByText('Performance breakdown');
-    expect(breakdownBtn).toBeInTheDocument();
-
-    // Click to expand breakdown
-    await user.click(breakdownBtn);
-
-    // Should show detail rows
-    expect(screen.getByText('Avg return per trade')).toBeInTheDocument();
-    expect(screen.getByText('Avg trade size')).toBeInTheDocument();
-  });
-});
+// NOTE: Paper trade card tests (ClosedTradeCard/OpenTradeCard in paper zone,
+// Performance Breakdown) removed — Zone 2 now shows curated metrics only,
+// not individual paper trades.
 
 describe('TRACK: Page header', () => {
   it('shows updated header text', () => {
@@ -834,119 +665,10 @@ describe('TRACK-SRC: BB2 source verification', () => {
     expect(jsxStringPattern.test(src)).toBe(false);
   });
 
-  it('explainer text mentions $300 fast trade sizing', () => {
-    expect(src).toContain('per fast trade');
+  it('BB2 position size is commented as $300', () => {
+    expect(src).toContain('// $300');
   });
 });
 
-describe('TRACK: BB2 rendering', () => {
-  it('BB2 trades appear as standalone positions in paper zone', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({ id: 'ema-1', pnl_pct: 10.0, direction: 'long' }),
-      makeTrade({
-        id: 'bb2-1',
-        pnl_pct: 5.0,
-        direction: 'bb2_long',
-        opened_at: '2025-12-02T00:00:00Z',
-        closed_at: '2025-12-02T08:00:00Z',
-      }),
-      makeTrade({
-        id: 'bb2-2',
-        pnl_pct: -3.0,
-        direction: 'bb2_short',
-        opened_at: '2025-12-03T00:00:00Z',
-        closed_at: '2025-12-03T06:00:00Z',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
-    });
-
-    render(<TrackRecord />);
-
-    // Expand Vela signal history
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // All 3 trades should render as positions (3 positions total)
-    const positionTexts = screen.getAllByText(/3 position/);
-    expect(positionTexts.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('TRUST CRITICAL: BB2 trade P&L uses $300 sizing, not $1,000', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: 'bb2-1',
-        pnl_pct: 10.0, // +10% × $300 = +$30 (NOT +$100)
-        direction: 'bb2_long',
-        opened_at: '2025-12-02T00:00:00Z',
-        closed_at: '2025-12-02T08:00:00Z',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-
-    // Expand Vela signal history
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // Should show +$30, not +$100
-    expect(screen.getByText(/\+\$30 profit/)).toBeInTheDocument();
-    expect(screen.queryByText(/\+\$100/)).not.toBeInTheDocument();
-  });
-
-  it('"Fast trade" badge renders for BB2 trades in paper zone', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: 'bb2-1',
-        pnl_pct: 5.0,
-        direction: 'bb2_long',
-        opened_at: '2025-12-02T00:00:00Z',
-        closed_at: '2025-12-02T08:00:00Z',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    expect(screen.getByText(/Fast trade/)).toBeInTheDocument();
-  });
-
-  it('BB2 short trades show "Short" direction label', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: 'bb2-short-1',
-        pnl_pct: 3.0,
-        direction: 'bb2_short',
-        opened_at: '2025-12-02T00:00:00Z',
-        closed_at: '2025-12-02T08:00:00Z',
-      }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s signal history/i);
-    await user.click(expandBtn);
-
-    // Should show "Short", not "Long" or "BB2"
-    expect(screen.getByText(/Short/)).toBeInTheDocument();
-  });
-});
+// NOTE: BB2 rendering tests removed — Zone 2 no longer renders individual paper trade cards.
+// BB2 source verification tests above still validate the constants and direction mapping.

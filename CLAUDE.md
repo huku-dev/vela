@@ -140,10 +140,14 @@ cd /Users/henry/crypto-agent
 
 ## Plan Mode Protocol
 
-### Scope Challenge First (3 questions before any plan)
+### Scope Challenge First (4 questions before any plan)
 1. **What already exists?** Search for code that solves sub-problems. List it.
 2. **What is the minimum viable change?** Flag anything deferrable -> "NOT in scope."
 3. **Complexity smell:** >8 files or >2 new modules? Flag and justify.
+4. **Who is this for?** Which ICP does this serve? (see `docs/ICPs.md`). If it only serves one, is that the right priority? If it serves none, question whether it belongs in the roadmap.
+
+### Web Research Nudge
+When planning involves unfamiliar territory (new APIs, integrations, libraries, or patterns not already in the codebase), prompt for web research: "Research best practices and known issues for [topic] using web search." Skip for routine changes to well-understood parts of the codebase.
 
 ### Review Phases (for big changes)
 Architecture -> Code Quality -> Tests -> Performance. Pause for user feedback between each.

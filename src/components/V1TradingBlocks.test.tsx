@@ -300,7 +300,7 @@ describe('TOAST-SRC: Layout global failure toast', () => {
 
   it('renders VelaToast for failures', () => {
     expect(layoutSrc).toContain('failureToast');
-    expect(layoutSrc).toContain("variant=\"error\"");
+    expect(layoutSrc).toContain('variant="error"');
   });
 });
 
@@ -342,13 +342,7 @@ describe('ASSET-ADV: AssetDetail proposal rendering adversarial checks', () => {
   it('ADV: in-flight statuses are explicitly listed (not a wildcard)', () => {
     // Statuses may be multi-line (prettier) — check each individually
     // Note: 'failed' is handled globally in Layout.tsx, not in AssetDetail
-    for (const status of [
-      'approved',
-      'auto_approved',
-      'executing',
-      'executed',
-      'declined',
-    ]) {
+    for (const status of ['approved', 'auto_approved', 'executing', 'executed', 'declined']) {
       expect(assetDetailSrc).toContain(`'${status}'`);
     }
     expect(assetDetailSrc).toContain('IN_FLIGHT_STATUSES');
