@@ -204,7 +204,6 @@ describe('TRACK-SRC: Source-verification — headline rendering', () => {
     expect(src).toContain('Best trade');
     expect(src).toContain('&#9733;'); // star character
   });
-
 });
 
 describe('TRACK-SRC: Source-verification — two-zone layout', () => {
@@ -602,7 +601,6 @@ describe('TRACK: ClosedTradeCard rendering', () => {
     render(<TrackRecord />);
     expect(screen.getByText(/\$88 loss/)).toBeInTheDocument();
   });
-
 });
 
 // NOTE: Paper trade card tests (ClosedTradeCard/OpenTradeCard in paper zone,

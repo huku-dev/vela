@@ -547,10 +547,7 @@ export default function TrackRecord() {
             >
               Vela&rsquo;s track record
             </span>
-            <span
-              className="vela-body-sm"
-              style={{ color: 'var(--gray-400)', fontSize: '0.7rem' }}
-            >
+            <span className="vela-body-sm" style={{ color: 'var(--gray-400)', fontSize: '0.7rem' }}>
               Model performance since Jan 2026
             </span>
           </div>
@@ -600,7 +597,8 @@ export default function TrackRecord() {
                 textAlign: 'center',
               }}
             >
-              Based on backtested model performance, not real money. Past performance does not guarantee future results.
+              Based on backtested model performance, not real money. Past performance does not
+              guarantee future results.
             </p>
 
             {/* Curated metrics card */}
