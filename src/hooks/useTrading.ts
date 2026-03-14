@@ -344,16 +344,13 @@ export function useTrading(): TradingState {
     const token = await getToken();
     if (!token) throw new Error('Not authenticated');
 
-    const resp = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-link`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-link`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!resp.ok) {
       const body = await resp.json().catch(() => ({ error: 'Request failed' }));

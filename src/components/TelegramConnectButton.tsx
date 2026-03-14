@@ -131,10 +131,17 @@ export default function TelegramConnectButton({
   if (status === 'error') {
     return (
       <div>
-        <button onClick={handleConnect} className={`vela-btn vela-btn-outline${compact ? ' vela-btn-sm' : ''}`} style={btnStyle(compact)}>
+        <button
+          onClick={handleConnect}
+          className={`vela-btn vela-btn-outline${compact ? ' vela-btn-sm' : ''}`}
+          style={btnStyle(compact)}
+        >
           Retry
         </button>
-        <p className="vela-body-sm" style={{ color: 'var(--color-error)', marginTop: 'var(--space-1)' }}>
+        <p
+          className="vela-body-sm"
+          style={{ color: 'var(--color-error)', marginTop: 'var(--space-1)' }}
+        >
           {errorMsg}
         </p>
       </div>

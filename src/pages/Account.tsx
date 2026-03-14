@@ -1288,10 +1288,14 @@ function NotificationsPanel({
                   />
                   <p
                     className="vela-body-sm vela-text-muted"
-                    style={{ marginTop: 'var(--space-1)', marginBottom: 0, fontSize: 'var(--text-xs)' }}
+                    style={{
+                      marginTop: 'var(--space-1)',
+                      marginBottom: 0,
+                      fontSize: 'var(--text-xs)',
+                    }}
                   >
-                    Open Telegram, search <strong>@VelaNotifBot</strong>, send /start, then paste your
-                    chat ID here
+                    Open Telegram, search <strong>@VelaNotifBot</strong>, send /start, then paste
+                    your chat ID here
                   </p>
                 </div>
               </details>
