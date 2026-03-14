@@ -86,6 +86,8 @@ function friendlyTradeError(raw: string): string {
     return 'Trade setup in progress. Vela will retry automatically.';
   if (lower.includes('95% away from the reference price'))
     return 'Price moved too far. Vela will retry at a better price.';
+  if (lower.includes('below hyperliquid minimum') || lower.includes('minimum value of $10'))
+    return 'Balance too low to trade. Deposit at least $10 USDC to get started.';
   if (lower.includes('insufficient') || lower.includes('balance'))
     return 'Insufficient balance. Check your wallet and try again.';
   if (lower.includes('rate limit')) return 'Too many requests. Please wait a moment.';
