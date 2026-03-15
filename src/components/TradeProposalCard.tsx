@@ -608,6 +608,7 @@ export default function TradeProposalCard({
           onConfirm={handleConfirmTrade}
           onCancel={() => setShowConfirmation(false)}
           isSubmitting={acting === 'accept'}
+          currentPrice={currentPrice}
         />
       )}
     </Card>

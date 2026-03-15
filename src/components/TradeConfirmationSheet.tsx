@@ -12,6 +12,8 @@ interface TradeConfirmationSheetProps {
   onConfirm: () => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  /** Current live price for market order context */
+  currentPrice?: number;
 }
 
 /**
@@ -28,6 +30,7 @@ export default function TradeConfirmationSheet({
   onConfirm,
   onCancel,
   isSubmitting,
+  currentPrice,
 }: TradeConfirmationSheetProps) {
   useBodyScrollLock();
 
@@ -116,10 +119,19 @@ export default function TradeConfirmationSheet({
 
           {/* Detail rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <ConfirmRow
-              label={isTrim ? 'Current price' : 'Proposal price'}
-              value={`~${formatPrice(proposal.entry_price_at_proposal)}`}
-            />
+            {!isTrim && (
+              <ConfirmRow
+                label="Proposal price"
+                value={formatPrice(proposal.entry_price_at_proposal)}
+                muted
+              />
+            )}
+            {currentPrice != null && (
+              <ConfirmRow
+                label={isTrim ? 'Current price' : 'Execution price'}
+                value={`~${formatPrice(currentPrice)}`}
+              />
+            )}
             <ConfirmRow
               label={isTrim ? 'Trim amount' : 'Position size'}
               value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
@@ -133,6 +145,24 @@ export default function TradeConfirmationSheet({
             )}
           </div>
         </div>
+
+        {/* Market order note */}
+        {currentPrice != null &&
+          currentPrice !== proposal.entry_price_at_proposal &&
+          !isTrim && (
+            <p
+              className="vela-body-sm"
+              style={{
+                color: 'var(--color-text-muted)',
+                margin: 0,
+                marginBottom: 'var(--space-3)',
+                fontSize: 12,
+                lineHeight: 1.4,
+              }}
+            >
+              Executes as a market order at the best available price, not the original proposal price.
+            </p>
+          )}
 
         {/* Action buttons */}
         <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
@@ -173,7 +203,15 @@ export default function TradeConfirmationSheet({
   );
 }
 
-function ConfirmRow({ label, value }: { label: string; value: string }) {
+function ConfirmRow({
+  label,
+  value,
+  muted,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -181,7 +219,11 @@ function ConfirmRow({ label, value }: { label: string; value: string }) {
       </span>
       <span
         className="vela-body-sm"
-        style={{ fontFamily: 'var(--type-mono-base-font)', fontWeight: 600 }}
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontWeight: 600,
+          ...(muted && { color: 'var(--color-text-muted)', fontWeight: 400, textDecoration: 'line-through' }),
+        }}
       >
         {value}
       </span>

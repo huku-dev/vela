@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
 import type {
   TradeProposal,
@@ -8,6 +9,19 @@ import type {
   CircuitBreakerEvent,
   TradingMode,
 } from '../types';
+
+/** Wraps getToken with a timeout so it never hangs forever on mobile */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms / 1000}s`));
+    }, ms);
+    promise.then(
+      val => { clearTimeout(timer); resolve(val); },
+      err => { clearTimeout(timer); reject(err); },
+    );
+  });
+}
 
 // ── Types ──────────────────────────────────────────────
 
@@ -266,21 +280,53 @@ export function useTrading(): TradingState {
   // ── Accept proposal (authenticated POST to trade-webhook) ──
   const acceptProposal = useCallback(
     async (proposalId: string) => {
-      const token = await getToken();
-      if (!token) throw new Error('Not authenticated');
+      Sentry.addBreadcrumb({ category: 'trade', message: `accept started: ${proposalId}`, level: 'info' });
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
-      });
+      let token: string | null;
+      try {
+        token = await withTimeout(getToken(), 10_000, 'Authentication');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Authentication failed';
+        Sentry.captureMessage(`Trade accept auth failure: ${msg}`, { level: 'error', extra: { proposalId } });
+        throw new Error(msg);
+      }
+      if (!token) {
+        Sentry.captureMessage('Trade accept: getToken returned null', { level: 'error', extra: { proposalId } });
+        throw new Error('Not authenticated. Please log in again.');
+      }
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to accept proposal');
+      Sentry.addBreadcrumb({ category: 'trade', message: 'token acquired, sending to webhook', level: 'info' });
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30_000);
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ proposal_id: proposalId, action: 'accept' }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          const errMsg = data.error || `Trade failed (${res.status})`;
+          Sentry.captureMessage(`Trade accept webhook error: ${errMsg}`, { level: 'error', extra: { proposalId, status: res.status } });
+          throw new Error(errMsg);
+        }
+
+        Sentry.addBreadcrumb({ category: 'trade', message: `accept succeeded: ${proposalId}`, level: 'info' });
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          Sentry.captureMessage('Trade accept timed out (30s)', { level: 'error', extra: { proposalId } });
+          throw new Error('Trade request timed out. Check Your Trades to see if it went through.');
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeout);
       }
 
       // Refetch server state instead of optimistic update
@@ -292,21 +338,39 @@ export function useTrading(): TradingState {
   // ── Decline proposal (authenticated POST to trade-webhook) ──
   const declineProposal = useCallback(
     async (proposalId: string) => {
-      const token = await getToken();
-      if (!token) throw new Error('Not authenticated');
+      let token: string | null;
+      try {
+        token = await withTimeout(getToken(), 10_000, 'Authentication');
+      } catch (err) {
+        throw new Error(err instanceof Error ? err.message : 'Authentication failed');
+      }
+      if (!token) throw new Error('Not authenticated. Please log in again.');
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to decline proposal');
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/trade-webhook?source=frontend`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ proposal_id: proposalId, action: 'decline' }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to decline proposal');
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new Error('Request timed out. Please try again.');
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeout);
       }
 
       await fetchTradingData();
