@@ -1,294 +1,343 @@
 # Vela — Trade System Architecture
 
-> **Last Updated:** 2026-03-06
-> **Triggered by:** Testnet wallet incident — no architecture doc existed, critical env vars were invisible during deployment
+> **Last Updated:** 2026-03-14
+> **Purpose:** Definitive reference for debugging trade execution issues. Start here before investigating any trade failure.
 
 ---
 
 ## System Overview
 
 ```
-                              ┌─────────────────────┐
-                              │    Signal Engine     │
-                              │   (run-signals)      │
-                              │   Cron: 4H + on-demand│
-                              └─────────┬───────────┘
-                                        │ writes signals + briefs
-                                        ▼
-┌──────────────────┐    ┌─────────────────────────────┐    ┌──────────────────┐
-│  Volatility      │───▶│   Proposal Generator        │───▶│  Notifications   │
-│  Check           │    │  (proposal-generator.ts)     │    │  (notify.ts)     │
-│  Cron: 30min     │    │  Checks eligibility, tier,   │    │  Email + Telegram│
-│  (early trigger) │    │  creates trade_proposals     │    │  + X (Twitter)   │
-└──────────────────┘    └─────────────┬───────────────┘    └──────────────────┘
-                                      │
-                        ┌─────────────▼───────────────┐
-                        │     User Approval            │
-                        │  Telegram callback           │
-                        │  Email action link            │
-                        │  Frontend accept button       │
-                        │  (trade-webhook)              │
-                        └─────────────┬───────────────┘
-                                      │ accepted / auto-approved
-                        ┌─────────────▼───────────────┐
-                        │     Trade Executor           │
-                        │  (trade-executor.ts)          │
-                        │  ⚠ WALLET_ENVIRONMENT req'd   │
-                        │  Privy TEE → Hyperliquid     │
-                        └─────────────┬───────────────┘
-                                      │
-                        ┌─────────────▼───────────────┐
-                        │   Position Monitor           │
-                        │  (position-monitor)           │
-                        │  Cron: 2min                   │
-                        │  P&L · stop-loss · trailing   │
-                        │  stop · circuit breakers      │
-                        └──────────────────────────────┘
+                    ┌─────────────────────────────────┐
+                    │         Signal Engine            │
+                    │        (run-signals)             │
+                    │   Cron: every 4H + on-demand     │
+                    │   Computes indicators, signals,  │
+                    │   briefs, proposals              │
+                    └────────────┬────────────────────┘
+                                 │
+           ┌─────────────────────┼─────────────────────┐
+           │                     │                      │
+           ▼                     ▼                      ▼
+  ┌─────────────────┐  ┌─────────────────┐   ┌─────────────────┐
+  │  Scanner 30m    │  │  Volatility     │   │  Daily Digest   │
+  │  Cron: :02/:32  │  │  Check          │   │  Cron: 8AM UTC  │
+  │  BB2 + exits    │  │  Cron: 30min    │   │  (standalone)   │
+  │  Direct to HL   │  │  >5% → re-eval  │   └─────────────────┘
+  └────────┬────────┘  └─────────────────┘
+           │
+           ▼
+  ┌─────────────────────────────────────────────────────┐
+  │             Proposal Generator                      │
+  │           (proposal-generator.ts)                   │
+  │                                                     │
+  │  Eligibility: wallet? circuit breaker? tier? balance?│
+  │  Size: clampToTierLimits() → floor $10 HL minimum  │
+  │  Routing: use_spot = (leverage=1 && long && !close) │
+  │  Status: full_auto → auto_approved, else → pending  │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+          ┌─────────────┴──────────────┐
+          │                            │
+    ┌─────▼──────┐              ┌──────▼──────┐
+    │  Pending   │              │Auto-Approved│
+    │  (manual)  │              │ (full_auto) │
+    └─────┬──────┘              └──────┬──────┘
+          │                            │
+          ▼                            │ Immediate execution
+  ┌────────────────┐                   │ by calling cron
+  │ trade-webhook  │                   │
+  │ 3 approval     │                   │
+  │ channels:      │                   │
+  │ · Frontend     │                   │
+  │ · Telegram     │                   │
+  │ · Email HMAC   │                   │
+  └────────┬───────┘                   │
+           │ approved                  │
+           └───────────┬───────────────┘
+                       │
+                       ▼
+  ┌─────────────────────────────────────────────────────┐
+  │              Trade Executor                         │
+  │           (trade-executor.ts)                       │
+  │                                                     │
+  │  1. Atomic claim (status → executing)               │
+  │  2. Expiry + circuit breaker checks                 │
+  │  3. Wallet fetch (WALLET_ENVIRONMENT fail-loud)     │
+  │  4. Pre-flight: wallet exists on HL?                │
+  │  5. $10 minimum check → notifyLowBalanceFailure()   │
+  │  6. Price staleness guard (>5% deviation blocks)    │
+  │  7. Spot/perp routing (see diagram below)           │
+  │  8. Position create/update + SL trigger order       │
+  │  9. Fee calculation + sweep on close                │
+  └─────────────────────┬───────────────────────────────┘
+                        │
+          ┌─────────────┴──────────────┐
+          ▼                            ▼
+  ┌────────────────┐         ┌─────────────────┐
+  │ Position       │         │  Notifications   │
+  │ Monitor        │         │  (notify.ts)     │
+  │ Cron: 2min     │         │  Telegram + Email│
+  │ P&L, SL, trail │         │  IS_STAGING gate │
+  │ profit ladder  │         └─────────────────┘
+  │ circuit breaker│
+  └────────────────┘
 ```
 
-### Two-Loop Design
+---
+
+## Trade Execution: 3 Invocation Paths
+
+```
+Path 1: USER APPROVAL (trade-webhook)
+  Frontend/Telegram/Email → trade-webhook → processProposalAction()
+  → status: pending → approved → executing
+  → executeTradeProposal()
+  Auth: JWT (frontend), Telegram secret, HMAC (email)
+
+Path 2: 4-HOUR SIGNAL (run-signals)
+  pg_cron → run-signals → generate*Proposals()
+  → status: auto_approved → executing
+  → executeTradeProposal() called inline
+  Auth: service_role (cron)
+
+Path 3: 30-MINUTE SCANNER (scanner-30m)
+  pg_cron → scanner-30m → generateBB2Proposals() / generateTrimProposals()
+  → status: auto_approved → executing
+  → executeTradeProposal() called inline
+  Auth: service_role (cron)
+```
+
+**Key difference:** To retry a failed proposal without a user JWT, set status to `auto_approved` (not `approved`) so scanner-30m or run-signals picks it up.
+
+---
+
+## Spot vs Perp Routing
+
+```
+                    ┌─────────────────────────┐
+                    │   Is this a close/trim?  │
+                    └─────────┬───────────────┘
+                              │
+                   ┌──────────┴──────────┐
+                   │ YES                 │ NO (new entry)
+                   ▼                     ▼
+          ┌────────────────┐    ┌────────────────────┐
+          │ Is position    │    │ leverage=1 AND      │
+          │ is_spot=true?  │    │ side=long AND       │
+          │                │    │ isSpotAvailable()?   │
+          └──┬──────────┬──┘    └───┬─────────────┬──┘
+             │ YES      │ NO       │ YES          │ NO
+             ▼          ▼          ▼              ▼
+     ┌──────────┐  ┌────────┐ ┌──────────────┐ ┌────────┐
+     │SPOT CLOSE│  │  PERP  │ │  SPOT OPEN   │ │  PERP  │
+     │sell spot │  │reduceOnly│ │              │ │        │
+     │transfer  │  │placeOrder│ │1.transferUSDC│ │placeOrder
+     │USDC back │  └────────┘ │  (perp→spot) │ └────────┘
+     └──────────┘             │2.placeSpotOrder│
+                              │              │
+                              │  ON FAILURE: │
+                              │  ┌──────────┐│
+                              │  │Fallback:  ││
+                              │  │1x perp    ││
+                              │  └──────────┘│
+                              └──────────────┘
+```
+
+**Which assets go to spot?**
+- **HYPE**: Yes (native HIP-1 token, HYPE/USDC pair)
+- **PURR**: Yes (native HIP-1 token, PURR/USDC pair)
+- **BTC/ETH/SOL**: No. "Spot" on HL frontend is UBTC/UETH/USOL (wrapped Unit tokens). Vela uses 1x perps for equivalent exposure.
+
+---
+
+## Hyperliquid Adapter Internals
+
+### Order Flow
+
+```
+placeOrder(request)                    placeSpotOrder(request)
+       │                                       │
+       ▼                                       ▼
+ _placeOrderInner()                    _placeSpotOrderInner()
+       │                                       │
+       │  1. resolveAsset(symbol)              │  1. getSpotMeta() → spotToken
+       │     → perpIndex from meta             │     → spotPairIndex + 10000
+       │                                       │
+       │  2. getMarkPrice(symbol)              │  2. getSpotMarkPrice(symbol)
+       │     → perp metaAndAssetCtxs           │     → spot midPx (or perp fallback)
+       │                                       │
+       │  3. price = mark * (1±3%)             │  3. price = mark * (1±3%)
+       │                                       │
+       │  4. priceToWire(price, sz, false)     │  4. priceToWire(price, sz, true)
+       │     → 5 sig figs + 6-decimal round    │     → 5 sig figs + 8-decimal round
+       │                                       │
+       │  5. _buildOrderWire()                 │  5. _buildOrderWire(isSpot:true)
+       │     a: perpIndex                      │     a: spotPairIndex + 10000
+       │     p: priceToWire result             │     p: priceToWire result
+       │     t: {limit: {tif: "Ioc"}}         │     t: {limit: {tif: "Ioc"}}
+       │                                       │
+       │  6. Attach builder fee                │  6. Builder fee: SELL side only
+       │     action.builder = {b, f}           │
+       │                                       │
+       └───────────────┬───────────────────────┘
+                       │
+                       ▼
+              submitL1Action()
+                       │
+                       ▼
+              signL1Action(action, nonce)
+                       │
+              msgpack → keccak256 → phantom Agent
+              → EIP-712 sign via Privy (agent wallet)
+                       │
+                       ▼
+              POST /exchange  {action, nonce, signature}
+                       │
+                       ▼
+              _parseOrderResponse()
+              → fill price, size, fees, oid
+```
+
+### Spot Asset Index Resolution (CRITICAL)
+
+```
+              spotMeta API
+                  │
+                  ▼
+    universe: [{name:"PURR/USDC", index:0, tokens:[1,0]},
+               ...
+               {name:"@107",      index:107, tokens:[150,0]},  ← HYPE
+               ...]
+                  │
+                  ▼
+    For each pair:
+      baseToken = tokens[pair.tokens[0]]  → {name:"HYPE", index:150}
+      quoteToken = tokens[pair.tokens[1]] → {name:"USDC", index:0}
+      skip if quoteToken != "USDC"
+                  │
+                  ▼
+    Wire asset index = pair.index + 10000
+                  │
+    HYPE: pair.index=107  → wire asset = 10107  ✅
+    PURR: pair.index=0    → wire asset = 10000  ✅
+
+    ⚠ NOT perpIndex + 10000!  (HYPE perpIndex=159 → 10159 = WRONG MARKET)
+```
+
+### Builder Fee Auto-Recovery
+
+```
+placeOrder() / placeSpotOrder()
+       │
+       ▼
+  _place*OrderInner()
+       │
+       ├─ SUCCESS → return result
+       │
+       ├─ ERROR: "Builder fee has not been approved"
+       │         │
+       │         ▼
+       │    approveBuilderFee(address, "0.1%")
+       │    (EIP-712 user-signed action, master wallet)
+       │    (address MUST be lowercase!)
+       │    (field order: hyperliquidChain FIRST)
+       │         │
+       │         ├─ SUCCESS → retry _place*OrderInner() ONCE
+       │         │             (prevents infinite loop)
+       │         │
+       │         └─ FAILURE → return combined error
+       │              "Builder fee not approved. Auto-recovery failed: ..."
+       │
+       │              ⚠ "Builder has insufficient balance to be approved"
+       │              = builder/treasury wallet needs USDC on HL
+       │
+       └─ OTHER ERROR → return error directly
+```
+
+---
+
+## Key Database Tables
+
+```
+signals              → Signal state per asset (color, RSI, EMA, etc.)
+briefs               → AI-generated market briefs
+trade_proposals      → Proposed trades (pending/approved/auto_approved/executing/executed/failed/expired/declined)
+trade_executions     → Fill details (price, size, fees, raw HL response)
+positions            → Open/closed positions (size, entry, SL, P&L, is_spot, trim_history)
+user_wallets         → Privy wallet addresses (master+agent, environment, builder_fee_approved)
+funding_events       → Deposits/withdrawals
+scanner_state        → 30m scanner dedup (last_candle_ts)
+scanner_events       → Scanner audit log
+```
+
+---
+
+## Common Failure Modes & Where to Look
+
+| Error | Root cause | File:Function | Fix |
+|-------|-----------|---------------|-----|
+| "95% away from reference price" | Wrong spot asset index | adapter:`getSpotMeta()` | Must use `pair.index + 10000` not `perpIndex + 10000` |
+| "Price must be divisible by tick size" | Wrong decimal rounding | adapter:`priceToWire()` | Spot: 8 decimals, Perp: 6 decimals |
+| "Builder fee has not been approved" | First trade for user | adapter:`placeOrder()` | Auto-recovery handles it (approve + retry) |
+| "Builder has insufficient balance" | Treasury wallet empty on HL | Operational | Deposit USDC to builder address |
+| "Order must have minimum value of $10" | Order too small | executor:$10 guard | `clampToTierLimits()` floors at $10 |
+| "Insufficient spot balance" | USDC transfer failed | executor:spot flow | Falls back to 1x perp |
+| Balance too low for user | <$10 USDC | executor:$10 guard | `notifyLowBalanceFailure()` (Telegram + email) |
+| Price staleness >5% | Market moved since proposal | executor:staleness guard | Proposal rejected, new one generated next cycle |
+| "User or API Wallet does not exist" | Mixed-case builder address | adapter:`approveBuilderFee()` | Address MUST be `.toLowerCase()` |
+| Wire format rejection | Trailing zeros in amount | adapter:`floatToWire()` | Strips trailing zeros ("100.0" → "100") |
+
+---
+
+## Two-Loop + Scanner Design
 
 | Loop | Interval | Purpose | Functions |
 |------|----------|---------|-----------|
-| **Fast** | 2 min | Position monitoring, stop-loss, circuit breakers | position-monitor, deposit-monitor |
-| **Slow** | 4H | Signal computation, proposal generation, trade execution | run-signals, proposal-generator |
-| **Reactive** | 30 min | Volatility spike detection → early signal run | volatility-check |
-
----
-
-## Wallet & Funding Flow
-
-```
-  User Signup                       User Deposits USDC
-      │                                   │
-      ▼                                   ▼
-┌──────────────┐               ┌───────────────────┐
-│ provision-   │               │ On-chain transfer  │
-│ wallet       │               │ to master_address  │
-│ (Privy TEE)  │               │ (Arbitrum / HL)    │
-│              │               └────────┬──────────┘
-│ ⚠ WALLET_ENV │                        │
-│ required!    │          ┌─────────────▼──────────────┐
-└──────┬───────┘          │  deposit-monitor (2min)     │
-       │                  │  refresh-balance (on-demand) │
-       ▼                  │  Polls Hyperliquid balance    │
-  user_wallets            │  Idempotent: 5min dedup       │
-  (environment:           └─────────────┬─────────────────┘
-   testnet|mainnet)                     │
-                                        ▼
-                                 funding_events
-                           (deposit → completed)
-
-  User Withdraws
-      │
-      ▼
-┌───────────────────────────────────────────────┐
-│  process-withdrawal (two-step)                │
-│                                               │
-│  Step 1: request_otp                          │
-│    → Rate limit (5/hr)                        │
-│    → Validate amount + address                │
-│    → Check tier limits (daily max, min)       │
-│    → Check balance vs amount + fee            │
-│    → Generate 6-digit OTP (10min expiry)      │
-│    → Send OTP email (Resend)                  │
-│                                               │
-│  Step 2: confirm                              │
-│    → Rate limit (10/hr)                       │
-│    → Verify OTP (match user, code, amount)    │
-│    → Create funding_event (processing)        │
-│    → Execute withdraw3 on Hyperliquid         │
-│    → Update status → completed                │
-│    → Sync balance, notify, audit log          │
-│                                               │
-│  ⚠ WALLET_ENVIRONMENT required at both steps  │
-└───────────────────────────────────────────────┘
-```
-
----
-
-## Edge Functions
-
-| Function | Purpose | Auth | Schedule |
-|----------|---------|------|----------|
-| **run-signals** | Signal engine orchestrator | Service role (cron) | 4H + on-demand |
-| **position-monitor** | P&L, stop-loss, circuit breakers | Service role (cron) | 2min |
-| **deposit-monitor** | Poll wallets for new deposits | Service role (cron) | 2min |
-| **refresh-balance** | On-demand balance sync | JWT (user) | User-triggered |
-| **provision-wallet** | Create Privy wallets (master+agent) | JWT (user) | User-triggered |
-| **process-withdrawal** | OTP → confirm → withdraw | JWT (user) | User-triggered |
-| **volatility-check** | Early signal trigger on >5% move | Service role (cron) | 30min |
-| **trade-webhook** | Accept/decline proposals | JWT / Telegram / HMAC | User-triggered |
-| **signal-performance-tracker** | Measure signal accuracy at 1h/4h/24h/7d | Service role (cron) | Hourly |
-| **signal-review** | Weekly pattern analysis + admin report | Service role (cron) | Monday 9AM |
-| **post-to-x** | Post to X (Twitter) | Service role | Internal |
-| **publish-scheduled** | Post queued content to X | Service role (cron) | 15min |
-| **auth-exchange** | Privy JWT → Supabase JWT | Privy signature | User-triggered |
-| **create-checkout-session** | Stripe checkout for tier upgrade | JWT (user) | User-triggered |
-| **create-portal-session** | Stripe customer portal | JWT (user) | User-triggered |
-| **payment-webhook** | Stripe → update subscriptions | Stripe signature | Stripe push |
+| **Fast** | 2 min | Position monitoring, deposits, stop-loss, circuit breakers | position-monitor, deposit-monitor |
+| **Slow** | 4H | Signal computation, proposals, trade execution | run-signals, proposal-generator |
+| **Scanner** | 30 min | BB2 entries/exits, early trims, momentum detection | scanner-30m |
+| **Reactive** | 30 min | Volatility spike → early signal re-eval | volatility-check |
 
 ---
 
 ## Env Var Dependency Map
 
-Every env var read by backend code. All must fail loud (500 error) if missing — no silent defaults.
+Every env var read by backend code. All must fail loud (500 error) if missing.
 
 | Env Var | Used By | Fail Mode |
 |---------|---------|-----------|
 | `SUPABASE_URL` | All functions | 500 — crashes on createClient |
 | `SUPABASE_SERVICE_ROLE_KEY` | All functions | 500 — crashes on createClient |
-| `WALLET_ENVIRONMENT` | provision-wallet, trade-executor, process-withdrawal (×2), deposit-monitor | **500 — fail-loud guard** (incident fix) |
-| `PRIVY_APP_ID` | provision-wallet, deposit-monitor, position-monitor, auth-exchange | 500 — Privy client fails |
-| `PRIVY_APP_SECRET` | provision-wallet, deposit-monitor, position-monitor | 500 — Privy client fails |
-| `PRIVY_VERIFICATION_KEY` | auth-exchange | 500 — JWT verification fails |
-| `JWT_SECRET` | auth-exchange | 500 — can't sign Supabase JWTs |
-| `APP_BASE_URL` | auth-exchange, process-withdrawal, refresh-balance, create-checkout/portal | Email links point to wrong URL |
-| `ANTHROPIC_API_KEY` | run-signals (brief-generator.ts) | Briefs fail — fallback text if ENVIRONMENT=staging |
-| `COINGECKO_API_KEY` | run-signals, volatility-check, signal-performance-tracker | 500 — no price data |
-| `STRIPE_SECRET_KEY` | create-checkout-session, create-portal-session, payment-webhook | 500 — Stripe API fails |
-| `STRIPE_WEBHOOK_SECRET` | payment-webhook | 500 — signature verification fails |
-| `STRIPE_PRICE_STANDARD_MONTHLY` | create-checkout-session | 500 — no price ID for checkout |
-| `STRIPE_PRICE_STANDARD_ANNUAL` | create-checkout-session | 500 |
-| `STRIPE_PRICE_PREMIUM_MONTHLY` | create-checkout-session | 500 |
-| `STRIPE_PRICE_PREMIUM_ANNUAL` | create-checkout-session | 500 |
-| `TELEGRAM_BOT_TOKEN` | notify.ts | Telegram notifications silently fail |
-| `TELEGRAM_CHAT_ID` | notify.ts | Default chat for admin messages |
+| `WALLET_ENVIRONMENT` | provision-wallet, trade-executor, process-withdrawal, deposit-monitor | **500 — fail-loud** |
+| `PRIVY_APP_ID` | provision-wallet, deposit-monitor, position-monitor, auth-exchange | 500 |
+| `PRIVY_APP_SECRET` | provision-wallet, deposit-monitor, position-monitor | 500 |
+| `PRIVY_VERIFICATION_KEY` | auth-exchange | 500 |
+| `JWT_SECRET` | auth-exchange | 500 |
+| `APP_BASE_URL` | auth-exchange, process-withdrawal, refresh-balance, checkout | Wrong URLs |
+| `ANTHROPIC_API_KEY` | run-signals (brief-generator) | Briefs fail |
+| `COINGECKO_API_KEY` | run-signals, volatility-check, signal-performance-tracker | 500 |
+| `STRIPE_SECRET_KEY` | checkout, portal, payment-webhook | 500 |
+| `STRIPE_WEBHOOK_SECRET` | payment-webhook | 500 |
+| `TELEGRAM_BOT_TOKEN` | notify.ts | Telegram silently fails |
+| `TELEGRAM_CHAT_ID` | notify.ts | Admin messages lost |
 | `TELEGRAM_WEBHOOK_SECRET` | trade-webhook | Telegram callbacks rejected |
-| `TELEGRAM_ADMIN_BOT_TOKEN` | notify.ts (admin alerts) | Admin Telegram silently fails |
-| `TELEGRAM_ADMIN_CHAT_ID` | notify.ts (admin alerts) | Admin Telegram silently fails |
-| `WEBHOOK_HMAC_SECRET` | trade-webhook (email links) | Email action links rejected |
-| `RESEND_API_KEY` | notify.ts (sendEmailTo) | All emails silently fail |
-| `EMAIL_FROM_ADDRESS` | notify.ts (sendEmailTo) | Emails sent from wrong address |
-| `NOTIFICATION_EMAIL` | notify.ts (sendEmail) | Admin emails go nowhere |
-| `VELA_BUILDER_ADDRESS` | trade-executor | Builder fee goes to wrong address |
+| `RESEND_API_KEY` | notify.ts | All emails silently fail |
+| `VELA_BUILDER_ADDRESS` | trade-executor (builder fee) | Orders fail (fail-closed) |
 | `VELA_BUILDER_FEE_BPS` | trade-executor | Fee calculation wrong |
-| `VELA_REFERRAL_CODE` | trade-executor | Referral tracking broken |
-| `ENABLE_BRIEF_WEB_SEARCH` | brief-generator.ts | Web search disabled (opt-in) |
-| `ENVIRONMENT` | brief-generator.ts | Staging skips Claude API calls |
-| `POST_TO_X_SECRET` | post-to-x, publish-scheduled | X posting auth fails |
-| `X_API_KEY` | post-to-x | X API calls fail |
-| `X_API_KEY_SECRET` | post-to-x | X API calls fail |
-| `X_ACCESS_TOKEN` | post-to-x | X API calls fail |
-| `X_ACCESS_TOKEN_SECRET` | post-to-x | X API calls fail |
-| `SUPABASE_DB_URL` | Migrations only (not edge functions) | DB push fails |
-
-**Total: 37 secrets** — cross-reference with DEPLOY.md step 4f.
-
-**Frontend env vars (Vercel):**
-
-| Env Var | Purpose |
-|---------|---------|
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `VITE_PRIVY_APP_ID` | Privy auth configuration |
-| `VITE_WALLET_ENVIRONMENT` | testnet vs mainnet wallet queries |
-| `VITE_SENTRY_DSN` | Error tracking |
-| `VITE_SENTRY_ENVIRONMENT` | staging vs production |
-| `SENTRY_AUTH_TOKEN` | Source map uploads |
-| `VITE_DEV_BYPASS_AUTH` | Dev-only: mock auth state |
-
----
-
-## Cron Schedule
-
-| Schedule | Function | Purpose |
-|----------|----------|---------|
-| `0 */4 * * *` | run-signals | Signal computation + proposals |
-| `0 8 * * *` | run-signals?digest=true | Daily digest at 8AM UTC |
-| `*/2 * * * *` | position-monitor | P&L updates, stop-loss, circuit breakers |
-| `*/2 * * * *` | deposit-monitor | Poll wallets for deposits |
-| `*/30 * * * *` | volatility-check | Early signal trigger on >5% price move |
-| `15 * * * *` | signal-performance-tracker | Hourly signal accuracy tracking |
-| `0 9 * * 1` | signal-review | Weekly pattern analysis (Monday 9AM) |
-| `*/15 * * * *` | publish-scheduled | Post queued X content |
-| `*/15 * * * *` | SQL: expire stale proposals | `UPDATE trade_proposals SET status='expired'` |
-| `*/10 * * * *` | SQL: cleanup rate limits | `DELETE FROM rate_limits WHERE ...` |
-
-All HTTP cron jobs include `Authorization: Bearer <service_role_key>` via vault secret.
-
----
-
-## Trade Execution Data Flow
-
-```
-Signal Change
-    │
-    ▼
-signals table ──────────────────────────────────────────┐
-    │                                                    │
-    ▼                                                    │
-briefs table (AI-generated)                              │
-    │                                                    │
-    ▼                                                    │
-proposal-generator                                       │
-    │  Eligibility checks:                               │
-    │  · wallet registered?                              │
-    │  · circuit breaker active?                         │
-    │  · pending proposal exists?                        │
-    │  · free tier trial used?                           │
-    │  · at max positions? (→ capacity nudge)            │
-    │  · sufficient balance?                             │
-    │  · EMA cooldown active? (V7)                       │
-    │                                                    │
-    ▼                                                    │
-trade_proposals ────────────────────┐                    │
-    │                               │                    │
-    │  (semi_auto)                  │  (full_auto)       │
-    │  User approves via            │  Auto-approved     │
-    │  Telegram / email / app       │  immediately       │
-    │                               │                    │
-    ▼                               ▼                    │
-trade-executor                                           │
-    │  1. Atomic claim (status → executing)              │
-    │  2. Fetch wallet (WALLET_ENVIRONMENT!)             │
-    │  3. Set leverage on Hyperliquid                    │
-    │  4. Place order (IOC market)                       │
-    │  5. Record fill details                            │
-    │                                                    │
-    ▼                                                    │
-trade_executions ───► positions ───► position-monitor ───┘
-                         │              │  (2min loop)
-                         │              │  · Update P&L
-                         │              │  · Check stop-loss → auto-close
-                         │              │  · Check trailing stop → auto-close
-                         │              │  · Check profit ladder → auto-trim
-                         │              │  · Check circuit breakers
-                         │              │
-                         │              ▼
-                         │         postmortems (on close)
-                         │
-                         └──► notifications (Telegram + email)
-```
-
----
-
-## Security Layers
-
-| Layer | Mechanism | Where |
-|-------|-----------|-------|
-| **Auth** | Supabase JWT, Privy JWT, Stripe signature, Telegram secret, HMAC | Each edge function |
-| **Database** | RLS scoped to user_id, UNIQUE partial indexes | All user tables |
-| **Execution** | Atomic claim (status → executing), idempotency guards | trade-executor |
-| **Rate limiting** | Per-user limits (withdrawal OTP: 5/hr, confirm: 10/hr, refresh: 10/min) | process-withdrawal, refresh-balance |
-| **Wallet** | Privy TEE (hardware isolation), no private keys in code | provision-wallet |
-| **Circuit breakers** | Daily loss, consecutive losses, rapid price drop, margin | position-monitor |
-| **Tier enforcement** | DB trigger (mode validation), proposal-generator, frontend clamping | 3-layer defense |
+| `VELA_TREASURY_HL_ADDRESS` | notify.ts (fee sweep) | Fee sweep fails |
+| `ENVIRONMENT` | notify.ts (staging gate) | Staging leaks to prod notifications |
 
 ---
 
 ## Incident Reference
 
-**2026-03-06: Silent Testnet Wallet Provisioning**
-- `WALLET_ENVIRONMENT` missing from production secrets
-- All wallets provisioned as testnet, deposits invisible, trades fail
-- Root cause: `?? "testnet"` fallback pattern + undocumented env var
-- Fix: fail-loud 500 errors, deploy.sh rewritten with `--staging`/`--prod` flags
-- Full report: `memory/incident-2026-03-06-testnet-wallets.md`
-
-**Rules established:**
-1. No silent defaults for environment-critical config — fail loud
-2. Every env var must be in `.env.example` + `DEPLOY.md` + Vercel env vars
-3. `deploy.sh` requires `--staging` or `--prod` flag
-4. Verify secrets after every deployment
-5. New env vars get a PR checklist item
+| Date | Incident | Root Cause | Fix |
+|------|----------|------------|-----|
+| 2026-03-06 | Silent testnet wallets | `WALLET_ENVIRONMENT` missing, `?? "testnet"` fallback | Fail-loud guards, deploy.sh rewrite |
+| 2026-03-08 | Vault key migration | Supabase rotated API keys, vault not updated | Manual vault secret update |
+| 2026-03-12 | HYPE tick size errors | `priceToWire` wrong decimals for spot | Spot: 8 decimals (Python SDK match) |
+| 2026-03-13 | EIP-712 field order | `APPROVE_BUILDER_FEE_TYPES` wrong order | `hyperliquidChain` first (Python SDK match) |
+| 2026-03-13 | $10 minimum rejections | HL rejects orders <$10 | Floor in `clampToTierLimits()` + defense-in-depth |
+| 2026-03-14 | HYPE 95% price error | Spot wire used `perpIndex+10000` not `pairIndex+10000` | Use `pair.index` from spotMeta universe |
+| 2026-03-14 | Builder fee insufficient | Treasury wallet empty on HL | Deposit USDC to builder address |
