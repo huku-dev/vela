@@ -217,18 +217,44 @@ export default function TrackRecord() {
   );
   const userOpen = userTrades.filter(t => t.status === 'open');
 
-  // ── Position-level P&L: group trades with trims, compute total position P&L ──
-  const groupedUserClosed = groupTradesWithTrims(userTrades).filter(
-    g => g.trade.status === 'closed' && g.trade.pnl_pct != null
-  );
-  const userPositions = groupedUserClosed.map(g =>
-    computePositionPnl(
-      g.trade.pnl_pct!,
-      g.trims.map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
-      tradePositionSize(g.trade.direction)
-    )
-  );
-  const userStats = aggregatePositionStats(userPositions);
+  // ── Helper: get live price for an asset ──
+  const getLivePrice = (coingeckoId: string | undefined): number | null => {
+    if (!coingeckoId) return null;
+    return livePrices[coingeckoId]?.price ?? null;
+  };
+
+  // ── Real position stats (from positions table, not paper_trades) ──
+  // Includes both open and closed positions for a complete picture.
+  const realPositionStats = (() => {
+    const allPositions = [...closedPositions, ...positions];
+    if (allPositions.length === 0) return null;
+
+    let totalPnl = 0;
+    let wins = 0;
+    const total = allPositions.length;
+
+    for (const pos of closedPositions) {
+      const pnl = pos.closed_pnl ?? 0;
+      totalPnl += pnl;
+      if (pnl > 0) wins++;
+    }
+
+    for (const pos of positions) {
+      const posAsset = assetMap[pos.asset_id];
+      const livePrice = getLivePrice(posAsset?.coingecko_id);
+      const { pnlDollar } = getEffectivePnl(pos, livePrice ?? undefined);
+      totalPnl += pnlDollar;
+      if (pnlDollar > 0) wins++;
+    }
+
+    return {
+      total,
+      wins,
+      totalPnl,
+      winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
+      openCount: positions.length,
+    };
+  })();
 
   const groupedPaperClosed = groupTradesWithTrims(paperTrades).filter(
     g => g.trade.status === 'closed' && g.trade.pnl_pct != null
@@ -259,12 +285,6 @@ export default function TrackRecord() {
   const bestPaperGroup = bestPaperIdx != null ? groupedPaperClosed[bestPaperIdx] : null;
   const bestPaperPnl = bestPaperIdx != null ? paperPositions[bestPaperIdx] : null;
 
-  // ── Helper: get live price for an asset ──
-  const getLivePrice = (coingeckoId: string | undefined): number | null => {
-    if (!coingeckoId) return null;
-    return livePrices[coingeckoId]?.price ?? null;
-  };
-
   // ── Helper: format duration ──
   const formatDuration = (openedAt: string): string =>
     formatDurationMs(Date.now() - new Date(openedAt).getTime());
@@ -278,7 +298,7 @@ export default function TrackRecord() {
         margin: '0 auto',
       }}
     >
-      <PageHeader title="Track Record" subtitle="Your trades and Vela's signal performance" />
+      <PageHeader title="Trades" subtitle="Your trades and Vela's signal performance" />
 
       {/* ══════════════════════════════════════════════════════
           ZONE 1: YOUR TRADES (primary)
@@ -329,34 +349,33 @@ export default function TrackRecord() {
         )
       ) : (
         <div style={{ marginBottom: 'var(--space-5)' }}>
-          {/* User trade stats */}
-          {userStats.totalClosed > 0 && (
+          {/* Real position stats — open + closed from positions table */}
+          {realPositionStats && (
             <Card style={{ marginBottom: 'var(--space-3)' }}>
               <p
                 style={{
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 700,
                   fontSize: 'var(--text-xl)',
-                  color: userStats.totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: realPositionStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   margin: 0,
                   lineHeight: 1.2,
                 }}
               >
-                {userStats.totalDollarPnl >= 0 ? '+' : '-'}$
-                {Math.abs(userStats.totalDollarPnl).toLocaleString('en-US', {
-                  maximumFractionDigits: 0,
+                {realPositionStats.totalPnl >= 0 ? '+' : '-'}$
+                {Math.abs(realPositionStats.totalPnl).toLocaleString('en-US', {
+                  maximumFractionDigits: 2,
                 })}{' '}
-                total {userStats.totalDollarPnl >= 0 ? 'profit' : 'loss'}
+                total {realPositionStats.totalPnl >= 0 ? 'profit' : 'loss'}
               </p>
               <p
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
               >
-                {userStats.totalClosed} position{userStats.totalClosed !== 1 ? 's' : ''} ·{' '}
-                {userStats.wins} profitable
-                {userStats.totalClosed > 0 && ` (${userStats.winRate}%)`}
-                {(userOpen.length > 0 || hasLivePositions) &&
-                  ` · ${userOpen.length + positions.length} open`}
+                {realPositionStats.total} position
+                {realPositionStats.total !== 1 ? 's' : ''} · {realPositionStats.wins} profitable
+                {realPositionStats.total > 0 && ` (${realPositionStats.winRate}%)`}
+                {realPositionStats.openCount > 0 && ` · ${realPositionStats.openCount} open`}
               </p>
             </Card>
           )}
