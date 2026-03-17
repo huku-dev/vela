@@ -43,12 +43,7 @@ const defaultProps = {
 describe('TradeConfirmationSheet', () => {
   describe('CONFIRM-UX: price display', () => {
     it('shows both proposal price and current execution price when price has moved', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          currentPrice={36.88}
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} currentPrice={36.88} />);
 
       expect(screen.getByText('Proposal price')).toBeInTheDocument();
       expect(screen.getByText('Execution price')).toBeInTheDocument();
@@ -59,55 +54,29 @@ describe('TradeConfirmationSheet', () => {
     });
 
     it('shows current execution price with ~ prefix', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          currentPrice={36.88}
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} currentPrice={36.88} />);
 
-      // Execution price should contain the tilde prefix
-      const execRow = screen.getByText('Execution price').closest('div');
-      const execValue = execRow?.querySelector('span:last-child');
-      expect(execValue?.textContent).toMatch(/^~/);
+      // Execution price value should contain the tilde prefix
+      expect(screen.getByText(/^~\$/)).toBeInTheDocument();
     });
 
-    it('shows market order explanation when price has moved', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          currentPrice={36.88}
-        />
-      );
+    it('shows tooltip on execution price when price has moved', () => {
+      render(<TradeConfirmationSheet {...defaultProps} currentPrice={36.88} />);
 
-      expect(
-        screen.getByText(/executes as a market order/i)
-      ).toBeInTheDocument();
+      const tooltip = screen.getByTitle(/market order/i);
+      expect(tooltip).toBeInTheDocument();
     });
 
-    it('does not show market order note when prices match', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          currentPrice={36.83}
-        />
-      );
+    it('does not show tooltip when prices match', () => {
+      render(<TradeConfirmationSheet {...defaultProps} currentPrice={36.83} />);
 
-      expect(
-        screen.queryByText(/executes as a market order/i)
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTitle(/market order/i)).not.toBeInTheDocument();
     });
 
-    it('does not show market order note when currentPrice is undefined', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-        />
-      );
+    it('does not show tooltip when currentPrice is undefined', () => {
+      render(<TradeConfirmationSheet {...defaultProps} />);
 
-      expect(
-        screen.queryByText(/executes as a market order/i)
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTitle(/market order/i)).not.toBeInTheDocument();
     });
 
     it('shows "Current price" label for trim proposals', () => {
@@ -118,11 +87,7 @@ describe('TradeConfirmationSheet', () => {
       };
 
       render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          proposal={trimProposal}
-          currentPrice={37.0}
-        />
+        <TradeConfirmationSheet {...defaultProps} proposal={trimProposal} currentPrice={37.0} />
       );
 
       expect(screen.getByText('Current price')).toBeInTheDocument();
@@ -132,23 +97,13 @@ describe('TradeConfirmationSheet', () => {
 
   describe('CONFIRM-UX: actions', () => {
     it('shows "Confirming..." while submitting', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          isSubmitting
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} isSubmitting />);
 
       expect(screen.getByText('Confirming...')).toBeInTheDocument();
     });
 
     it('disables buttons while submitting', () => {
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          isSubmitting
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} isSubmitting />);
 
       expect(screen.getByText('Confirming...')).toBeDisabled();
       expect(screen.getByText('Cancel')).toBeDisabled();
@@ -156,12 +111,7 @@ describe('TradeConfirmationSheet', () => {
 
     it('calls onConfirm when confirm button clicked', async () => {
       const onConfirm = vi.fn();
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          onConfirm={onConfirm}
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} onConfirm={onConfirm} />);
 
       await userEvent.click(screen.getByRole('button', { name: 'Confirm trade' }));
       expect(onConfirm).toHaveBeenCalledOnce();
@@ -169,12 +119,7 @@ describe('TradeConfirmationSheet', () => {
 
     it('calls onCancel when cancel button clicked', async () => {
       const onCancel = vi.fn();
-      render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          onCancel={onCancel}
-        />
-      );
+      render(<TradeConfirmationSheet {...defaultProps} onCancel={onCancel} />);
 
       await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(onCancel).toHaveBeenCalledOnce();
@@ -189,10 +134,7 @@ describe('TradeConfirmationSheet', () => {
 
     it('shows SELL action for short proposals', () => {
       render(
-        <TradeConfirmationSheet
-          {...defaultProps}
-          proposal={{ ...baseProposal, side: 'short' }}
-        />
+        <TradeConfirmationSheet {...defaultProps} proposal={{ ...baseProposal, side: 'short' }} />
       );
       expect(screen.getByText('SELL HYPE')).toBeInTheDocument();
     });
@@ -202,9 +144,21 @@ describe('TradeConfirmationSheet', () => {
       expect(screen.getByText('$10')).toBeInTheDocument();
     });
 
-    it('shows leverage', () => {
+    it('hides leverage at 1x', () => {
       render(<TradeConfirmationSheet {...defaultProps} />);
-      expect(screen.getByText('1x')).toBeInTheDocument();
+      expect(screen.queryByText('Leverage')).not.toBeInTheDocument();
+      expect(screen.queryByText('1x')).not.toBeInTheDocument();
+    });
+
+    it('shows leverage when > 1x', () => {
+      render(
+        <TradeConfirmationSheet
+          {...defaultProps}
+          proposal={{ ...baseProposal, proposed_leverage: 3 }}
+        />
+      );
+      expect(screen.getByText('Leverage')).toBeInTheDocument();
+      expect(screen.getByText('3x')).toBeInTheDocument();
     });
 
     it('shows estimated fee', () => {
@@ -213,11 +167,9 @@ describe('TradeConfirmationSheet', () => {
       expect(screen.getByText('$0.05')).toBeInTheDocument();
     });
 
-    it('shows trust note', () => {
+    it('does not show trust note (removed for cleaner UI)', () => {
       render(<TradeConfirmationSheet {...defaultProps} />);
-      expect(
-        screen.getByText(/you stay in control/i)
-      ).toBeInTheDocument();
+      expect(screen.queryByText(/you stay in control/i)).not.toBeInTheDocument();
     });
   });
 });

@@ -14,6 +14,10 @@ interface TradeConfirmationSheetProps {
   isSubmitting?: boolean;
   /** Current live price for market order context */
   currentPrice?: number;
+  /** Stop-loss price from the proposal */
+  stopLossPrice?: number;
+  /** Brief headline for market context */
+  briefHeadline?: string;
 }
 
 /**
@@ -31,6 +35,8 @@ export default function TradeConfirmationSheet({
   onCancel,
   isSubmitting,
   currentPrice,
+  stopLossPrice,
+  briefHeadline,
 }: TradeConfirmationSheetProps) {
   useBodyScrollLock();
 
@@ -130,13 +136,27 @@ export default function TradeConfirmationSheet({
               <ConfirmRow
                 label={isTrim ? 'Current price' : 'Execution price'}
                 value={`~${formatPrice(currentPrice)}`}
+                tooltip={
+                  !isTrim && currentPrice !== proposal.entry_price_at_proposal
+                    ? 'Market order, executes at best available price'
+                    : undefined
+                }
               />
             )}
             <ConfirmRow
               label={isTrim ? 'Trim amount' : 'Position size'}
               value={`$${proposal.proposed_size_usd.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
             />
-            {!isTrim && <ConfirmRow label="Leverage" value={`${proposal.proposed_leverage}x`} />}
+            {!isTrim && proposal.proposed_leverage > 1 && (
+              <ConfirmRow label="Leverage" value={`${proposal.proposed_leverage}x`} />
+            )}
+            {!isTrim && stopLossPrice != null && (
+              <ConfirmRow
+                label="Stop-loss"
+                value={formatPrice(stopLossPrice)}
+                valueColor="var(--red-dark)"
+              />
+            )}
             {estimatedFee > 0 && (
               <ConfirmRow
                 label={`Est. fee (${feeRatePct}%)`}
@@ -146,34 +166,26 @@ export default function TradeConfirmationSheet({
           </div>
         </div>
 
-        {/* Market order note */}
-        {currentPrice != null &&
-          currentPrice !== proposal.entry_price_at_proposal &&
-          !isTrim && (
-            <p
-              className="vela-body-sm"
-              style={{
-                color: 'var(--color-text-muted)',
-                margin: 0,
-                marginBottom: 'var(--space-3)',
-                fontSize: 12,
-                lineHeight: 1.4,
-              }}
-            >
-              Executes as a market order at the best available price, not the original proposal price.
-            </p>
-          )}
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <button
-            className="vela-btn vela-btn-ghost"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            style={{ flex: 1 }}
+        {/* Why this trade — market context from the brief */}
+        {!isTrim && briefHeadline && (
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-muted)',
+              margin: 0,
+              marginBottom: 'var(--space-3)',
+              fontSize: 12,
+              lineHeight: 1.5,
+              borderLeft: '2px solid var(--gray-200)',
+              paddingLeft: 'var(--space-2)',
+            }}
           >
-            Cancel
-          </button>
+            {briefHeadline}
+          </p>
+        )}
+
+        {/* Action buttons — Confirm left (matches proposal page), Cancel right */}
+        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
           <button
             className={`vela-btn ${isTrim ? 'vela-btn-warning' : 'vela-btn-primary'} `}
             onClick={onConfirm}
@@ -185,19 +197,15 @@ export default function TradeConfirmationSheet({
           >
             {isSubmitting ? 'Confirming...' : 'Confirm trade'}
           </button>
+          <button
+            className="vela-btn vela-btn-ghost"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            style={{ flex: 1 }}
+          >
+            Cancel
+          </button>
         </div>
-
-        {/* Trust note */}
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{
-            textAlign: 'center',
-            marginTop: 'var(--space-3)',
-            marginBottom: 0,
-          }}
-        >
-          You stay in control. This trade only executes with your confirmation.
-        </p>
       </div>
     </div>
   );
@@ -207,22 +215,55 @@ function ConfirmRow({
   label,
   value,
   muted,
+  valueColor,
+  tooltip,
 }: {
   label: string;
   value: string;
   muted?: boolean;
+  valueColor?: string;
+  tooltip?: string;
 }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span className="vela-body-sm" style={{ color: 'var(--color-text-muted)' }}>
+      <span
+        className="vela-body-sm"
+        style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}
+      >
         {label}
+        {tooltip && (
+          <span
+            title={tooltip}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              border: '1px solid var(--gray-300)',
+              fontSize: 10,
+              fontWeight: 600,
+              color: 'var(--color-text-muted)',
+              cursor: 'help',
+              lineHeight: 1,
+            }}
+          >
+            i
+          </span>
+        )}
       </span>
       <span
         className="vela-body-sm"
         style={{
           fontFamily: 'var(--type-mono-base-font)',
           fontWeight: 600,
-          ...(muted && { color: 'var(--color-text-muted)', fontWeight: 400, textDecoration: 'line-through' }),
+          ...(muted && {
+            color: 'var(--color-text-muted)',
+            fontWeight: 400,
+            textDecoration: 'line-through',
+          }),
+          ...(valueColor && { color: valueColor }),
         }}
       >
         {value}
