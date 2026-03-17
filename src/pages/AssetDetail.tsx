@@ -162,9 +162,19 @@ export default function AssetDetail() {
   // Failed proposals are shown as toasts, not persistent cards
   const IN_FLIGHT_STATUSES = ['approved', 'auto_approved', 'executing', 'executed', 'declined'];
   const TERMINAL_STATUSES = ['executed', 'expired', 'declined'];
+  const STALE_THRESHOLD_MS = 5_000; // Don't show terminal proposals older than 5s
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const allActiveProposals = isAuthenticated
-    ? proposals.filter(p => p.asset_id === assetId && IN_FLIGHT_STATUSES.includes(p.status))
+    ? proposals.filter(p => {
+        if (p.asset_id !== assetId) return false;
+        if (!IN_FLIGHT_STATUSES.includes(p.status)) return false;
+        // Skip terminal proposals that reached their final state >5s ago
+        if (TERMINAL_STATUSES.includes(p.status)) {
+          const updatedAt = new Date(p.updated_at).getTime();
+          if (Date.now() - updatedAt > STALE_THRESHOLD_MS) return false;
+        }
+        return true;
+      })
     : [];
   const activeProposals = allActiveProposals.filter(p => !dismissedIds.has(p.id));
 

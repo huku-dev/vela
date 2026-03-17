@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import * as Sentry from '@sentry/react';
 import { supabase } from '../lib/supabase';
 import type {
   Asset,
@@ -197,6 +198,10 @@ export function useDashboard() {
       setLastUpdated(new Date());
       setError(null);
     } catch (err: unknown) {
+      Sentry.captureException(err, {
+        tags: { flow: 'dashboard' },
+        extra: { step: 'fetchData' },
+      });
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
@@ -431,17 +436,26 @@ export function useTrackRecord() {
         const enriched = await enrichTrades(mapped);
         setTrades(enriched);
       } catch (err) {
+        Sentry.captureException(err, {
+          tags: { flow: 'track-record' },
+          extra: { step: 'enrichTrades', tradeCount: mapped.length },
+        });
         console.error('[useTrackRecord] enrichment failed:', err);
         setTrades(mapped);
       }
 
-      // Fetch live prices for open trade assets
-      const openAssetIds = [
-        ...new Set(mapped.filter(t => t.status === 'open').map(t => t.asset_coingecko_id)),
-      ].filter(Boolean) as string[];
+      // Fetch live prices for all known assets (covers both open paper_trades and real positions)
+      const allAssetIds = [
+        ...new Set(Object.values(aMap).map(a => a.coingecko_id)),
+      ].filter(Boolean);
 
-      if (openAssetIds.length > 0) {
-        const prices = await fetchLivePrices(openAssetIds);
+      if (allAssetIds.length > 0) {
+        // Build symbolMap so fetchLivePrices uses Hyperliquid real-time feed (not just CoinGecko)
+        const symbolMap: Record<string, string> = {};
+        for (const a of Object.values(aMap)) {
+          symbolMap[a.coingecko_id] = a.symbol;
+        }
+        const prices = await fetchLivePrices(allAssetIds, symbolMap);
         setLivePrices(prices);
       }
 
