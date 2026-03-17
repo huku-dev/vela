@@ -101,6 +101,36 @@ function makeOpenTrade(overrides: Partial<EnrichedTrade> = {}): EnrichedTrade {
   });
 }
 
+/** Make a closed Position (from positions table, used by stats card) */
+function makeClosedPosition(overrides: Partial<Position> = {}): Position {
+  return {
+    id: 'pos-1',
+    user_id: 'user-1',
+    asset_id: 'bitcoin',
+    side: 'long',
+    entry_price: 42000,
+    current_price: 46200,
+    size: 1,
+    size_usd: 1000,
+    leverage: 1,
+    unrealized_pnl: 0,
+    unrealized_pnl_pct: 0,
+    stop_loss_price: null,
+    take_profit_price: null,
+    status: 'closed',
+    closed_at: '2025-12-15T00:00:00Z',
+    closed_pnl: 100,
+    closed_pnl_pct: 10,
+    close_reason: null,
+    trade_execution_id: null,
+    trim_history: [],
+    original_size_usd: 1000,
+    created_at: '2025-12-01T00:00:00Z',
+    updated_at: '2025-12-15T00:00:00Z',
+    ...overrides,
+  };
+}
+
 const defaultHookReturn = {
   trades: [] as EnrichedTrade[],
   bestTrade: null as EnrichedTrade | null,
@@ -322,15 +352,18 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
       partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
       needsFunding: () => false,
     });
-    const trades = [
-      makeLiveTrade({ id: '1', pnl_pct: 20.0 }),
-      makeLiveTrade({ id: '2', pnl_pct: 15.0 }),
-      makeLiveTrade({ id: '3', pnl_pct: -5.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
+    // Stats card now uses real positions (from useTrading), not paper_trades
+    mockUseTrading.mockReturnValue({
+      positions: [],
+      closedPositions: [
+        makeClosedPosition({ id: 'p1', closed_pnl: 200 }),
+        makeClosedPosition({ id: 'p2', closed_pnl: 150 }),
+        makeClosedPosition({ id: 'p3', closed_pnl: -50 }),
+      ],
+      proposals: [],
+      acceptProposal: vi.fn(),
+      declineProposal: vi.fn(),
+      wallet: null,
     });
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
@@ -347,15 +380,17 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
       partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
       needsFunding: () => false,
     });
-    const trades = [
-      makeLiveTrade({ id: '1', pnl_pct: -20.0 }),
-      makeLiveTrade({ id: '2', pnl_pct: -15.0 }),
-      makeLiveTrade({ id: '3', pnl_pct: 5.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[2],
+    mockUseTrading.mockReturnValue({
+      positions: [],
+      closedPositions: [
+        makeClosedPosition({ id: 'p1', closed_pnl: -200 }),
+        makeClosedPosition({ id: 'p2', closed_pnl: -150 }),
+        makeClosedPosition({ id: 'p3', closed_pnl: 50 }),
+      ],
+      proposals: [],
+      acceptProposal: vi.fn(),
+      declineProposal: vi.fn(),
+      wallet: null,
     });
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
@@ -372,15 +407,17 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
       partitionAssets: (assets: unknown[]) => ({ accessible: assets, locked: [] }),
       needsFunding: () => false,
     });
-    const trades = [
-      makeLiveTrade({ id: '1', pnl_pct: 20.0 }),
-      makeLiveTrade({ id: '2', pnl_pct: -5.0 }),
-      makeLiveTrade({ id: '3', pnl_pct: 10.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
+    mockUseTrading.mockReturnValue({
+      positions: [],
+      closedPositions: [
+        makeClosedPosition({ id: 'p1', closed_pnl: 200 }),
+        makeClosedPosition({ id: 'p2', closed_pnl: -50 }),
+        makeClosedPosition({ id: 'p3', closed_pnl: 100 }),
+      ],
+      proposals: [],
+      acceptProposal: vi.fn(),
+      declineProposal: vi.fn(),
+      wallet: null,
     });
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
@@ -616,7 +653,7 @@ describe('TRACK: Page header', () => {
     });
 
     render(<TrackRecord />);
-    expect(screen.getByText('Track Record')).toBeInTheDocument();
+    expect(screen.getByText('Trades')).toBeInTheDocument();
     expect(screen.getByText("Your trades and Vela's signal performance")).toBeInTheDocument();
   });
 });
@@ -630,7 +667,7 @@ describe('TRACK: Loading state', () => {
 
     render(<TrackRecord />);
     // LoadingSpinner renders an SVG animation
-    expect(screen.queryByText('Track Record')).not.toBeInTheDocument();
+    expect(screen.queryByText('Trades')).not.toBeInTheDocument();
   });
 });
 
