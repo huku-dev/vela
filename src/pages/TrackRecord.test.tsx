@@ -119,6 +119,7 @@ const defaultHookReturn = {
 beforeEach(() => {
   mockUseTrading.mockReturnValue({
     positions: [] as Position[],
+    closedPositions: [] as Position[],
     proposals: [],
     acceptProposal: vi.fn(),
     declineProposal: vi.fn(),

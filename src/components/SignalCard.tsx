@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import SignalChip from './SignalChip';
 import PriceArrow from './PriceArrow';
 import { getCoinIcon, formatPrice, stripAssetPrefix } from '../lib/helpers';
+import { getEffectivePnl } from '../utils/calculations';
 import type { AssetDashboard, Position } from '../types';
 
 interface SignalCardProps {
@@ -15,28 +16,40 @@ interface SignalCardProps {
  * Tone: understated, encouraging when profitable, reassuring when losing.
  * Follows the "You Stay in Control" pillar — calm, confident, supportive.
  */
-function getPositionHeadline(position: Position, symbol: string): string {
+function getPositionHeadline(
+  position: Position,
+  symbol: string,
+  briefHeadline?: string | null
+): string {
   const side = position.side === 'long' ? 'long' : 'short';
-  const pnl = position.unrealized_pnl_pct;
+  const { pnlPct: pnl } = getEffectivePnl(position);
   const pnlAbs = Math.abs(pnl).toFixed(1);
   const pnlSign = pnl >= 0 ? '+' : '-';
+
+  // Clean up brief headline for use as a follow-on clause
+  const marketContext = briefHeadline
+    ? stripAssetPrefix(briefHeadline, symbol).replace(/\.$/, '').toLowerCase()
+    : null;
 
   if (pnl >= 20) {
     return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking great, consider taking some profit`;
   }
   if (pnl >= 5) {
-    return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking good!`;
+    const suffix = marketContext ? `, as ${marketContext}` : '. Looking good!';
+    return `Your ${symbol} ${side} is up ${pnlAbs}%${suffix}`;
   }
   if (pnl >= 0) {
-    return `${symbol} ${side} position open, ${pnlSign}${pnlAbs}% so far`;
+    const suffix = marketContext ? `, and ${marketContext}` : '';
+    return `Your ${symbol} ${side} is up ${pnlAbs}% so far${suffix}`;
   }
   if (pnl > -5) {
-    return `${symbol} ${side} position open, ${pnlSign}${pnlAbs}%. Still early, Vela is watching`;
+    const suffix = marketContext ? `, but ${marketContext}` : '. Still early, Vela is watching';
+    return `Your ${symbol} ${side} is down ${pnlAbs}%${suffix}`;
   }
   if (pnl > -8) {
-    return `${symbol} ${side} is ${pnlSign}${pnlAbs}%. Vela is monitoring and will act if needed`;
+    return `Your ${symbol} ${side} is down ${pnlAbs}%. Vela is monitoring and will act if needed`;
   }
-  return `${symbol} ${side} position nearing stop-loss level. Vela has you covered`;
+  return `Your ${symbol} ${side} is nearing its stop-loss. Vela has you covered`;
 }
 
 export default function SignalCard({ data, position }: SignalCardProps) {
@@ -46,9 +59,9 @@ export default function SignalCard({ data, position }: SignalCardProps) {
   const price = priceData?.price ?? signal?.price_at_signal;
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
-  // Position-aware headline takes priority over generic brief headline
+  // Position-aware headline weaves P&L with market context from the brief
   const headline = position
-    ? getPositionHeadline(position, asset.symbol.toUpperCase())
+    ? getPositionHeadline(position, asset.symbol.toUpperCase(), brief?.headline)
     : brief?.headline
       ? stripAssetPrefix(brief.headline, asset.symbol)
       : null;

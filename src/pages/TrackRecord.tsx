@@ -15,6 +15,7 @@ import {
   computePositionPnl,
   aggregatePositionStats,
   formatDurationMs,
+  getEffectivePnl,
 } from '../utils/calculations';
 import type { TradeDirection, Position } from '../types';
 
@@ -174,7 +175,8 @@ function groupTradesWithTrims(trades: EnrichedTrade[]): GroupedTrade[] {
 export default function TrackRecord() {
   const { trades, livePrices, assetMap, loading } = useTrackRecord();
   const { isAuthenticated } = useAuthContext();
-  const { positions, proposals, acceptProposal, declineProposal, wallet } = useTrading();
+  const { positions, closedPositions, proposals, acceptProposal, declineProposal, wallet } =
+    useTrading();
   const { canTrade, tier, upgradeLabel, startCheckout } = useTierAccess();
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [showVelaHistory, setShowVelaHistory] = useState(false);
@@ -239,7 +241,11 @@ export default function TrackRecord() {
     )
   );
   const paperStats = aggregatePositionStats(paperPositions);
-  const hasUserTrades = userTrades.length > 0 || hasLivePositions || pendingProposals.length > 0;
+  const hasUserTrades =
+    userTrades.length > 0 ||
+    hasLivePositions ||
+    pendingProposals.length > 0 ||
+    closedPositions.length > 0;
 
   // Best paper POSITION by total position P&L (parent + trims, not individual trade pnl_pct)
   const bestPaperIdx = paperPositions.reduce<number | null>(
@@ -474,7 +480,33 @@ export default function TrackRecord() {
             </div>
           )}
 
-          {/* User's closed trades */}
+          {/* Closed positions (from positions table — real user trades) */}
+          {closedPositions.length > 0 && (
+            <div style={{ marginBottom: userClosed.length > 0 ? 'var(--space-3)' : 0 }}>
+              <p
+                className="vela-label-sm"
+                style={{
+                  color: 'var(--gray-400)',
+                  marginBottom: 'var(--space-2)',
+                  paddingLeft: 'var(--space-1)',
+                }}
+              >
+                Closed positions
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                {closedPositions.map(pos => (
+                  <ClosedPositionCard
+                    key={pos.id}
+                    position={pos}
+                    expanded={expandedTradeId === pos.id}
+                    onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* User's closed trades (from trades/backtest table) */}
           {userClosed.length > 0 && (
             <div>
               <p
@@ -1675,32 +1707,89 @@ function DetailRow({
   label,
   value,
   valueColor,
+  hint,
 }: {
   label: string;
   value: string;
   valueColor?: string;
+  /** Optional tooltip hint shown below the row when tapped */
+  hint?: string;
 }) {
+  const [showHint, setShowHint] = useState(false);
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginBottom: 'var(--space-2)',
-      }}
-    >
-      <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
-        {label}
-      </span>
-      <span
-        className="vela-body-sm"
+    <div style={{ marginBottom: 'var(--space-2)' }}>
+      <div
         style={{
-          fontFamily: 'var(--type-mono-base-font)',
-          color: valueColor || undefined,
-          fontWeight: valueColor ? 600 : undefined,
+          display: 'flex',
+          justifyContent: 'space-between',
         }}
       >
-        {value}
-      </span>
+        <span
+          className="vela-body-sm"
+          style={{ color: 'var(--gray-500)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          {label}
+          {hint && (
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                setShowHint(prev => !prev);
+              }}
+              aria-label={`What is ${label.toLowerCase()}?`}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="var(--gray-400)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+            </button>
+          )}
+        </span>
+        <span
+          className="vela-body-sm"
+          style={{
+            fontFamily: 'var(--type-mono-base-font)',
+            color: valueColor || undefined,
+            fontWeight: valueColor ? 600 : undefined,
+          }}
+        >
+          {value}
+        </span>
+      </div>
+      {showHint && (
+        <p
+          className="vela-body-sm"
+          style={{
+            margin: 0,
+            marginTop: 'var(--space-1)',
+            fontSize: '0.68rem',
+            lineHeight: 1.4,
+            color: 'var(--gray-500)',
+            backgroundColor: 'var(--gray-100)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '4px 8px',
+          }}
+        >
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -1765,8 +1854,7 @@ function LivePositionCard({
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
-  const pnlPct = position.unrealized_pnl_pct;
-  const pnlDollar = position.unrealized_pnl;
+  const { pnlPct, pnlDollar } = getEffectivePnl(position);
 
   const formatDuration = (createdAt: string): string =>
     formatDurationMs(Date.now() - new Date(createdAt).getTime());
@@ -1822,7 +1910,8 @@ function LivePositionCard({
                 className="vela-body-sm"
                 style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
               >
-                {position.leverage}x · Open {formatDuration(position.created_at)}
+                {position.leverage > 1 ? `${position.leverage}x · ` : ''}Open{' '}
+                {formatDuration(position.created_at)}
               </p>
             </div>
           </div>
@@ -1857,19 +1946,46 @@ function LivePositionCard({
           </div>
         </div>
 
-        {/* Price row */}
-        <p
-          className="vela-body-sm"
+        {/* Price row + expand hint */}
+        <div
           style={{
-            color: 'var(--gray-600)',
-            fontFamily: 'var(--type-mono-base-font)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginTop: 'var(--space-2)',
-            marginBottom: 0,
           }}
         >
-          Entry {formatPrice(position.entry_price)}
-          {position.current_price != null && ` → Current ${formatPrice(position.current_price)}`}
-        </p>
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--gray-600)',
+              fontFamily: 'var(--type-mono-base-font)',
+              margin: 0,
+            }}
+          >
+            Entry {formatPrice(position.entry_price)}
+            {position.current_price != null && ` → Current ${formatPrice(position.current_price)}`}
+          </p>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            style={{
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform var(--motion-fast) var(--motion-ease-out)',
+              flexShrink: 0,
+            }}
+          >
+            <path
+              d="M3 5L7 9L11 5"
+              style={{ stroke: 'var(--gray-400)' }}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
       </div>
 
       {/* Expanded detail */}
@@ -1885,7 +2001,7 @@ function LivePositionCard({
             label="Position size"
             value={`$${position.size_usd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
           />
-          <DetailRow label="Leverage" value={`${position.leverage}x`} />
+          {position.leverage > 1 && <DetailRow label="Leverage" value={`${position.leverage}x`} />}
           <DetailRow label="Entry price" value={formatPrice(position.entry_price)} />
           {position.current_price != null && (
             <DetailRow label="Current price" value={formatPrice(position.current_price)} />
@@ -1896,6 +2012,7 @@ function LivePositionCard({
               label="Stop-loss"
               value={formatPrice(position.stop_loss_price)}
               valueColor="var(--red-dark)"
+              hint="Your safety net. If the price drops to this level, Vela automatically exits the position to limit your loss."
             />
           )}
           {position.take_profit_price != null && (
@@ -1968,45 +2085,201 @@ function LivePositionCard({
                   direction: position.side,
                   entryPrice: position.entry_price,
                   exitPrice: position.current_price,
-                  pnlPct: position.unrealized_pnl_pct,
+                  pnlPct: pnlPct,
                   duration: formatDuration(position.created_at),
                   leverage: position.leverage > 1 ? position.leverage : undefined,
                 }}
               />
             </div>
           )}
+        </div>
+      )}
+    </Card>
+  );
+}
 
-          {/* Position info */}
+/** Card for a closed position from the positions table */
+function ClosedPositionCard({
+  position,
+  expanded,
+  onToggle,
+}: {
+  position: Position;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const isLong = position.side === 'long';
+  const pnlPct = position.closed_pnl_pct ?? 0;
+  const pnlDollar = position.closed_pnl ?? 0;
+  const isPositive = pnlDollar >= 0;
+
+  const holdingPeriod =
+    position.created_at && position.closed_at
+      ? formatDurationMs(
+          new Date(position.closed_at).getTime() - new Date(position.created_at).getTime()
+        )
+      : null;
+
+  const closedDate = position.closed_at
+    ? new Date(position.closed_at).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+      })
+    : null;
+
+  return (
+    <Card
+      compact
+      style={{
+        borderLeft: `4px solid ${isPositive ? 'var(--green-primary)' : 'var(--red-primary)'}`,
+        cursor: 'pointer',
+      }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
+        {/* Top row */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <span
+              className="vela-label-sm"
+              style={{
+                backgroundColor: 'var(--gray-200)',
+                color: 'var(--gray-600)',
+                padding: '1px 6px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1.5px solid var(--gray-300)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                fontSize: 10,
+              }}
+            >
+              {isLong ? 'Long' : 'Short'}
+            </span>
+            <div>
+              <span className="vela-heading-base">{position.asset_id.toUpperCase()}</span>
+              <p
+                className="vela-body-sm"
+                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+              >
+                Closed{closedDate ? ` ${closedDate}` : ''}
+                {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
+              </p>
+            </div>
+          </div>
+
           <div
             style={{
-              marginTop: 'var(--space-2)',
-              padding: 'var(--space-2)',
-              backgroundColor: 'var(--gray-100)',
-              borderRadius: 'var(--radius-sm)',
+              textAlign: 'right',
               display: 'flex',
               alignItems: 'center',
-              gap: 'var(--space-1)',
+              gap: 'var(--space-2)',
             }}
           >
+            <div>
+              <p
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontWeight: 700,
+                  fontSize: 'var(--text-base)',
+                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  lineHeight: 1.2,
+                  margin: 0,
+                }}
+              >
+                {isPositive ? '+' : ''}
+                {pnlPct.toFixed(1)}%
+              </p>
+              <p
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontWeight: 600,
+                  fontSize: 'var(--text-xs)',
+                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  margin: 0,
+                }}
+              >
+                {isPositive ? '+' : '-'}$
+                {Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
+                {isPositive ? 'profit' : 'loss'}
+              </p>
+            </div>
             <svg
               width="14"
               height="14"
-              viewBox="0 0 24 24"
+              viewBox="0 0 14 14"
               fill="none"
-              stroke="var(--gray-400)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ flexShrink: 0 }}
+              style={{
+                transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform var(--motion-fast) var(--motion-ease-out)',
+                flexShrink: 0,
+              }}
             >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
+              <path
+                d="M3 5L7 9L11 5"
+                style={{ stroke: 'var(--gray-400)' }}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
-            <p className="vela-body-sm" style={{ color: 'var(--gray-500)', margin: 0 }}>
-              Live position on Hyperliquid testnet · Updated by fast loop
-            </p>
           </div>
+        </div>
+
+        {/* Price row */}
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--gray-600)',
+            fontFamily: 'var(--type-mono-base-font)',
+            marginTop: 'var(--space-2)',
+            marginBottom: 0,
+          }}
+        >
+          Entry {formatPrice(position.entry_price)}
+          {position.current_price != null && ` → Exit ${formatPrice(position.current_price)}`}
+        </p>
+      </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div
+          style={{
+            marginTop: 'var(--space-3)',
+            paddingTop: 'var(--space-3)',
+            borderTop: '2px solid var(--gray-200)',
+          }}
+        >
+          <DetailRow
+            label="Position size"
+            value={`$${(position.original_size_usd ?? position.size_usd).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+          />
+          {position.leverage > 1 && <DetailRow label="Leverage" value={`${position.leverage}x`} />}
+          <DetailRow label="Entry price" value={formatPrice(position.entry_price)} />
+          {position.current_price != null && (
+            <DetailRow label="Exit price" value={formatPrice(position.current_price)} />
+          )}
+          {holdingPeriod && <DetailRow label="Duration" value={holdingPeriod} />}
+          <DetailRow
+            label="Realized P&L"
+            value={`${isPositive ? '+' : ''}${pnlPct.toFixed(1)}% · ${isPositive ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${isPositive ? 'profit' : 'loss'}`}
+            valueColor={isPositive ? 'var(--green-dark)' : 'var(--red-dark)'}
+          />
         </div>
       )}
     </Card>

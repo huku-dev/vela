@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
@@ -145,9 +146,12 @@ function SettingsItem({ label, value, onClick, danger, expanded }: SettingsItemP
       >
         {label}
       </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minWidth: 0 }}>
         {value && (
-          <span className="vela-body-sm vela-text-muted" style={{ fontSize: 13 }}>
+          <span
+            className="vela-body-sm vela-text-muted"
+            style={{ fontSize: 13, textAlign: 'right' }}
+          >
             {value}
           </span>
         )}
@@ -228,6 +232,8 @@ interface BalanceCardProps {
   hasWallet: boolean;
   isTradingEnabled: boolean;
   showFundingNudge?: boolean;
+  /** Open positions for computing capital in trades */
+  openPositions?: import('../types').Position[];
   onEnableClick?: () => void;
   onWithdrawClick?: () => void;
   onDepositClick?: () => void;
@@ -238,10 +244,13 @@ function BalanceCard({
   hasWallet,
   isTradingEnabled,
   showFundingNudge,
+  openPositions,
   onEnableClick,
   onWithdrawClick,
   onDepositClick,
 }: BalanceCardProps) {
+  const navigate = useNavigate();
+
   // No wallet / trading not enabled — show $0 balance + enable CTA
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
@@ -260,7 +269,7 @@ function BalanceCard({
             textAlign: 'center',
           }}
         >
-          TRADING WALLET
+          BALANCE
         </p>
 
         {/* Balance display */}
@@ -324,6 +333,9 @@ function BalanceCard({
 
   const balance = wallet.balance_usdc;
   const isTestnet = wallet.environment === 'testnet';
+  const inTrades = (openPositions ?? []).reduce((sum, p) => sum + p.size_usd, 0);
+  const totalValue = balance + inTrades;
+  const hasOpenPositions = inTrades > 0;
 
   return (
     <div
@@ -334,7 +346,7 @@ function BalanceCard({
       }}
     >
       {/* Funding nudge banner for unfunded paid users */}
-      {showFundingNudge && balance === 0 && (
+      {showFundingNudge && balance === 0 && !hasOpenPositions && (
         <div
           style={{
             padding: 'var(--space-3)',
@@ -362,33 +374,101 @@ function BalanceCard({
           textAlign: 'center',
         }}
       >
-        TRADING WALLET {isTestnet && '· Testnet'}
+        BALANCE {isTestnet && '· Testnet'}
       </p>
 
-      {/* Big balance display */}
+      {/* Big balance display — total value when positions are open */}
       <p
         style={{
           fontFamily: 'JetBrains Mono, monospace',
           fontSize: 32,
           fontWeight: 700,
-          color: balance > 0 ? 'var(--green-dark)' : 'var(--color-text-primary)',
+          color: totalValue > 0 ? 'var(--green-dark)' : 'var(--color-text-primary)',
           margin: 0,
           lineHeight: 1.2,
           textAlign: 'center',
         }}
       >
         $
-        {balance.toLocaleString('en-US', {
+        {totalValue.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })}
       </p>
-      <p
-        className="vela-body-sm vela-text-muted"
-        style={{ margin: 0, marginTop: 'var(--space-1)', textAlign: 'center' }}
-      >
-        USDC
-      </p>
+
+      {/* Breakdown: available + in trades */}
+      {hasOpenPositions ? (
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: 'var(--space-2)',
+            }}
+          >
+            <span className="vela-body-sm vela-text-muted">Available</span>
+            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
+              $
+              {balance.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/trades')}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('/trades');
+              }
+            }}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: 'var(--space-2)',
+              cursor: 'pointer',
+            }}
+          >
+            <span className="vela-body-sm vela-text-muted">
+              In trades
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{ marginLeft: 4, verticalAlign: 'middle' }}
+              >
+                <path
+                  d="M6 3L11 8L6 13"
+                  style={{ stroke: 'var(--gray-400)' }}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
+              $
+              {inTrades.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ margin: 0, marginTop: 'var(--space-1)', textAlign: 'center' }}
+        >
+          USDC
+        </p>
+      )}
 
       {/* Action buttons */}
       <div
@@ -2625,6 +2705,7 @@ export default function Account() {
         hasWallet={hasWallet}
         isTradingEnabled={isTradingEnabled}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
+        openPositions={positions}
         onEnableClick={() => setExpandedSection('trading')}
         onWithdrawClick={() => setShowWithdrawSheet(true)}
         onDepositClick={() => setShowDepositSheet(true)}
