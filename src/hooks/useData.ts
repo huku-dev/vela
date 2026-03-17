@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import * as Sentry from '@sentry/react';
 import { supabase } from '../lib/supabase';
 import type {
   Asset,
@@ -197,6 +198,10 @@ export function useDashboard() {
       setLastUpdated(new Date());
       setError(null);
     } catch (err: unknown) {
+      Sentry.captureException(err, {
+        tags: { flow: 'dashboard' },
+        extra: { step: 'fetchData' },
+      });
       setError(err instanceof Error ? err.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
@@ -431,6 +436,10 @@ export function useTrackRecord() {
         const enriched = await enrichTrades(mapped);
         setTrades(enriched);
       } catch (err) {
+        Sentry.captureException(err, {
+          tags: { flow: 'track-record' },
+          extra: { step: 'enrichTrades', tradeCount: mapped.length },
+        });
         console.error('[useTrackRecord] enrichment failed:', err);
         setTrades(mapped);
       }

@@ -295,6 +295,10 @@ export function useTrading(): TradingState {
       setCircuitBreakers(cbRes.data ?? []);
       setError(null);
     } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: 'trading-data' },
+        extra: { step: 'fetchTradingData' },
+      });
       console.error('[useTrading] Fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load trading data');
     } finally {
@@ -362,7 +366,21 @@ export function useTrading(): TradingState {
           fetchTradingData();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) {
+          Sentry.captureException(err, {
+            tags: { flow: 'realtime' },
+            extra: { channel: 'trading-updates', status },
+          });
+          console.error('[useTrading] Realtime error:', status, err);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          Sentry.captureMessage(`Realtime subscription ${status}`, {
+            level: 'warning',
+            tags: { flow: 'realtime' },
+          });
+        }
+      });
 
     return () => {
       channel.unsubscribe();
@@ -460,9 +478,20 @@ export function useTrading(): TradingState {
       try {
         token = await withTimeout(getToken(), 10_000, 'Authentication');
       } catch (err) {
-        throw new Error(err instanceof Error ? err.message : 'Authentication failed');
+        const msg = err instanceof Error ? err.message : 'Authentication failed';
+        Sentry.captureMessage(`Trade decline auth failure: ${msg}`, {
+          level: 'error',
+          extra: { proposalId },
+        });
+        throw new Error(msg);
       }
-      if (!token) throw new Error('Not authenticated. Please log in again.');
+      if (!token) {
+        Sentry.captureMessage('Trade decline: getToken returned null', {
+          level: 'error',
+          extra: { proposalId },
+        });
+        throw new Error('Not authenticated. Please log in again.');
+      }
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15_000);
@@ -480,10 +509,19 @@ export function useTrading(): TradingState {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Failed to decline proposal');
+          const errMsg = data.error || 'Failed to decline proposal';
+          Sentry.captureMessage(`Trade decline webhook error: ${errMsg}`, {
+            level: 'error',
+            extra: { proposalId, status: res.status },
+          });
+          throw new Error(errMsg);
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
+          Sentry.captureMessage('Trade decline timed out (15s)', {
+            level: 'warning',
+            extra: { proposalId },
+          });
           throw new Error('Request timed out. Please try again.');
         }
         throw err;
@@ -554,6 +592,12 @@ export function useTrading(): TradingState {
 
       // 2. Provision wallet if needed (authenticated call)
       if (!wallet?.agent_registered) {
+        Sentry.addBreadcrumb({
+          category: 'wallet',
+          message: 'Provisioning wallet',
+          level: 'info',
+        });
+
         const res = await fetch(`${SUPABASE_URL}/functions/v1/provision-wallet`, {
           method: 'POST',
           headers: {
@@ -564,7 +608,12 @@ export function useTrading(): TradingState {
 
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Failed to provision wallet');
+          const errMsg = data.error || 'Failed to provision wallet';
+          Sentry.captureMessage(`Wallet provisioning failed: ${errMsg}`, {
+            level: 'error',
+            extra: { status: res.status },
+          });
+          throw new Error(errMsg);
         }
       }
 

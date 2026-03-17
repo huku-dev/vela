@@ -10,10 +10,21 @@ if (sentryDsn) {
   Sentry.init({
     dsn: sentryDsn,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
-    // Sample 10% of transactions for performance monitoring
-    tracesSampleRate: 0.1,
+    // Sample all transactions while actively debugging trade flow
+    tracesSampleRate: 1.0,
     // Only send errors in production/staging — skip noisy dev errors
     enabled: !import.meta.env.DEV,
+    // Capture all sessions with errors for replay, 10% of normal sessions
+    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: 0.1,
+    integrations: [
+      Sentry.replayIntegration({
+        // Mask all text by default for privacy, unmask specific elements as needed
+        maskAllText: false,
+        blockAllMedia: false,
+      }),
+      Sentry.browserTracingIntegration(),
+    ],
     // Filter out non-actionable errors
     beforeSend(event) {
       // Skip ResizeObserver loop errors (browser noise, not actionable)

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
 import type { UserSubscription, SubscriptionTier } from '../types';
 
@@ -90,6 +91,10 @@ export function useSubscription(): SubscriptionState {
       setSubscription(sub);
       cacheSubscription(sub);
     } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: 'subscription' },
+        extra: { step: 'fetchSubscription' },
+      });
       console.error('[useSubscription] Fetch error:', err);
       setError('Could not load subscription');
     } finally {
@@ -137,7 +142,13 @@ export function useSubscription(): SubscriptionState {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? 'Failed to start checkout');
+        const errMsg = body.error ?? 'Failed to start checkout';
+        Sentry.captureMessage(`Checkout session failed: ${errMsg}`, {
+          level: 'error',
+          tags: { flow: 'subscription' },
+          extra: { tier, billingCycle, status: res.status },
+        });
+        throw new Error(errMsg);
       }
 
       const { url } = await res.json();
@@ -160,7 +171,13 @@ export function useSubscription(): SubscriptionState {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? 'Failed to open portal');
+      const errMsg = body.error ?? 'Failed to open portal';
+      Sentry.captureMessage(`Portal session failed: ${errMsg}`, {
+        level: 'error',
+        tags: { flow: 'subscription' },
+        extra: { status: res.status },
+      });
+      throw new Error(errMsg);
     }
 
     const { url } = await res.json();

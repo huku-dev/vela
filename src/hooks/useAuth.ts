@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import * as Sentry from '@sentry/react';
 import { usePrivy } from '@privy-io/react-auth';
 import { supabase, createAuthenticatedClient } from '../lib/supabase';
 import { clearSubscriptionCache } from './useSubscription';
@@ -67,8 +68,26 @@ export function useAuth(): AuthState {
     }
 
     const doExchange = async (): Promise<string | null> => {
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'getAccessToken started',
+        level: 'info',
+      });
+
       const privyToken = await getAccessToken();
-      if (!privyToken) return null;
+      if (!privyToken) {
+        Sentry.captureMessage('Privy getAccessToken returned null', {
+          level: 'warning',
+          tags: { flow: 'auth' },
+        });
+        return null;
+      }
+
+      Sentry.addBreadcrumb({
+        category: 'auth',
+        message: 'Privy token acquired, exchanging for Supabase JWT',
+        level: 'info',
+      });
 
       try {
         const res = await fetch(EXCHANGE_URL, {
@@ -80,6 +99,12 @@ export function useAuth(): AuthState {
         });
 
         if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          Sentry.captureMessage(`Token exchange failed: ${res.status}`, {
+            level: 'error',
+            tags: { flow: 'auth' },
+            extra: { status: res.status, body },
+          });
           console.error('[useAuth] Token exchange failed:', res.status);
           return null;
         }
@@ -91,6 +116,9 @@ export function useAuth(): AuthState {
           expiresAt: Date.now() + data.expires_in * 1000,
         };
 
+        // Set Sentry user context for all future events
+        Sentry.setUser({ id: data.user.privy_did });
+
         setUser({
           privyDid: data.user.privy_did,
           profileId: data.user.profile_id,
@@ -99,8 +127,18 @@ export function useAuth(): AuthState {
           deletionScheduledAt: data.user.deletion_scheduled_at ?? undefined,
         });
 
+        Sentry.addBreadcrumb({
+          category: 'auth',
+          message: 'Token exchange succeeded',
+          level: 'info',
+        });
+
         return data.access_token;
       } catch (err) {
+        Sentry.captureException(err, {
+          tags: { flow: 'auth' },
+          extra: { step: 'token-exchange-fetch' },
+        });
         console.error('[useAuth] Token exchange error:', err);
         return null;
       }

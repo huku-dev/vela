@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -67,6 +68,9 @@ export function useAccountDelete(): AccountDeleteState {
         logout();
       }, 3000);
     } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: 'account-delete' },
+      });
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setStep('error');
     }
@@ -96,6 +100,9 @@ export function useAccountDelete(): AccountDeleteState {
       // Force full page reload to re-run auth-exchange with fresh profile
       window.location.reload();
     } catch (err) {
+      Sentry.captureException(err, {
+        tags: { flow: 'account-reactivate' },
+      });
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setReactivating(false);
