@@ -17,8 +17,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
       reject(new Error(`${label} timed out after ${ms / 1000}s`));
     }, ms);
     promise.then(
-      val => { clearTimeout(timer); resolve(val); },
-      err => { clearTimeout(timer); reject(err); },
+      val => {
+        clearTimeout(timer);
+        resolve(val);
+      },
+      err => {
+        clearTimeout(timer);
+        reject(err);
+      }
     );
   });
 }
@@ -281,8 +287,7 @@ export function useTrading(): TradingState {
       const closedPos = closedPosRes.data ?? [];
       setClosedPositions(closedPos.length > 0 ? closedPos : DEV_MOCK_CLOSED_POSITIONS);
       setPreferences(
-        prefsRes.data ??
-          (DEV_BYPASS ? ({ mode: 'semi_auto' } as unknown as UserPreferences) : null)
+        prefsRes.data ?? (DEV_BYPASS ? ({ mode: 'semi_auto' } as unknown as UserPreferences) : null)
       );
       const fetchedWallet = walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null);
       setWallet(fetchedWallet);
@@ -369,22 +374,36 @@ export function useTrading(): TradingState {
   // ── Accept proposal (authenticated POST to trade-webhook) ──
   const acceptProposal = useCallback(
     async (proposalId: string) => {
-      Sentry.addBreadcrumb({ category: 'trade', message: `accept started: ${proposalId}`, level: 'info' });
+      Sentry.addBreadcrumb({
+        category: 'trade',
+        message: `accept started: ${proposalId}`,
+        level: 'info',
+      });
 
       let token: string | null;
       try {
         token = await withTimeout(getToken(), 10_000, 'Authentication');
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Authentication failed';
-        Sentry.captureMessage(`Trade accept auth failure: ${msg}`, { level: 'error', extra: { proposalId } });
+        Sentry.captureMessage(`Trade accept auth failure: ${msg}`, {
+          level: 'error',
+          extra: { proposalId },
+        });
         throw new Error(msg);
       }
       if (!token) {
-        Sentry.captureMessage('Trade accept: getToken returned null', { level: 'error', extra: { proposalId } });
+        Sentry.captureMessage('Trade accept: getToken returned null', {
+          level: 'error',
+          extra: { proposalId },
+        });
         throw new Error('Not authenticated. Please log in again.');
       }
 
-      Sentry.addBreadcrumb({ category: 'trade', message: 'token acquired, sending to webhook', level: 'info' });
+      Sentry.addBreadcrumb({
+        category: 'trade',
+        message: 'token acquired, sending to webhook',
+        level: 'info',
+      });
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30_000);
@@ -403,14 +422,24 @@ export function useTrading(): TradingState {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           const errMsg = data.error || `Trade failed (${res.status})`;
-          Sentry.captureMessage(`Trade accept webhook error: ${errMsg}`, { level: 'error', extra: { proposalId, status: res.status } });
+          Sentry.captureMessage(`Trade accept webhook error: ${errMsg}`, {
+            level: 'error',
+            extra: { proposalId, status: res.status },
+          });
           throw new Error(errMsg);
         }
 
-        Sentry.addBreadcrumb({ category: 'trade', message: `accept succeeded: ${proposalId}`, level: 'info' });
+        Sentry.addBreadcrumb({
+          category: 'trade',
+          message: `accept succeeded: ${proposalId}`,
+          level: 'info',
+        });
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
-          Sentry.captureMessage('Trade accept timed out (30s)', { level: 'error', extra: { proposalId } });
+          Sentry.captureMessage('Trade accept timed out (30s)', {
+            level: 'error',
+            extra: { proposalId },
+          });
           throw new Error('Trade request timed out. Check Your Trades to see if it went through.');
         }
         throw err;

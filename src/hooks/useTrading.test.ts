@@ -17,9 +17,9 @@ describe('TRADE-TIMEOUT: trade webhook fetch behavior', () => {
   });
 
   it('passes AbortSignal to fetch for accept requests', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     globalThis.fetch = fetchMock;
 
     // Simulate the accept flow from useTrading
@@ -89,15 +89,15 @@ describe('TRADE-TIMEOUT: trade webhook fetch behavior', () => {
       }
     };
 
-    await expect(declineWithTimeout()).rejects.toThrow(
-      'Request timed out. Please try again.'
-    );
+    await expect(declineWithTimeout()).rejects.toThrow('Request timed out. Please try again.');
   });
 
   it('surfaces server error message on non-ok response', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ error: 'Insufficient balance' }), { status: 400 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Insufficient balance' }), { status: 400 })
+      );
     globalThis.fetch = fetchMock;
 
     const res = await fetch('https://test.supabase.co/functions/v1/trade-webhook?source=frontend', {
@@ -112,9 +112,9 @@ describe('TRADE-TIMEOUT: trade webhook fetch behavior', () => {
   });
 
   it('does not abort when response arrives quickly', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 })
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
     globalThis.fetch = fetchMock;
 
     const controller = new AbortController();

@@ -416,14 +416,13 @@ export function getEffectivePnl(
     size_usd: number;
   },
   /** Live price override — use when a fresher price (e.g. CoinGecko) is available */
-  livePriceOverride?: number | null,
+  livePriceOverride?: number | null
 ): { pnlPct: number; pnlDollar: number } {
   const { entry_price, side, unrealized_pnl, unrealized_pnl_pct, size_usd } = position;
 
   // If a live price override is provided, always compute from it (freshest source)
-  const bestPrice = livePriceOverride != null && livePriceOverride > 0
-    ? livePriceOverride
-    : position.current_price;
+  const bestPrice =
+    livePriceOverride != null && livePriceOverride > 0 ? livePriceOverride : position.current_price;
 
   // If DB P&L values are non-zero and no live override, trust them
   if (livePriceOverride == null && (unrealized_pnl !== 0 || unrealized_pnl_pct !== 0)) {

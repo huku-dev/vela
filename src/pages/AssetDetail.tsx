@@ -105,7 +105,8 @@ function StopLossRow({ price }: { price: number }) {
             padding: 'var(--space-1) var(--space-2)',
           }}
         >
-          Your safety net. If the price drops to this level, Vela automatically exits the position to limit your loss.
+          Your safety net. If the price drops to this level, Vela automatically exits the position
+          to limit your loss.
         </p>
       )}
     </div>
@@ -628,7 +629,8 @@ export default function AssetDetail() {
             <span
               style={{
                 marginLeft: 'var(--space-2)',
-                backgroundColor: assetPosition.side === 'long' ? 'var(--green-primary)' : 'var(--red-primary)',
+                backgroundColor:
+                  assetPosition.side === 'long' ? 'var(--green-primary)' : 'var(--red-primary)',
                 color: 'var(--white)',
                 padding: '1px 6px',
                 borderRadius: 'var(--radius-sm)',
@@ -666,11 +668,12 @@ export default function AssetDetail() {
           {(() => {
             const { pnlPct, pnlDollar } = getEffectivePnl(assetPosition, price);
             const isPositive = pnlDollar >= 0;
-            const pnlColor = pnlDollar > 0
-              ? 'var(--green-dark)'
-              : pnlDollar < 0
-                ? 'var(--red-dark)'
-                : 'var(--color-text-primary)';
+            const pnlColor =
+              pnlDollar > 0
+                ? 'var(--green-dark)'
+                : pnlDollar < 0
+                  ? 'var(--red-dark)'
+                  : 'var(--color-text-primary)';
             return (
               <div>
                 <span
@@ -682,8 +685,7 @@ export default function AssetDetail() {
                     lineHeight: 1.2,
                   }}
                 >
-                  {isPositive ? '+' : ''}$
-                  {Math.abs(pnlDollar).toFixed(2)}{' '}
+                  {isPositive ? '+' : ''}${Math.abs(pnlDollar).toFixed(2)}{' '}
                   {isPositive ? 'profit' : 'loss'}
                 </span>
                 <span
@@ -740,10 +742,7 @@ export default function AssetDetail() {
                   `$${assetPosition.size_usd.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
                 ],
                 ['Entry price', formatPrice(assetPosition.entry_price)],
-                [
-                  'Current price',
-                  formatPrice(price ?? assetPosition.current_price),
-                ],
+                ['Current price', formatPrice(price ?? assetPosition.current_price)],
                 [
                   'Time open',
                   (() => {
@@ -827,15 +826,17 @@ export default function AssetDetail() {
                         Manual exits sometimes miss further gains.
                       </p>
                       {(() => {
-                        const { pnlPct: closePnlPct, pnlDollar: closePnlDollar } = getEffectivePnl(assetPosition, price);
+                        const { pnlPct: closePnlPct, pnlDollar: closePnlDollar } = getEffectivePnl(
+                          assetPosition,
+                          price
+                        );
                         return (
                           <p
                             className="vela-mono vela-body-sm"
                             style={{ margin: 0, marginBottom: 'var(--space-3)', fontWeight: 600 }}
                           >
                             Current P&L: {closePnlDollar >= 0 ? '+' : ''}$
-                            {Math.abs(closePnlDollar).toFixed(2)} (
-                            {closePnlPct >= 0 ? '+' : ''}
+                            {Math.abs(closePnlDollar).toFixed(2)} ({closePnlPct >= 0 ? '+' : ''}
                             {closePnlPct.toFixed(1)}%)
                           </p>
                         );
