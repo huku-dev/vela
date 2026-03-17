@@ -26,9 +26,16 @@ function getPositionHeadline(
   const pnlAbs = Math.abs(pnl).toFixed(1);
   const pnlSign = pnl >= 0 ? '+' : '-';
 
-  // Clean up brief headline for use as a follow-on clause
-  const marketContext = briefHeadline
-    ? stripAssetPrefix(briefHeadline, symbol).replace(/\.$/, '').toLowerCase()
+  // Clean up brief headline for use as a follow-on clause.
+  // Lowercase first char for clause flow ("and up 6%"), but preserve
+  // all-caps tickers at the start ("and BTC up 6%").
+  const rawContext = briefHeadline
+    ? stripAssetPrefix(briefHeadline, symbol).replace(/\.$/, '')
+    : null;
+  const marketContext = rawContext
+    ? /^[A-Z]{2,}\b/.test(rawContext)
+      ? rawContext
+      : rawContext.charAt(0).toLowerCase() + rawContext.slice(1)
     : null;
 
   if (pnl >= 20) {

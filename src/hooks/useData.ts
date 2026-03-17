@@ -444,13 +444,18 @@ export function useTrackRecord() {
         setTrades(mapped);
       }
 
-      // Fetch live prices for open trade assets
-      const openAssetIds = [
-        ...new Set(mapped.filter(t => t.status === 'open').map(t => t.asset_coingecko_id)),
-      ].filter(Boolean) as string[];
+      // Fetch live prices for all known assets (covers both open paper_trades and real positions)
+      const allAssetIds = [
+        ...new Set(Object.values(aMap).map(a => a.coingecko_id)),
+      ].filter(Boolean);
 
-      if (openAssetIds.length > 0) {
-        const prices = await fetchLivePrices(openAssetIds);
+      if (allAssetIds.length > 0) {
+        // Build symbolMap so fetchLivePrices uses Hyperliquid real-time feed (not just CoinGecko)
+        const symbolMap: Record<string, string> = {};
+        for (const a of Object.values(aMap)) {
+          symbolMap[a.coingecko_id] = a.symbol;
+        }
+        const prices = await fetchLivePrices(allAssetIds, symbolMap);
         setLivePrices(prices);
       }
 

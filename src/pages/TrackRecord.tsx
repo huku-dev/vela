@@ -431,14 +431,24 @@ export default function TrackRecord() {
                 Open positions
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {positions.map(pos => (
-                  <LivePositionCard
-                    key={pos.id}
-                    position={pos}
-                    expanded={expandedTradeId === pos.id}
-                    onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
-                  />
-                ))}
+                {positions.map(pos => {
+                  const posAsset = assetMap[pos.asset_id];
+                  const posCoingeckoId = posAsset?.coingecko_id;
+                  const posLivePrice = posCoingeckoId
+                    ? livePrices[posCoingeckoId]?.price
+                    : undefined;
+                  return (
+                    <LivePositionCard
+                      key={pos.id}
+                      position={pos}
+                      livePrice={posLivePrice}
+                      expanded={expandedTradeId === pos.id}
+                      onToggle={() =>
+                        setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
+                      }
+                    />
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1846,15 +1856,17 @@ function formatHoldingPeriod(openedAt: string, closedAt: string): string {
 
 function LivePositionCard({
   position,
+  livePrice,
   expanded,
   onToggle,
 }: {
   position: Position;
+  livePrice?: number;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
-  const { pnlPct, pnlDollar } = getEffectivePnl(position);
+  const { pnlPct, pnlDollar } = getEffectivePnl(position, livePrice);
 
   const formatDuration = (createdAt: string): string =>
     formatDurationMs(Date.now() - new Date(createdAt).getTime());
@@ -1964,7 +1976,8 @@ function LivePositionCard({
             }}
           >
             Entry {formatPrice(position.entry_price)}
-            {position.current_price != null && ` → Current ${formatPrice(position.current_price)}`}
+            {(livePrice ?? position.current_price) != null &&
+              ` → Current ${formatPrice(livePrice ?? position.current_price)}`}
           </p>
           <svg
             width="14"
@@ -2003,8 +2016,11 @@ function LivePositionCard({
           />
           {position.leverage > 1 && <DetailRow label="Leverage" value={`${position.leverage}x`} />}
           <DetailRow label="Entry price" value={formatPrice(position.entry_price)} />
-          {position.current_price != null && (
-            <DetailRow label="Current price" value={formatPrice(position.current_price)} />
+          {(livePrice ?? position.current_price) != null && (
+            <DetailRow
+              label="Current price"
+              value={formatPrice(livePrice ?? position.current_price)}
+            />
           )}
           <DetailRow label="Duration" value={formatDuration(position.created_at)} />
           {position.stop_loss_price != null && (
