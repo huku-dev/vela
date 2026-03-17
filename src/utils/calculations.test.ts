@@ -11,6 +11,7 @@ import {
   formatPercentChange,
   isDataStale,
   validateSignalStatusAlignment,
+  getEffectivePnl,
 } from './calculations';
 
 describe('calculatePnL - TRUST CRITICAL', () => {
@@ -713,5 +714,121 @@ describe('computeDetailedStats - TRUST CRITICAL', () => {
     // With bb2PositionSize=300 — should not affect regular longs
     const stats = computeDetailedStats(trades, 1000, 300);
     expect(stats.bestTradeDollar).toBe(100); // 10% × $1000 = $100
+  });
+});
+
+// ── getEffectivePnl — TRUST CRITICAL ──
+describe('getEffectivePnl', () => {
+  const makePosition = (overrides: Partial<Parameters<typeof getEffectivePnl>[0]> = {}) => ({
+    entry_price: 100,
+    current_price: 110 as number | null,
+    side: 'long' as const,
+    unrealized_pnl: 0,
+    unrealized_pnl_pct: 0,
+    size_usd: 10,
+    ...overrides,
+  });
+
+  it('returns DB values when non-zero', () => {
+    const result = getEffectivePnl(makePosition({
+      unrealized_pnl: 5.50,
+      unrealized_pnl_pct: 2.3,
+    }));
+    expect(result.pnlPct).toBe(2.3);
+    expect(result.pnlDollar).toBe(5.50);
+  });
+
+  it('computes fallback when DB says zero but prices differ (long)', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 110,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+      size_usd: 10,
+    }));
+    expect(result.pnlPct).toBe(10); // (110-100)/100 * 100
+    expect(result.pnlDollar).toBe(1); // 10% of $10
+  });
+
+  it('computes fallback for short positions correctly', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 90,
+      side: 'short',
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+      size_usd: 10,
+    }));
+    expect(result.pnlPct).toBe(10); // short profits when price falls
+    expect(result.pnlDollar).toBe(1);
+  });
+
+  it('returns zero when prices genuinely match', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 100,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+    }));
+    expect(result.pnlPct).toBe(0);
+    expect(result.pnlDollar).toBe(0);
+  });
+
+  it('returns zero when current_price is null', () => {
+    const result = getEffectivePnl(makePosition({
+      current_price: null,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+    }));
+    expect(result.pnlPct).toBe(0);
+    expect(result.pnlDollar).toBe(0);
+  });
+
+  it('handles negative P&L fallback for longs', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 95,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+      size_usd: 20,
+    }));
+    expect(result.pnlPct).toBe(-5);
+    expect(result.pnlDollar).toBe(-1); // -5% of $20
+  });
+
+  it('uses livePriceOverride over position.current_price', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 105, // stale position price
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+      size_usd: 10,
+    }), 120); // live price is higher
+    expect(result.pnlPct).toBe(20); // (120-100)/100 * 100
+    expect(result.pnlDollar).toBe(2); // 20% of $10
+  });
+
+  it('livePriceOverride takes precedence over non-zero DB values', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 105,
+      unrealized_pnl: 3.0, // stale DB value
+      unrealized_pnl_pct: 5.0,
+      size_usd: 10,
+    }), 115); // fresher live price
+    expect(result.pnlPct).toBe(15); // computed from live price, not DB
+    expect(result.pnlDollar).toBe(1.5);
+  });
+
+  it('falls back to position.current_price when livePriceOverride is null', () => {
+    const result = getEffectivePnl(makePosition({
+      entry_price: 100,
+      current_price: 110,
+      unrealized_pnl: 0,
+      unrealized_pnl_pct: 0,
+      size_usd: 10,
+    }), null);
+    expect(result.pnlPct).toBe(10);
+    expect(result.pnlDollar).toBe(1);
   });
 });

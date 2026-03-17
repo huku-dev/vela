@@ -21,6 +21,7 @@ import {
   parsePriceSegments,
   plainEnglish,
 } from '../lib/helpers';
+import { getEffectivePnl } from '../utils/calculations';
 import type { SignalColor, BriefGroup } from '../types';
 
 const signalTitles: Record<SignalColor, string> = {
@@ -34,6 +35,82 @@ const signalBg: Record<SignalColor, string> = {
   red: 'var(--red-light)',
   grey: 'var(--sky-100)',
 };
+
+/** Stop-loss detail row with info icon tooltip */
+function StopLossRow({ price }: { price: number }) {
+  const [showTip, setShowTip] = React.useState(false);
+  return (
+    <div style={{ paddingBottom: 'var(--space-2)' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <span
+          className="vela-body-sm vela-text-muted"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          Stop-loss
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              setShowTip(prev => !prev);
+            }}
+            aria-label="What is a stop-loss?"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--gray-400)"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+          </button>
+        </span>
+        <span
+          className="vela-mono vela-body-sm"
+          style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--red-dark)' }}
+        >
+          {formatPrice(price)}
+        </span>
+      </div>
+      {showTip && (
+        <p
+          className="vela-body-sm"
+          style={{
+            margin: 0,
+            marginTop: 'var(--space-1)',
+            fontSize: '0.7rem',
+            lineHeight: 1.4,
+            color: 'var(--gray-500)',
+            backgroundColor: 'var(--gray-100)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-1) var(--space-2)',
+          }}
+        >
+          Your safety net. If the price drops to this level, Vela automatically exits the position to limit your loss.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
@@ -528,20 +605,41 @@ export default function AssetDetail() {
       {/* Position card — shown if user has an open position for this asset */}
       {assetPosition && (
         <Card
+          variant={assetPosition.side === 'long' ? 'mint' : 'peach'}
           style={{
             marginBottom: 'var(--space-4)',
-            borderLeft: `4px solid ${assetPosition.side === 'long' ? 'var(--green-primary)' : 'var(--red-primary)'}`,
             cursor: 'pointer',
           }}
           onClick={() => setPositionExpanded(!positionExpanded)}
         >
-          {/* Compact view — always visible */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          {/* Header row: label + side badge + chevron */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
             <span
-              className="vela-label-sm vela-text-muted"
-              style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              className="vela-label-sm"
+              style={{
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: 'var(--color-text-primary)',
+                fontWeight: 'var(--weight-bold)',
+              }}
             >
-              Your position
+              YOUR POSITION
+            </span>
+            <span
+              style={{
+                marginLeft: 'var(--space-2)',
+                backgroundColor: assetPosition.side === 'long' ? 'var(--green-primary)' : 'var(--red-primary)',
+                color: 'var(--white)',
+                padding: '1px 6px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1.5px solid var(--black)',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                fontSize: 10,
+              }}
+            >
+              {assetPosition.side.toUpperCase()}
             </span>
             <div style={{ flex: 1 }} />
             <svg
@@ -556,7 +654,7 @@ export default function AssetDetail() {
             >
               <path
                 d="M3 5L7 9L11 5"
-                style={{ stroke: 'var(--gray-400)' }}
+                style={{ stroke: 'var(--color-text-primary)' }}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -564,21 +662,56 @@ export default function AssetDetail() {
             </svg>
           </div>
 
+          {/* P&L hero — big number, bold, uses fallback calc */}
+          {(() => {
+            const { pnlPct, pnlDollar } = getEffectivePnl(assetPosition, price);
+            const isPositive = pnlDollar >= 0;
+            const pnlColor = pnlDollar > 0
+              ? 'var(--green-dark)'
+              : pnlDollar < 0
+                ? 'var(--red-dark)'
+                : 'var(--color-text-primary)';
+            return (
+              <div>
+                <span
+                  className="vela-mono"
+                  style={{
+                    fontWeight: 'var(--weight-bold)',
+                    fontSize: '1.25rem',
+                    color: pnlColor,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {isPositive ? '+' : ''}$
+                  {Math.abs(pnlDollar).toFixed(2)}{' '}
+                  {isPositive ? 'profit' : 'loss'}
+                </span>
+                <span
+                  className="vela-mono"
+                  style={{
+                    fontWeight: 'var(--weight-semibold)',
+                    fontSize: '0.85rem',
+                    color: pnlColor,
+                    opacity: 0.7,
+                    marginLeft: 'var(--space-2)',
+                  }}
+                >
+                  ({pnlPct >= 0 ? '+' : ''}
+                  {pnlPct.toFixed(1)}%)
+                </span>
+              </div>
+            );
+          })()}
+
+          {/* Compact details — entry price + leverage */}
           <div
             style={{
               display: 'flex',
               alignItems: 'baseline',
               gap: 'var(--space-2)',
-              marginTop: 'var(--space-2)',
+              marginTop: 'var(--space-1)',
             }}
           >
-            <span
-              className="vela-body-sm"
-              style={{ fontWeight: 'var(--weight-semibold)', color: 'var(--color-text-primary)' }}
-            >
-              {assetPosition.side.toUpperCase()}
-            </span>
-            <span className="vela-body-sm vela-text-muted">·</span>
             <span className="vela-mono vela-body-sm vela-text-muted">
               Entry {formatPrice(assetPosition.entry_price)}
             </span>
@@ -590,34 +723,6 @@ export default function AssetDetail() {
                 </span>
               </>
             )}
-          </div>
-
-          {/* P&L line */}
-          <div style={{ marginTop: 'var(--space-1)' }}>
-            <span
-              className="vela-mono"
-              style={{
-                fontWeight: 'var(--weight-bold)',
-                fontSize: '1rem',
-                color: 'var(--color-text-primary)',
-              }}
-            >
-              {assetPosition.unrealized_pnl >= 0 ? '+' : ''}$
-              {Math.abs(assetPosition.unrealized_pnl).toFixed(2)}{' '}
-              {assetPosition.unrealized_pnl >= 0 ? 'profit' : 'loss'}
-            </span>
-            <span
-              className="vela-mono"
-              style={{
-                fontWeight: 'var(--weight-semibold)',
-                fontSize: '0.85rem',
-                color: 'var(--color-text-muted)',
-                marginLeft: 'var(--space-2)',
-              }}
-            >
-              ({assetPosition.unrealized_pnl_pct >= 0 ? '+' : ''}
-              {assetPosition.unrealized_pnl_pct.toFixed(1)}%)
-            </span>
           </div>
 
           {/* Expanded details */}
@@ -637,7 +742,7 @@ export default function AssetDetail() {
                 ['Entry price', formatPrice(assetPosition.entry_price)],
                 [
                   'Current price',
-                  assetPosition.current_price ? formatPrice(assetPosition.current_price) : '—',
+                  formatPrice(price ?? assetPosition.current_price),
                 ],
                 [
                   'Time open',
@@ -649,9 +754,6 @@ export default function AssetDetail() {
                     return days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`;
                   })(),
                 ],
-                ...(assetPosition.stop_loss_price
-                  ? [['Stop-loss', formatPrice(assetPosition.stop_loss_price)]]
-                  : []),
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -672,26 +774,10 @@ export default function AssetDetail() {
                 </div>
               ))}
 
-              {/* Link to track record */}
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  navigate('/track-record');
-                }}
-                className="vela-body-sm"
-                style={{
-                  color: 'var(--color-text-muted)',
-                  background: 'none',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  marginTop: 'var(--space-1)',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '2px',
-                }}
-              >
-                View on Track Record →
-              </button>
+              {/* Stop-loss row with info tooltip */}
+              {assetPosition.stop_loss_price != null && (
+                <StopLossRow price={assetPosition.stop_loss_price} />
+              )}
 
               {/* Manual close button with friction */}
               {canTrade && (
@@ -740,15 +826,20 @@ export default function AssetDetail() {
                         Vela&apos;s signals haven&apos;t recommended closing this position yet.
                         Manual exits sometimes miss further gains.
                       </p>
-                      <p
-                        className="vela-mono vela-body-sm"
-                        style={{ margin: 0, marginBottom: 'var(--space-3)', fontWeight: 600 }}
-                      >
-                        Current P&L: {assetPosition.unrealized_pnl >= 0 ? '+' : ''}$
-                        {Math.abs(assetPosition.unrealized_pnl).toFixed(2)} (
-                        {assetPosition.unrealized_pnl_pct >= 0 ? '+' : ''}
-                        {assetPosition.unrealized_pnl_pct.toFixed(1)}%)
-                      </p>
+                      {(() => {
+                        const { pnlPct: closePnlPct, pnlDollar: closePnlDollar } = getEffectivePnl(assetPosition, price);
+                        return (
+                          <p
+                            className="vela-mono vela-body-sm"
+                            style={{ margin: 0, marginBottom: 'var(--space-3)', fontWeight: 600 }}
+                          >
+                            Current P&L: {closePnlDollar >= 0 ? '+' : ''}$
+                            {Math.abs(closePnlDollar).toFixed(2)} (
+                            {closePnlPct >= 0 ? '+' : ''}
+                            {closePnlPct.toFixed(1)}%)
+                          </p>
+                        );
+                      })()}
                       <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                         <button
                           className="vela-btn vela-btn-ghost vela-btn-sm"

@@ -118,6 +118,93 @@ const DEV_MOCK_WALLET: UserWallet = {
   updated_at: '2026-01-01T00:00:00Z',
 };
 
+/** Mock open positions for dev bypass — lets us visually QA position-aware features */
+const DEV_MOCK_POSITIONS: Position[] = DEV_BYPASS
+  ? [
+      {
+        id: 'dev-pos-1',
+        user_id: 'dev-bypass-user',
+        asset_id: 'btc',
+        trade_execution_id: null,
+        side: 'long' as const,
+        entry_price: 71200,
+        current_price: 74650,
+        size: 0.0014,
+        size_usd: 100,
+        leverage: 1,
+        unrealized_pnl: 0, // intentionally 0 to test fallback calc
+        unrealized_pnl_pct: 0,
+        stop_loss_price: 68500,
+        take_profit_price: null,
+        status: 'open' as const,
+        closed_at: null,
+        closed_pnl: null,
+        closed_pnl_pct: null,
+        close_reason: null,
+        trim_history: [],
+        original_size_usd: 100,
+        created_at: '2026-03-10T14:00:00Z',
+        updated_at: '2026-03-16T20:00:00Z',
+      },
+      {
+        id: 'dev-pos-2',
+        user_id: 'dev-bypass-user',
+        asset_id: 'eth',
+        trade_execution_id: null,
+        side: 'long' as const,
+        entry_price: 2280,
+        current_price: 2346,
+        size: 0.044,
+        size_usd: 100,
+        leverage: 1,
+        unrealized_pnl: 2.89,
+        unrealized_pnl_pct: 2.89,
+        stop_loss_price: 2180,
+        take_profit_price: null,
+        status: 'open' as const,
+        closed_at: null,
+        closed_pnl: null,
+        closed_pnl_pct: null,
+        close_reason: null,
+        trim_history: [],
+        original_size_usd: 100,
+        created_at: '2026-03-12T10:00:00Z',
+        updated_at: '2026-03-16T20:00:00Z',
+      },
+    ]
+  : [];
+
+/** Mock closed positions for dev bypass */
+const DEV_MOCK_CLOSED_POSITIONS: Position[] = DEV_BYPASS
+  ? [
+      {
+        id: 'dev-closed-1',
+        user_id: 'dev-bypass-user',
+        asset_id: 'hype',
+        trade_execution_id: null,
+        side: 'long' as const,
+        entry_price: 38.5,
+        current_price: 40.77,
+        size: 2.6,
+        size_usd: 100,
+        leverage: 1,
+        unrealized_pnl: 0,
+        unrealized_pnl_pct: 0,
+        stop_loss_price: 36.0,
+        take_profit_price: null,
+        status: 'closed' as const,
+        closed_at: '2026-03-15T18:00:00Z',
+        closed_pnl: 5.9,
+        closed_pnl_pct: 5.9,
+        close_reason: 'HYPE hit take-profit target after strong momentum',
+        trim_history: [],
+        original_size_usd: 100,
+        created_at: '2026-03-08T12:00:00Z',
+        updated_at: '2026-03-15T18:00:00Z',
+      },
+    ]
+  : [];
+
 // ── Hook ──────────────────────────────────────────────
 
 export function useTrading(): TradingState {
@@ -189,11 +276,13 @@ export function useTrading(): TradingState {
         ]);
 
       setProposals(proposalsRes.data ?? []);
-      setPositions(openPosRes.data ?? []);
-      setClosedPositions(closedPosRes.data ?? []);
+      const openPositions = openPosRes.data ?? [];
+      setPositions(openPositions.length > 0 ? openPositions : DEV_MOCK_POSITIONS);
+      const closedPos = closedPosRes.data ?? [];
+      setClosedPositions(closedPos.length > 0 ? closedPos : DEV_MOCK_CLOSED_POSITIONS);
       setPreferences(
         prefsRes.data ??
-          (DEV_BYPASS ? ({ mode: 'semi_automated' } as unknown as UserPreferences) : null)
+          (DEV_BYPASS ? ({ mode: 'semi_auto' } as unknown as UserPreferences) : null)
       );
       const fetchedWallet = walletRes.data?.[0] ?? (DEV_BYPASS ? DEV_MOCK_WALLET : null);
       setWallet(fetchedWallet);

@@ -399,6 +399,53 @@ export function computeDetailedStats(
 }
 
 /**
+ * Get effective P&L values for a position, with client-side fallback.
+ * TRUST-CRITICAL: When the backend fast loop hasn't updated unrealized_pnl
+ * (e.g. stale data, E2E test positions), compute from entry/current prices.
+ *
+ * @param position - Must have entry_price, current_price, side, unrealized_pnl, unrealized_pnl_pct, size_usd
+ * @returns { pnlPct, pnlDollar } — either from DB or computed client-side
+ */
+export function getEffectivePnl(
+  position: {
+    entry_price: number;
+    current_price: number | null;
+    side: 'long' | 'short';
+    unrealized_pnl: number;
+    unrealized_pnl_pct: number;
+    size_usd: number;
+  },
+  /** Live price override — use when a fresher price (e.g. CoinGecko) is available */
+  livePriceOverride?: number | null,
+): { pnlPct: number; pnlDollar: number } {
+  const { entry_price, side, unrealized_pnl, unrealized_pnl_pct, size_usd } = position;
+
+  // If a live price override is provided, always compute from it (freshest source)
+  const bestPrice = livePriceOverride != null && livePriceOverride > 0
+    ? livePriceOverride
+    : position.current_price;
+
+  // If DB P&L values are non-zero and no live override, trust them
+  if (livePriceOverride == null && (unrealized_pnl !== 0 || unrealized_pnl_pct !== 0)) {
+    return { pnlPct: unrealized_pnl_pct, pnlDollar: unrealized_pnl };
+  }
+
+  // Compute from best available price
+  if (bestPrice != null && bestPrice > 0 && entry_price > 0) {
+    const priceDiff = Math.abs(bestPrice - entry_price);
+    // Only compute if prices meaningfully differ (>0.01% to avoid floating point noise)
+    if (priceDiff / entry_price > 0.0001) {
+      const pnlPct = calculateUnrealizedPnL(entry_price, bestPrice, side);
+      const pnlDollar = pctToDollar(pnlPct, size_usd);
+      return { pnlPct, pnlDollar };
+    }
+  }
+
+  // Genuinely zero
+  return { pnlPct: 0, pnlDollar: 0 };
+}
+
+/**
  * Check if price data is stale (>5 minutes old)
  * @param timestamp - ISO timestamp string or Date object
  * @returns true if data is stale (older than 5 minutes)
