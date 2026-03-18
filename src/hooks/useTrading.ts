@@ -214,7 +214,7 @@ const DEV_MOCK_CLOSED_POSITIONS: Position[] = DEV_BYPASS
         trim_history: [],
         total_exchange_fees: 0.12,
         total_builder_fees: 0.05,
-        total_vela_fees: 0.50,
+        total_vela_fees: 0.5,
         cumulative_funding: -0.03,
         original_size_usd: 100,
         created_at: '2026-03-08T12:00:00Z',

@@ -239,11 +239,11 @@ export default function TrackRecord() {
     for (const pos of closedPositions) {
       const posFees = computePositionFees(pos);
       const hasPosFees = posFees.totalFees > 0.005;
-      const pnl = hasPosFees ? posFees.netPnlDollar : (
-        pos.total_pnl != null && pos.total_pnl !== 0
+      const pnl = hasPosFees
+        ? posFees.netPnlDollar
+        : pos.total_pnl != null && pos.total_pnl !== 0
           ? pos.total_pnl
-          : pctToDollar(pos.closed_pnl_pct ?? 0, pos.original_size_usd ?? pos.size_usd)
-      );
+          : pctToDollar(pos.closed_pnl_pct ?? 0, pos.original_size_usd ?? pos.size_usd);
       const pct = hasPosFees ? posFees.netPnlPct : (pos.closed_pnl_pct ?? 0);
       totalPnl += pnl;
       if (pct > 0) wins++;
