@@ -234,9 +234,16 @@ export default function TrackRecord() {
     const total = allPositions.length;
 
     for (const pos of closedPositions) {
-      const pnl = pos.closed_pnl ?? 0;
+      const pct = pos.closed_pnl_pct ?? 0;
+      const posSize = pos.original_size_usd ?? pos.size_usd;
+      const pnl =
+        pos.total_pnl != null && pos.total_pnl !== 0
+          ? pos.total_pnl
+          : posSize > 0
+            ? pctToDollar(pct, posSize)
+            : 0;
       totalPnl += pnl;
-      if (pnl > 0) wins++;
+      if (pct > 0) wins++;
     }
 
     for (const pos of positions) {
@@ -535,8 +542,9 @@ export default function TrackRecord() {
             </div>
           )}
 
-          {/* User's closed trades (from trades/backtest table) */}
-          {userClosed.length > 0 && (
+          {/* User's closed trades (legacy, from paper_trades table with source=live) */}
+          {/* Hide when user has real positions — positions table is the canonical source */}
+          {userClosed.length > 0 && closedPositions.length === 0 && (
             <div>
               <p
                 className="vela-label-sm"
@@ -2145,8 +2153,14 @@ function ClosedPositionCard({
 }) {
   const isLong = position.side === 'long';
   const pnlPct = position.closed_pnl_pct ?? 0;
-  const pnlDollar = position.closed_pnl ?? 0;
-  const isPositive = pnlDollar >= 0;
+  const posSize = position.original_size_usd ?? position.size_usd;
+  const pnlDollar =
+    position.total_pnl != null && position.total_pnl !== 0
+      ? position.total_pnl
+      : posSize > 0
+        ? pctToDollar(pnlPct, posSize)
+        : 0;
+  const isPositive = pnlPct >= 0;
 
   const holdingPeriod =
     position.created_at && position.closed_at

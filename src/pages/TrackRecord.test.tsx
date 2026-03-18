@@ -119,7 +119,7 @@ function makeClosedPosition(overrides: Partial<Position> = {}): Position {
     take_profit_price: null,
     status: 'closed',
     closed_at: '2025-12-15T00:00:00Z',
-    closed_pnl: 100,
+    total_pnl: 100,
     closed_pnl_pct: 10,
     close_reason: null,
     trade_execution_id: null,
@@ -356,9 +356,9 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseTrading.mockReturnValue({
       positions: [],
       closedPositions: [
-        makeClosedPosition({ id: 'p1', closed_pnl: 200 }),
-        makeClosedPosition({ id: 'p2', closed_pnl: 150 }),
-        makeClosedPosition({ id: 'p3', closed_pnl: -50 }),
+        makeClosedPosition({ id: 'p1', total_pnl: 200, closed_pnl_pct: 20 }),
+        makeClosedPosition({ id: 'p2', total_pnl: 150, closed_pnl_pct: 15 }),
+        makeClosedPosition({ id: 'p3', total_pnl: -50, closed_pnl_pct: -5 }),
       ],
       proposals: [],
       acceptProposal: vi.fn(),
@@ -383,9 +383,9 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseTrading.mockReturnValue({
       positions: [],
       closedPositions: [
-        makeClosedPosition({ id: 'p1', closed_pnl: -200 }),
-        makeClosedPosition({ id: 'p2', closed_pnl: -150 }),
-        makeClosedPosition({ id: 'p3', closed_pnl: 50 }),
+        makeClosedPosition({ id: 'p1', total_pnl: -200, closed_pnl_pct: -20 }),
+        makeClosedPosition({ id: 'p2', total_pnl: -150, closed_pnl_pct: -15 }),
+        makeClosedPosition({ id: 'p3', total_pnl: 50, closed_pnl_pct: 5 }),
       ],
       proposals: [],
       acceptProposal: vi.fn(),
@@ -410,9 +410,9 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseTrading.mockReturnValue({
       positions: [],
       closedPositions: [
-        makeClosedPosition({ id: 'p1', closed_pnl: 200 }),
-        makeClosedPosition({ id: 'p2', closed_pnl: -50 }),
-        makeClosedPosition({ id: 'p3', closed_pnl: 100 }),
+        makeClosedPosition({ id: 'p1', total_pnl: 200, closed_pnl_pct: 20 }),
+        makeClosedPosition({ id: 'p2', total_pnl: -50, closed_pnl_pct: -5 }),
+        makeClosedPosition({ id: 'p3', total_pnl: 100, closed_pnl_pct: 10 }),
       ],
       proposals: [],
       acceptProposal: vi.fn(),

@@ -379,7 +379,7 @@ export interface Position {
   take_profit_price: number | null;
   status: PositionStatus;
   closed_at: string | null;
-  closed_pnl: number | null;
+  total_pnl: number | null;
   closed_pnl_pct: number | null;
   close_reason: string | null;
   trim_history: TrimHistoryEntry[];
