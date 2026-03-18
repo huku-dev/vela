@@ -11,6 +11,7 @@ interface TelegramConnectButtonProps {
 }
 
 const POLL_TIMEOUT_MS = 120_000; // 2 minutes
+const FAST_POLL_MS = 3_000; // 3 seconds while waiting for connection
 
 /**
  * One-tap Telegram connection button.
@@ -21,7 +22,7 @@ export default function TelegramConnectButton({
   onStatusChange,
   compact = false,
 }: TelegramConnectButtonProps) {
-  const { generateTelegramLink, updatePreferences, preferences } = useTrading();
+  const { generateTelegramLink, updatePreferences, preferences, refresh } = useTrading();
   const [status, setStatus] = useState<'idle' | 'linking' | 'polling' | 'connected' | 'error'>(
     chatId ? 'connected' : 'idle'
   );
@@ -58,14 +59,26 @@ export default function TelegramConnectButton({
     setStatus('linking');
     setErrorMsg('');
 
+    // Open blank window synchronously (within click handler) to avoid mobile popup blockers.
+    // The await below breaks the synchronous chain, so Safari/Chrome on mobile
+    // would silently block window.open if called after the await.
+    const win = window.open('', '_blank');
+
     try {
       const deepLink = await generateTelegramLink();
 
-      // Open Telegram in new tab
-      window.open(deepLink, '_blank');
+      if (win && !win.closed) {
+        win.location.href = deepLink;
+      } else {
+        // Popup was blocked — fall back to navigating current tab
+        window.location.href = deepLink;
+      }
 
-      // Start polling for connection
+      // Start fast polling for connection detection
       setStatus('polling');
+      pollRef.current = setInterval(() => {
+        refresh();
+      }, FAST_POLL_MS);
 
       // Timeout after 2 min
       timeoutRef.current = setTimeout(() => {
@@ -73,6 +86,7 @@ export default function TelegramConnectButton({
         setStatus('idle');
       }, POLL_TIMEOUT_MS);
     } catch (err) {
+      win?.close();
       setStatus('error');
       setErrorMsg(err instanceof Error ? err.message : 'Failed to generate link');
     }

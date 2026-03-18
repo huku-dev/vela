@@ -187,7 +187,9 @@ export default function TrackRecord() {
   // Pending + in-flight proposals (show on this page so user can act on them)
   const pendingProposals = proposals.filter(p => p.status === 'pending');
   const activeProposals = proposals.filter(
-    p => p.status === 'approved' || p.status === 'auto_approved' || p.status === 'executing'
+    p =>
+      (p.status === 'approved' || p.status === 'auto_approved' || p.status === 'executing') &&
+      new Date(p.expires_at).getTime() > Date.now()
   );
 
   if (loading) {

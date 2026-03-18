@@ -333,7 +333,10 @@ function BalanceCard({
 
   const balance = wallet.balance_usdc;
   const isTestnet = wallet.environment === 'testnet';
-  const inTrades = (openPositions ?? []).reduce((sum, p) => sum + p.size_usd, 0);
+  const inTrades = (openPositions ?? []).reduce(
+    (sum, p) => sum + p.size_usd + (p.unrealized_pnl ?? 0),
+    0
+  );
   const totalValue = balance + inTrades;
   const hasOpenPositions = inTrades > 0;
 
@@ -572,6 +575,7 @@ function buildActivityEvents(
     total_pnl: number | null;
     status: string;
     created_at: string;
+    opened_at: string | null;
     closed_at: string | null;
   }>
 ): import('../types').ActivityEvent[] {
@@ -609,19 +613,20 @@ function buildActivityEvents(
   for (const p of positions) {
     const assetUpper = (p.asset_id ?? '').toUpperCase();
     const sizeUsd = Number(p.original_size_usd ?? p.size_usd ?? 0);
-    if (p.status === 'open') {
-      // Position opened = debit (money into trade)
-      events.push({
-        id: `trade-open-${p.id}`,
-        category: 'trade',
-        event_type: 'trade_opened',
-        label: `${assetUpper} ${p.side === 'short' ? 'Short' : 'Long'} opened`,
-        amount: sizeUsd,
-        amountSign: '-',
-        status: 'completed',
-        created_at: p.created_at,
-      });
-    } else if (p.status === 'closed' && p.closed_at) {
+
+    // Every position generates an "opened" event
+    events.push({
+      id: `trade-open-${p.id}`,
+      category: 'trade',
+      event_type: 'trade_opened',
+      label: `${assetUpper} ${p.side === 'short' ? 'Short' : 'Long'} opened`,
+      amount: sizeUsd,
+      amountSign: '-',
+      status: 'completed',
+      created_at: p.opened_at ?? p.created_at,
+    });
+
+    if (p.status === 'closed' && p.closed_at) {
       // Position closed = credit (money returned + P&L)
       const pnl = Number(p.total_pnl ?? 0);
       const returnedAmount = sizeUsd + pnl;
@@ -668,7 +673,7 @@ function RecentActivity() {
         supabaseClient
           .from('positions')
           .select(
-            'id, asset_id, side, size_usd, original_size_usd, total_pnl, status, created_at, closed_at'
+            'id, asset_id, side, size_usd, original_size_usd, total_pnl, status, created_at, opened_at, closed_at'
           )
           .order('created_at', { ascending: false })
           .limit(20),
@@ -846,9 +851,10 @@ function ActivityRow({ event }: { event: import('../types').ActivityEvent }) {
           {event.amountSign}${event.amount.toFixed(2)}
         </span>
       )}
-      {event.category === 'funding' && (
-        <FundingStatusBadge status={event.status as import('../types').FundingEventStatus} />
-      )}
+      {event.category === 'funding' &&
+        event.status !== 'completed' && (
+          <FundingStatusBadge status={event.status as import('../types').FundingEventStatus} />
+        )}
     </div>
   );
 }
