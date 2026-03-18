@@ -384,6 +384,10 @@ export interface Position {
   close_reason: string | null;
   trim_history: TrimHistoryEntry[];
   original_size_usd: number | null;
+  total_exchange_fees: number | null;
+  total_builder_fees: number | null;
+  total_vela_fees: number | null;
+  cumulative_funding: number | null;
   created_at: string;
   updated_at: string;
 }

@@ -16,6 +16,7 @@ import {
   aggregatePositionStats,
   formatDurationMs,
   getEffectivePnl,
+  computePositionFees,
 } from '../utils/calculations';
 import type { TradeDirection, Position } from '../types';
 
@@ -236,14 +237,14 @@ export default function TrackRecord() {
     const total = allPositions.length;
 
     for (const pos of closedPositions) {
-      const pct = pos.closed_pnl_pct ?? 0;
-      const posSize = pos.original_size_usd ?? pos.size_usd;
-      const pnl =
+      const posFees = computePositionFees(pos);
+      const hasPosFees = posFees.totalFees > 0.005;
+      const pnl = hasPosFees ? posFees.netPnlDollar : (
         pos.total_pnl != null && pos.total_pnl !== 0
           ? pos.total_pnl
-          : posSize > 0
-            ? pctToDollar(pct, posSize)
-            : 0;
+          : pctToDollar(pos.closed_pnl_pct ?? 0, pos.original_size_usd ?? pos.size_usd)
+      );
+      const pct = hasPosFees ? posFees.netPnlPct : (pos.closed_pnl_pct ?? 0);
       totalPnl += pnl;
       if (pct > 0) wins++;
     }
@@ -2154,14 +2155,19 @@ function ClosedPositionCard({
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
-  const pnlPct = position.closed_pnl_pct ?? 0;
+  const grossPnlPct = position.closed_pnl_pct ?? 0;
   const posSize = position.original_size_usd ?? position.size_usd;
-  const pnlDollar =
+  const grossPnlDollar =
     position.total_pnl != null && position.total_pnl !== 0
       ? position.total_pnl
       : posSize > 0
-        ? pctToDollar(pnlPct, posSize)
+        ? pctToDollar(grossPnlPct, posSize)
         : 0;
+  const fees = computePositionFees(position);
+  const hasFees = fees.totalFees > 0.005; // threshold to avoid displaying $0.00
+  // Use net PnL as primary display when fees exist
+  const pnlPct = hasFees ? fees.netPnlPct : grossPnlPct;
+  const pnlDollar = hasFees ? fees.netPnlDollar : grossPnlDollar;
   const isPositive = pnlPct >= 0;
 
   const holdingPeriod =
@@ -2326,11 +2332,31 @@ function ClosedPositionCard({
             <DetailRow label="Exit price" value={formatPrice(position.current_price)} />
           )}
           {holdingPeriod && <DetailRow label="Duration" value={holdingPeriod} />}
-          <DetailRow
-            label="Realized P&L"
-            value={`${isPositive ? '+' : ''}${pnlPct.toFixed(1)}% · ${isPositive ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${isPositive ? 'profit' : 'loss'}`}
-            valueColor={isPositive ? 'var(--green-dark)' : 'var(--red-dark)'}
-          />
+          <div style={{ height: 'var(--space-2)' }} />
+          {hasFees ? (
+            <>
+              <DetailRow
+                label="Gross P&L"
+                value={`${grossPnlPct >= 0 ? '+' : ''}${grossPnlPct.toFixed(1)}% · ${grossPnlPct >= 0 ? '+' : '-'}$${Math.abs(grossPnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+              />
+              <DetailRow
+                label="Fee"
+                value={`-$${fees.totalFees.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+                valueColor="var(--gray-500)"
+              />
+              <DetailRow
+                label="Net P&L"
+                value={`${isPositive ? '+' : ''}${pnlPct.toFixed(1)}% · ${isPositive ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${isPositive ? 'profit' : 'loss'}`}
+                valueColor={isPositive ? 'var(--green-dark)' : 'var(--red-dark)'}
+              />
+            </>
+          ) : (
+            <DetailRow
+              label="Realized P&L"
+              value={`${isPositive ? '+' : ''}${pnlPct.toFixed(1)}% · ${isPositive ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${isPositive ? 'profit' : 'loss'}`}
+              valueColor={isPositive ? 'var(--green-dark)' : 'var(--red-dark)'}
+            />
+          )}
         </div>
       )}
     </Card>

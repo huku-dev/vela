@@ -851,10 +851,9 @@ function ActivityRow({ event }: { event: import('../types').ActivityEvent }) {
           {event.amountSign}${event.amount.toFixed(2)}
         </span>
       )}
-      {event.category === 'funding' &&
-        event.status !== 'completed' && (
-          <FundingStatusBadge status={event.status as import('../types').FundingEventStatus} />
-        )}
+      {event.category === 'funding' && event.status !== 'completed' && (
+        <FundingStatusBadge status={event.status as import('../types').FundingEventStatus} />
+      )}
     </div>
   );
 }

@@ -445,9 +445,9 @@ export function useTrackRecord() {
       }
 
       // Fetch live prices for all known assets (covers both open paper_trades and real positions)
-      const allAssetIds = [
-        ...new Set(Object.values(aMap).map(a => a.coingecko_id)),
-      ].filter(Boolean);
+      const allAssetIds = [...new Set(Object.values(aMap).map(a => a.coingecko_id))].filter(
+        Boolean
+      );
 
       if (allAssetIds.length > 0) {
         // Build symbolMap so fetchLivePrices uses Hyperliquid real-time feed (not just CoinGecko)

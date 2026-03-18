@@ -487,3 +487,48 @@ export function validateSignalStatusAlignment(
 
   return true;
 }
+
+/**
+ * Compute total fees and net P&L for a closed position.
+ *
+ * Combines exchange fees, builder fees, Vela fees, and funding into a single
+ * "trading fees" number. Net P&L = gross P&L - total fees.
+ *
+ * Funding can be positive (received) or negative (paid), so it's subtracted
+ * from fees (positive funding reduces total fees).
+ */
+export interface PositionFees {
+  /** All fees combined (exchange + builder + funding + vela). Always >= 0. */
+  totalFees: number;
+  /** Gross P&L minus total fees */
+  netPnlDollar: number;
+  /** Net P&L as percentage of position size */
+  netPnlPct: number;
+}
+
+export function computePositionFees(position: {
+  total_pnl: number | null;
+  closed_pnl_pct: number | null;
+  original_size_usd: number | null;
+  size_usd: number;
+  total_exchange_fees: number | null;
+  total_builder_fees: number | null;
+  total_vela_fees: number | null;
+  cumulative_funding: number | null;
+}): PositionFees {
+  const exchangeFees = Math.abs(position.total_exchange_fees ?? 0);
+  const builderFees = Math.abs(position.total_builder_fees ?? 0);
+  const velaFees = Math.abs(Number(position.total_vela_fees) || 0);
+  // Funding: negative = paid by user (cost), positive = received (rebate)
+  const funding = position.cumulative_funding ?? 0;
+
+  // Single combined fee: exchange + builder + vela - funding rebate (floored at 0)
+  const totalFees = Math.max(0, exchangeFees + builderFees + velaFees - funding);
+
+  const posSize = position.original_size_usd ?? position.size_usd;
+  const grossPnl = position.total_pnl ?? pctToDollar(position.closed_pnl_pct ?? 0, posSize);
+  const netPnlDollar = grossPnl - totalFees;
+  const netPnlPct = posSize > 0 ? (netPnlDollar / posSize) * 100 : 0;
+
+  return { totalFees, netPnlDollar, netPnlPct };
+}
