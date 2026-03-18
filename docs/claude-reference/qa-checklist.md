@@ -38,6 +38,13 @@ Before merging `develop` -> `main`, you **must** perform a visual smoke test on 
 - All sections expand/collapse
 - Legal links work
 
+### Notification CTAs (after backend deploy)
+- Click "View position" / "View details" in a trade execution email — should land on `/asset/{assetId}`
+- Click "View full brief" in a signal Telegram notification — should land on `/asset/{assetId}`
+- Click "View details" in a Telegram order fill message — should land on `/asset/{assetId}`
+- Verify links don't 404 or redirect to home (catch-all route masks broken links silently)
+- **Lesson (2026-03-18):** All notification deep links were broken since launch — used `/${assetId}` instead of `/asset/${assetId}`. Caught by user report, not QA. Always manually click CTAs in staging after any notify.ts change.
+
 ### Cross-cutting
 - No console errors in DevTools
 - Dark mode (if applicable)
