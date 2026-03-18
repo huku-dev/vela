@@ -15,6 +15,7 @@ import {
   formatPrice,
   formatTimestamp,
   getVelaIconDataUri,
+  decodeHtmlEntities,
   CARD_WIDTH,
   CARD_HEIGHT,
   CREAM,
@@ -42,7 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const assetStr = String(asset).toUpperCase();
   const colorStr = String(color);
   const priceNum = Number(price);
-  const headlineStr = String(headline);
+  const headlineStr = decodeHtmlEntities(String(headline));
   const timestampStr = timestamp ? String(timestamp) : new Date().toISOString();
 
   const badge = BADGE_COLORS[colorStr] ?? BADGE_COLORS.grey;

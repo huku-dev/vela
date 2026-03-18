@@ -15,6 +15,7 @@ import {
   svgToPng,
   formatTimestamp,
   getVelaIconDataUri,
+  decodeHtmlEntities,
   CARD_WIDTH,
   CARD_HEIGHT,
   CREAM,
@@ -63,8 +64,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       <div style="display: flex; align-items: flex-start; gap: 20px; padding: 0 112px;">
         <span style="font-family: Space Grotesk; font-weight: 800; font-size: 56px; color: ${SIGNAL_GREEN}; min-width: 50px;">${i + 1}</span>
         <div style="display: flex; flex-direction: column; gap: 6px;">
-          <span style="font-family: Inter; font-weight: 600; font-size: 28px; color: ${INK};">${escapeHtml(item.title)}</span>
-          <span style="font-family: Inter; font-weight: 400; font-size: 24px; color: ${BODY_TEXT}; line-height: 1.4;">${escapeHtml(item.detail)}</span>
+          <span style="font-family: Inter; font-weight: 600; font-size: 28px; color: ${INK};">${escapeHtml(decodeHtmlEntities(item.title))}</span>
+          <span style="font-family: Inter; font-weight: 400; font-size: 24px; color: ${BODY_TEXT}; line-height: 1.4;">${escapeHtml(decodeHtmlEntities(item.detail))}</span>
         </div>
       </div>
     `,

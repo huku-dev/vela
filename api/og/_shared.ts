@@ -116,6 +116,17 @@ export async function svgToPng(svg: string): Promise<Buffer> {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
+/** Decode common HTML entities that may leak from brief generation */
+export function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 export function formatPrice(price: number): string {
   if (price >= 1000) {
     return "$" + price.toLocaleString("en-US", { maximumFractionDigits: 0 });
