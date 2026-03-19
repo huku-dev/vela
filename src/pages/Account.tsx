@@ -338,7 +338,7 @@ function BalanceCard({
     0
   );
   const totalValue = balance + inTrades;
-  const hasOpenPositions = inTrades > 0;
+  const hasOpenPositions = (openPositions ?? []).length > 0;
 
   return (
     <div
@@ -1563,13 +1563,28 @@ function TradingPanel({
             className="vela-body-sm"
             style={{ fontWeight: 600, color: 'var(--red-dark)', margin: 0 }}
           >
-            Trading paused — circuit breaker active
+            Trading paused — safety limit reached
           </p>
           <p
             className="vela-body-sm vela-text-muted"
             style={{ marginTop: 'var(--space-1)', marginBottom: 0 }}
           >
-            {circuitBreakers[0].trigger_type.replace(/_/g, ' ')}. Review your positions.
+            {(() => {
+              const cb = circuitBreakers[0];
+              const details = cb.details as Record<string, number>;
+              switch (cb.trigger_type) {
+                case 'daily_loss_limit':
+                  return `Daily loss limit reached${details?.loss_percent ? ` (${details.loss_percent.toFixed(1)}% vs ${details.threshold}% threshold)` : ''}. Resets at midnight UTC. Existing positions are unaffected.`;
+                case 'consecutive_losses':
+                  return `${details?.count ?? 3} consecutive losing trades. New trades paused while Vela re-evaluates conditions.`;
+                case 'max_drawdown':
+                  return `A position exceeded its maximum drawdown${details?.drawdown_pct ? ` (${details.drawdown_pct.toFixed(1)}%)` : ''}. Vela is managing the exit.`;
+                case 'position_size_limit':
+                  return 'A position exceeded the size limit for your tier. No new trades until resolved.';
+                default:
+                  return 'New trades paused as a safety measure. Existing positions are unaffected.';
+              }
+            })()}
           </p>
         </div>
       )}
