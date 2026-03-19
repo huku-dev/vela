@@ -707,7 +707,8 @@ function PriceContextMessage({
     if (!isFavorableMove && absDelta > 0.05 && isOpen) {
       return (
         <InfoCard>
-          Price moved slightly since this proposal, giving you an even better {isLong ? 'long entry' : 'short entry'} price.
+          Price moved slightly since this proposal, giving you an even better{' '}
+          {isLong ? 'long entry' : 'short entry'} price.
         </InfoCard>
       );
     }
@@ -718,15 +719,17 @@ function PriceContextMessage({
     if (isFavorableMove) {
       return (
         <InfoCard>
-          Price is now {priceStr} ({deltaStr} since this proposal), confirming the {isLong ? 'long' : 'short'} thesis.
+          Price is now {priceStr} ({deltaStr} since this proposal), confirming the{' '}
+          {isLong ? 'long' : 'short'} thesis.
         </InfoCard>
       );
     }
     if (isOpen) {
       return (
         <InfoCard>
-          Price is now {priceStr} ({deltaStr} since this proposal). You&apos;d be {isLong ? 'going long' : 'going short'} at a
-          better price than when Vela first flagged this.
+          Price is now {priceStr} ({deltaStr} since this proposal). You&apos;d be{' '}
+          {isLong ? 'going long' : 'going short'} at a better price than when Vela first flagged
+          this.
         </InfoCard>
       );
     }

@@ -1555,7 +1555,7 @@ function TradingPanel({
             padding: 'var(--space-3)',
             backgroundColor: 'var(--color-status-sell-bg)',
             borderRadius: 'var(--radius-sm)',
-            border: '2px solid var(--red-primary)',
+            border: '1.5px solid var(--red-primary)',
             marginBottom: 'var(--space-4)',
           }}
         >

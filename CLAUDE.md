@@ -1,7 +1,7 @@
 # Vela — Project Context for Claude Code
 
 > **Stack:** React 18 + TypeScript + Vite + Supabase + Vercel
-> **Product:** Crypto market intelligence — 24/7 monitoring, actionable signals, plain English
+> **Product:** Market intelligence — 24/7 monitoring, actionable signals, plain English. Covers crypto, equities, commodities, forex, and more. Not a crypto-only product.
 
 ---
 
