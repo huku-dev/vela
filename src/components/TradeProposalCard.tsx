@@ -702,13 +702,12 @@ function PriceContextMessage({
   const isFavorableMove = isLong ? deltaPct > 0 : deltaPct < 0;
   const isOpen = proposal.proposal_type === 'open';
 
-  // Small movement (<0.5%) — show static context, or "better entry" nudge for opens
+  // Small movement (<0.5%) — show static context, or "better price" nudge for opens
   if (absDelta < 0.5) {
     if (!isFavorableMove && absDelta > 0.05 && isOpen) {
       return (
         <InfoCard>
-          Price dipped slightly since this proposal, so you&apos;d be entering at an even better
-          price.
+          Price moved slightly since this proposal, giving you an even better {isLong ? 'long entry' : 'short entry'} price.
         </InfoCard>
       );
     }
@@ -719,14 +718,14 @@ function PriceContextMessage({
     if (isFavorableMove) {
       return (
         <InfoCard>
-          Price is now {priceStr} ({deltaStr} since this proposal), confirming the trade thesis.
+          Price is now {priceStr} ({deltaStr} since this proposal), confirming the {isLong ? 'long' : 'short'} thesis.
         </InfoCard>
       );
     }
     if (isOpen) {
       return (
         <InfoCard>
-          Price is now {priceStr} ({deltaStr} since this proposal). You&apos;d be entering at a
+          Price is now {priceStr} ({deltaStr} since this proposal). You&apos;d be {isLong ? 'going long' : 'going short'} at a
           better price than when Vela first flagged this.
         </InfoCard>
       );
@@ -734,7 +733,7 @@ function PriceContextMessage({
     return (
       <InfoCard>
         Heads up: price is now {priceStr} ({deltaStr} since this proposal). Our analysis still
-        suggests potential. You can still proceed.
+        supports this {isLong ? 'long' : 'short'} position. You can still proceed.
       </InfoCard>
     );
   }
@@ -750,8 +749,8 @@ function PriceContextMessage({
 
   return (
     <InfoCard>
-      Note: price has shifted to {priceStr} ({deltaStr} since this proposal). It might be better to
-      wait for the next proposal for a better entry.
+      Note: price has shifted to {priceStr} ({deltaStr} since this proposal). Consider waiting for
+      the next signal for a better {isLong ? 'long' : 'short'} setup.
     </InfoCard>
   );
 }
