@@ -394,8 +394,8 @@ describe('validateSignalStatusAlignment - TRUST CRITICAL', () => {
     expect(isValid).toBe(false);
   });
 
-  it('CRITICAL: rejects SELL signal on strong positive trend', () => {
-    const signal = 'SELL';
+  it('CRITICAL: rejects SHORT signal on strong positive trend', () => {
+    const signal = 'SHORT';
     const priceChange = 5.0; // Strong bullish move
 
     const isValid = validateSignalStatusAlignment(signal, priceChange);
@@ -412,8 +412,8 @@ describe('validateSignalStatusAlignment - TRUST CRITICAL', () => {
     expect(isValid).toBe(true);
   });
 
-  it('allows SELL signal on negative trend', () => {
-    const signal = 'SELL';
+  it('allows SHORT signal on negative trend', () => {
+    const signal = 'SHORT';
     const priceChange = -3.0;
 
     const isValid = validateSignalStatusAlignment(signal, priceChange);
@@ -430,8 +430,8 @@ describe('validateSignalStatusAlignment - TRUST CRITICAL', () => {
     expect(isValid).toBe(true);
   });
 
-  it('allows SELL signal on small positive trend (dead cat bounce)', () => {
-    const signal = 'SELL';
+  it('allows SHORT signal on small positive trend (dead cat bounce)', () => {
+    const signal = 'SHORT';
     const priceChange = 1.0; // Small bounce in downtrend
 
     const isValid = validateSignalStatusAlignment(signal, priceChange);

@@ -44,7 +44,7 @@ export default function TradeConfirmationSheet({
   const isLong = proposal.side === 'long';
   const actionLabel = isTrim
     ? `TRIM ${proposal.trim_pct ?? ''}% ${assetSymbol}`
-    : `${isLong ? 'BUY' : 'SELL'} ${assetSymbol}`;
+    : `${isLong ? 'OPEN LONG' : 'OPEN SHORT'} ${assetSymbol}`;
 
   return (
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions

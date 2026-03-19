@@ -467,12 +467,12 @@ export function isDataStale(timestamp: string | Date): boolean {
 /**
  * Validate that signal status matches price trend
  * This is a CRITICAL trust check - never show BUY on bearish data
- * @param signal - Signal status ('BUY', 'SELL', 'WAIT')
+ * @param signal - Signal status ('BUY', 'SHORT', 'WAIT')
  * @param priceChange - Percentage price change
  * @returns true if signal and price change are aligned
  */
 export function validateSignalStatusAlignment(
-  signal: 'BUY' | 'SELL' | 'WAIT',
+  signal: 'BUY' | 'SHORT' | 'WAIT',
   priceChange: number
 ): boolean {
   // BUY signals should not be shown on negative trends
@@ -480,8 +480,8 @@ export function validateSignalStatusAlignment(
     return false;
   }
 
-  // SELL signals should not be shown on strong positive trends
-  if (signal === 'SELL' && priceChange > 2) {
+  // SHORT signals should not be shown on strong positive trends
+  if (signal === 'SHORT' && priceChange > 2) {
     return false;
   }
 

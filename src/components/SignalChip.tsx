@@ -2,7 +2,7 @@ import type { SignalColor } from '../types';
 
 const colorMap: Record<SignalColor, { bg: string; text: string; label: string }> = {
   green: { bg: 'var(--color-status-buy-bg)', text: 'var(--color-status-buy-text)', label: 'BUY' },
-  red: { bg: 'var(--color-status-sell-bg)', text: 'var(--color-status-sell-text)', label: 'EXIT' },
+  red: { bg: 'var(--color-status-sell-bg)', text: 'var(--color-status-sell-text)', label: 'SHORT' },
   grey: { bg: 'var(--color-status-wait-bg)', text: 'var(--color-status-wait-text)', label: 'WAIT' },
 };
 

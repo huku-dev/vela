@@ -45,7 +45,7 @@ interface BadgeProps {
 
 interface SignalCardProps {
   asset: string;
-  signal: 'BUY' | 'SELL' | 'WAIT';
+  signal: 'BUY' | 'SHORT' | 'WAIT';
   price: string;
   priceChange?: string;
   reason: string;
@@ -186,13 +186,13 @@ export function SignalCard({
 }: SignalCardProps) {
   const signalVariantMap = {
     BUY: 'buy' as BadgeVariant,
-    SELL: 'sell' as BadgeVariant,
+    SHORT: 'sell' as BadgeVariant,
     WAIT: 'wait' as BadgeVariant,
   };
 
   const cardVariantMap = {
     BUY: 'mint' as CardVariant,
-    SELL: 'peach' as CardVariant,
+    SHORT: 'peach' as CardVariant,
     WAIT: 'lavender' as CardVariant,
   };
 

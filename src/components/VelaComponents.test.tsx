@@ -55,15 +55,15 @@ describe('SignalCard Component', () => {
     expect(screen.getByText('2 minutes ago')).toBeInTheDocument();
   });
 
-  it('CRITICAL: never shows BUY badge with SELL signal', () => {
-    render(<SignalCard {...mockProps} signal="SELL" />);
+  it('CRITICAL: never shows BUY badge with SHORT signal', () => {
+    render(<SignalCard {...mockProps} signal="SHORT" />);
 
-    const badge = screen.getByText('SELL').closest('.vela-badge')!;
+    const badge = screen.getByText('SHORT').closest('.vela-badge')!;
     expect(badge).toHaveClass('vela-badge-sell');
     expect(badge).not.toHaveClass('vela-badge-buy');
   });
 
-  it('CRITICAL: never shows SELL badge with BUY signal', () => {
+  it('CRITICAL: never shows SHORT badge with BUY signal', () => {
     render(<SignalCard {...mockProps} signal="BUY" />);
 
     const badge = screen.getByText('BUY').closest('.vela-badge')!;
@@ -75,7 +75,7 @@ describe('SignalCard Component', () => {
     const { container, rerender } = render(<SignalCard {...mockProps} signal="BUY" />);
     expect(container.querySelector('.vela-card-mint')).toBeInTheDocument();
 
-    rerender(<SignalCard {...mockProps} signal="SELL" />);
+    rerender(<SignalCard {...mockProps} signal="SHORT" />);
     expect(container.querySelector('.vela-card-peach')).toBeInTheDocument();
 
     rerender(<SignalCard {...mockProps} signal="WAIT" />);

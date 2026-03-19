@@ -125,7 +125,7 @@ export default function Login() {
 function SignalPill({ asset, status }: { asset: string; status: 'buy' | 'sell' | 'wait' }) {
   const colors = {
     buy: { bg: 'var(--color-status-buy-bg)', text: 'var(--green-dark)', label: 'BUY' },
-    sell: { bg: 'var(--color-status-sell-bg)', text: 'var(--red-dark)', label: 'SELL' },
+    sell: { bg: 'var(--color-status-sell-bg)', text: 'var(--red-dark)', label: 'SHORT' },
     wait: { bg: 'var(--gray-100)', text: 'var(--gray-500)', label: 'WAIT' },
   };
   const c = colors[status];

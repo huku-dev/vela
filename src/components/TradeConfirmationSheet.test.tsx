@@ -127,16 +127,16 @@ describe('TradeConfirmationSheet', () => {
   });
 
   describe('CONFIRM-UX: content display', () => {
-    it('shows BUY action for long proposals', () => {
+    it('shows OPEN LONG action for long proposals', () => {
       render(<TradeConfirmationSheet {...defaultProps} />);
-      expect(screen.getByText('BUY HYPE')).toBeInTheDocument();
+      expect(screen.getByText('OPEN LONG HYPE')).toBeInTheDocument();
     });
 
-    it('shows SELL action for short proposals', () => {
+    it('shows OPEN SHORT action for short proposals', () => {
       render(
         <TradeConfirmationSheet {...defaultProps} proposal={{ ...baseProposal, side: 'short' }} />
       );
-      expect(screen.getByText('SELL HYPE')).toBeInTheDocument();
+      expect(screen.getByText('OPEN SHORT HYPE')).toBeInTheDocument();
     });
 
     it('shows position size', () => {
