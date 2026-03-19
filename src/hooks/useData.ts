@@ -22,6 +22,8 @@ export const DEFAULT_POSITION_SIZE = 1000;
 let cachedDashboard: AssetDashboard[] | null = null;
 let cachedDigest: Brief | null = null;
 let lastFetchTime = 0;
+// Cache last known 24h change from CoinGecko so rate-limit failures show stale data, not 0%
+const lastKnownChange24h: Record<string, number> = {};
 
 /**
  * Fetch mid-prices from Hyperliquid exchange (primary source).
@@ -59,11 +61,14 @@ async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, Price
     const result: Record<string, PriceData> = {};
     for (const id of ids) {
       if (data[id]) {
+        const change = data[id].usd_24h_change ?? 0;
         result[id] = {
           price: data[id].usd,
-          change24h: data[id].usd_24h_change ?? 0,
+          change24h: change,
           priceSource: 'coingecko',
         };
+        // Cache successful 24h change for fallback when CG is rate-limited
+        if (change !== 0) lastKnownChange24h[id] = change;
       }
     }
     return result;
@@ -103,10 +108,10 @@ async function fetchLivePrices(
     const cgData = cgPrices[id];
 
     if (hlPrice !== undefined) {
-      // Hyperliquid primary price + CoinGecko 24h change
+      // Hyperliquid primary price + CoinGecko 24h change (fall back to cached value)
       result[id] = {
         price: hlPrice,
-        change24h: cgData?.change24h ?? 0,
+        change24h: cgData?.change24h ?? lastKnownChange24h[id] ?? 0,
         priceSource: 'hyperliquid',
       };
     } else if (cgData) {
