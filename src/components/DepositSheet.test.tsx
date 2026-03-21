@@ -75,10 +75,10 @@ describe('DepositSheet', () => {
     expect(screen.getByText('Deposit to Wallet')).toBeInTheDocument();
   });
 
-  it('renders two tabs: Transfer USDC and Fund with card', () => {
+  it('renders two tabs: Transfer USDC and Fund with card / bank', () => {
     renderSheet();
     expect(screen.getByText('Transfer USDC')).toBeInTheDocument();
-    expect(screen.getByText('Fund with card')).toBeInTheDocument();
+    expect(screen.getByText('Fund with card / bank')).toBeInTheDocument();
   });
 
   // ── Transfer Tab ──
@@ -143,27 +143,31 @@ describe('DepositSheet', () => {
     expect(screen.getByText(/only send via hyperliquid usdsend/i)).toBeInTheDocument();
   });
 
-  // ── Card Tab ──
+  // ── Swapped Onramp Tab ──
 
-  it('shows coming soon message on card tab', async () => {
+  it('shows coming soon message when VITE_SWAPPED_API_KEY is not set', async () => {
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByText('Fund with card'));
-    expect(screen.getByText(/card funding coming soon/i)).toBeInTheDocument();
+    await user.click(screen.getByText('Fund with card / bank'));
+    await waitFor(() => {
+      expect(screen.getByText(/card and bank funding coming soon/i)).toBeInTheDocument();
+    });
   });
 
-  it('card tab does not show "I\'ve sent the USDC" button', async () => {
+  it('onramp tab does not show "I\'ve sent the USDC" button', async () => {
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByText('Fund with card'));
+    await user.click(screen.getByText('Fund with card / bank'));
     expect(screen.queryByRole('button', { name: /i've sent the usdc/i })).not.toBeInTheDocument();
   });
 
-  it('card tab does not show "Don\'t have USDC?" banner', async () => {
+  it('shows description text on coming soon state', async () => {
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByText('Fund with card'));
-    expect(screen.queryByText(/don't have usdc/i)).not.toBeInTheDocument();
+    await user.click(screen.getByText('Fund with card / bank'));
+    await waitFor(() => {
+      expect(screen.getByText(/adding support for credit cards/i)).toBeInTheDocument();
+    });
   });
 
   // ── Refresh Balance ──

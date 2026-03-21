@@ -4,6 +4,8 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import type { UserWallet } from '../types';
 
+const SWAPPED_API_KEY = import.meta.env.VITE_SWAPPED_API_KEY as string | undefined;
+
 // ── Types ──────────────────────────────────────────────────────────────
 
 interface DepositSheetProps {
@@ -173,28 +175,30 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
             onClick={() => setActiveTab('transfer')}
           />
           <TabButton
-            label="Fund with card"
+            label="Fund with card / bank"
             active={activeTab === 'card'}
             onClick={() => setActiveTab('card')}
           />
         </div>
 
-        {/* Tab content */}
-        {activeTab === 'transfer' && (
-          <TransferTab
-            address={address}
-            copied={copied}
-            onCopy={handleCopy}
-            refreshing={refreshing}
-            refreshResult={refreshResult}
-            refreshError={refreshError}
-            onConfirmSent={() => {
-              handleRefreshBalance();
-            }}
-          />
-        )}
+        {/* Tab content — min-height prevents layout shift when switching tabs */}
+        <div style={{ minHeight: 340 }}>
+          {activeTab === 'transfer' && (
+            <TransferTab
+              address={address}
+              copied={copied}
+              onCopy={handleCopy}
+              refreshing={refreshing}
+              refreshResult={refreshResult}
+              refreshError={refreshError}
+              onConfirmSent={() => {
+                handleRefreshBalance();
+              }}
+            />
+          )}
 
-        {activeTab === 'card' && <CardTab />}
+          {activeTab === 'card' && <SwappedOnrampTab wallet={wallet} />}
+        </div>
       </div>
     </div>
   );
@@ -495,20 +499,184 @@ function TransferTab({
   );
 }
 
-// ── Card Tab (Coming Soon) ─────────────────────────────────────────────
+// ── Swapped Onramp Tab ────────────────────────────────────────────────
 
-function CardTab() {
+/**
+ * SwappedOnrampTab — Embeds Swapped.com widget for card/bank USDC purchases.
+ *
+ * Desktop: iframe embedded inline (585x445).
+ * Mobile (<640px): "Fund with card / bank" button opens Swapped in a new tab.
+ *
+ * The iframe URL is fetched from the `swapped-signature` backend endpoint,
+ * which generates the HMAC signature server-side (secret key never leaves backend).
+ */
+function SwappedOnrampTab({ wallet }: { wallet: UserWallet }) {
+  const { getToken } = useAuthContext();
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  // Track viewport for mobile/desktop switch
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Fetch signed iframe URL from backend
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSignedUrl() {
+      if (!SWAPPED_API_KEY) {
+        setError('coming_soon');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const token = await getToken();
+        if (!token) {
+          setError('Please sign in to use card funding.');
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/swapped-signature`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            walletAddress: `USDC:arb:${wallet.master_address}`,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load payment widget');
+        }
+
+        if (!cancelled) {
+          setIframeUrl(data.iframeUrl);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[DepositSheet] Swapped signature error:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load payment widget');
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchSignedUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, wallet.master_address]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{ padding: 'var(--space-4) 0', textAlign: 'center' }}>
+        <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+          Loading payment options...
+        </p>
+      </div>
+    );
+  }
+
+  // Coming soon or error — show friendly message
+  if (error || !iframeUrl) {
+    return (
+      <div style={{ padding: 'var(--space-5) 0 var(--space-3)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 280 }}>
+        <div style={{ fontSize: '2.8rem', marginBottom: 'var(--space-3)' }}>💳</div>
+        <h4
+          className="vela-heading-base"
+          style={{ margin: 0, marginBottom: 'var(--space-2)' }}
+        >
+          Card and bank funding coming soon
+        </h4>
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
+        >
+          We&apos;re adding support for credit cards, debit cards, and bank transfers so you can fund your wallet directly.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 'var(--space-3) 0', textAlign: 'center' }}>
-      <div style={{ fontSize: '2rem', marginBottom: 'var(--space-2)' }}>💳</div>
-      <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
-        Card funding coming soon
-      </h4>
+    <div>
+      {/* Explainer */}
       <p
         className="vela-body-sm vela-text-muted"
-        style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
+        style={{
+          margin: 0,
+          marginBottom: 'var(--space-3)',
+          fontSize: '0.8rem',
+          textAlign: 'center',
+        }}
       >
-        We&apos;re working on credit and debit card support so you can buy USDC directly in the app.
+        Buy USDC with card or bank transfer. Funds arrive in your wallet within minutes.
+      </p>
+
+      {isMobile ? (
+        /* Mobile: open in new tab */
+        <div style={{ textAlign: 'center' }}>
+          <button
+            className="vela-btn vela-btn-primary"
+            onClick={() => window.open(iframeUrl, '_blank', 'noopener,noreferrer')}
+            style={{ width: '100%', marginBottom: 'var(--space-2)' }}
+          >
+            Fund with card / bank
+          </button>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 0, fontSize: '0.7rem' }}
+          >
+            Opens in a new tab. Return here after completing your purchase.
+          </p>
+        </div>
+      ) : (
+        /* Desktop: embedded iframe */
+        <div
+          style={{
+            width: '100%',
+            height: 445,
+            borderRadius: 'var(--radius-sm)',
+            overflow: 'hidden',
+            border: '2px solid var(--gray-200)',
+          }}
+        >
+          <iframe
+            src={iframeUrl}
+            title="Fund with card or bank transfer"
+            allow="accelerometer; autoplay; camera; encrypted-media; gyroscope; payment; clipboard-read; clipboard-write"
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Auto-poll note */}
+      <p
+        className="vela-body-sm vela-text-muted"
+        style={{
+          margin: 0,
+          marginTop: 'var(--space-3)',
+          fontSize: '0.7rem',
+          textAlign: 'center',
+        }}
+      >
+        Your balance updates automatically after purchase.
       </p>
     </div>
   );
