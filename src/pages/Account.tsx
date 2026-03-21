@@ -399,79 +399,70 @@ function BalanceCard({
         })}
       </p>
 
-      {/* Breakdown: available + in trades */}
-      {hasOpenPositions ? (
-        <div style={{ marginTop: 'var(--space-3)' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingBottom: 'var(--space-2)',
-            }}
-          >
-            <span className="vela-body-sm vela-text-muted">Available</span>
-            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
-              $
-              {balance.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate('/trades')}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                navigate('/trades');
-              }
-            }}
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingBottom: 'var(--space-2)',
-              cursor: 'pointer',
-            }}
-          >
-            <span className="vela-body-sm vela-text-muted">
-              In trades
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 16 16"
-                fill="none"
-                style={{ marginLeft: 4, verticalAlign: 'middle' }}
-              >
-                <path
-                  d="M6 3L11 8L6 13"
-                  style={{ stroke: 'var(--gray-400)' }}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </span>
-            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
-              $
-              {inTrades.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
-        </div>
-      ) : (
-        <p
-          className="vela-body-sm vela-text-muted"
-          style={{ margin: 0, marginTop: 'var(--space-1)', textAlign: 'center' }}
+      {/* Breakdown: available + in trades — always visible */}
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: 'var(--space-2)',
+          }}
         >
-          USDC
-        </p>
-      )}
+          <span className="vela-body-sm vela-text-muted">Available</span>
+          <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
+            $
+            {balance.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate('/trades')}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              navigate('/trades');
+            }
+          }}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingBottom: 'var(--space-2)',
+            cursor: 'pointer',
+          }}
+        >
+          <span className="vela-body-sm vela-text-muted">
+            In trades
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="none"
+              style={{ marginLeft: 4, verticalAlign: 'middle' }}
+            >
+              <path
+                d="M6 3L11 8L6 13"
+                style={{ stroke: 'var(--gray-400)' }}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
+            $
+            {inTrades.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        </div>
+      </div>
 
       {/* Action buttons */}
       <div
