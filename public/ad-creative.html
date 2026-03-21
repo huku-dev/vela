@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>Vela Ad Creative</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .ad-card {
+      width: 1080px;
+      height: 1080px;
+      background: #FFFBF5;
+      font-family: 'Inter', sans-serif;
+      color: #0A0A0A;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── HEADER ── */
+    .ad-header {
+      display: flex;
+      align-items: center;
+      padding: 48px 56px 0;
+    }
+
+    .ad-logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .ad-logo svg { width: 52px; height: 52px; }
+
+    .ad-logo span {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 36px;
+      letter-spacing: -0.03em;
+    }
+
+    /* ── HERO ── */
+    .ad-hero {
+      padding: 40px 56px 0;
+    }
+
+    .ad-hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 58px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── SIGNAL SHOWCASE (single prominent card) ── */
+    .signal-showcase {
+      margin: 40px 56px 0;
+      background: #FFFBF5;
+      border: 3px solid #0A0A0A;
+      padding: 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .showcase-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 2px solid #0A0A0A;
+      width: fit-content;
+      background: #0FE68C;
+      color: #0A0A0A;
+    }
+
+    .showcase-asset {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .showcase-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid #E5E7EB;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F3F4F6;
+    }
+
+    .showcase-icon img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .showcase-ticker {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .showcase-name {
+      font-size: 16px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .showcase-price {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .showcase-explanation {
+      font-size: 20px;
+      line-height: 1.5;
+      color: #374151;
+    }
+
+    /* ── BOTTOM SIGNALS BAR ── */
+    .signals-bar {
+      display: flex;
+      gap: 12px;
+      padding: 24px 56px 0;
+      margin-bottom: auto;
+    }
+
+    .bar-item {
+      flex: 1;
+      background: #FFFBF5;
+      border: 2px solid #E5E7EB;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .bar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #F3F4F6;
+    }
+
+    .bar-icon img {
+      width: 30px;
+      height: 30px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .bar-ticker {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .bar-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 2px solid #0A0A0A;
+    }
+
+    .bar-badge.sell { background: #FF4757; color: #FFFBF5; }
+    .bar-badge.wait { background: #EBEBEB; color: #6B7280; }
+
+    /* ── VALUE PROPS ── */
+    .value-props {
+      display: flex;
+      gap: 48px;
+      padding: 0 56px;
+      margin-bottom: 16px;
+      justify-content: center;
+    }
+
+    .value-prop {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      color: #6B7280;
+      font-weight: 500;
+    }
+
+    .value-prop .check {
+      width: 28px;
+      height: 28px;
+      background: #0FE68C;
+      border: 2px solid #0A0A0A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #0A0A0A;
+    }
+
+    /* ── FOOTER ── */
+    .ad-footer {
+      background: #0A0A0A;
+      padding: 32px 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .ad-footer span {
+      font-size: 20px;
+      color: #9CA3AF;
+      font-weight: 500;
+    }
+
+    .cta-pill {
+      background: #0FE68C;
+      color: #0A0A0A;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      padding: 14px 36px;
+      border: 2px solid #0FE68C;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ad-card">
+
+    <!-- Header: just the logo -->
+    <div class="ad-header">
+      <div class="ad-logo">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 15 L85 50 L50 85 L15 50 Z" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+          <rect x="40" y="40" width="20" height="20" transform="rotate(45 50 50)" fill="#0FE68C"/>
+        </svg>
+        <span>vela</span>
+      </div>
+    </div>
+
+    <!-- Hero: one punchy line -->
+    <div class="ad-hero">
+      <h1>Know exactly when<br>to buy and sell.</h1>
+    </div>
+
+    <!-- Showcase: one prominent BUY signal -->
+    <div class="signal-showcase">
+      <div class="showcase-badge">Buy Signal</div>
+      <div class="showcase-asset">
+        <div class="showcase-icon">
+          <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+        </div>
+        <div>
+          <div style="display:flex;align-items:baseline;gap:10px;">
+            <span class="showcase-ticker">BTC</span>
+            <span class="showcase-name">Bitcoin</span>
+          </div>
+          <span class="showcase-price">$71,680</span>
+        </div>
+      </div>
+      <p class="showcase-explanation">Buying pressure building for 3 days. Momentum confirmed. Next level: $74,000.</p>
+    </div>
+
+    <!-- Bottom bar: other signals at a glance -->
+    <div class="signals-bar">
+      <div class="bar-item">
+        <div class="bar-left">
+          <div class="bar-icon">
+            <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+          </div>
+          <span class="bar-ticker">ETH</span>
+        </div>
+        <span class="bar-badge sell">Sell</span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-left">
+          <div class="bar-icon">
+            <img src="https://coin-images.coingecko.com/coins/images/4128/small/solana.png" alt="SOL">
+          </div>
+          <span class="bar-ticker">SOL</span>
+        </div>
+        <span class="bar-badge wait">Wait</span>
+      </div>
+      <div class="bar-item">
+        <div class="bar-left">
+          <div class="bar-icon">
+            <img src="https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg" alt="HYPE">
+          </div>
+          <span class="bar-ticker">HYPE</span>
+        </div>
+        <span class="bar-badge sell">Sell</span>
+      </div>
+    </div>
+
+    <!-- Value props -->
+    <div class="value-props">
+      <div class="value-prop"><span class="check">&#10003;</span> 24/7 monitoring</div>
+      <div class="value-prop"><span class="check">&#10003;</span> Plain English signals</div>
+      <div class="value-prop"><span class="check">&#10003;</span> You stay in control</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="ad-footer">
+      <span>getvela.xyz</span>
+      <span class="cta-pill">Start free →</span>
+    </div>
+
+  </div>
+
+</body>
+</html>
