@@ -592,19 +592,27 @@ function SwappedOnrampTab({ wallet }: { wallet: UserWallet }) {
   // Coming soon or error — show friendly message
   if (error || !iframeUrl) {
     return (
-      <div style={{ padding: 'var(--space-5) 0 var(--space-3)', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 280 }}>
+      <div
+        style={{
+          padding: 'var(--space-5) 0 var(--space-3)',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 280,
+        }}
+      >
         <div style={{ fontSize: '2.8rem', marginBottom: 'var(--space-3)' }}>💳</div>
-        <h4
-          className="vela-heading-base"
-          style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-        >
+        <h4 className="vela-heading-base" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
           Card and bank funding coming soon
         </h4>
         <p
           className="vela-body-sm vela-text-muted"
           style={{ margin: 0, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}
         >
-          We&apos;re adding support for credit cards, debit cards, and bank transfers so you can fund your wallet directly.
+          We&apos;re adding support for credit cards, debit cards, and bank transfers so you can
+          fund your wallet directly.
         </p>
       </div>
     );
@@ -635,10 +643,7 @@ function SwappedOnrampTab({ wallet }: { wallet: UserWallet }) {
           >
             Fund with card / bank
           </button>
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{ margin: 0, fontSize: '0.7rem' }}
-          >
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 0, fontSize: '0.7rem' }}>
             Opens in a new tab. Return here after completing your purchase.
           </p>
         </div>
