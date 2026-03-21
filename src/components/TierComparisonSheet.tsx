@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { SubscriptionTier, TierConfig } from '../types';
 import { TIER_DEFINITIONS, COMPARISON_FEATURES } from '../lib/tier-definitions';
+import { track, AnalyticsEvent } from '../lib/analytics';
 
 interface TierComparisonSheetProps {
   currentTier: SubscriptionTier;
@@ -21,6 +22,7 @@ export default function TierComparisonSheet({
   onClose,
   onStartCheckout,
 }: TierComparisonSheetProps) {
+  track(AnalyticsEvent.TIER_COMPARISON_OPENED, { current_tier: currentTier });
   const [billingCycle, setBillingCycle] = useState<'annual' | 'monthly'>('annual');
   const [checkingOutTier, setCheckingOutTier] = useState<SubscriptionTier | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);

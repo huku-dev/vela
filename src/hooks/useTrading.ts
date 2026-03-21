@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type {
   TradeProposal,
   Position,
@@ -404,6 +405,7 @@ export function useTrading(): TradingState {
   // ── Accept proposal (authenticated POST to trade-webhook) ──
   const acceptProposal = useCallback(
     async (proposalId: string) => {
+      track(AnalyticsEvent.PROPOSAL_ACCEPTED, { proposal_id: proposalId });
       Sentry.addBreadcrumb({
         category: 'trade',
         message: `accept started: ${proposalId}`,
@@ -486,6 +488,7 @@ export function useTrading(): TradingState {
   // ── Decline proposal (authenticated POST to trade-webhook) ──
   const declineProposal = useCallback(
     async (proposalId: string) => {
+      track(AnalyticsEvent.PROPOSAL_DECLINED, { proposal_id: proposalId });
       let token: string | null;
       try {
         token = await withTimeout(getToken(), 10_000, 'Authentication');

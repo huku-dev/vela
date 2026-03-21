@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type { UserSubscription, SubscriptionTier } from '../types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -120,6 +121,7 @@ export function useSubscription(): SubscriptionState {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('checkout') === 'success') {
+      track(AnalyticsEvent.CHECKOUT_COMPLETED);
       // Give the webhook a moment to process before we poll
       const timer = setTimeout(() => fetchSubscription(), 1500);
       return () => clearTimeout(timer);
@@ -128,6 +130,7 @@ export function useSubscription(): SubscriptionState {
 
   const startCheckout = useCallback(
     async (tier: 'standard' | 'premium', billingCycle: 'monthly' | 'annual') => {
+      track(AnalyticsEvent.CHECKOUT_STARTED, { tier, billing_cycle: billingCycle });
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 
@@ -158,6 +161,7 @@ export function useSubscription(): SubscriptionState {
   );
 
   const openPortal = useCallback(async () => {
+    track(AnalyticsEvent.PORTAL_OPENED);
     const token = await getToken();
     if (!token) throw new Error('Not authenticated');
 

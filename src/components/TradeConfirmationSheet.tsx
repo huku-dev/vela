@@ -1,6 +1,7 @@
 import type { TradeProposal } from '../types';
 import { formatPrice } from '../lib/helpers';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { track, AnalyticsEvent } from '../lib/analytics';
 
 interface TradeConfirmationSheetProps {
   proposal: TradeProposal;
@@ -39,6 +40,7 @@ export default function TradeConfirmationSheet({
   briefHeadline,
 }: TradeConfirmationSheetProps) {
   useBodyScrollLock();
+  track(AnalyticsEvent.CONFIRMATION_OPENED, { proposal_id: proposal.id, asset: assetSymbol });
 
   const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type { UserWallet } from '../types';
 
 const SWAPPED_API_KEY = import.meta.env.VITE_SWAPPED_API_KEY as string | undefined;
@@ -30,6 +31,7 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
  */
 export default function DepositSheet({ wallet, onClose, onRefresh }: DepositSheetProps) {
   useBodyScrollLock();
+  track(AnalyticsEvent.DEPOSIT_SHEET_OPENED);
   const { getToken } = useAuthContext();
   const [activeTab, setActiveTab] = useState<'transfer' | 'card'>('transfer');
   const [copied, setCopied] = useState(false);
@@ -43,6 +45,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
 
   // ── Copy address ──
   const handleCopy = useCallback(() => {
+    track(AnalyticsEvent.DEPOSIT_ADDRESS_COPIED);
     navigator.clipboard.writeText(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -172,12 +175,12 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
           <TabButton
             label="Transfer USDC"
             active={activeTab === 'transfer'}
-            onClick={() => setActiveTab('transfer')}
+            onClick={() => { track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'transfer' }); setActiveTab('transfer'); }}
           />
           <TabButton
             label="Fund with card / bank"
             active={activeTab === 'card'}
-            onClick={() => setActiveTab('card')}
+            onClick={() => { track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'card' }); setActiveTab('card'); }}
           />
         </div>
 

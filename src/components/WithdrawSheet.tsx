@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type { UserWallet } from '../types';
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
 
   // ── Step 1: Request OTP ──
   const handleRequestOtp = async () => {
+    track(AnalyticsEvent.WITHDRAW_INITIATED, { amount: parseFloat(amount) || 0 });
     setLoading(true);
     setErrorMessage('');
 
@@ -184,6 +186,7 @@ export default function WithdrawSheet({ wallet, onClose, onSuccess }: WithdrawSh
         otp_code: otpCode,
       });
       setSuccessAmount(parsedAmount - TOTAL_FEE);
+      track(AnalyticsEvent.WITHDRAW_COMPLETED, { amount: parsedAmount - TOTAL_FEE });
       setStep('success');
       onSuccess?.();
     } catch (err) {

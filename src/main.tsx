@@ -1,8 +1,12 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
+import { initAnalytics } from './lib/analytics';
 import App from './App';
 import './styles/vela-design-system.css';
+
+// Initialize PostHog analytics — no-ops if VITE_POSTHOG_KEY is not set
+initAnalytics();
 
 // Initialize Sentry before rendering — captures errors, unhandled rejections, and console errors
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;

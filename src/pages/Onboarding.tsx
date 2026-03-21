@@ -4,6 +4,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useSubscription } from '../hooks/useSubscription';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import VelaLogo from '../components/VelaLogo';
 import type { TradingMode } from '../types';
 
@@ -1030,6 +1031,7 @@ export default function Onboarding() {
   };
 
   const handleModeSelected = async (mode: TradingMode) => {
+    track(AnalyticsEvent.TRADING_MODE_SELECTED, { mode });
     try {
       await updatePreferences({ mode } as Record<string, unknown>);
     } catch {

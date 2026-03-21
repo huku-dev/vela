@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTrading } from '../hooks/useTrading';
+import { track, AnalyticsEvent } from '../lib/analytics';
 
 interface TelegramConnectButtonProps {
   /** Current telegram_chat_id from preferences (null = not connected) */
@@ -56,6 +57,7 @@ export default function TelegramConnectButton({
   useEffect(() => cleanup, [cleanup]);
 
   const handleConnect = async () => {
+    track(AnalyticsEvent.TELEGRAM_CONNECT_STARTED);
     setStatus('linking');
     setErrorMsg('');
 

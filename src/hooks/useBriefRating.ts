@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { track, AnalyticsEvent } from '../lib/analytics';
 
 export interface BriefRatingState {
   /** null = not yet rated, true = helpful, false = not helpful */
@@ -57,6 +58,7 @@ export function useBriefRating(briefId: string | null): BriefRatingState {
     async (newRating: boolean, newComment?: string) => {
       if (!briefId) return;
 
+      track(AnalyticsEvent.BRIEF_RATED, { rating: newRating, brief_id: briefId });
       setIsSubmitting(true);
 
       // Optimistic update — user sees feedback immediately regardless of DB result

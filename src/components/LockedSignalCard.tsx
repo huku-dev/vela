@@ -1,4 +1,5 @@
 import { getCoinIcon, stripAssetPrefix } from '../lib/helpers';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type { Asset } from '../types';
 
 interface LockedSignalCardProps {
@@ -27,7 +28,10 @@ export default function LockedSignalCard({
   return (
     <div
       className="vela-card"
-      onClick={onUpgradeClick}
+      onClick={() => {
+        track(AnalyticsEvent.LOCKED_CARD_CLICKED, { asset_id: asset.id });
+        onUpgradeClick();
+      }}
       role="button"
       tabIndex={0}
       aria-label={`Upgrade to unlock ${asset.name} signals`}

@@ -3,6 +3,7 @@ import SignalChip from './SignalChip';
 import PriceArrow from './PriceArrow';
 import { getCoinIcon, formatPrice, stripAssetPrefix } from '../lib/helpers';
 import { getEffectivePnl } from '../utils/calculations';
+import { track, AnalyticsEvent } from '../lib/analytics';
 import type { AssetDashboard, Position } from '../types';
 
 interface SignalCardProps {
@@ -76,7 +77,10 @@ export default function SignalCard({ data, position }: SignalCardProps) {
   return (
     <div
       className="vela-card"
-      onClick={() => navigate(`/asset/${asset.id}`)}
+      onClick={() => {
+        track(AnalyticsEvent.SIGNAL_CARD_CLICKED, { asset_id: asset.id, signal: signal?.signal_color ?? null });
+        navigate(`/asset/${asset.id}`);
+      }}
       role="button"
       tabIndex={0}
       aria-label={`View ${asset.name} signal details`}

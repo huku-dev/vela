@@ -4,6 +4,7 @@ import { usePrivy } from '@privy-io/react-auth';
 import { supabase, createAuthenticatedClient } from '../lib/supabase';
 import { clearSubscriptionCache } from './useSubscription';
 import { clearWalletCache } from './useTrading';
+import { identifyUser, resetUser, track, AnalyticsEvent } from '../lib/analytics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exchange`;
@@ -119,6 +120,12 @@ export function useAuth(): AuthState {
         // Set Sentry user context for all future events
         Sentry.setUser({ id: data.user.privy_did });
 
+        // Identify user in PostHog — links anonymous events to this user
+        identifyUser(data.user.privy_did, {
+          email: privyUser?.email?.address ?? null,
+        });
+        track(AnalyticsEvent.LOGIN_COMPLETED);
+
         setUser({
           privyDid: data.user.privy_did,
           profileId: data.user.profile_id,
@@ -175,6 +182,8 @@ export function useAuth(): AuthState {
 
   // Wrap logout to clear onboarding flag + cached subscription
   const handleLogout = useCallback(async () => {
+    track(AnalyticsEvent.LOGOUT);
+    resetUser();
     localStorage.removeItem('vela_onboarded');
     clearSubscriptionCache();
     clearWalletCache();
