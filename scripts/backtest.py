@@ -565,6 +565,21 @@ V9_ATR_2_0X = {
 }
 
 # ---------------------------------------------------------------------------
+# PROD_ACTUAL: What production ACTUALLY runs (verified 2026-03-20)
+# Same signal logic as V9_ATR_2_0X but with production's real stop-loss behavior:
+# - Fixed 8% stop-loss (no ATR dynamics) — trade-executor.ts getStopLossPrice()
+# - No grace period — stop order placed immediately at entry
+# - Stop never recalculates — Hyperliquid trigger order at fixed price
+# ---------------------------------------------------------------------------
+PROD_ACTUAL = {
+    **V9_ATR_2_0X,
+    "name": "Production Actual (fixed 8% stop, no grace)",
+    "atr_stop_loss": False,        # Production uses fixed stop, not ATR
+    "stop_loss_pct": 8,            # Fixed 8% from entry price
+    "grace_period_days": 0,        # Stop active immediately (HL trigger order at entry)
+}
+
+# ---------------------------------------------------------------------------
 # V10: Late Entry — allow entries N bars after the original EMA cross
 # if all gates (ADX, RSI, SMA-50, anti-whipsaw) now pass.
 # Tests whether catching missed crosses is profitable or catches reversals.
@@ -648,6 +663,7 @@ NAMED_CONFIGS = {
     "v9_atr_1_5x": V9_ATR_1_5X,
     "v9_atr_1_75x": V9_ATR_1_75X,
     "v9_atr_2_0x": V9_ATR_2_0X,
+    "prod_actual": PROD_ACTUAL,
     # ── V10: Late entry experiments ──
     "v10_late_0": V10_LATE_0,
     "v10_late_1bar": V10_LATE_1BAR,
@@ -1246,26 +1262,28 @@ def evaluate_signal(
     # ── OVERRIDE CHECKS (fire regardless of cross) ──
 
     if open_trade is not None and open_trade.get("direction") == "long":
-        # Check grace period: overrides disabled for N days after entry
+        # Stop-loss checks are ALWAYS active (safety mechanism, ignores grace period)
+        entry_price = open_trade["entry_price"]
+        drawdown = (entry_price - price) / entry_price * 100
+
+        # Use ATR at entry time, not current ATR (locks stop distance at trade open)
+        entry_atr = open_trade.get("entry_atr_pct", float("nan"))
+        if config.get("atr_stop_loss") and not pd.isna(entry_atr):
+            # Dynamic stop: 2× entry ATR as percentage of price
+            atr_stop = entry_atr * config.get("atr_stop_multiplier", 2.0)
+            if drawdown >= atr_stop:
+                return ("red", "atr_stop_loss")
+        else:
+            # Fixed stop-loss fallback
+            if drawdown >= config["stop_loss_pct"]:
+                return ("red", "stop_loss")
+
+        # Grace period: only applies to signal-based overrides (not stop-losses)
         grace = config.get("grace_period_days", 0)
         days_in_trade = bar_index - open_trade.get("entry_bar_index", 0)
         overrides_active = days_in_trade >= grace
 
         if overrides_active:
-            # Stop-loss: ATR-based dynamic or fixed fallback
-            entry_price = open_trade["entry_price"]
-            drawdown = (entry_price - price) / entry_price * 100
-
-            if config.get("atr_stop_loss") and not pd.isna(atr_pct):
-                # Dynamic stop: 2× ATR as percentage of price
-                atr_stop = atr_pct * config.get("atr_stop_multiplier", 2.0)
-                if drawdown >= atr_stop:
-                    return ("red", "atr_stop_loss")
-            else:
-                # Fixed stop-loss fallback
-                if drawdown >= config["stop_loss_pct"]:
-                    return ("red", "stop_loss")
-
             # Trend break: price below SMA-50 for N consecutive days
             confirm_days = config.get("trend_break_confirm_days", 1)
             if days_below_sma50 >= confirm_days:
@@ -1274,22 +1292,20 @@ def evaluate_signal(
     # ── ATR-based stop-loss for SHORT positions ──
 
     if open_trade is not None and open_trade.get("direction") == "short":
-        grace = config.get("grace_period_days", 0)
-        days_in_trade = bar_index - open_trade.get("entry_bar_index", 0)
-        overrides_active = days_in_trade >= grace
+        # Stop-loss checks are ALWAYS active (safety mechanism, ignores grace period)
+        entry_price = open_trade["entry_price"]
+        # For shorts, loss is when price goes UP
+        drawdown = (price - entry_price) / entry_price * 100
 
-        if overrides_active:
-            entry_price = open_trade["entry_price"]
-            # For shorts, loss is when price goes UP
-            drawdown = (price - entry_price) / entry_price * 100
-
-            if config.get("atr_stop_loss") and not pd.isna(atr_pct):
-                atr_stop = atr_pct * config.get("atr_stop_multiplier", 2.0)
-                if drawdown >= atr_stop:
-                    return ("green", "atr_stop_loss")
-            else:
-                if drawdown >= config["stop_loss_pct"]:
-                    return ("green", "stop_loss")
+        # Use ATR at entry time, not current ATR (locks stop distance at trade open)
+        entry_atr = open_trade.get("entry_atr_pct", float("nan"))
+        if config.get("atr_stop_loss") and not pd.isna(entry_atr):
+            atr_stop = entry_atr * config.get("atr_stop_multiplier", 2.0)
+            if drawdown >= atr_stop:
+                return ("green", "atr_stop_loss")
+        else:
+            if drawdown >= config["stop_loss_pct"]:
+                return ("green", "stop_loss")
 
     # ── GREEN: Bullish EMA cross with all conditions ──
 
@@ -1656,6 +1672,11 @@ def simulate_trades(
     trailing_stop_atr_mode = config.get("trailing_stop_atr_mode", False)
     trailing_stop_atr_activation = config.get("trailing_stop_atr_activation", 1.5)
     trailing_stop_atr_trail = config.get("trailing_stop_atr_trail", 0.75)
+    # V11 experiment: delay trailing stop activation by N bars after entry
+    # trailing_stop_delay_days is a convenience alias (1 day = 1 bar in daily backtest)
+    trailing_stop_delay_bars = config.get("trailing_stop_delay_bars", 0)
+    if config.get("trailing_stop_delay_days", 0) > 0:
+        trailing_stop_delay_bars = config["trailing_stop_delay_days"]
     short_peak_profit: float = 0.0  # Best profit % seen during current short
     long_peak_profit: float = 0.0   # Best profit % seen during current long
 
@@ -1715,7 +1736,8 @@ def simulate_trades(
         # Tracks peak profit and closes if profit retraces beyond trail distance.
         # Works alongside ATR stop: ATR stop fires on absolute loss from entry,
         # trailing stop fires on retrace from peak profit.
-        if trailing_stop_short and open_short is not None and color != "green":
+        _short_bars_held = (bar_idx - open_short["entry_bar_index"]) if open_short is not None else 0
+        if trailing_stop_short and open_short is not None and color != "green" and _short_bars_held >= trailing_stop_delay_bars:
             entry_price = open_short["entry_price"]
             current_profit = ((entry_price - price) / entry_price) * 100
             # Update peak profit tracker
@@ -1737,7 +1759,8 @@ def simulate_trades(
         # ── V6d: Trailing stop for longs ──
         # Same logic as short trailing stop, but for long positions.
         # Closes long if profit retraces from peak.
-        if trailing_stop_long and open_long is not None and color != "red":
+        _long_bars_held = (bar_idx - open_long["entry_bar_index"]) if open_long is not None else 0
+        if trailing_stop_long and open_long is not None and color != "red" and _long_bars_held >= trailing_stop_delay_bars:
             entry_price = open_long["entry_price"]
             current_profit = ((price - entry_price) / entry_price) * 100
             if current_profit > long_peak_profit:
@@ -2158,6 +2181,7 @@ def simulate_trades(
                             "entry_signal_reason": "ema_cross_up_confirmed" if confirmation_bars > 0 else reason,
                             "entry_indicators": _snapshot_indicators(row),
                             "entry_bar_index": bar_idx,
+                            "entry_atr_pct": row.get("atr_pct", float("nan")),
                         }
                         long_remaining_frac = first_frac
                         long_peak_profit = 0.0
@@ -2189,6 +2213,7 @@ def simulate_trades(
                             "entry_signal_reason": "ema_cross_up_confirmed" if confirmation_bars > 0 else reason,
                             "entry_indicators": _snapshot_indicators(row),
                             "entry_bar_index": bar_idx,
+                            "entry_atr_pct": row.get("atr_pct", float("nan")),
                         }
                         long_remaining_frac = 1.0
                         long_peak_profit = 0.0
@@ -2212,6 +2237,7 @@ def simulate_trades(
                             "entry_signal_reason": "ema_cross_down_confirmed" if confirmation_bars > 0 else reason,
                             "entry_indicators": _snapshot_indicators(row),
                             "entry_bar_index": bar_idx,
+                            "entry_atr_pct": row.get("atr_pct", float("nan")),
                         }
                         short_remaining_frac = first_frac
                         short_peak_profit = 0.0
@@ -2242,6 +2268,7 @@ def simulate_trades(
                             "entry_signal_reason": "ema_cross_down_confirmed" if confirmation_bars > 0 else reason,
                             "entry_indicators": _snapshot_indicators(row),
                             "entry_bar_index": bar_idx,
+                            "entry_atr_pct": row.get("atr_pct", float("nan")),
                         }
                         short_remaining_frac = 1.0
                         short_peak_profit = 0.0
@@ -2263,6 +2290,7 @@ def simulate_trades(
                         "entry_signal_reason": "late_entry",
                         "entry_indicators": _snapshot_indicators(row),
                         "entry_bar_index": bar_idx,
+                        "entry_atr_pct": row.get("atr_pct", float("nan")),
                     }
                     long_remaining_frac = 1.0
                     long_peak_profit = 0.0
@@ -2279,6 +2307,7 @@ def simulate_trades(
                         "entry_signal_reason": "late_entry",
                         "entry_indicators": _snapshot_indicators(row),
                         "entry_bar_index": bar_idx,
+                        "entry_atr_pct": row.get("atr_pct", float("nan")),
                     }
                     short_remaining_frac = 1.0
                     short_peak_profit = 0.0
@@ -3771,6 +3800,8 @@ def run_comparison(
         ("trailing_stop_long", "Trailing stop (longs)"),
         ("trailing_stop_activation_pct", "Trail activation %"),
         ("trailing_stop_trail_pct", "Trail distance %"),
+        ("trailing_stop_delay_days", "Trail delay (days)"),
+        ("trailing_stop_delay_bars", "Trail delay (bars)"),
         ("short_ladder_levels", "Short ladder levels"),
         ("short_ladder_fractions", "Short ladder fractions"),
         ("pullback_reentry_short", "Short re-entry enabled"),

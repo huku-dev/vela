@@ -26,25 +26,29 @@ const PANELS: SplashPanel[] = [
     mockupVariant: 'brand',
     bgClass: 'vela-card-lavender',
     headline: 'Vela watches the markets. You make the moves.',
-    subline: 'AI-powered intelligence that monitors markets 24/7, keeps you informed and sets up profitable trades.',
+    subline:
+      'AI-powered intelligence that monitors markets 24/7, keeps you informed and sets up profitable trades.',
   },
   {
     mockupVariant: 'brief',
     bgClass: 'vela-card-mint',
     headline: 'Cut through the noise',
-    subline: 'No complex charts or technical jargon. Vela explains what moved, why it matters, and what to watch next.',
+    subline:
+      'No complex charts or technical jargon. Vela explains what moved, why it matters, and what to watch next.',
   },
   {
     mockupVariant: 'approval',
     bgClass: 'vela-card-lavender',
     headline: 'Stay in control of every trade',
-    subline: 'Vela finds opportunities and proposes trades. You review the reasoning, then approve or decline.',
+    subline:
+      'Vela finds opportunities and proposes trades. You review the reasoning, then approve or decline.',
   },
   {
     mockupVariant: 'signal',
     bgClass: 'vela-card-peach',
     headline: 'Profit whether markets rise or fall',
-    subline: 'Go long when conditions are strong, go short when they weaken. Vela trades both directions for you.',
+    subline:
+      'Go long when conditions are strong, go short when they weaken. Vela trades both directions for you.',
   },
 ];
 
