@@ -78,7 +78,10 @@ export default function SignalCard({ data, position }: SignalCardProps) {
     <div
       className="vela-card"
       onClick={() => {
-        track(AnalyticsEvent.SIGNAL_CARD_CLICKED, { asset_id: asset.id, signal: signal?.signal_color ?? null });
+        track(AnalyticsEvent.SIGNAL_CARD_CLICKED, {
+          asset_id: asset.id,
+          signal: signal?.signal_color ?? null,
+        });
         navigate(`/asset/${asset.id}`);
       }}
       role="button"

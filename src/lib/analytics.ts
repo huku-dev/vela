@@ -24,7 +24,7 @@ export function initAnalytics(): void {
     capture_pageview: true,
     capture_pageleave: true,
     // Disable in dev to avoid noise
-    loaded: (ph) => {
+    loaded: ph => {
       if (import.meta.env.DEV) {
         ph.opt_out_capturing();
         console.info('[analytics] PostHog loaded but opted out (dev mode)');
@@ -36,7 +36,10 @@ export function initAnalytics(): void {
 // ── User identification ──────────────────────────────────────────
 // Call after successful auth exchange. Links anonymous events to user.
 
-export function identifyUser(privyDid: string, properties?: Record<string, string | boolean | number | null>): void {
+export function identifyUser(
+  privyDid: string,
+  properties?: Record<string, string | boolean | number | null>
+): void {
   if (!POSTHOG_KEY) return;
   posthog.identify(privyDid, properties);
 }
@@ -103,7 +106,10 @@ export const AnalyticsEvent = {
 export type AnalyticsEventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
 
 /** Track a typed analytics event with optional properties */
-export function track(event: AnalyticsEventName, properties?: Record<string, string | boolean | number | null>): void {
+export function track(
+  event: AnalyticsEventName,
+  properties?: Record<string, string | boolean | number | null>
+): void {
   if (!POSTHOG_KEY) return;
   posthog.capture(event, properties);
 }

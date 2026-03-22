@@ -175,12 +175,18 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
           <TabButton
             label="Transfer USDC"
             active={activeTab === 'transfer'}
-            onClick={() => { track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'transfer' }); setActiveTab('transfer'); }}
+            onClick={() => {
+              track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'transfer' });
+              setActiveTab('transfer');
+            }}
           />
           <TabButton
             label="Fund with card / bank"
             active={activeTab === 'card'}
-            onClick={() => { track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'card' }); setActiveTab('card'); }}
+            onClick={() => {
+              track(AnalyticsEvent.DEPOSIT_TAB_CHANGED, { tab: 'card' });
+              setActiveTab('card');
+            }}
           />
         </div>
 
