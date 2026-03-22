@@ -13,6 +13,7 @@ __pycache__/
 .claude/settings.local.json
 .claude/hookify.*.local.md
 .claude/plans/
+.claude/compaction-flush/
 
 # Test coverage output
 coverage/
