@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Alert } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
@@ -11,7 +11,7 @@ import { useAssetDetail, useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
-import { useBriefRating } from '../hooks/useBriefRating';
+import EngagementCard from '../components/EngagementCard';
 import {
   breakIntoParagraphs,
   formatPrice,
@@ -1006,8 +1006,19 @@ export default function AssetDetail() {
         />
       )}
 
-      {/* Brief feedback — thumbs up/down */}
-      {isAuthenticated && brief && <BriefFeedback briefId={brief.id} />}
+      {/* Engagement — rating + share */}
+      {isAuthenticated && brief && asset && (
+        <EngagementCard
+          briefId={brief.id}
+          assetId={assetId!}
+          assetName={asset.name}
+          coingeckoId={asset.coingecko_id}
+          signal={signal?.signal_color ?? null}
+          price={price ?? null}
+          priceChange24h={change24h ?? null}
+          headline={brief.summary ?? null}
+        />
+      )}
 
       {/* Timestamp — show signal check recency + brief age */}
       {(signal || brief) && (
@@ -1589,199 +1600,6 @@ function PriceLevelTriggers({
 }
 
 // ── Helper Components ──
-
-// ── Brief feedback — thumbs up/down ──
-
-function BriefFeedback({ briefId }: { briefId: string }) {
-  const { rating, isLoading, isSubmitting, submitRating } = useBriefRating(briefId);
-  const [showCommentInput, setShowCommentInput] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const commentRef = useRef<HTMLDivElement>(null);
-
-  // Reset local state when briefId changes (new brief = fresh state)
-  useEffect(() => {
-    setShowCommentInput(false);
-    setCommentText('');
-  }, [briefId]);
-
-  if (isLoading) return null;
-
-  const handleThumbsUp = async () => {
-    if (isSubmitting) return;
-    await submitRating(true);
-    setShowCommentInput(false);
-  };
-
-  const handleThumbsDown = async () => {
-    if (isSubmitting) return;
-    await submitRating(false);
-    setShowCommentInput(true);
-    // Scroll comment box into view after render
-    setTimeout(
-      () => commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
-      50
-    );
-  };
-
-  const handleSubmitComment = async () => {
-    if (isSubmitting) return;
-    await submitRating(false, commentText.trim() || undefined);
-    setShowCommentInput(false);
-  };
-
-  const thumbSize = 18;
-
-  // ── Persistent rated state ──
-  // Once rated, show confirmation that persists until brief changes
-  if (rating !== null && !showCommentInput) {
-    const isPositive = rating === true;
-    return (
-      <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
-        <p
-          className="vela-label-sm"
-          style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
-        >
-          Was this analysis helpful?
-        </p>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 'var(--space-2)',
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ fontSize: `${thumbSize - 4}px` }}>{isPositive ? '👍' : '👎'}</span>
-          <span
-            className="vela-body-sm"
-            style={{
-              color: 'var(--color-text-muted)',
-              fontSize: 'var(--text-xs)',
-            }}
-          >
-            Thanks for your feedback
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Unrated state — show prompt + buttons ──
-  const thumbStyle = (active: boolean, color: string): React.CSSProperties => ({
-    fontSize: `${thumbSize}px`,
-    cursor: isSubmitting ? 'default' : 'pointer',
-    opacity: isSubmitting ? 0.5 : 1,
-    filter: active ? 'none' : 'grayscale(100%)',
-    color: active ? color : 'var(--color-text-muted)',
-    background: 'none',
-    border: 'none',
-    padding: 'var(--space-1) var(--space-2)',
-    borderRadius: 'var(--radius-sm)',
-    transition: 'color 0.15s, filter 0.15s',
-  });
-
-  return (
-    <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
-      <p
-        className="vela-label-sm"
-        style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-2)' }}
-      >
-        Was this analysis helpful?
-      </p>
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 'var(--space-3)',
-          alignItems: 'center',
-        }}
-      >
-        <button
-          onClick={handleThumbsUp}
-          disabled={isSubmitting}
-          style={thumbStyle(rating === true, 'var(--color-signal-buy)')}
-          aria-label="Helpful"
-        >
-          👍
-        </button>
-        <button
-          onClick={handleThumbsDown}
-          disabled={isSubmitting}
-          style={thumbStyle(rating === false, 'var(--color-signal-sell)')}
-          aria-label="Not helpful"
-        >
-          👎
-        </button>
-      </div>
-
-      {/* Comment input after thumbs-down */}
-      {showCommentInput && rating === false && (
-        <div
-          ref={commentRef}
-          style={{ marginTop: 'var(--space-3)', maxWidth: 320, marginInline: 'auto' }}
-        >
-          <textarea
-            className="vela-body-sm"
-            value={commentText}
-            onChange={e => setCommentText(e.target.value.slice(0, 280))}
-            placeholder="What could be better? (optional)"
-            maxLength={280}
-            rows={2}
-            style={{
-              width: '100%',
-              padding: 'var(--space-2)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--background-primary)',
-              color: 'var(--text-primary)',
-              resize: 'none',
-              fontFamily: 'inherit',
-            }}
-          />
-          <div
-            style={{
-              display: 'flex',
-              gap: 'var(--space-2)',
-              marginTop: 'var(--space-2)',
-              justifyContent: 'center',
-            }}
-          >
-            <button
-              onClick={handleSubmitComment}
-              disabled={isSubmitting}
-              className="vela-label-sm"
-              style={{
-                padding: 'var(--space-1) var(--space-3)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--background-primary)',
-                color: 'var(--text-primary)',
-                cursor: isSubmitting ? 'default' : 'pointer',
-                opacity: isSubmitting ? 0.5 : 1,
-              }}
-            >
-              Submit
-            </button>
-            <button
-              onClick={() => setShowCommentInput(false)}
-              className="vela-label-sm"
-              style={{
-                padding: 'var(--space-1) var(--space-3)',
-                border: 'none',
-                background: 'none',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer',
-              }}
-            >
-              Skip
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function formatTimeAgo(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();

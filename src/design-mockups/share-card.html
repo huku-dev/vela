@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1200">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #E8E4DE;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 60px;
+      padding: 60px 40px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .label {
+      color: #888;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: -40px;
+    }
+
+    .card {
+      width: 1200px;
+      height: 628px;
+      position: relative;
+      overflow: hidden;
+      background: #FFFBF5;
+    }
+
+    /* --- Shared cream card styles --- */
+    .card .accent-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 6px;
+    }
+    .card .vela-eye-stroke { stroke: #0A0A0A; }
+    .card .vela-eye-iris { fill: #0FE68C; }
+
+    /* --- BUY variant --- */
+    .card-buy .accent-glow {
+      position: absolute; top: 0; left: 0;
+      width: 500px; height: 280px;
+      background: radial-gradient(ellipse at top left, rgba(15, 230, 140, 0.08) 0%, transparent 70%);
+    }
+    .card-buy .accent-bar { background: #0FE68C; }
+    .card-buy .signal-badge {
+      background: rgba(15, 230, 140, 0.12);
+      color: #0B9E5E;
+      border: 1px solid rgba(15, 230, 140, 0.4);
+    }
+    .card-buy .price-change { color: #0B9E5E; }
+
+    /* --- SELL variant --- */
+    .card-sell .accent-glow {
+      position: absolute; top: 0; left: 0;
+      width: 500px; height: 280px;
+      background: radial-gradient(ellipse at top left, rgba(255, 71, 87, 0.07) 0%, transparent 70%);
+    }
+    .card-sell .accent-bar { background: #FF4757; }
+    .card-sell .signal-badge {
+      background: rgba(255, 71, 87, 0.1);
+      color: #D63441;
+      border: 1px solid rgba(255, 71, 87, 0.3);
+    }
+    .card-sell .price-change { color: #D63441; }
+
+    /* --- WAIT variant --- */
+    .card-wait .accent-glow {
+      position: absolute; top: 0; left: 0;
+      width: 500px; height: 280px;
+      background: radial-gradient(ellipse at top left, rgba(0, 0, 0, 0.04) 0%, transparent 70%);
+    }
+    .card-wait .accent-bar { background: #999; }
+    .card-wait .signal-badge {
+      background: rgba(0, 0, 0, 0.06);
+      color: #666;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+    .card-wait .price-change { color: #666; }
+
+    /* Card inner layout */
+    .card-content {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column;
+      height: 100%;
+      padding: 56px 64px 48px;
+    }
+
+    .card-header {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .asset-icon {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .asset-name {
+      font-size: 42px; font-weight: 800; color: #0A0A0A;
+      letter-spacing: -1px;
+    }
+
+    .signal-badge {
+      padding: 8px 24px; border-radius: 100px;
+      font-size: 18px; font-weight: 700;
+      letter-spacing: 3px; text-transform: uppercase;
+      margin-left: auto;
+    }
+
+    .price-row {
+      display: flex; align-items: baseline; gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .price {
+      font-size: 52px; font-weight: 700; color: #0A0A0A;
+      letter-spacing: -1px;
+    }
+
+    .price-change { font-size: 22px; font-weight: 600; }
+
+    .headline {
+      font-size: 24px; font-weight: 400;
+      color: #444;
+      line-height: 1.5; max-width: 900px; flex: 1;
+    }
+
+    .card-footer {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .divider {
+      position: absolute; bottom: 88px;
+      left: 64px; right: 64px;
+      height: 1px; background: rgba(0,0,0,0.08);
+    }
+
+    .branding {
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .vela-logo-container {
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .wordmark {
+      font-size: 20px; font-weight: 800;
+      color: #0A0A0A; letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .branding-dot {
+      font-size: 16px; color: rgba(0,0,0,0.3);
+      margin: 0 2px;
+    }
+
+    .branding-url {
+      font-size: 16px; font-weight: 500;
+      color: rgba(0,0,0,0.45);
+    }
+
+    .timestamp {
+      font-size: 14px; color: rgba(0,0,0,0.3);
+    }
+
+    /* ========== ENGAGEMENT CARD (mobile) ========== */
+    .engagement-card-wrapper { width: 390px; padding: 16px; }
+
+    .engagement-card {
+      background: #1A1A1A; border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 24px; width: 100%;
+    }
+
+    .engagement-title {
+      font-size: 15px; font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 20px;
+    }
+
+    .rating-row { display: flex; gap: 8px; margin-bottom: 24px; }
+
+    .rating-btn {
+      flex: 1; padding: 12px; border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      text-align: center; font-size: 13px; font-weight: 500;
+      color: rgba(255,255,255,0.6); cursor: pointer;
+    }
+    .rating-btn .emoji { display: block; font-size: 20px; margin-bottom: 4px; }
+
+    .engagement-divider {
+      height: 1px; background: rgba(255,255,255,0.06);
+      margin-bottom: 20px;
+    }
+
+    .share-row { display: flex; gap: 10px; }
+
+    .share-btn {
+      flex: 1; display: flex; align-items: center;
+      justify-content: center; gap: 8px;
+      padding: 14px; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+
+    .share-btn-primary {
+      background: rgba(15, 230, 140, 0.12);
+      color: #0FE68C;
+      border: 1px solid rgba(15, 230, 140, 0.2);
+    }
+
+    .share-btn-secondary {
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .share-icon { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== SHARE CARD: BUY ===== -->
+  <div class="label">Share Card - BUY</div>
+  <div class="card card-buy">
+    <div class="accent-bar"></div>
+    <div class="accent-glow"></div>
+    <div class="card-content">
+      <div class="card-header">
+        <img class="asset-icon" src="https://assets.coingecko.com/coins/images/1/standard/bitcoin.png" alt="BTC">
+        <div class="asset-name">Bitcoin</div>
+        <div class="signal-badge">BUY</div>
+      </div>
+      <div class="price-row">
+        <div class="price">$67,842</div>
+        <div class="price-change">+5.2% (24h)</div>
+      </div>
+      <div class="headline">Momentum building as BTC breaks above key resistance with strong volume confirmation across major exchanges</div>
+      <div class="divider"></div>
+      <div class="card-footer">
+        <div class="branding">
+          <div class="vela-logo-container">
+            <svg width="36" height="18" viewBox="-58 -30 116 60" fill="none">
+              <polygon points="-55,0 0,-28 55,0 0,28" class="vela-eye-stroke" stroke-width="5" fill="none" stroke-linejoin="miter"/>
+              <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" class="vela-eye-iris"/>
+            </svg>
+            <span class="wordmark">vela</span>
+          </div>
+          <span class="branding-dot">&middot;</span>
+          <span class="branding-url">getvela.xyz</span>
+        </div>
+        <span class="timestamp">Mar 22, 2026 &middot; 12:00 UTC</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SHARE CARD: SELL ===== -->
+  <div class="label">Share Card - SELL</div>
+  <div class="card card-sell">
+    <div class="accent-bar"></div>
+    <div class="accent-glow"></div>
+    <div class="card-content">
+      <div class="card-header">
+        <img class="asset-icon" src="https://assets.coingecko.com/coins/images/279/standard/ethereum.png" alt="ETH">
+        <div class="asset-name">Ethereum</div>
+        <div class="signal-badge">SELL</div>
+      </div>
+      <div class="price-row">
+        <div class="price">$3,241</div>
+        <div class="price-change">-3.8% (24h)</div>
+      </div>
+      <div class="headline">Bearish divergence confirmed as ETH loses support at $3,300 with declining volume and weakening momentum</div>
+      <div class="divider"></div>
+      <div class="card-footer">
+        <div class="branding">
+          <div class="vela-logo-container">
+            <svg width="36" height="18" viewBox="-58 -30 116 60" fill="none">
+              <polygon points="-55,0 0,-28 55,0 0,28" class="vela-eye-stroke" stroke-width="5" fill="none" stroke-linejoin="miter"/>
+              <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" class="vela-eye-iris"/>
+            </svg>
+            <span class="wordmark">vela</span>
+          </div>
+          <span class="branding-dot">&middot;</span>
+          <span class="branding-url">getvela.xyz</span>
+        </div>
+        <span class="timestamp">Mar 22, 2026 &middot; 12:00 UTC</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SHARE CARD: WAIT ===== -->
+  <div class="label">Share Card - WAIT</div>
+  <div class="card card-wait">
+    <div class="accent-bar"></div>
+    <div class="accent-glow"></div>
+    <div class="card-content">
+      <div class="card-header">
+        <img class="asset-icon" src="https://assets.coingecko.com/coins/images/4128/standard/solana.png" alt="SOL">
+        <div class="asset-name">Solana</div>
+        <div class="signal-badge">WAIT</div>
+      </div>
+      <div class="price-row">
+        <div class="price">$142.50</div>
+        <div class="price-change">+0.3% (24h)</div>
+      </div>
+      <div class="headline">Consolidating in a tight range with no clear directional bias. Waiting for a decisive move before taking a position</div>
+      <div class="divider"></div>
+      <div class="card-footer">
+        <div class="branding">
+          <div class="vela-logo-container">
+            <svg width="36" height="18" viewBox="-58 -30 116 60" fill="none">
+              <polygon points="-55,0 0,-28 55,0 0,28" class="vela-eye-stroke" stroke-width="5" fill="none" stroke-linejoin="miter"/>
+              <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" class="vela-eye-iris"/>
+            </svg>
+            <span class="wordmark">vela</span>
+          </div>
+          <span class="branding-dot">&middot;</span>
+          <span class="branding-url">getvela.xyz</span>
+        </div>
+        <span class="timestamp">Mar 22, 2026 &middot; 12:00 UTC</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ENGAGEMENT CARD (Mobile) ===== -->
+  <div class="label">Engagement Card - Rate + Share (Mobile)</div>
+  <div class="engagement-card-wrapper">
+    <div class="engagement-card">
+      <div class="engagement-title">Was this BTC signal helpful?</div>
+      <div class="rating-row">
+        <div class="rating-btn">
+          <span class="emoji">👍</span>
+          Useful
+        </div>
+        <div class="rating-btn">
+          <span class="emoji">🤔</span>
+          Unsure
+        </div>
+        <div class="rating-btn">
+          <span class="emoji">👎</span>
+          Not helpful
+        </div>
+      </div>
+      <div class="engagement-divider"></div>
+      <div class="share-row">
+        <div class="share-btn share-btn-primary">
+          <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+          </svg>
+          Share signal
+        </div>
+        <div class="share-btn share-btn-secondary">
+          <svg class="share-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          Copy link
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

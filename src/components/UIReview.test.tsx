@@ -16,6 +16,7 @@ import { plainEnglish } from '../lib/helpers';
 import { TIER_DEFINITIONS, COMPARISON_FEATURES, getTierConfig } from '../lib/tier-definitions';
 
 const assetDetailSrc = readFileSync(resolve(__dirname, '../pages/AssetDetail.tsx'), 'utf-8');
+const engagementCardSrc = readFileSync(resolve(__dirname, './EngagementCard.tsx'), 'utf-8');
 const helpersSrc = readFileSync(resolve(__dirname, '../lib/helpers.ts'), 'utf-8');
 
 // ── ADX Direction-Aware Coloring ──
@@ -84,46 +85,32 @@ describe('RSI-SRC: contextual labels source verification', () => {
 
 // ── Brief Rating Persistence ──
 
-describe('RATING-SRC: brief rating persistence', () => {
+describe('RATING-SRC: brief rating persistence (EngagementCard)', () => {
   it('does NOT have a setTimeout auto-dismiss timer', () => {
-    // Extract the BriefFeedback function
-    const startIdx = assetDetailSrc.indexOf('function BriefFeedback');
-    const endIdx = assetDetailSrc.indexOf('\nfunction ', startIdx + 1);
-    const feedbackSrc = assetDetailSrc.slice(startIdx, endIdx > 0 ? endIdx : undefined);
-
-    expect(feedbackSrc).not.toContain('setTimeout(() => setShowThanks(false)');
+    expect(engagementCardSrc).not.toContain('setTimeout(() => setShowThanks(false)');
   });
 
   it('has no showThanks state', () => {
-    const startIdx = assetDetailSrc.indexOf('function BriefFeedback');
-    const endIdx = assetDetailSrc.indexOf('\nfunction ', startIdx + 1);
-    const feedbackSrc = assetDetailSrc.slice(startIdx, endIdx > 0 ? endIdx : undefined);
-
-    expect(feedbackSrc).not.toContain('setShowThanks');
+    expect(engagementCardSrc).not.toContain('setShowThanks');
   });
 
   it('shows persistent rated state when rating !== null', () => {
-    expect(assetDetailSrc).toContain('rating !== null && !showCommentInput');
-    expect(assetDetailSrc).toContain('Thanks for your feedback');
+    expect(engagementCardSrc).toContain('rating !== null && !showCommentInput');
+    expect(engagementCardSrc).toContain('Thanks for your feedback');
   });
 
   it('has a Skip button for thumbs-down comment', () => {
-    // Prettier may split across lines, so check for the text content
-    expect(assetDetailSrc).toMatch(/>\s*Skip\s*<\/button>/);
+    expect(engagementCardSrc).toMatch(/>\s*Skip\s*<\/button>/);
   });
 
   it('scrolls comment box into view after thumbs-down', () => {
-    expect(assetDetailSrc).toContain('scrollIntoView');
+    expect(engagementCardSrc).toContain('scrollIntoView');
   });
 });
 
 describe('RATING-ADV: adversarial — no transient feedback', () => {
-  it('no thanksTimerRef in BriefFeedback', () => {
-    const startIdx = assetDetailSrc.indexOf('function BriefFeedback');
-    const endIdx = assetDetailSrc.indexOf('\nfunction ', startIdx + 1);
-    const feedbackSrc = assetDetailSrc.slice(startIdx, endIdx > 0 ? endIdx : undefined);
-
-    expect(feedbackSrc).not.toContain('thanksTimerRef');
+  it('no thanksTimerRef in EngagementCard', () => {
+    expect(engagementCardSrc).not.toContain('thanksTimerRef');
   });
 });
 

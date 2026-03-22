@@ -99,6 +99,10 @@ export const AnalyticsEvent = {
   // ── Telegram ──
   TELEGRAM_CONNECT_STARTED: 'telegram_connect_started',
 
+  // ── Engagement ──
+  SIGNAL_RATED: 'signal_rated',
+  SIGNAL_SHARED: 'signal_shared',
+
   // ── Errors ──
   TRADE_ERROR_SHOWN: 'error_trade_shown',
 } as const;
