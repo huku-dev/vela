@@ -246,7 +246,8 @@ export default function TrackRecord() {
           : pctToDollar(pos.closed_pnl_pct ?? 0, pos.original_size_usd ?? pos.size_usd);
       const pct = hasPosFees ? posFees.netPnlPct : (pos.closed_pnl_pct ?? 0);
       totalPnl += pnl;
-      if (pct > 0) wins++;
+      // Breakeven trades count as wins (successful risk management, not a loss)
+      if (pct >= 0) wins++;
     }
 
     for (const pos of positions) {
@@ -254,7 +255,7 @@ export default function TrackRecord() {
       const livePrice = getLivePrice(posAsset?.coingecko_id);
       const { pnlDollar } = getEffectivePnl(pos, livePrice ?? undefined);
       totalPnl += pnlDollar;
-      if (pnlDollar > 0) wins++;
+      if (pnlDollar >= 0) wins++;
     }
 
     return {
@@ -2256,7 +2257,11 @@ function ClosedPositionCard({
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 700,
                   fontSize: 'var(--text-base)',
-                  color: isBreakeven ? 'var(--gray-500)' : isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: isBreakeven
+                    ? 'var(--gray-500)'
+                    : isPositive
+                      ? 'var(--green-dark)'
+                      : 'var(--red-dark)',
                   lineHeight: 1.2,
                   margin: 0,
                 }}
@@ -2269,7 +2274,11 @@ function ClosedPositionCard({
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 600,
                   fontSize: 'var(--text-xs)',
-                  color: isBreakeven ? 'var(--gray-500)' : isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: isBreakeven
+                    ? 'var(--gray-500)'
+                    : isPositive
+                      ? 'var(--green-dark)'
+                      : 'var(--red-dark)',
                   margin: 0,
                 }}
               >
