@@ -309,7 +309,7 @@ export default function EngagementCard({
           await navigator.share({
             files: [file],
             title: `${assetName} — ${signal === 'green' ? 'BUY' : signal === 'red' ? 'SELL' : 'WAIT'} signal`,
-            url: `https://getvela.xyz/assets/${assetId}/`,
+            url: `https://getvela.xyz/assets/${coingeckoId}/`,
           });
           return;
         }
@@ -328,13 +328,13 @@ export default function EngagementCard({
   }, [assetId, assetName, coingeckoId, signal, price, priceChange24h, headline]);
 
   const handleCopyLink = useCallback(() => {
-    const url = `https://getvela.xyz/assets/${assetId}/`;
+    const url = `https://getvela.xyz/assets/${coingeckoId}/`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
     track(AnalyticsEvent.SIGNAL_SHARED, { asset_id: assetId, signal, method: 'copy_link' });
-  }, [assetId, signal]);
+  }, [assetId, coingeckoId, signal]);
 
   if (isLoading) return null;
 
