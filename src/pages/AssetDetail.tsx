@@ -923,12 +923,11 @@ export default function AssetDetail() {
         <PriceLevelsCard indicators={detail.indicators} price={price} detail={detail} />
       )}
 
-      {/* Tier 3: What's moving — merged summary + events with show-more */}
-      {(summaryParagraphs.length > 0 ||
-        (detail?.events_moving_markets && detail.events_moving_markets.length > 0)) && (
+      {/* Tier 3: What's moving — only shown when there are actual news events */}
+      {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
         <WhatsMovingSection
           summaryParagraphs={summaryParagraphs}
-          events={detail?.events_moving_markets ?? []}
+          events={detail.events_moving_markets}
           assetName={asset.name}
         />
       )}
