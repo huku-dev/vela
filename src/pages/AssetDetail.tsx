@@ -918,91 +918,33 @@ export default function AssetDetail() {
           );
         })()}
 
-      {/* Tier 2: What's happening — with paragraph breaks */}
-      {summaryParagraphs.length > 0 && (
-        <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <SectionLabel>What&apos;s happening</SectionLabel>
-          {summaryParagraphs.map((para, i) => (
-            <p
-              key={i}
-              className="vela-body-sm"
-              style={{
-                color: 'var(--color-text-secondary)',
-                lineHeight: 1.7,
-                marginBottom: i < summaryParagraphs.length - 1 ? 'var(--space-3)' : 0,
-              }}
-            >
-              {para}
-            </p>
-          ))}
-        </Card>
+      {/* Tier 2: Key price levels — promoted from WhyWeThinkThis (most actionable info) */}
+      {detail?.indicators && price != null && (
+        <PriceLevelsCard indicators={detail.indicators} price={price} detail={detail} />
       )}
 
-      {/* Events moving markets — only when news events exist */}
-      {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
-        <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <SectionLabel>Events moving {asset.name}</SectionLabel>
-          {detail.events_moving_markets.map((event, i) => (
-            <div
-              key={i}
-              style={{
-                marginBottom: i < detail.events_moving_markets!.length - 1 ? 'var(--space-3)' : 0,
-                paddingBottom: i < detail.events_moving_markets!.length - 1 ? 'var(--space-3)' : 0,
-                borderBottom:
-                  i < detail.events_moving_markets!.length - 1
-                    ? '1px solid var(--color-border)'
-                    : 'none',
-              }}
-            >
-              <p
-                className="vela-body-sm"
-                style={{ fontWeight: 600, marginBottom: 'var(--space-1)' }}
-              >
-                {event.title}
-              </p>
-              <p
-                className="vela-body-sm"
-                style={{ color: 'var(--color-text-secondary)', lineHeight: 1.6 }}
-              >
-                {event.impact}
-              </p>
-              {event.source && (
-                <a
-                  href={
-                    event.url ||
-                    `https://www.google.com/search?q=${encodeURIComponent(event.title + ' ' + event.source)}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="vela-label-sm"
-                  style={{
-                    color: 'var(--color-text-muted)',
-                    marginTop: 'var(--space-1)',
-                    display: 'inline-block',
-                    textDecoration: 'underline',
-                    textDecorationColor: 'var(--gray-300)',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  {event.date
-                    ? `${new Date(event.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${event.source}`
-                    : event.source}
-                </a>
-              )}
-            </div>
-          ))}
-        </Card>
+      {/* Tier 3: What's moving — merged summary + events with show-more */}
+      {(summaryParagraphs.length > 0 ||
+        (detail?.events_moving_markets && detail.events_moving_markets.length > 0)) && (
+        <WhatsMovingSection
+          summaryParagraphs={summaryParagraphs}
+          events={detail?.events_moving_markets ?? []}
+          assetName={asset.name}
+        />
       )}
 
-      {/* Tier 3: Why we think this — collapsible */}
+      {/* Tier 4: Market mood — simplified inline Fear & Greed */}
+      {fearGreedValue != null && (
+        <MarketMoodInline value={fearGreedValue} label={fearGreedLabel} />
+      )}
+
+      {/* Tier 5: Why we think this — collapsible technical details */}
       {detail && (
         <WhyWeThinkThis
           detail={detail}
           brief={brief}
           recentBriefs={recentBriefs}
           price={price}
-          fearGreedValue={fearGreedValue}
-          fearGreedLabel={fearGreedLabel}
         />
       )}
 
@@ -1141,8 +1083,6 @@ function WhyWeThinkThis({
   brief,
   recentBriefs,
   price,
-  fearGreedValue,
-  fearGreedLabel,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -1151,8 +1091,6 @@ function WhyWeThinkThis({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recentBriefs: any[];
   price: number | undefined | null;
-  fearGreedValue: number | null;
-  fearGreedLabel: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const indicators = detail?.indicators;
@@ -1243,62 +1181,44 @@ function WhyWeThinkThis({
             </>
           )}
 
-          {/* Market Context — with Fear & Greed gauge (only when AI data or fallback provides it) */}
-          {(Object.keys(marketContext).length > 0 || fearGreedValue != null) && (
+          {/* Market Context — bullets only (Fear & Greed gauge moved to top-level MarketMoodInline) */}
+          {Object.keys(marketContext).length > 0 && (
             <>
               <div style={{ marginBottom: 'var(--space-4)' }}>
                 <SubLabel>Market context</SubLabel>
-
-                {fearGreedValue != null && (
-                  <div
-                    className="vela-card"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      margin: 'var(--space-4) 0',
-                      padding: 'var(--space-3)',
-                      backgroundColor: 'var(--gray-50)',
-                    }}
-                  >
-                    <FearGreedGauge value={fearGreedValue} label={fearGreedLabel} />
-                  </div>
-                )}
-
-                {Object.keys(marketContext).length > 0 && (
-                  <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                    {Object.entries(marketContext)
-                      .sort(([keyA], [keyB]) => {
-                        // Push dominance-related keys to end of list
-                        const isDomA = /dominance/i.test(keyA);
-                        const isDomB = /dominance/i.test(keyB);
-                        if (isDomA && !isDomB) return 1;
-                        if (!isDomA && isDomB) return -1;
-                        return 0;
-                      })
-                      .map(([key, value]) => (
-                        <li
-                          key={key}
-                          className="vela-body-sm"
-                          style={{
-                            color: 'var(--color-text-secondary)',
-                            marginBottom: 'var(--space-1)',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          {(() => {
-                            const t = plainEnglish(value as string);
-                            return t.charAt(0).toUpperCase() + t.slice(1);
-                          })()}
-                        </li>
-                      ))}
-                  </ul>
-                )}
+                <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+                  {Object.entries(marketContext)
+                    .sort(([keyA], [keyB]) => {
+                      // Push dominance-related keys to end of list
+                      const isDomA = /dominance/i.test(keyA);
+                      const isDomB = /dominance/i.test(keyB);
+                      if (isDomA && !isDomB) return 1;
+                      if (!isDomA && isDomB) return -1;
+                      return 0;
+                    })
+                    .map(([key, value]) => (
+                      <li
+                        key={key}
+                        className="vela-body-sm"
+                        style={{
+                          color: 'var(--color-text-secondary)',
+                          marginBottom: 'var(--space-1)',
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {(() => {
+                          const t = plainEnglish(value as string);
+                          return t.charAt(0).toUpperCase() + t.slice(1);
+                        })()}
+                      </li>
+                    ))}
+                </ul>
               </div>
               <Divider />
             </>
           )}
 
-          {/* Indicators — Plain English */}
+          {/* Indicators — Plain English (price levels moved to top-level PriceLevelsCard) */}
           {indicators && (
             <IndicatorsSection
               indicators={indicators}
@@ -1306,11 +1226,6 @@ function WhyWeThinkThis({
               brief={brief}
               recentBriefs={recentBriefs}
             />
-          )}
-
-          {/* Price level triggers */}
-          {indicators && detail && (
-            <PriceLevelTriggers indicators={indicators} price={price} detail={detail} />
           )}
         </div>
       )}
@@ -1535,7 +1450,7 @@ function PriceLevelTriggers({
 
   return (
     <div>
-      <SubLabel>Key price levels to watch</SubLabel>
+      <SectionLabel>Key price levels</SectionLabel>
       <div className="vela-stack" style={{ gap: 'var(--space-2)' }}>
         <TriggerCard
           direction="bullish"
@@ -1596,6 +1511,184 @@ function PriceLevelTriggers({
         );
       })()}
     </div>
+  );
+}
+
+// ── Promoted Sections (extracted from WhyWeThinkThis per Damola feedback 2026-03-23) ──
+
+/** Key price levels promoted to top-level card — most actionable info for users */
+function PriceLevelsCard({
+  indicators,
+  price,
+  detail,
+}: {
+  indicators: { ema_9: number; ema_21: number; rsi_14: number; adx_4h: number; sma_50_daily: number };
+  price: number | undefined | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  detail: any;
+}) {
+  return (
+    <Card style={{ marginBottom: 'var(--space-4)' }}>
+      <PriceLevelTriggers indicators={indicators} price={price} detail={detail} />
+    </Card>
+  );
+}
+
+/** Merged "What's happening" + "Events moving" into one section with show-more */
+function WhatsMovingSection({
+  summaryParagraphs,
+  events,
+  assetName,
+}: {
+  summaryParagraphs: string[];
+  events: Array<{ title: string; impact: string; source?: string; url?: string; date?: string }>;
+  assetName: string;
+}) {
+  const [showAll, setShowAll] = useState(false);
+
+  // Build combined items: summary bullets first, then event items
+  const summaryBullets = summaryParagraphs.map((para) => ({
+    type: 'summary' as const,
+    text: para,
+  }));
+  const eventBullets = events.map((event) => ({
+    type: 'event' as const,
+    title: event.title,
+    impact: event.impact,
+    source: event.source,
+    url: event.url,
+    date: event.date,
+  }));
+
+  const allItems = [...summaryBullets, ...eventBullets];
+  if (allItems.length === 0) return null;
+
+  const visibleCount = 3;
+  const hasMore = allItems.length > visibleCount;
+  const displayed = showAll ? allItems : allItems.slice(0, visibleCount);
+
+  return (
+    <Card style={{ marginBottom: 'var(--space-4)' }}>
+      <SectionLabel>What&apos;s moving {assetName}</SectionLabel>
+      <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
+        {displayed.map((item, i) => (
+          <li
+            key={i}
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-secondary)',
+              marginBottom: 'var(--space-2)',
+              lineHeight: 1.6,
+            }}
+          >
+            {item.type === 'summary' ? (
+              item.text
+            ) : (
+              <>
+                <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  {item.title}
+                </span>
+                {showAll && item.impact && (
+                  <span style={{ color: 'var(--color-text-secondary)' }}>
+                    {' '}
+                    &mdash; {item.impact}
+                  </span>
+                )}
+                {item.source && (
+                  <>
+                    {' '}
+                    <a
+                      href={
+                        item.url ||
+                        `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + item.source)}`
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="vela-label-sm"
+                      style={{
+                        color: 'var(--color-text-muted)',
+                        textDecoration: 'underline',
+                        textDecorationColor: 'var(--gray-300)',
+                        textUnderlineOffset: '2px',
+                      }}
+                    >
+                      {item.date
+                        ? `${new Date(item.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${item.source}`
+                        : item.source}
+                    </a>
+                  </>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          onClick={() => setShowAll(!showAll)}
+          className="vela-label-sm"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--color-text-muted)',
+            cursor: 'pointer',
+            padding: 'var(--space-2) 0 0',
+            textDecoration: 'underline',
+            textDecorationColor: 'var(--gray-300)',
+            textUnderlineOffset: '2px',
+          }}
+        >
+          {showAll ? 'Show less' : `Show ${allItems.length - visibleCount} more`}
+        </button>
+      )}
+    </Card>
+  );
+}
+
+/** Fear & Greed gauge with plain-English context */
+function MarketMoodInline({ value, label }: { value: number; label: string }) {
+  // Plain-English context line based on the value range
+  const getMoodContext = (v: number): string => {
+    if (v <= 15)
+      return 'Investors are extremely nervous. Historically, extreme fear has often preceded recoveries.';
+    if (v <= 30)
+      return 'Most investors are cautious right now. Fear can mean opportunity, but also continued selling.';
+    if (v <= 45)
+      return 'Sentiment is leaning cautious. Markets are uncertain about direction.';
+    if (v <= 55)
+      return 'Sentiment is balanced. No strong conviction either way from the broader market.';
+    if (v <= 70)
+      return 'Investors are feeling optimistic. Confidence is building but not overheated yet.';
+    if (v <= 85)
+      return 'Markets are very confident. High greed can sometimes signal prices are stretched.';
+    return 'Extreme optimism. Historically, this level of greed has often preceded pullbacks.';
+  };
+
+  return (
+    <Card style={{ marginBottom: 'var(--space-4)' }}>
+      <SectionLabel>Market mood</SectionLabel>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
+          marginBottom: 'var(--space-2)',
+        }}
+      >
+        <FearGreedGauge value={value} label={label} />
+        <p
+          className="vela-body-sm"
+          style={{
+            color: 'var(--color-text-muted)',
+            lineHeight: 1.5,
+            margin: 0,
+            flex: 1,
+          }}
+        >
+          {getMoodContext(value)}
+        </p>
+      </div>
+    </Card>
   );
 }
 
