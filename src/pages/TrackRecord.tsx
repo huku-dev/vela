@@ -2168,7 +2168,9 @@ function ClosedPositionCard({
   // Use net PnL as primary display when fees exist
   const pnlPct = hasFees ? fees.netPnlPct : grossPnlPct;
   const pnlDollar = hasFees ? fees.netPnlDollar : grossPnlDollar;
-  const isPositive = pnlPct >= 0;
+  // Treat near-zero PnL as breakeven (< 0.05% either way) to avoid "-0.0% loss" display
+  const isBreakeven = Math.abs(pnlPct) < 0.05 && Math.abs(pnlDollar) < 0.01;
+  const isPositive = isBreakeven || pnlPct >= 0;
 
   const holdingPeriod =
     position.created_at && position.closed_at
@@ -2188,7 +2190,7 @@ function ClosedPositionCard({
     <Card
       compact
       style={{
-        borderLeft: `4px solid ${isPositive ? 'var(--green-primary)' : 'var(--red-primary)'}`,
+        borderLeft: `4px solid ${isBreakeven ? 'var(--gray-300)' : isPositive ? 'var(--green-primary)' : 'var(--red-primary)'}`,
         cursor: 'pointer',
       }}
     >
@@ -2254,26 +2256,26 @@ function ClosedPositionCard({
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 700,
                   fontSize: 'var(--text-base)',
-                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: isBreakeven ? 'var(--gray-500)' : isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
                   lineHeight: 1.2,
                   margin: 0,
                 }}
               >
-                {isPositive ? '+' : ''}
-                {pnlPct.toFixed(1)}%
+                {isBreakeven ? '' : isPositive ? '+' : ''}
+                {isBreakeven ? '0.0' : pnlPct.toFixed(1)}%
               </p>
               <p
                 style={{
                   fontFamily: 'var(--type-mono-base-font)',
                   fontWeight: 600,
                   fontSize: 'var(--text-xs)',
-                  color: isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
+                  color: isBreakeven ? 'var(--gray-500)' : isPositive ? 'var(--green-dark)' : 'var(--red-dark)',
                   margin: 0,
                 }}
               >
-                {isPositive ? '+' : '-'}$
-                {Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })}{' '}
-                {isPositive ? 'profit' : 'loss'}
+                {isBreakeven
+                  ? 'breakeven'
+                  : `${isPositive ? '+' : '-'}$${Math.abs(pnlDollar).toLocaleString('en-US', { maximumFractionDigits: 2 })} ${isPositive ? 'profit' : 'loss'}`}
               </p>
             </div>
             <svg
