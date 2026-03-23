@@ -333,8 +333,16 @@ function BalanceCard({
 
   const balance = wallet.balance_usdc;
   const isTestnet = wallet.environment === 'testnet';
+  // "In trades" = margin locked + unrealized PnL.
+  // For leveraged perps, margin = notional / leverage.
+  // For spot (leverage=1), margin = notional. balance_usdc is the cross-margin available
+  // balance from Hyperliquid (NOT total equity), so we must add margin, not notional.
   const inTrades = (openPositions ?? []).reduce(
-    (sum, p) => sum + p.size_usd + (p.unrealized_pnl ?? 0),
+    (sum, p) => {
+      const lev = p.leverage > 0 ? p.leverage : 1;
+      const margin = p.size_usd / lev;
+      return sum + margin + (p.unrealized_pnl ?? 0);
+    },
     0
   );
   const totalValue = balance + inTrades;
