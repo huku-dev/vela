@@ -20,10 +20,11 @@ interface SignalCardProps {
 function getPositionHeadline(
   position: Position,
   symbol: string,
-  briefHeadline?: string | null
+  briefHeadline?: string | null,
+  livePrice?: number | null
 ): string {
   const side = position.side === 'long' ? 'long' : 'short';
-  const { pnlPct: pnl } = getEffectivePnl(position);
+  const { pnlPct: pnl } = getEffectivePnl(position, livePrice);
   const pnlAbs = Math.abs(pnl).toFixed(1);
   const pnlSign = pnl >= 0 ? '+' : '-';
 
@@ -69,7 +70,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
 
   // Position-aware headline weaves P&L with market context from the brief
   const headline = position
-    ? getPositionHeadline(position, asset.symbol.toUpperCase(), brief?.headline)
+    ? getPositionHeadline(position, asset.symbol.toUpperCase(), brief?.headline, price)
     : brief?.headline
       ? stripAssetPrefix(brief.headline, asset.symbol)
       : null;
