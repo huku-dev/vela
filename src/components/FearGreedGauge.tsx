@@ -3,6 +3,14 @@ interface FearGreedGaugeProps {
   label: string; // e.g. "Extreme Fear"
 }
 
+/** Map value to a semantic colour matching the gauge arc segments */
+function getMoodColor(v: number): string {
+  if (v <= 24) return '#EF4444'; // red — extreme fear / fear
+  if (v <= 44) return '#F59E0B'; // amber — fear / leaning cautious
+  if (v <= 55) return '#EAB308'; // yellow — neutral
+  return '#22C55E'; // green — greed / extreme greed
+}
+
 /**
  * Neobrutalist semicircular gauge for Fear & Greed Index.
  * Left (0) = extreme fear (red), middle = neutral (yellow), right (100) = extreme greed (green).
@@ -74,7 +82,7 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
         style={{
           fontWeight: 'var(--weight-bold)',
           fontSize: '0.9rem',
-          color: 'var(--color-text-primary)',
+          color: getMoodColor(clampedValue),
           lineHeight: 1,
         }}
       >
@@ -83,7 +91,8 @@ export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
       <span
         className="vela-label-sm"
         style={{
-          color: 'var(--color-text-muted)',
+          color: getMoodColor(clampedValue),
+          fontWeight: 600,
           lineHeight: 1,
         }}
       >

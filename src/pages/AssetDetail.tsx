@@ -396,7 +396,7 @@ export default function AssetDetail() {
   const fearGreedValue = fearGreedMatch ? parseInt(fearGreedMatch[1], 10) : null;
   const fearGreedLabel =
     detail?.market_context?.fear_greed?.match(
-      /extreme fear|fear|neutral|greed|extreme greed/i
+      /extreme fear|extreme greed|fear|neutral|greed/i
     )?.[0] || '';
 
   // Parse summary into paragraphs
@@ -934,18 +934,11 @@ export default function AssetDetail() {
       )}
 
       {/* Tier 4: Market mood — simplified inline Fear & Greed */}
-      {fearGreedValue != null && (
-        <MarketMoodInline value={fearGreedValue} label={fearGreedLabel} />
-      )}
+      {fearGreedValue != null && <MarketMoodInline value={fearGreedValue} label={fearGreedLabel} />}
 
       {/* Tier 5: Why we think this — collapsible technical details */}
       {detail && (
-        <WhyWeThinkThis
-          detail={detail}
-          brief={brief}
-          recentBriefs={recentBriefs}
-          price={price}
-        />
+        <WhyWeThinkThis detail={detail} brief={brief} recentBriefs={recentBriefs} price={price} />
       )}
 
       {/* Engagement — rating + share */}
@@ -1522,7 +1515,13 @@ function PriceLevelsCard({
   price,
   detail,
 }: {
-  indicators: { ema_9: number; ema_21: number; rsi_14: number; adx_4h: number; sma_50_daily: number };
+  indicators: {
+    ema_9: number;
+    ema_21: number;
+    rsi_14: number;
+    adx_4h: number;
+    sma_50_daily: number;
+  };
   price: number | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -1547,11 +1546,11 @@ function WhatsMovingSection({
   const [showAll, setShowAll] = useState(false);
 
   // Build combined items: summary bullets first, then event items
-  const summaryBullets = summaryParagraphs.map((para) => ({
+  const summaryBullets = summaryParagraphs.map(para => ({
     type: 'summary' as const,
     text: para,
   }));
-  const eventBullets = events.map((event) => ({
+  const eventBullets = events.map(event => ({
     type: 'event' as const,
     title: event.title,
     impact: event.impact,
@@ -1653,8 +1652,7 @@ function MarketMoodInline({ value, label }: { value: number; label: string }) {
       return 'Investors are extremely nervous. Historically, extreme fear has often preceded recoveries.';
     if (v <= 30)
       return 'Most investors are cautious right now. Fear can mean opportunity, but also continued selling.';
-    if (v <= 45)
-      return 'Sentiment is leaning cautious. Markets are uncertain about direction.';
+    if (v <= 45) return 'Sentiment is leaning cautious. Markets are uncertain about direction.';
     if (v <= 55)
       return 'Sentiment is balanced. No strong conviction either way from the broader market.';
     if (v <= 70)
