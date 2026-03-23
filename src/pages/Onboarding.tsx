@@ -16,7 +16,7 @@ import type { TradingMode } from '../types';
 // Panel 3: "You approve every trade. Vela brings you the right moments." / "Safe, secure, and transparent — every step of the way"
 
 interface SplashPanel {
-  mockupVariant: 'brief' | 'signal' | 'approval';
+  mockupVariant: 'brand' | 'brief' | 'signal' | 'approval';
   bgClass: string;
   headline: string;
   subline: string;
@@ -24,23 +24,32 @@ interface SplashPanel {
 
 const PANELS: SplashPanel[] = [
   {
-    mockupVariant: 'brief',
+    mockupVariant: 'brand',
     bgClass: 'vela-card-lavender',
-    headline: 'Vela watches the markets 24/7 so you don\u2019t have to',
-    subline: 'Wake up to a clear summary of what moved and why.',
+    headline: 'Vela watches the markets. You make the moves.',
+    subline:
+      'AI-powered intelligence that monitors markets 24/7, keeps you informed and sets up profitable trades.',
   },
   {
-    mockupVariant: 'signal',
+    mockupVariant: 'brief',
     bgClass: 'vela-card-mint',
-    headline: 'Know exactly when conditions change',
-    subline: 'Real-time signals with full reasoning, not just alerts.',
+    headline: 'Cut through the noise',
+    subline:
+      'No complex charts or technical jargon. Vela explains what moved, why it matters, and what to watch next.',
   },
   {
     mockupVariant: 'approval',
-    bgClass: 'vela-card-peach',
+    bgClass: 'vela-card-lavender',
     headline: 'Stay in control of every trade',
     subline:
       'Vela finds opportunities and proposes trades. You review the reasoning, then approve or decline.',
+  },
+  {
+    mockupVariant: 'signal',
+    bgClass: 'vela-card-peach',
+    headline: 'Profit whether markets rise or fall',
+    subline:
+      'Go long when conditions are strong, go short when they weaken. Vela trades both directions for you.',
   },
 ];
 
@@ -178,114 +187,143 @@ function BriefMockup() {
 }
 
 function SignalMockup() {
+  const trades = [
+    {
+      asset: 'BTC',
+      color: '#F7931A',
+      symbol: '\u20BF',
+      direction: 'LONG' as const,
+      entry: '$94,200',
+      current: '$105,900',
+      pnl: '+12.4%',
+      positive: true,
+    },
+    {
+      asset: 'Gold',
+      color: '#d4a017',
+      symbol: 'Au',
+      direction: 'SHORT' as const,
+      entry: '$3,150',
+      current: '$2,828',
+      pnl: '+10.2%',
+      positive: true,
+    },
+    {
+      asset: 'SPX',
+      color: '#1a56db',
+      symbol: 'S',
+      direction: 'LONG' as const,
+      entry: '$5,420',
+      current: '$5,580',
+      pnl: '+2.9%',
+      positive: true,
+    },
+  ];
+
+  const directionStyles: Record<string, { bg: string; color: string; border: string }> = {
+    LONG: { bg: 'var(--green-light)', color: 'var(--green-dark)', border: 'var(--green-primary)' },
+    SHORT: { bg: 'var(--red-light)', color: 'var(--red-dark)', border: 'var(--red-primary)' },
+  };
+
   return (
     <>
-      {/* Asset header with BUY chip */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: '50%',
-              backgroundColor: 'var(--gray-800)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 11,
-              fontWeight: 700,
-              color: 'var(--white)',
-            }}
-          >
-            {'\u20BF'}
-          </div>
-          <span
-            style={{
-              fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            BTC &middot; $96,450
-          </span>
-        </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span
           style={{
-            fontSize: '0.55rem',
-            fontWeight: 700,
+            fontSize: '0.6rem',
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 600,
             textTransform: 'uppercase',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.06em',
+            background: 'var(--peach-100)',
             padding: '2px 8px',
             borderRadius: 'var(--radius-sm)',
-            border: '2px solid var(--green-primary)',
-            background: 'var(--green-light)',
-            color: 'var(--green-dark)',
           }}
         >
-          Buy
+          Your Trades
         </span>
+        <span style={{ fontSize: '0.55rem', color: 'var(--gray-400)' }}>P&L</span>
       </div>
 
-      {/* Indicator progress bars */}
-      <div style={{ marginTop: 'var(--space-1)' }}>
-        {[
-          { label: 'Trend', pct: 85, color: 'var(--green-primary)' },
-          { label: 'Momentum', pct: 70, color: 'var(--green-primary)' },
-          { label: 'Volume', pct: 55, color: 'var(--amber-primary)' },
-        ].map(bar => (
+      {/* Trade rows */}
+      {trades.map((trade, i) => (
+        <div key={trade.asset}>
           <div
-            key={bar.label}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
-              marginBottom: 4,
+              justifyContent: 'space-between',
+              padding: '3px 0',
             }}
           >
-            <span
-              style={{
-                width: 56,
-                fontSize: '0.55rem',
-                color: 'var(--gray-500)',
-                flexShrink: 0,
-              }}
-            >
-              {bar.label}
-            </span>
-            <div
-              style={{
-                flex: 1,
-                height: 6,
-                background: 'var(--gray-100)',
-                borderRadius: 3,
-                overflow: 'hidden',
-              }}
-            >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div
                 style={{
-                  width: `${bar.pct}%`,
-                  height: '100%',
-                  background: bar.color,
-                  borderRadius: 3,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  backgroundColor: trade.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: 'var(--white)',
                 }}
-              />
+              >
+                {trade.symbol}
+              </div>
+              <div>
+                <span
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: 'block',
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {trade.asset}
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                  <span
+                    style={{
+                      fontSize: '0.45rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      padding: '1px 5px',
+                      borderRadius: 4,
+                      border: `1.5px solid ${directionStyles[trade.direction].border}`,
+                      background: directionStyles[trade.direction].bg,
+                      color: directionStyles[trade.direction].color,
+                    }}
+                  >
+                    {trade.direction}
+                  </span>
+                  <span style={{ fontSize: '0.5rem', color: 'var(--gray-400)' }}>
+                    {trade.entry} → {trade.current}
+                  </span>
+                </div>
+              </div>
             </div>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "'JetBrains Mono', monospace",
+                color: trade.positive ? 'var(--green-dark)' : 'var(--red-dark)',
+              }}
+            >
+              {trade.pnl}
+            </span>
           </div>
-        ))}
-      </div>
-
-      {/* Reason text */}
-      <p
-        style={{
-          margin: 0,
-          fontSize: '0.55rem',
-          color: 'var(--gray-500)',
-          fontStyle: 'italic',
-          lineHeight: 1.3,
-        }}
-      >
-        Uptrend confirmed across all timeframes
-      </p>
+          {i < trades.length - 1 && (
+            <div style={{ height: 1, background: 'var(--gray-200)', margin: '2px 0' }} />
+          )}
+        </div>
+      ))}
     </>
   );
 }
@@ -319,7 +357,7 @@ function ApprovalMockup() {
               height: 20,
               borderRadius: '50%',
               // Asset brand color
-              backgroundColor: 'var(--gray-800)',
+              backgroundColor: '#F7931A',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -427,9 +465,162 @@ function ApprovalMockup() {
   );
 }
 
+function BrandMockup() {
+  const assets = [
+    { name: 'BTC', color: '#F7931A', symbol: '\u20BF', signal: 'BUY' as const },
+    { name: 'S&P 500', color: '#1a56db', symbol: 'S', signal: 'WAIT' as const },
+    { name: 'Gold', color: '#d4a017', symbol: 'Au', signal: 'BUY' as const },
+  ];
+
+  const signalStyles: Record<string, { bg: string; color: string; border: string }> = {
+    BUY: { bg: 'var(--green-light)', color: 'var(--green-dark)', border: 'var(--green-primary)' },
+    WAIT: { bg: 'var(--gray-100)', color: 'var(--gray-500)', border: 'var(--gray-300)' },
+  };
+
+  return (
+    <>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <VelaLogo variant="mark" size={16} />
+        <span
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          vela
+        </span>
+        <span style={{ fontSize: '0.55rem', color: 'var(--gray-400)', marginLeft: 'auto' }}>
+          Live
+        </span>
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'var(--green-primary)',
+            flexShrink: 0,
+          }}
+        />
+      </div>
+
+      {/* Asset rows with signal chips */}
+      {assets.map((asset, i) => (
+        <div key={asset.name}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: 'var(--space-1) 0',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  backgroundColor: asset.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: 'var(--white)',
+                }}
+              >
+                {asset.symbol}
+              </div>
+              <span
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {asset.name}
+              </span>
+            </div>
+            <span
+              style={{
+                fontSize: '0.55rem',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-sm)',
+                border: `2px solid ${signalStyles[asset.signal].border}`,
+                background: signalStyles[asset.signal].bg,
+                color: signalStyles[asset.signal].color,
+              }}
+            >
+              {asset.signal}
+            </span>
+          </div>
+          {i < assets.length - 1 && (
+            <div style={{ height: 1, background: 'var(--gray-200)', margin: '2px 0' }} />
+          )}
+        </div>
+      ))}
+
+      {/* Indicator bars */}
+      <div style={{ marginTop: 'var(--space-1)' }}>
+        {[
+          { label: 'Trend', pct: 85, color: 'var(--green-primary)' },
+          { label: 'Momentum', pct: 70, color: 'var(--green-primary)' },
+          { label: 'Volume', pct: 55, color: 'var(--amber-primary)' },
+        ].map(bar => (
+          <div
+            key={bar.label}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 3,
+            }}
+          >
+            <span
+              style={{
+                width: 56,
+                fontSize: '0.55rem',
+                color: 'var(--gray-500)',
+                flexShrink: 0,
+              }}
+            >
+              {bar.label}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                height: 6,
+                background: 'var(--gray-100)',
+                borderRadius: 3,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${bar.pct}%`,
+                  height: '100%',
+                  background: bar.color,
+                  borderRadius: 3,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function PanelMockup({ variant }: { variant: SplashPanel['mockupVariant'] }) {
   return (
     <MockupWindow>
+      {variant === 'brand' && <BrandMockup />}
       {variant === 'brief' && <BriefMockup />}
       {variant === 'signal' && <SignalMockup />}
       {variant === 'approval' && <ApprovalMockup />}
@@ -482,7 +673,7 @@ function WelcomeSplash({
         return;
       }
       el.scrollTo({ left: el.clientWidth * currentIdx, behavior: 'smooth' });
-    }, 2000);
+    }, 3000);
 
     return () => {
       clearInterval(timer);
