@@ -49,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const isProfit = pnlPctNum >= 0;
   const pnlColor = isProfit ? SIGNAL_GREEN : SIGNAL_RED;
-  const pnlSign = isProfit ? "+" : "";
+  const pnlSign = isProfit ? "" : "";
   const badgeBg = isProfit ? SIGNAL_GREEN : SIGNAL_RED;
   const badgeText = isProfit ? INK : CREAM;
   const holdText = daysHeld === 1 ? "1 day" : `${daysHeld} days`;

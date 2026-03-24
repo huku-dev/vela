@@ -30,14 +30,6 @@ interface DigestItem {
   detail: string;
 }
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
@@ -64,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       <div style="display: flex; align-items: flex-start; gap: 20px; padding: 0 112px;">
         <span style="font-family: Space Grotesk; font-weight: 800; font-size: 56px; color: ${SIGNAL_GREEN}; min-width: 50px;">${i + 1}</span>
         <div style="display: flex; flex-direction: column; gap: 6px;">
-          <span style="font-family: Inter; font-weight: 600; font-size: 28px; color: ${INK};">${escapeHtml(decodeHtmlEntities(item.title))}</span>
-          <span style="font-family: Inter; font-weight: 400; font-size: 24px; color: ${BODY_TEXT}; line-height: 1.4;">${escapeHtml(decodeHtmlEntities(item.detail))}</span>
+          <span style="font-family: Inter; font-weight: 600; font-size: 28px; color: ${INK};">${decodeHtmlEntities(item.title)}</span>
+          <span style="font-family: Inter; font-weight: 400; font-size: 24px; color: ${BODY_TEXT}; line-height: 1.4;">${decodeHtmlEntities(item.detail)}</span>
         </div>
       </div>
     `,
@@ -76,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Tagged template `html\`...\`` escapes interpolated strings as text content,
   // which causes itemsHtml's <div>/<span> tags to render as "&lt;div&gt;" etc.
   // Calling html(string) parses the entire string as HTML markup.
-  // User-provided text is already escaped via escapeHtml() above.
+  // Text content is decoded via decodeHtmlEntities() above; Satori handles escaping natively.
   const markup = html(`
     <div
       style="display: flex; flex-direction: column; width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; background-color: ${CREAM}; border: 6px solid ${INK}; position: relative; font-family: Inter;"

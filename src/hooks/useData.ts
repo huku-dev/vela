@@ -286,7 +286,10 @@ export function useAssetDetail(assetId: string) {
           // "PGRST116" = .single() found no rows → asset genuinely doesn't exist
           const isRealNotFound = assetRes.error.code === 'PGRST116';
           if (!isRealNotFound && attempt < 2) {
-            console.warn(`[useAssetDetail] Transient fetch error (attempt ${attempt}), retrying:`, assetRes.error.message);
+            console.warn(
+              `[useAssetDetail] Transient fetch error (attempt ${attempt}), retrying:`,
+              assetRes.error.message
+            );
             setTimeout(() => fetchDetail(attempt + 1), 1000);
             return;
           }
