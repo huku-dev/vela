@@ -388,6 +388,7 @@ export interface Position {
   total_builder_fees: number | null;
   total_vela_fees: number | null;
   cumulative_funding: number | null;
+  position_type?: 'main' | 'bb2' | 'bb2_30m';
   created_at: string;
   updated_at: string;
 }

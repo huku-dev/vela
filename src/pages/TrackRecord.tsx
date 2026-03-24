@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Badge, PageHeader } from '../components/VelaComponents';
+import { Card, PageHeader } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
 import ShareTradeCard from '../components/ShareTradeCard';
 import { useTrackRecord, DEFAULT_POSITION_SIZE, type EnrichedTrade } from '../hooks/useData';
@@ -10,7 +10,6 @@ import TierComparisonSheet from '../components/TierComparisonSheet';
 import TradeProposalCard from '../components/TradeProposalCard';
 import { getCoinIcon, formatPrice, reasonCodeToPlainEnglish } from '../lib/helpers';
 import {
-  calculateUnrealizedPnL,
   pctToDollar,
   computePositionPnl,
   aggregatePositionStats,
@@ -24,21 +23,17 @@ import type { TradeDirection, Position } from '../types';
 const BB2_POSITION_MULT = 0.3;
 const BB2_POSITION_SIZE = DEFAULT_POSITION_SIZE * BB2_POSITION_MULT; // $300
 
-/**
- * Curated metrics from backtested model performance.
- * Manually updated when backtests are re-run. These match marketing site claims.
- */
-const CURATED_METRICS = {
-  winRate: 73,
-  totalPositions: 94,
-  avgReturnPct: 4.2,
-  avgHoldingPeriod: '3.1 days',
-  lastUpdated: 'Mar 2026',
-};
+/** Track record only includes trades from Jan 2026 onwards */
+const TRACK_RECORD_START = '2026-01-01T00:00:00Z';
 
 /** Is this a BB2 (short-term mean-reversion) trade? */
 function isBB2Direction(d: TradeDirection | null | undefined): boolean {
   return d === 'bb2_long' || d === 'bb2_short';
+}
+
+/** Is this a BB2 position (from positions table)? */
+function isBB2Position(pos: Position): boolean {
+  return pos.position_type === 'bb2' || pos.position_type === 'bb2_30m';
 }
 
 /** Old BB overlays (bb_long/bb_short) — attached to parent EMA positions */
@@ -81,44 +76,6 @@ function formatDateRange(openedAt: string, closedAt?: string | null): string {
 /** Inline "⚡ Fast trade" label shown on BB2 date lines */
 function FastTradeBadge() {
   return <span style={{ whiteSpace: 'nowrap' }}>{' · '}&#9889; Fast trade</span>;
-}
-
-/** Info card shown in expanded BB2 cards — connects to the ⚡ badge */
-function FastTradeInfoCard() {
-  return (
-    <div
-      style={{
-        background: 'var(--cream-dark, #f5f0e8)',
-        borderRadius: '8px',
-        padding: '8px 10px',
-        marginTop: 'var(--space-2)',
-      }}
-    >
-      <p
-        style={{
-          margin: 0,
-          fontSize: '0.68rem',
-          fontWeight: 600,
-          color: 'var(--gray-600, #6b6b6b)',
-          lineHeight: 1.3,
-        }}
-      >
-        &#9889; Fast trade
-      </p>
-      <p
-        style={{
-          margin: 0,
-          marginTop: '2px',
-          fontSize: '0.65rem',
-          color: 'var(--gray-500, #8a8a8a)',
-          lineHeight: 1.4,
-        }}
-      >
-        Vela spotted a short-term market opportunity and placed a smaller trade to try to take
-        advantage.
-      </p>
-    </div>
-  );
 }
 
 /** A parent trade with its associated trims grouped together */
@@ -211,14 +168,10 @@ export default function TrackRecord() {
     );
   }
 
-  // ── Partition trades into user's live trades vs Vela's paper/backtest trades ──
-  const userTrades = trades.filter(t => t.source === 'live');
-  const paperTrades = trades.filter(t => t.source === 'backtest');
-
-  const userClosed = userTrades.filter(
-    (t): t is typeof t & { pnl_pct: number } => t.status === 'closed' && t.pnl_pct != null
+  // ── Vela's paper/backtest trades (for track record section, Jan 2026+) ──
+  const paperTrades = trades.filter(
+    t => t.source === 'backtest' && t.opened_at >= TRACK_RECORD_START
   );
-  const userOpen = userTrades.filter(t => t.status === 'open');
 
   // ── Helper: get live price for an asset ──
   const getLivePrice = (coingeckoId: string | undefined): number | null => {
@@ -278,11 +231,19 @@ export default function TrackRecord() {
     )
   );
   const paperStats = aggregatePositionStats(paperPositions);
+
+  // Average holding period for paper trades (for track record display)
+  const avgHoldingPeriod = (() => {
+    const durations = groupedPaperClosed
+      .filter(g => g.trade.closed_at)
+      .map(g => new Date(g.trade.closed_at!).getTime() - new Date(g.trade.opened_at).getTime());
+    if (durations.length === 0) return null;
+    const avgMs = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+    return formatDurationMs(avgMs);
+  })();
+
   const hasUserTrades =
-    userTrades.length > 0 ||
-    hasLivePositions ||
-    pendingProposals.length > 0 ||
-    closedPositions.length > 0;
+    hasLivePositions || pendingProposals.length > 0 || closedPositions.length > 0;
 
   // Best paper POSITION by total position P&L (parent + trims, not individual trade pnl_pct)
   const bestPaperIdx = paperPositions.reduce<number | null>(
@@ -295,10 +256,6 @@ export default function TrackRecord() {
   );
   const bestPaperGroup = bestPaperIdx != null ? groupedPaperClosed[bestPaperIdx] : null;
   const bestPaperPnl = bestPaperIdx != null ? paperPositions[bestPaperIdx] : null;
-
-  // ── Helper: format duration ──
-  const formatDuration = (openedAt: string): string =>
-    formatDurationMs(Date.now() - new Date(openedAt).getTime());
 
   return (
     <div
@@ -483,46 +440,9 @@ export default function TrackRecord() {
             </div>
           )}
 
-          {/* User's open trades */}
-          {userOpen.length > 0 && (
-            <div style={{ marginBottom: 'var(--space-3)' }}>
-              <p
-                className="vela-label-sm"
-                style={{
-                  color: 'var(--gray-400)',
-                  marginBottom: 'var(--space-2)',
-                  paddingLeft: 'var(--space-1)',
-                }}
-              >
-                Open trades
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {userOpen.map(trade => (
-                  <OpenTradeCard
-                    key={trade.id}
-                    trade={trade}
-                    currentPrice={getLivePrice(trade.asset_coingecko_id)}
-                    coingeckoId={trade.asset_coingecko_id}
-                    formatDuration={formatDuration}
-                    entryHeadline={
-                      trade.entry_headline ??
-                      reasonCodeToPlainEnglish(trade.entry_reason_code) ??
-                      undefined
-                    }
-                    expanded={expandedTradeId === trade.id}
-                    onToggle={() =>
-                      setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                    }
-                    positionSize={tradePositionSize(trade.direction)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Closed positions (from positions table — real user trades) */}
           {closedPositions.length > 0 && (
-            <div style={{ marginBottom: userClosed.length > 0 ? 'var(--space-3)' : 0 }}>
+            <div>
               <p
                 className="vela-label-sm"
                 style={{
@@ -540,47 +460,6 @@ export default function TrackRecord() {
                     position={pos}
                     expanded={expandedTradeId === pos.id}
                     onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* User's closed trades (legacy, from paper_trades table with source=live) */}
-          {/* Hide when user has real positions — positions table is the canonical source */}
-          {userClosed.length > 0 && closedPositions.length === 0 && (
-            <div>
-              <p
-                className="vela-label-sm"
-                style={{
-                  color: 'var(--gray-400)',
-                  marginBottom: 'var(--space-2)',
-                  paddingLeft: 'var(--space-1)',
-                }}
-              >
-                Closed trades
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {userClosed.map(trade => (
-                  <ClosedTradeCard
-                    key={trade.id}
-                    trade={trade}
-                    coingeckoId={trade.asset_coingecko_id}
-                    entryHeadline={
-                      trade.entry_headline ??
-                      reasonCodeToPlainEnglish(trade.entry_reason_code) ??
-                      undefined
-                    }
-                    exitHeadline={
-                      trade.exit_headline ??
-                      reasonCodeToPlainEnglish(trade.exit_reason_code) ??
-                      undefined
-                    }
-                    expanded={expandedTradeId === trade.id}
-                    onToggle={() =>
-                      setExpandedTradeId(expandedTradeId === trade.id ? null : trade.id)
-                    }
-                    positionSize={tradePositionSize(trade.direction)}
                   />
                 ))}
               </div>
@@ -633,7 +512,7 @@ export default function TrackRecord() {
                 color: 'var(--green-dark)',
               }}
             >
-              {CURATED_METRICS.winRate}% win rate
+              {paperStats.winRate}% win rate
             </span>
             <svg
               width="14"
@@ -699,7 +578,7 @@ export default function TrackRecord() {
                       margin: 0,
                     }}
                   >
-                    {CURATED_METRICS.winRate}%
+                    {paperStats.winRate}%
                   </p>
                 </div>
                 <div>
@@ -718,7 +597,7 @@ export default function TrackRecord() {
                       margin: 0,
                     }}
                   >
-                    {CURATED_METRICS.totalPositions}
+                    {paperStats.totalClosed}
                   </p>
                 </div>
                 <div>
@@ -733,11 +612,12 @@ export default function TrackRecord() {
                     style={{
                       fontSize: 'var(--text-xl)',
                       fontWeight: 700,
-                      color: 'var(--green-dark)',
+                      color: paperStats.avgPnlPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                       margin: 0,
                     }}
                   >
-                    +{CURATED_METRICS.avgReturnPct}%
+                    {paperStats.avgPnlPct >= 0 ? '+' : ''}
+                    {paperStats.avgPnlPct}%
                   </p>
                 </div>
                 <div>
@@ -756,21 +636,10 @@ export default function TrackRecord() {
                       margin: 0,
                     }}
                   >
-                    {CURATED_METRICS.avgHoldingPeriod}
+                    {avgHoldingPeriod ?? '—'}
                   </p>
                 </div>
               </div>
-              <p
-                className="vela-body-sm"
-                style={{
-                  color: 'var(--gray-400)',
-                  margin: 0,
-                  marginTop: 'var(--space-3)',
-                  fontSize: '0.7rem',
-                }}
-              >
-                Last updated {CURATED_METRICS.lastUpdated}
-              </p>
             </Card>
 
             {/* Best trade (paper) */}
@@ -802,783 +671,6 @@ export default function TrackRecord() {
         />
       )}
     </div>
-  );
-}
-
-// ── Open Trade Card ──
-
-function OpenTradeCard({
-  trade,
-  currentPrice,
-  coingeckoId,
-  formatDuration,
-  entryHeadline,
-  expanded,
-  onToggle,
-  positionSize = DEFAULT_POSITION_SIZE,
-}: {
-  trade: EnrichedTrade;
-  currentPrice: number | null;
-  coingeckoId: string | undefined;
-  formatDuration: (openedAt: string) => string;
-  entryHeadline?: string;
-  expanded: boolean;
-  onToggle: () => void;
-  positionSize?: number;
-}) {
-  const short = isShortTrade(trade.direction);
-  const unrealizedPct =
-    currentPrice != null
-      ? calculateUnrealizedPnL(trade.entry_price, currentPrice, short ? 'short' : 'long')
-      : null;
-  const unrealizedDollar = unrealizedPct != null ? pctToDollar(unrealizedPct, positionSize) : null;
-
-  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
-  const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
-
-  return (
-    <Card
-      compact
-      style={{
-        borderLeft: `4px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-        cursor: 'pointer',
-      }}
-    >
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-      >
-        {/* Top row: logo + name | P&L */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <AssetIcon iconUrl={iconUrl} symbol={symbol} size={28} />
-            <div>
-              <span className="vela-heading-base">{symbol}</span>
-              <p
-                className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
-              >
-                {directionLabel(trade.direction)} · Open {formatDuration(trade.opened_at)}
-              </p>
-            </div>
-          </div>
-
-          {unrealizedPct != null ? (
-            <div style={{ textAlign: 'right' }}>
-              <p
-                style={{
-                  fontFamily: 'var(--type-mono-base-font)',
-                  fontWeight: 700,
-                  fontSize: 'var(--text-base)',
-                  color: unrealizedPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                  lineHeight: 1.2,
-                  margin: 0,
-                }}
-              >
-                {unrealizedPct >= 0 ? '+' : ''}
-                {unrealizedPct.toFixed(1)}%
-              </p>
-              {unrealizedDollar != null && (
-                <p
-                  style={{
-                    fontFamily: 'var(--type-mono-base-font)',
-                    fontWeight: 600,
-                    fontSize: 'var(--text-xs)',
-                    color: unrealizedDollar >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                    margin: 0,
-                  }}
-                >
-                  {unrealizedDollar >= 0 ? '+' : '-'}$
-                  {Math.abs(unrealizedDollar).toLocaleString('en-US', {
-                    maximumFractionDigits: 0,
-                  })}{' '}
-                  {unrealizedDollar >= 0 ? 'profit' : 'loss'}
-                </p>
-              )}
-            </div>
-          ) : (
-            <Badge variant="buy">Open</Badge>
-          )}
-        </div>
-
-        {/* Entry headline */}
-        {entryHeadline && (
-          <p
-            className="vela-body-sm"
-            style={{
-              color: 'var(--color-text-secondary)',
-              fontStyle: 'italic',
-              margin: 0,
-              marginTop: 'var(--space-2)',
-              paddingLeft: 'var(--space-2)',
-              borderLeft: `2px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-              lineHeight: 1.4,
-            }}
-          >
-            &ldquo;{entryHeadline}&rdquo;
-          </p>
-        )}
-
-        {/* Price row */}
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--gray-600)',
-            fontFamily: 'var(--type-mono-base-font)',
-            marginTop: 'var(--space-2)',
-            marginBottom: 0,
-          }}
-        >
-          Entry {formatPrice(trade.entry_price)}
-          {currentPrice != null && ` → Current ${formatPrice(currentPrice)}`}
-        </p>
-
-        {/* Date */}
-        <p
-          className="vela-body-sm"
-          style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
-        >
-          {formatDateRange(trade.opened_at)}
-          {isBB2Direction(trade.direction) && <FastTradeBadge />}
-        </p>
-      </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            paddingTop: 'var(--space-3)',
-            borderTop: '2px solid var(--gray-200)',
-          }}
-        >
-          {/* Position line items */}
-          <DetailRow label="Position size" value={`$${positionSize.toLocaleString()}`} />
-          <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
-          {currentPrice != null && (
-            <DetailRow label="Current price" value={formatPrice(currentPrice)} />
-          )}
-          <DetailRow label="Duration" value={formatDuration(trade.opened_at)} />
-          {unrealizedPct != null && unrealizedDollar != null && (
-            <DetailRow
-              label="Unrealized P&L"
-              value={`${unrealizedPct >= 0 ? '+' : ''}${unrealizedPct.toFixed(1)}% · ${unrealizedDollar >= 0 ? '+' : '-'}$${Math.abs(unrealizedDollar).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${unrealizedPct >= 0 ? 'profit' : 'loss'}`}
-              valueColor={unrealizedPct >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
-            />
-          )}
-
-          {/* Yellow events */}
-          {trade.yellow_events && trade.yellow_events.length > 0 && (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <p
-                className="vela-label"
-                style={{
-                  color: 'var(--gray-500)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                Alerts
-              </p>
-              {trade.yellow_events.map((ye, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 'var(--space-2)',
-                    marginBottom: 'var(--space-1)',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--amber-primary)',
-                      border: '1px solid var(--gray-900)',
-                      marginTop: 5,
-                      flexShrink: 0,
-                      display: 'inline-block',
-                    }}
-                  />
-                  <span className="vela-body-sm" style={{ color: 'var(--amber-dark)' }}>
-                    {ye.suggested_action}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Exit strategy */}
-          <div
-            style={{
-              marginTop: 'var(--space-2)',
-              padding: 'var(--space-2)',
-              backgroundColor: 'var(--gray-100)',
-              borderRadius: 'var(--radius-sm)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-1)',
-            }}
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--gray-400)"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ flexShrink: 0 }}
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-            <p className="vela-body-sm" style={{ color: 'var(--gray-500)', margin: 0 }}>
-              Position closes when signal flips to {short ? 'Buy' : 'Sell'}
-            </p>
-          </div>
-
-          {/* Fast trade info card — at bottom of expanded detail */}
-          {isBB2Direction(trade.direction) && <FastTradeInfoCard />}
-        </div>
-      )}
-    </Card>
-  );
-}
-
-// ── Closed Trade Card ──
-
-function ClosedTradeCard({
-  trade,
-  trims,
-  coingeckoId,
-  entryHeadline,
-  exitHeadline,
-  expanded,
-  onToggle,
-  positionSize = DEFAULT_POSITION_SIZE,
-}: {
-  trade: EnrichedTrade;
-  trims?: EnrichedTrade[];
-  coingeckoId: string | undefined;
-  entryHeadline?: string;
-  exitHeadline?: string;
-  expanded: boolean;
-  onToggle: () => void;
-  positionSize?: number;
-}) {
-  // Position-level P&L: includes close P&L + all trim P&Ls
-  const positionPnl =
-    trade.pnl_pct != null
-      ? computePositionPnl(
-          trade.pnl_pct,
-          (trims ?? []).map(t => ({ pnl_pct: t.pnl_pct, trim_pct: t.trim_pct })),
-          positionSize
-        )
-      : null;
-  const totalDollarPnl = positionPnl?.totalDollarPnl ?? null;
-  const totalPnlPct = positionPnl?.totalPnlPct ?? null;
-  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
-  const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
-
-  return (
-    <Card compact style={{ cursor: 'pointer' }}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onToggle}
-        onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-      >
-        {/* Top row: logo + name | P&L */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <AssetIcon iconUrl={iconUrl} symbol={symbol} size={28} />
-            <div>
-              <span className="vela-heading-base">{symbol}</span>
-              <p
-                className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
-              >
-                {directionLabel(trade.direction)}
-                {trade.direction === 'trim' && trade.trim_pct != null && ` (${trade.trim_pct}%)`} ·
-                Closed
-                {trims &&
-                  trims.length > 0 &&
-                  ` · ${trims.length} trim${trims.length !== 1 ? 's' : ''}`}
-              </p>
-            </div>
-          </div>
-
-          {totalPnlPct != null && (
-            <div style={{ textAlign: 'right' }}>
-              <p
-                style={{
-                  fontFamily: 'var(--type-mono-base-font)',
-                  fontWeight: 700,
-                  fontSize: 'var(--text-base)',
-                  color: (totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                  lineHeight: 1.2,
-                  margin: 0,
-                }}
-              >
-                {totalPnlPct >= 0 ? '+' : ''}
-                {totalPnlPct.toFixed(1)}%
-              </p>
-              {totalDollarPnl != null && (
-                <p
-                  style={{
-                    fontFamily: 'var(--type-mono-base-font)',
-                    fontWeight: 600,
-                    fontSize: 'var(--text-xs)',
-                    color: totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                    margin: 0,
-                  }}
-                >
-                  {totalDollarPnl >= 0 ? '+' : '-'}$
-                  {Math.abs(totalDollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })}{' '}
-                  {totalDollarPnl >= 0 ? 'profit' : 'loss'}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Entry headline (collapsed state) */}
-        {entryHeadline && (
-          <p
-            className="vela-body-sm"
-            style={{
-              color: 'var(--color-text-secondary)',
-              fontStyle: 'italic',
-              margin: 0,
-              marginTop: 'var(--space-2)',
-              paddingLeft: 'var(--space-2)',
-              borderLeft: `2px solid ${isShortTrade(trade.direction) ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-              lineHeight: 1.4,
-            }}
-          >
-            &ldquo;{entryHeadline}&rdquo;
-          </p>
-        )}
-
-        {/* Price row */}
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--gray-600)',
-            fontFamily: 'var(--type-mono-base-font)',
-            marginTop: 'var(--space-2)',
-            marginBottom: 0,
-          }}
-        >
-          Entry {formatPrice(trade.entry_price)}
-          {trade.exit_price != null && ` → Exit ${formatPrice(trade.exit_price)}`}
-        </p>
-
-        {/* Date range */}
-        <p
-          className="vela-body-sm"
-          style={{ color: 'var(--gray-400)', marginTop: 'var(--space-2)', marginBottom: 0 }}
-        >
-          {formatDateRange(trade.opened_at, trade.closed_at)}
-          {isBB2Direction(trade.direction) && <FastTradeBadge />}
-        </p>
-      </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            paddingTop: 'var(--space-3)',
-            borderTop: '2px solid var(--gray-200)',
-          }}
-        >
-          {/* Position line items */}
-          <DetailRow label="Position size" value={`$${positionSize.toLocaleString()}`} />
-          {trade.trim_pct != null && (
-            <DetailRow
-              label="Trimmed"
-              value={`${trade.trim_pct}% of position · $${Math.round((positionSize * trade.trim_pct) / 100).toLocaleString()}`}
-            />
-          )}
-          <DetailRow label="Entry price" value={formatPrice(trade.entry_price)} />
-          {trade.exit_price != null && (
-            <DetailRow label="Exit price" value={formatPrice(trade.exit_price)} />
-          )}
-          {trade.opened_at && trade.closed_at && (
-            <DetailRow
-              label="Duration"
-              value={formatHoldingPeriod(trade.opened_at, trade.closed_at)}
-            />
-          )}
-          {positionPnl != null && totalPnlPct != null && totalDollarPnl != null && (
-            <DetailRow
-              label="Total Position P&L"
-              value={`${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}% · ${totalDollarPnl >= 0 ? '+' : '-'}$${Math.abs(totalDollarPnl).toLocaleString('en-US', { maximumFractionDigits: 0 })} ${totalDollarPnl >= 0 ? 'profit' : 'loss'}`}
-              valueColor={totalDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'}
-            />
-          )}
-
-          {/* Exit headline (expanded state) */}
-          {exitHeadline && (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <p
-                className="vela-label"
-                style={{ color: 'var(--gray-500)', marginBottom: 'var(--space-1)' }}
-              >
-                Exit reason
-              </p>
-              <p
-                className="vela-body-sm"
-                style={{
-                  color: 'var(--color-text-secondary)',
-                  fontStyle: 'italic',
-                  margin: 0,
-                  paddingLeft: 'var(--space-2)',
-                  borderLeft: `2px solid ${isShortTrade(trade.direction) ? 'var(--green-primary)' : 'var(--red-primary)'}`,
-                  lineHeight: 1.4,
-                }}
-              >
-                &ldquo;{exitHeadline}&rdquo;
-              </p>
-            </div>
-          )}
-
-          {/* Yellow events */}
-          {trade.yellow_events && trade.yellow_events.length > 0 && (
-            <div style={{ marginTop: 'var(--space-2)' }}>
-              <p
-                className="vela-label"
-                style={{
-                  color: 'var(--gray-500)',
-                  marginBottom: 'var(--space-1)',
-                }}
-              >
-                Alerts during trade
-              </p>
-              {trade.yellow_events.map((ye, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 'var(--space-2)',
-                    marginBottom: 'var(--space-1)',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--amber-primary)',
-                      border: '1px solid var(--gray-900)',
-                      marginTop: 5,
-                      flexShrink: 0,
-                      display: 'inline-block',
-                    }}
-                  />
-                  <span className="vela-body-sm" style={{ color: 'var(--amber-dark)' }}>
-                    {ye.suggested_action}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Position timeline: trims + close with running cost basis */}
-          {trims && trims.length > 0 && positionPnl && (
-            <div
-              style={{
-                marginTop: 'var(--space-3)',
-                padding: 'var(--space-3)',
-                backgroundColor: 'var(--gray-50)',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--gray-200)',
-              }}
-            >
-              <span
-                className="vela-label-sm"
-                style={{
-                  color: 'var(--gray-600)',
-                  display: 'block',
-                  marginBottom: 'var(--space-2)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Position Timeline
-              </span>
-
-              {/* Entry */}
-              <div
-                style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
-              >
-                <div
-                  style={{
-                    width: 2,
-                    backgroundColor: isShortTrade(trade.direction)
-                      ? 'var(--red-primary)'
-                      : 'var(--green-primary)',
-                    borderRadius: 1,
-                    flexShrink: 0,
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <span
-                    className="vela-body-sm"
-                    style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}
-                  >
-                    Entry at {formatPrice(trade.entry_price)}
-                  </span>
-                  <span
-                    className="vela-body-sm"
-                    style={{ color: 'var(--gray-400)', display: 'block' }}
-                  >
-                    ${positionSize.toLocaleString()} position
-                  </span>
-                </div>
-              </div>
-
-              {/* Trims with running cost basis */}
-              {trims.map((trim, idx) => {
-                const breakdown = positionPnl.trimBreakdown[idx];
-                const trimDollar = breakdown?.dollarPnl ?? 0;
-                const costBasisAfter = breakdown?.costBasisAfter ?? 100;
-                const remainingDollars = Math.round((costBasisAfter / 100) * positionSize);
-                return (
-                  <div
-                    key={trim.id}
-                    style={{
-                      display: 'flex',
-                      gap: 'var(--space-2)',
-                      marginBottom: 'var(--space-2)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 2,
-                        backgroundColor: '#FFD700',
-                        borderRadius: 1,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'baseline',
-                        }}
-                      >
-                        <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                          Trimmed {trim.trim_pct != null ? `${trim.trim_pct}%` : ''} at{' '}
-                          {trim.exit_price != null ? formatPrice(trim.exit_price) : '—'}
-                        </span>
-                        <span
-                          className="vela-body-sm"
-                          style={{
-                            fontFamily: 'var(--type-mono-base-font)',
-                            fontWeight: 600,
-                            color: trimDollar >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {trimDollar >= 0 ? '+' : '-'}$
-                          {Math.abs(trimDollar).toLocaleString('en-US', {
-                            maximumFractionDigits: 0,
-                          })}
-                        </span>
-                      </div>
-                      <span
-                        className="vela-body-sm"
-                        style={{ color: 'var(--gray-400)', display: 'block' }}
-                      >
-                        {new Date(trim.opened_at).toLocaleDateString('en-GB', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                        {costBasisAfter <= 0
-                          ? ' · Fully in the money'
-                          : ` · Initial capital: $${remainingDollars.toLocaleString()} left`}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Close */}
-              <div
-                style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
-              >
-                <div
-                  style={{
-                    width: 2,
-                    backgroundColor: 'var(--gray-400)',
-                    borderRadius: 1,
-                    flexShrink: 0,
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                    }}
-                  >
-                    <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                      Closed {positionPnl.costBasisPct}% at{' '}
-                      {trade.exit_price != null ? formatPrice(trade.exit_price) : '—'}
-                    </span>
-                    <span
-                      className="vela-body-sm"
-                      style={{
-                        fontFamily: 'var(--type-mono-base-font)',
-                        fontWeight: 600,
-                        color:
-                          positionPnl.closeDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {positionPnl.closeDollarPnl >= 0 ? '+' : '-'}$
-                      {Math.abs(positionPnl.closeDollarPnl).toLocaleString('en-US', {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <span
-                    className="vela-body-sm"
-                    style={{ color: 'var(--gray-400)', display: 'block' }}
-                  >
-                    {trade.closed_at &&
-                      new Date(trade.closed_at).toLocaleDateString('en-GB', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                  </span>
-                </div>
-              </div>
-
-              {/* Position P&L summary */}
-              <div
-                style={{
-                  marginTop: 'var(--space-2)',
-                  paddingTop: 'var(--space-2)',
-                  borderTop: '1px solid var(--gray-200)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span className="vela-body-sm" style={{ color: 'var(--gray-500)' }}>
-                  Trim {positionPnl.trimDollarPnl >= 0 ? 'profit' : 'loss'}:{' '}
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      color:
-                        positionPnl.trimDollarPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                    }}
-                  >
-                    {positionPnl.trimDollarPnl >= 0 ? '+' : '-'}$
-                    {Math.abs(positionPnl.trimDollarPnl).toLocaleString('en-US', {
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
-                </span>
-                <span
-                  className="vela-body-sm"
-                  style={{
-                    fontFamily: 'var(--type-mono-base-font)',
-                    fontWeight: 700,
-                    color: (totalDollarPnl ?? 0) >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                  }}
-                >
-                  Total: {(totalDollarPnl ?? 0) >= 0 ? '+' : '-'}$
-                  {Math.abs(totalDollarPnl ?? 0).toLocaleString('en-US', {
-                    maximumFractionDigits: 0,
-                  })}{' '}
-                  {(totalDollarPnl ?? 0) >= 0 ? 'profit' : 'loss'}
-                </span>
-              </div>
-
-              {/* House money badge */}
-              {positionPnl.costBasisPct <= 0 && (
-                <div
-                  style={{
-                    marginTop: 'var(--space-2)',
-                    padding: 'var(--space-1) var(--space-2)',
-                    backgroundColor: 'rgba(0, 208, 132, 0.1)',
-                    borderRadius: 'var(--radius-sm)',
-                    display: 'inline-block',
-                  }}
-                >
-                  <span className="vela-label-sm" style={{ color: 'var(--green-dark)' }}>
-                    Position is house money
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Fast trade info card — before share */}
-          {isBB2Direction(trade.direction) && <FastTradeInfoCard />}
-
-          {/* Share trade card — always last */}
-          {trade.exit_price != null && totalPnlPct != null && (
-            <div
-              style={{
-                marginTop: 'var(--space-3)',
-                paddingTop: 'var(--space-2)',
-                borderTop: '1px solid var(--gray-200)',
-              }}
-            >
-              <ShareTradeCard
-                trade={{
-                  symbol,
-                  direction: trade.direction ?? 'long',
-                  entryPrice: trade.entry_price,
-                  exitPrice: trade.exit_price,
-                  pnlPct: totalPnlPct,
-                  duration:
-                    trade.opened_at && trade.closed_at
-                      ? formatHoldingPeriod(trade.opened_at, trade.closed_at)
-                      : undefined,
-                }}
-              />
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
   );
 }
 
@@ -1879,10 +971,6 @@ function AssetIcon({
   );
 }
 
-function formatHoldingPeriod(openedAt: string, closedAt: string): string {
-  return formatDurationMs(new Date(closedAt).getTime() - new Date(openedAt).getTime());
-}
-
 // ── Live Position Card (real trading) ──
 
 function LivePositionCard({
@@ -1955,6 +1043,7 @@ function LivePositionCard({
               >
                 {position.leverage > 1 ? `${position.leverage}x · ` : ''}Open{' '}
                 {formatDuration(position.created_at)}
+                {isBB2Position(position) && <FastTradeBadge />}
               </p>
             </div>
           </div>
@@ -2239,6 +1328,7 @@ function ClosedPositionCard({
               >
                 Closed{closedDate ? ` ${closedDate}` : ''}
                 {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
+                {isBB2Position(position) && <FastTradeBadge />}
               </p>
             </div>
           </div>
