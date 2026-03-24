@@ -337,14 +337,11 @@ function BalanceCard({
   // For leveraged perps, margin = notional / leverage.
   // For spot (leverage=1), margin = notional. balance_usdc is the cross-margin available
   // balance from Hyperliquid (NOT total equity), so we must add margin, not notional.
-  const inTrades = (openPositions ?? []).reduce(
-    (sum, p) => {
-      const lev = p.leverage > 0 ? p.leverage : 1;
-      const margin = p.size_usd / lev;
-      return sum + margin + (p.unrealized_pnl ?? 0);
-    },
-    0
-  );
+  const inTrades = (openPositions ?? []).reduce((sum, p) => {
+    const lev = p.leverage > 0 ? p.leverage : 1;
+    const margin = p.size_usd / lev;
+    return sum + margin + (p.unrealized_pnl ?? 0);
+  }, 0);
   const totalValue = balance + inTrades;
   const hasOpenPositions = (openPositions ?? []).length > 0;
 
@@ -571,6 +568,7 @@ function buildActivityEvents(
     side: string;
     size_usd: number | null;
     original_size_usd: number | null;
+    leverage: number | null;
     total_pnl: number | null;
     status: string;
     created_at: string;
@@ -609,9 +607,12 @@ function buildActivityEvents(
   }
 
   // Trade events from positions
+  // Show margin (size_usd / leverage) to match "In trades" balance, not notional
   for (const p of positions) {
     const assetUpper = (p.asset_id ?? '').toUpperCase();
-    const sizeUsd = Number(p.original_size_usd ?? p.size_usd ?? 0);
+    const notional = Number(p.original_size_usd ?? p.size_usd ?? 0);
+    const leverage = Number(p.leverage ?? 1);
+    const margin = leverage > 0 ? notional / leverage : notional;
 
     // Every position generates an "opened" event
     events.push({
@@ -619,16 +620,16 @@ function buildActivityEvents(
       category: 'trade',
       event_type: 'trade_opened',
       label: `${assetUpper} ${p.side === 'short' ? 'Short' : 'Long'} opened`,
-      amount: sizeUsd,
+      amount: margin,
       amountSign: '-',
       status: 'completed',
       created_at: p.opened_at ?? p.created_at,
     });
 
     if (p.status === 'closed' && p.closed_at) {
-      // Position closed = credit (money returned + P&L)
+      // Position closed = credit (margin returned + P&L)
       const pnl = Number(p.total_pnl ?? 0);
-      const returnedAmount = sizeUsd + pnl;
+      const returnedAmount = margin + pnl;
       events.push({
         id: `trade-close-${p.id}`,
         category: 'trade',
@@ -672,7 +673,7 @@ function RecentActivity() {
         supabaseClient
           .from('positions')
           .select(
-            'id, asset_id, side, size_usd, original_size_usd, total_pnl, status, created_at, opened_at, closed_at'
+            'id, asset_id, side, size_usd, original_size_usd, leverage, total_pnl, status, created_at, opened_at, closed_at'
           )
           .order('created_at', { ascending: false })
           .limit(20),
