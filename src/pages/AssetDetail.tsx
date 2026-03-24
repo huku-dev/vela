@@ -117,9 +117,8 @@ export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading } = useAssetDetail(
-    assetId!
-  );
+  const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading, notFound } =
+    useAssetDetail(assetId!);
   const { isAuthenticated } = useAuthContext();
   const { proposals, positions, wallet, acceptProposal, declineProposal } = useTrading();
   const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
@@ -220,10 +219,29 @@ export default function AssetDetail() {
     );
   }
 
-  if (!asset) {
+  if (notFound && !asset) {
     return (
       <div style={{ padding: 'var(--space-6)' }}>
         <p style={{ color: 'var(--color-error)' }}>Asset not found</p>
+      </div>
+    );
+  }
+
+  // Still waiting for data — cache miss and fetch in progress
+  if (!asset) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingTop: 'var(--space-16)',
+          flexDirection: 'column',
+          gap: 'var(--space-4)',
+        }}
+      >
+        <VelaLogo variant="mark" size={48} pulse />
+        <span className="vela-body-sm vela-text-muted">Loading asset...</span>
       </div>
     );
   }

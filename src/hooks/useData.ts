@@ -232,8 +232,12 @@ export function useAssetDetail(assetId: string) {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [signalLookup, setSignalLookup] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  // Track whether the asset was confirmed missing (vs transient fetch error)
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    setNotFound(false);
+
     // Try to hydrate from cache instantly
     if (cachedDashboard) {
       const cached = cachedDashboard.find(d => d.asset.id === assetId);
@@ -245,69 +249,91 @@ export function useAssetDetail(assetId: string) {
       }
     }
 
-    const fetchDetail = async () => {
-      const [assetRes, signalRes, briefRes, briefsRes, signalsHistoryRes] = await Promise.all([
-        supabase.from('assets').select('*').eq('id', assetId).single(),
-        supabase
-          .from('signals')
-          .select('*')
-          .eq('asset_id', assetId)
-          .order('timestamp', { ascending: false })
-          .limit(1),
-        supabase
-          .from('briefs')
-          .select('*')
-          .eq('asset_id', assetId)
-          .neq('brief_type', 'daily_digest')
-          .order('created_at', { ascending: false })
-          .limit(1),
-        supabase
-          .from('briefs')
-          .select('*')
-          .eq('asset_id', assetId)
-          .neq('brief_type', 'daily_digest')
-          .order('created_at', { ascending: false })
-          .limit(20),
-        // Fetch recent signals for this asset — used to build signal_id → color lookup
-        supabase
-          .from('signals')
-          .select('id, signal_color')
-          .eq('asset_id', assetId)
-          .order('timestamp', { ascending: false })
-          .limit(20),
-      ]);
+    const fetchDetail = async (attempt = 1) => {
+      try {
+        const [assetRes, signalRes, briefRes, briefsRes, signalsHistoryRes] = await Promise.all([
+          supabase.from('assets').select('*').eq('id', assetId).eq('enabled', true).single(),
+          supabase
+            .from('signals')
+            .select('*')
+            .eq('asset_id', assetId)
+            .order('timestamp', { ascending: false })
+            .limit(1),
+          supabase
+            .from('briefs')
+            .select('*')
+            .eq('asset_id', assetId)
+            .neq('brief_type', 'daily_digest')
+            .order('created_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('briefs')
+            .select('*')
+            .eq('asset_id', assetId)
+            .neq('brief_type', 'daily_digest')
+            .order('created_at', { ascending: false })
+            .limit(20),
+          // Fetch recent signals for this asset — used to build signal_id → color lookup
+          supabase
+            .from('signals')
+            .select('id, signal_color')
+            .eq('asset_id', assetId)
+            .order('timestamp', { ascending: false })
+            .limit(20),
+        ]);
 
-      const assetData = assetRes.data;
-      setAsset(assetData);
-      setSignal(signalRes.data?.[0] || null);
-      setBrief(briefRes.data?.[0] || null);
-      setRecentBriefs(briefsRes.data || []);
-
-      // Build signal lookup map for brief grouping
-      const signalMap: Record<string, string> = {};
-      for (const s of signalsHistoryRes.data || []) {
-        signalMap[s.id] = s.signal_color;
-      }
-      setSignalLookup(signalMap);
-
-      if (assetData?.coingecko_id) {
-        const symMap = { [assetData.coingecko_id]: assetData.symbol };
-        const prices = await fetchLivePrices([assetData.coingecko_id], symMap);
-        const freshPrice = prices[assetData.coingecko_id];
-        // Only overwrite cached priceData if we got a valid response —
-        // prevents wiping cached change24h on transient CoinGecko failures
-        if (freshPrice) {
-          setPriceData(freshPrice);
+        if (assetRes.error) {
+          // "PGRST116" = .single() found no rows → asset genuinely doesn't exist
+          const isRealNotFound = assetRes.error.code === 'PGRST116';
+          if (!isRealNotFound && attempt < 2) {
+            console.warn(`[useAssetDetail] Transient fetch error (attempt ${attempt}), retrying:`, assetRes.error.message);
+            setTimeout(() => fetchDetail(attempt + 1), 1000);
+            return;
+          }
+          console.error('[useAssetDetail] Asset fetch failed:', assetRes.error.message);
+          // Only clear asset if we don't already have it from cache
+          if (!asset) {
+            setNotFound(true);
+          }
+          setLoading(false);
+          return;
         }
-      }
 
-      setLoading(false);
+        const assetData = assetRes.data;
+        setAsset(assetData);
+        setSignal(signalRes.data?.[0] || null);
+        setBrief(briefRes.data?.[0] || null);
+        setRecentBriefs(briefsRes.data || []);
+
+        // Build signal lookup map for brief grouping
+        const signalMap: Record<string, string> = {};
+        for (const s of signalsHistoryRes.data || []) {
+          signalMap[s.id] = s.signal_color;
+        }
+        setSignalLookup(signalMap);
+
+        if (assetData?.coingecko_id) {
+          const symMap = { [assetData.coingecko_id]: assetData.symbol };
+          const prices = await fetchLivePrices([assetData.coingecko_id], symMap);
+          const freshPrice = prices[assetData.coingecko_id];
+          // Only overwrite cached priceData if we got a valid response —
+          // prevents wiping cached change24h on transient CoinGecko failures
+          if (freshPrice) {
+            setPriceData(freshPrice);
+          }
+        }
+      } catch (err) {
+        console.error('[useAssetDetail] Unexpected error:', err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchDetail();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `asset` read in error path is intentionally stale (current cache value)
   }, [assetId]);
 
-  return { asset, signal, brief, recentBriefs, priceData, signalLookup, loading };
+  return { asset, signal, brief, recentBriefs, priceData, signalLookup, loading, notFound };
 }
 
 const PAGE_SIZE = 50;

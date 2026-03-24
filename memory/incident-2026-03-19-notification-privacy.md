@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-19
 **Severity:** CRITICAL
-**Status:** Resolved
+**Status:** Resolved (partial fix March 19; second root cause found and fixed March 24)
 
 ## What happened
 
@@ -62,9 +62,31 @@ Two new tests in `position-monitor.test.ts`:
 1. `CLOSE-NOTIFY-ADV: NEVER queries profiles by user_id (must use privy_did)` — extracts function body, asserts no `.from("profiles")` + `.eq("user_id"` pattern
 2. `CLOSE-NOTIFY-ADV: NEVER selects telegram_chat_id from profiles` — asserts profiles query never includes `telegram_chat_id`
 
+## Second occurrence: March 24, 2026
+
+The March 19 fix resolved the user-routing bug in `notifyUserPositionClosed()`, but a **second root cause** was found on March 24.
+
+**Symptoms:** Henry received 4 Telegram messages for 1 SOL close:
+- 08:03 — Damola's BTC LONG close (PnL +$1.05) — NOT Henry's trade
+- 08:33 — Damola's SOL LONG close (PnL +$3.76) — NOT Henry's trade
+- 08:35 — Henry's SOL LONG close (PnL +$0.30) — correct
+- 08:35 — Henry's SOL LONG close (duplicate)
+
+**Second root cause:** All 6 close paths in `position-monitor` called `sendTelegram()` (the broadcast function using `TELEGRAM_CHAT_ID` env var) in ADDITION to `notifyUserPositionClosed()`. This broadcast sent ALL users' close events to the user-facing Telegram bot. Since the `TELEGRAM_CHAT_ID` was Henry's personal chat, he received every user's close notifications.
+
+This was never the same bug as March 19 — the March 19 bug was wrong user lookup in `notifyUserPositionClosed()`, while this was a separate broadcast path that was always there.
+
+**Fix:** Changed all 6 `sendTelegram()` calls in position-monitor to `sendAdminTelegram()`. Added import for `sendAdminTelegram`. Added regression test `PRIVACY-ADV: no sendTelegram() calls` to block reintroduction.
+
+**Lines changed:** 513, 628, 863, 1020, 1160, 1261 in position-monitor/index.ts.
+
+Also fixed trade-webhook/index.ts:432 — proposal decline confirmation now uses `sendUserTelegram()` to the user's own chat instead of broadcast.
+
 ## Lessons
 
 1. **Every notification function must use shared helpers** — `getUserTelegramChatId()` for Telegram, profile queries by `privy_did`. No inline Supabase queries for user routing.
 2. **Source-verification tests must assert correct column names**, not just function existence.
 3. **Supabase PostgREST silent failures are dangerous** — `.eq()` on non-existent columns doesn't throw. Any new Supabase query should be verified against the actual migration schema.
 4. **New notification pathways need cross-reference review** — When a new file sends notifications, verify it follows the same patterns as the canonical implementation in notify.ts.
+5. **`sendTelegram()` must NEVER appear in position-monitor or any per-user code path.** It broadcasts to the `TELEGRAM_CHAT_ID` env var which is a single chat. Use `sendAdminTelegram()` for ops or `sendUserTelegram()` for users. Regression test enforces this.
+6. **Audit every Telegram call after any notification change.** The full registry is in `memory/notification-registry.md`.
