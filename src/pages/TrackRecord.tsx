@@ -168,10 +168,9 @@ export default function TrackRecord() {
     );
   }
 
-  // ── Vela's paper/backtest trades (for track record section, Jan 2026+) ──
-  const paperTrades = trades.filter(
-    t => t.source === 'backtest' && t.opened_at >= TRACK_RECORD_START
-  );
+  // ── All signal-generated trades for track record (Jan 2026+) ──
+  // Includes both backtest and live-source paper trades
+  const paperTrades = trades.filter(t => t.opened_at >= TRACK_RECORD_START);
 
   // ── Helper: get live price for an asset ──
   const getLivePrice = (coingeckoId: string | undefined): number | null => {
