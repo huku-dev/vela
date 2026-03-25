@@ -8,7 +8,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
 import TierComparisonSheet from '../components/TierComparisonSheet';
 import TradeProposalCard from '../components/TradeProposalCard';
-import { getCoinIcon, formatPrice, reasonCodeToPlainEnglish } from '../lib/helpers';
+import { getCoinIcon, formatPrice } from '../lib/helpers';
 import {
   pctToDollar,
   computePositionPnl,
@@ -45,11 +45,6 @@ function directionLabel(d: TradeDirection | null | undefined): string {
   if (d === 'short' || d === 'bb_short' || d === 'bb2_short') return 'Short';
   if (d === 'trim') return 'Trim';
   return 'Long';
-}
-
-/** Is this a short-side trade? */
-function isShortTrade(d: TradeDirection | null | undefined): boolean {
-  return d === 'short' || d === 'bb_short' || d === 'bb2_short';
 }
 
 /** Position size for a given trade direction */
@@ -691,12 +686,7 @@ function BestTradeCard({
   const pnlPct = positionPnl.totalPnlPct;
   const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
-  const short = isShortTrade(trade.direction);
   const isPositive = dollarPnl >= 0;
-
-  const entryText =
-    trade.entry_headline ?? reasonCodeToPlainEnglish(trade.entry_reason_code) ?? null;
-  const exitText = trade.exit_headline ?? reasonCodeToPlainEnglish(trade.exit_reason_code) ?? null;
 
   const holdingPeriod =
     trade.opened_at && trade.closed_at
@@ -772,24 +762,6 @@ function BestTradeCard({
         </div>
       </div>
 
-      {/* Entry headline */}
-      {entryText && (
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--color-text-secondary)',
-            fontStyle: 'italic',
-            margin: 0,
-            marginTop: 'var(--space-3)',
-            paddingLeft: 'var(--space-2)',
-            borderLeft: `2px solid ${short ? 'var(--red-primary)' : 'var(--green-primary)'}`,
-            lineHeight: 1.4,
-          }}
-        >
-          &ldquo;{entryText}&rdquo;
-        </p>
-      )}
-
       {/* Price + date row */}
       <p
         className="vela-body-sm"
@@ -811,24 +783,6 @@ function BestTradeCard({
         {holdingPeriod && ` · ${holdingPeriod}`}
         {isBB2Direction(trade.direction) && <FastTradeBadge />}
       </p>
-
-      {/* Exit headline */}
-      {exitText && (
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--color-text-secondary)',
-            fontStyle: 'italic',
-            margin: 0,
-            marginTop: 'var(--space-3)',
-            paddingLeft: 'var(--space-2)',
-            borderLeft: `2px solid ${short ? 'var(--green-primary)' : 'var(--red-primary)'}`,
-            lineHeight: 1.4,
-          }}
-        >
-          &ldquo;{exitText}&rdquo;
-        </p>
-      )}
     </Card>
   );
 }

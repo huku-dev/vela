@@ -180,7 +180,9 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
 
   it('TRUST CRITICAL: narrative stats use green-dark for positive P&L', () => {
     // Real position stats use totalPnl for color
-    expect(src).toContain("realPositionStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
+    expect(src).toContain(
+      "realPositionStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'"
+    );
   });
 
   it('TRUST CRITICAL: dollar P&L always says "profit" or "loss", never bare dollars', () => {
@@ -526,33 +528,7 @@ describe('TRACK: BestTradeCard rendering', () => {
     expect(within(mintCard!).getByText(/\+\$525 profit/)).toBeInTheDocument();
   });
 
-  it('shows entry headline when available', async () => {
-    const user = userEvent.setup();
-    const trades = [
-      makeTrade({
-        id: '1',
-        pnl_pct: 52.5,
-        entry_headline: 'Short-term trend crossed above medium-term',
-      }),
-      makeTrade({ id: '2', pnl_pct: 10.0 }),
-      makeTrade({ id: '3', pnl_pct: -5.0 }),
-    ];
-    mockUseTrackRecord.mockReturnValue({
-      ...defaultHookReturn,
-      trades,
-      bestTrade: trades[0],
-    });
-
-    render(<TrackRecord />);
-    const expandBtn = screen.getByText(/Vela.s track record/i);
-    await user.click(expandBtn);
-
-    // Headline appears in BestTradeCard
-    const mintCard = document.querySelector('.vela-card-mint') as HTMLElement;
-    expect(
-      within(mintCard!).getByText(/Short-term trend crossed above medium-term/)
-    ).toBeInTheDocument();
-  });
+  // Entry/exit headline tests removed — headlines no longer shown on best trade card
 });
 
 // NOTE: Paper trade card tests (ClosedTradeCard/OpenTradeCard) removed —
