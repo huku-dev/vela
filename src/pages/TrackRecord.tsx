@@ -423,6 +423,7 @@ export default function TrackRecord() {
                       key={pos.id}
                       position={pos}
                       livePrice={posLivePrice}
+                      coingeckoId={posCoingeckoId}
                       expanded={expandedTradeId === pos.id}
                       onToggle={() =>
                         setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
@@ -448,14 +449,18 @@ export default function TrackRecord() {
                 Closed positions
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {closedPositions.map(pos => (
+                {closedPositions.map(pos => {
+                  const closedAsset = assetMap[pos.asset_id];
+                  return (
                   <ClosedPositionCard
                     key={pos.id}
                     position={pos}
+                    coingeckoId={closedAsset?.coingecko_id}
                     expanded={expandedTradeId === pos.id}
                     onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
                   />
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -929,16 +934,23 @@ function AssetIcon({
 function LivePositionCard({
   position,
   livePrice,
+  coingeckoId,
   expanded,
   onToggle,
 }: {
   position: Position;
   livePrice?: number;
+  coingeckoId?: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
   const { pnlPct, pnlDollar } = getEffectivePnl(position, livePrice);
+  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const symbol = position.asset_id.toUpperCase();
+  const isBB2 = isBB2Position(position);
+  const leverageLabel = position.leverage > 1 ? `${position.leverage}x ` : '';
+  const directionLabel = isLong ? 'Long' : 'Short';
 
   const formatDuration = (createdAt: string): string =>
     formatDurationMs(Date.now() - new Date(createdAt).getTime());
@@ -972,31 +984,38 @@ function LivePositionCard({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span
-              className="vela-label-sm"
-              style={{
-                backgroundColor: isLong ? 'var(--green-primary)' : 'var(--red-primary)',
-                color: 'var(--white)',
-                padding: '1px 6px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1.5px solid var(--black)',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                fontSize: 10,
-              }}
-            >
-              {isLong ? 'Long' : 'Short'}
-            </span>
+            <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
-              <span className="vela-heading-base">{position.asset_id.toUpperCase()}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span className="vela-heading-base">{symbol}</span>
+                {isBB2 && (
+                  <span
+                    className="vela-body-sm"
+                    style={{ color: 'var(--gray-500)', whiteSpace: 'nowrap' }}
+                  >
+                    · <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade
+                  </span>
+                )}
+              </div>
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                {position.leverage > 1 ? `${position.leverage}x · ` : ''}Open{' '}
-                {formatDuration(position.created_at)}
-                {isBB2Position(position) && <FastTradeBadge />}
+                <span
+                  className="vela-label-sm"
+                  style={{
+                    backgroundColor: isLong ? 'var(--green-primary)' : 'var(--red-primary)',
+                    color: 'var(--white)',
+                    padding: '1px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1.5px solid var(--black)',
+                    fontWeight: 700,
+                    fontSize: 10,
+                  }}
+                >
+                  {leverageLabel}{directionLabel}
+                </span>
+                <span>· Open {formatDuration(position.created_at)}</span>
               </p>
             </div>
           </div>
@@ -1190,14 +1209,21 @@ function LivePositionCard({
 /** Card for a closed position from the positions table */
 function ClosedPositionCard({
   position,
+  coingeckoId,
   expanded,
   onToggle,
 }: {
   position: Position;
+  coingeckoId?: string;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
+  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const symbol = position.asset_id.toUpperCase();
+  const isBB2 = isBB2Position(position);
+  const leverageLabel = position.leverage > 1 ? `${position.leverage}x ` : '';
+  const directionLabel = isLong ? 'Long' : 'Short';
   const grossPnlPct = position.closed_pnl_pct ?? 0;
   const posSize = position.original_size_usd ?? position.size_usd;
   const grossPnlDollar =
@@ -1257,31 +1283,41 @@ function ClosedPositionCard({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <span
-              className="vela-label-sm"
-              style={{
-                backgroundColor: 'var(--gray-200)',
-                color: 'var(--gray-600)',
-                padding: '1px 6px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1.5px solid var(--gray-300)',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                fontSize: 10,
-              }}
-            >
-              {isLong ? 'Long' : 'Short'}
-            </span>
+            <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
-              <span className="vela-heading-base">{position.asset_id.toUpperCase()}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span className="vela-heading-base">{symbol}</span>
+                {isBB2 && (
+                  <span
+                    className="vela-body-sm"
+                    style={{ color: 'var(--gray-500)', whiteSpace: 'nowrap' }}
+                  >
+                    · <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade
+                  </span>
+                )}
+              </div>
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 4 }}
               >
-                Closed{closedDate ? ` ${closedDate}` : ''}
-                {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
-                {isBB2Position(position) && <FastTradeBadge />}
+                <span
+                  className="vela-label-sm"
+                  style={{
+                    backgroundColor: 'var(--gray-200)',
+                    color: 'var(--gray-600)',
+                    padding: '1px 6px',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1.5px solid var(--gray-300)',
+                    fontWeight: 700,
+                    fontSize: 10,
+                  }}
+                >
+                  {leverageLabel}{directionLabel}
+                </span>
+                <span>
+                  Closed{closedDate ? ` ${closedDate}` : ''}
+                  {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
+                </span>
               </p>
             </div>
           </div>

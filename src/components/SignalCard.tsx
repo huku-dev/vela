@@ -28,42 +28,22 @@ function getPositionHeadline(
   const pnlAbs = Math.abs(pnl).toFixed(1);
   const pnlSign = pnl >= 0 ? '+' : '-';
 
-  // Clean up brief headline for use as a follow-on clause.
-  // Lowercase first char for clause flow ("and up 6%"), but preserve
-  // all-caps tickers at the start ("and BTC up 6%").
-  const rawContext = briefHeadline
-    ? stripAssetPrefix(briefHeadline, symbol).replace(/\.$/, '')
-    : null;
-  const marketContext = rawContext
-    ? /^[A-Z]{2,}\b/.test(rawContext)
-      ? rawContext
-      : rawContext.charAt(0).toLowerCase() + rawContext.slice(1)
-    : null;
-
-  // Detect if market context contradicts position direction
-  // e.g. position is down but headline says "up 6.6%" — confusing when combined
-  const contextContradictsPosition =
-    marketContext != null &&
-    ((pnl < 0 && /\bup\s+\d/i.test(marketContext)) ||
-      (pnl > 0 && /\bdown\s+\d/i.test(marketContext)));
-
-  // Only append market context if it doesn't create a contradictory sentence
-  const safeContext = contextContradictsPosition ? null : marketContext;
+  // ── Position status messages ──
+  // When position is positive, we can safely append brief context with natural connectors.
+  // When negative, just show the calming status — don't mix in market context.
+  // The brief headline is always visible in the asset detail page for full context.
 
   if (pnl >= 20) {
     return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking great, consider taking some profit`;
   }
   if (pnl >= 5) {
-    const suffix = safeContext ? `, as ${safeContext}` : '. Looking good!';
-    return `Your ${symbol} ${side} is up ${pnlAbs}%${suffix}`;
+    return `Your ${symbol} ${side} is up ${pnlAbs}%. Looking good!`;
   }
   if (pnl >= 0) {
-    const suffix = safeContext ? `, and ${safeContext}` : '';
-    return `Your ${symbol} ${side} is up ${pnlAbs}% so far${suffix}`;
+    return `Your ${symbol} ${side} is up ${pnlAbs}% so far`;
   }
   if (pnl > -5) {
-    const suffix = safeContext ? `. The asset is ${safeContext}` : '. Still early, Vela is watching';
-    return `Your ${symbol} ${side} is down ${pnlAbs}%${suffix}`;
+    return `Your ${symbol} ${side} is down ${pnlAbs}%. Still early, Vela is watching`;
   }
   if (pnl > -8) {
     return `Your ${symbol} ${side} is down ${pnlAbs}%. Vela is monitoring and will act if needed`;

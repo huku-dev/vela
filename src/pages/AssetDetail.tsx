@@ -938,7 +938,12 @@ export default function AssetDetail() {
 
       {/* Tier 2: Key price levels — promoted from WhyWeThinkThis (most actionable info) */}
       {detail?.indicators && price != null && (
-        <PriceLevelsCard indicators={detail.indicators} price={price} detail={detail} signalColor={signalColor} />
+        <PriceLevelsCard
+          indicators={detail.indicators}
+          price={price}
+          detail={detail}
+          signalColor={signalColor}
+        />
       )}
 
       {/* Tier 3: What's moving — only shown when there are actual news events */}
@@ -1553,7 +1558,12 @@ function PriceLevelsCard({
 }) {
   return (
     <Card style={{ marginBottom: 'var(--space-4)' }}>
-      <PriceLevelTriggers indicators={indicators} price={price} detail={detail} signalColor={signalColor} />
+      <PriceLevelTriggers
+        indicators={indicators}
+        price={price}
+        detail={detail}
+        signalColor={signalColor}
+      />
     </Card>
   );
 }
