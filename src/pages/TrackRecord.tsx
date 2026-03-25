@@ -989,7 +989,7 @@ function LivePositionCard({
             <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
               {/* Line 1: Asset name · badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span className="vela-heading-base">{symbol}</span>
                 <span style={{ color: 'var(--gray-400)' }}>·</span>
                 <span
@@ -1002,19 +1002,23 @@ function LivePositionCard({
                     border: '1.5px solid var(--black)',
                     fontWeight: 700,
                     fontSize: 10,
+                    position: 'relative',
+                    top: '-1px',
                   }}
                 >
-                  {leverageLabel}{directionLabel}
+                  {leverageLabel}
+                  {directionLabel}
                 </span>
               </div>
               {/* Line 2: ⚡ Fast trade · Open duration */}
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+                style={{ color: 'var(--gray-500)', margin: 0, marginTop: 2, lineHeight: 1.3 }}
               >
                 {isBB2 && (
                   <>
-                    <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade ·{' '}
+                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span>{' '}
+                    Fast trade ·{' '}
                   </>
                 )}
                 Open {formatDuration(position.created_at)}
@@ -1288,7 +1292,7 @@ function ClosedPositionCard({
             <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
               {/* Line 1: Asset name · badge */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                 <span className="vela-heading-base">{symbol}</span>
                 <span style={{ color: 'var(--gray-400)' }}>·</span>
                 <span
@@ -1301,19 +1305,23 @@ function ClosedPositionCard({
                     border: '1.5px solid var(--gray-300)',
                     fontWeight: 700,
                     fontSize: 10,
+                    position: 'relative',
+                    top: '-1px',
                   }}
                 >
-                  {leverageLabel}{directionLabel}
+                  {leverageLabel}
+                  {directionLabel}
                 </span>
               </div>
               {/* Line 2: ⚡ Fast trade · Closed date · Held duration */}
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+                style={{ color: 'var(--gray-500)', margin: 0, marginTop: 2, lineHeight: 1.3 }}
               >
                 {isBB2 && (
                   <>
-                    <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade ·{' '}
+                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span>{' '}
+                    Fast trade ·{' '}
                   </>
                 )}
                 Closed{closedDate ? ` ${closedDate}` : ''}
