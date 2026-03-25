@@ -43,12 +43,12 @@ function getPositionHeadline(
     return `Your ${symbol} ${side} is up ${pnlAbs}% so far`;
   }
   if (pnl > -5) {
-    return `Your ${symbol} ${side} is down ${pnlAbs}%. Still early, Vela is watching`;
+    return `Your ${symbol} ${side} is down ${pnlAbs}%. Still early, Vela is watching. Tap for more`;
   }
   if (pnl > -8) {
-    return `Your ${symbol} ${side} is down ${pnlAbs}%. Vela is monitoring and will act if needed`;
+    return `Your ${symbol} ${side} is down ${pnlAbs}%. Vela is monitoring and will act if needed. Tap for more`;
   }
-  return `Your ${symbol} ${side} is nearing its stop-loss. Vela has you covered`;
+  return `Your ${symbol} ${side} is nearing its stop-loss. Vela has you covered. Tap for more`;
 }
 
 export default function SignalCard({ data, position }: SignalCardProps) {
