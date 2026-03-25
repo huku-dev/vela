@@ -452,13 +452,15 @@ export default function TrackRecord() {
                 {closedPositions.map(pos => {
                   const closedAsset = assetMap[pos.asset_id];
                   return (
-                  <ClosedPositionCard
-                    key={pos.id}
-                    position={pos}
-                    coingeckoId={closedAsset?.coingecko_id}
-                    expanded={expandedTradeId === pos.id}
-                    onToggle={() => setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)}
-                  />
+                    <ClosedPositionCard
+                      key={pos.id}
+                      position={pos}
+                      coingeckoId={closedAsset?.coingecko_id}
+                      expanded={expandedTradeId === pos.id}
+                      onToggle={() =>
+                        setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
+                      }
+                    />
                   );
                 })}
               </div>
@@ -999,7 +1001,14 @@ function LivePositionCard({
               </div>
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{
+                  color: 'var(--gray-500)',
+                  margin: 0,
+                  lineHeight: 1.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
               >
                 <span
                   className="vela-label-sm"
@@ -1013,7 +1022,8 @@ function LivePositionCard({
                     fontSize: 10,
                   }}
                 >
-                  {leverageLabel}{directionLabel}
+                  {leverageLabel}
+                  {directionLabel}
                 </span>
                 <span>· Open {formatDuration(position.created_at)}</span>
               </p>
@@ -1298,7 +1308,14 @@ function ClosedPositionCard({
               </div>
               <p
                 className="vela-body-sm"
-                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3, display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{
+                  color: 'var(--gray-500)',
+                  margin: 0,
+                  lineHeight: 1.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
               >
                 <span
                   className="vela-label-sm"
@@ -1312,7 +1329,8 @@ function ClosedPositionCard({
                     fontSize: 10,
                   }}
                 >
-                  {leverageLabel}{directionLabel}
+                  {leverageLabel}
+                  {directionLabel}
                 </span>
                 <span>
                   Closed{closedDate ? ` ${closedDate}` : ''}

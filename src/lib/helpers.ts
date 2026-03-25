@@ -207,15 +207,34 @@ export const indicatorLabels: Record<string, string> = {
 export function groupBriefsBySignalState(
   briefs: Brief[],
   signalLookup: Record<string, SignalColor>,
-  fallbackColor: SignalColor = 'grey'
+  fallbackColor: SignalColor = 'grey',
+  signalTimeline?: { color: string; timestamp: string }[]
 ): BriefGroup[] {
   if (!briefs.length) return [];
 
-  // Resolve each brief's signal color
-  const resolvedBriefs = briefs.map(b => ({
-    brief: b,
-    color: (b.signal_id ? signalLookup[b.signal_id] : null) ?? fallbackColor,
-  }));
+  // Resolve each brief's signal color.
+  // Primary: use signal_id → signalLookup (direct link).
+  // Fallback: use signalTimeline to find which signal was active at the brief's created_at.
+  // Last resort: fallbackColor (current signal).
+  const resolvedBriefs = briefs.map(b => {
+    // Direct lookup via signal_id
+    if (b.signal_id && signalLookup[b.signal_id]) {
+      return { brief: b, color: signalLookup[b.signal_id] as SignalColor };
+    }
+    // Timeline lookup: find the most recent signal that was active at brief creation time
+    if (signalTimeline && signalTimeline.length > 0) {
+      const briefTime = new Date(b.created_at).getTime();
+      // Timeline is sorted newest-first; find the first signal with timestamp <= brief time
+      for (const s of signalTimeline) {
+        if (new Date(s.timestamp).getTime() <= briefTime) {
+          return { brief: b, color: s.color as SignalColor };
+        }
+      }
+      // Brief is older than all signals — use the oldest signal's color
+      return { brief: b, color: signalTimeline[signalTimeline.length - 1].color as SignalColor };
+    }
+    return { brief: b, color: fallbackColor };
+  });
 
   const groups: BriefGroup[] = [];
   let currentColor = resolvedBriefs[0].color;

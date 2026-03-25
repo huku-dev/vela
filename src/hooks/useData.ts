@@ -231,6 +231,8 @@ export function useAssetDetail(assetId: string) {
   const [recentBriefs, setRecentBriefs] = useState<Brief[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [signalLookup, setSignalLookup] = useState<Record<string, string>>({});
+  /** Signals sorted newest-first with timestamps — for timeline-based brief grouping */
+  const [signalTimeline, setSignalTimeline] = useState<{ color: string; timestamp: string }[]>([]);
   const [loading, setLoading] = useState(true);
   // Track whether the asset was confirmed missing (vs transient fetch error)
   const [notFound, setNotFound] = useState(false);
@@ -274,9 +276,10 @@ export function useAssetDetail(assetId: string) {
             .order('created_at', { ascending: false })
             .limit(20),
           // Fetch recent signals for this asset — used to build signal_id → color lookup
+          // Include timestamp for timeline-based brief grouping
           supabase
             .from('signals')
-            .select('id, signal_color')
+            .select('id, signal_color, timestamp')
             .eq('asset_id', assetId)
             .order('timestamp', { ascending: false })
             .limit(20),
@@ -308,12 +311,17 @@ export function useAssetDetail(assetId: string) {
         setBrief(briefRes.data?.[0] || null);
         setRecentBriefs(briefsRes.data || []);
 
-        // Build signal lookup map for brief grouping
+        // Build signal lookup map + timeline for brief grouping
         const signalMap: Record<string, string> = {};
+        const timeline: { color: string; timestamp: string }[] = [];
         for (const s of signalsHistoryRes.data || []) {
           signalMap[s.id] = s.signal_color;
+          if (s.timestamp) {
+            timeline.push({ color: s.signal_color, timestamp: s.timestamp });
+          }
         }
         setSignalLookup(signalMap);
+        setSignalTimeline(timeline);
 
         if (assetData?.coingecko_id) {
           const symMap = { [assetData.coingecko_id]: assetData.symbol };
@@ -336,7 +344,7 @@ export function useAssetDetail(assetId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `asset` read in error path is intentionally stale (current cache value)
   }, [assetId]);
 
-  return { asset, signal, brief, recentBriefs, priceData, signalLookup, loading, notFound };
+  return { asset, signal, brief, recentBriefs, priceData, signalLookup, signalTimeline, loading, notFound };
 }
 
 const PAGE_SIZE = 50;

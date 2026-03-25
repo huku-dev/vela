@@ -117,7 +117,7 @@ export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { asset, signal, brief, recentBriefs, priceData, signalLookup, loading, notFound } =
+  const { asset, signal, brief, recentBriefs, priceData, signalLookup, signalTimeline, loading, notFound } =
     useAssetDetail(assetId!);
   const { isAuthenticated } = useAuthContext();
   const { proposals, positions, wallet, acceptProposal, declineProposal } = useTrading();
@@ -914,7 +914,8 @@ export default function AssetDetail() {
               ? groupBriefsBySignalState(
                   recentBriefs,
                   signalLookup as Record<string, SignalColor>,
-                  signalColor
+                  signalColor,
+                  signalTimeline
                 )
               : [];
           const hasHistory = signalGroups.length > 1; // Need >1 groups (first is current)
