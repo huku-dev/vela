@@ -627,7 +627,7 @@ function buildActivityEvents(
     });
 
     if (p.status === 'closed' && p.closed_at) {
-      // Position closed = credit (margin returned + P&L)
+      // Position closed = credit (margin returned + P&L) — always a positive inflow
       const pnl = Number(p.total_pnl ?? 0);
       const returnedAmount = margin + pnl;
       events.push({
@@ -635,8 +635,8 @@ function buildActivityEvents(
         category: 'trade',
         event_type: 'trade_closed',
         label: `${assetUpper} position closed`,
-        amount: returnedAmount > 0 ? returnedAmount : Math.abs(returnedAmount),
-        amountSign: pnl >= 0 ? '+' : '-',
+        amount: Math.abs(returnedAmount),
+        amountSign: '+',
         status: 'completed',
         created_at: p.closed_at,
       });
