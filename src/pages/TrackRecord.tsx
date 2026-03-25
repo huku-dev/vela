@@ -988,28 +988,10 @@ function LivePositionCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              {/* Line 1: Asset name · badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className="vela-heading-base">{symbol}</span>
-                {isBB2 && (
-                  <span
-                    className="vela-body-sm"
-                    style={{ color: 'var(--gray-500)', whiteSpace: 'nowrap' }}
-                  >
-                    · <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade
-                  </span>
-                )}
-              </div>
-              <p
-                className="vela-body-sm"
-                style={{
-                  color: 'var(--gray-500)',
-                  margin: 0,
-                  lineHeight: 1.3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
+                <span style={{ color: 'var(--gray-400)' }}>·</span>
                 <span
                   className="vela-label-sm"
                   style={{
@@ -1022,10 +1004,20 @@ function LivePositionCard({
                     fontSize: 10,
                   }}
                 >
-                  {leverageLabel}
-                  {directionLabel}
+                  {leverageLabel}{directionLabel}
                 </span>
-                <span>· Open {formatDuration(position.created_at)}</span>
+              </div>
+              {/* Line 2: ⚡ Fast trade · Open duration */}
+              <p
+                className="vela-body-sm"
+                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+              >
+                {isBB2 && (
+                  <>
+                    <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade ·{' '}
+                  </>
+                )}
+                Open {formatDuration(position.created_at)}
               </p>
             </div>
           </div>
@@ -1295,28 +1287,10 @@ function ClosedPositionCard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <AssetIcon iconUrl={iconUrl} symbol={symbol} size={36} />
             <div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              {/* Line 1: Asset name · badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span className="vela-heading-base">{symbol}</span>
-                {isBB2 && (
-                  <span
-                    className="vela-body-sm"
-                    style={{ color: 'var(--gray-500)', whiteSpace: 'nowrap' }}
-                  >
-                    · <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade
-                  </span>
-                )}
-              </div>
-              <p
-                className="vela-body-sm"
-                style={{
-                  color: 'var(--gray-500)',
-                  margin: 0,
-                  lineHeight: 1.3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-              >
+                <span style={{ color: 'var(--gray-400)' }}>·</span>
                 <span
                   className="vela-label-sm"
                   style={{
@@ -1329,13 +1303,21 @@ function ClosedPositionCard({
                     fontSize: 10,
                   }}
                 >
-                  {leverageLabel}
-                  {directionLabel}
+                  {leverageLabel}{directionLabel}
                 </span>
-                <span>
-                  Closed{closedDate ? ` ${closedDate}` : ''}
-                  {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
-                </span>
+              </div>
+              {/* Line 2: ⚡ Fast trade · Closed date · Held duration */}
+              <p
+                className="vela-body-sm"
+                style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.3 }}
+              >
+                {isBB2 && (
+                  <>
+                    <span style={{ color: '#F59E0B' }}>⚡</span> Fast trade ·{' '}
+                  </>
+                )}
+                Closed{closedDate ? ` ${closedDate}` : ''}
+                {holdingPeriod ? ` · Held ${holdingPeriod}` : ''}
               </p>
             </div>
           </div>
