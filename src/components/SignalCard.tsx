@@ -45,7 +45,7 @@ function getPositionHeadline(
   const contextContradictsPosition =
     marketContext != null &&
     ((pnl < 0 && /\bup\s+\d/i.test(marketContext)) ||
-     (pnl > 0 && /\bdown\s+\d/i.test(marketContext)));
+      (pnl > 0 && /\bdown\s+\d/i.test(marketContext)));
 
   // Only append market context if it doesn't create a contradictory sentence
   const safeContext = contextContradictsPosition ? null : marketContext;
@@ -62,7 +62,7 @@ function getPositionHeadline(
     return `Your ${symbol} ${side} is up ${pnlAbs}% so far${suffix}`;
   }
   if (pnl > -5) {
-    const suffix = safeContext ? `. Meanwhile, ${safeContext}` : '. Still early, Vela is watching';
+    const suffix = safeContext ? `. The asset is ${safeContext}` : '. Still early, Vela is watching';
     return `Your ${symbol} ${side} is down ${pnlAbs}%${suffix}`;
   }
   if (pnl > -8) {
