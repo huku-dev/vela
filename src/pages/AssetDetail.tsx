@@ -938,7 +938,7 @@ export default function AssetDetail() {
 
       {/* Tier 2: Key price levels — promoted from WhyWeThinkThis (most actionable info) */}
       {detail?.indicators && price != null && (
-        <PriceLevelsCard indicators={detail.indicators} price={price} detail={detail} />
+        <PriceLevelsCard indicators={detail.indicators} price={price} detail={detail} signalColor={signalColor} />
       )}
 
       {/* Tier 3: What's moving — only shown when there are actual news events */}
@@ -1440,6 +1440,7 @@ function PriceLevelTriggers({
   indicators,
   price,
   detail,
+  signalColor,
 }: {
   indicators: {
     ema_9: number;
@@ -1451,6 +1452,7 @@ function PriceLevelTriggers({
   price: number | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
+  signalColor: string;
 }) {
   const cp = price ?? 0;
   const bullLevel = Math.max(indicators.ema_9, indicators.ema_21);
@@ -1468,7 +1470,9 @@ function PriceLevelTriggers({
           active={aboveBull}
           label={
             aboveBull
-              ? 'Price is above short-term averages. Maintaining this with rising momentum could shift towards Buy'
+              ? signalColor === 'green'
+                ? 'Price is above short-term averages. Maintaining this with rising momentum strengthens our Buy signal'
+                : 'Price is above short-term averages. Sustained momentum here could shift the signal towards Buy'
               : 'A sustained break above short-term averages with rising momentum could shift the signal towards Buy'
           }
         />
@@ -1478,7 +1482,9 @@ function PriceLevelTriggers({
           active={belowBear}
           label={
             belowBear
-              ? `Price is already ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. Continued weakness here adds bearish pressure`
+              ? signalColor === 'red'
+                ? `Price is ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. This weakness supports our Sell signal`
+                : `Price is ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. Continued weakness here adds bearish pressure`
               : 'A break below the 50-day average would signal meaningful bearish pressure and could trigger a Sell'
           }
         />
@@ -1531,6 +1537,7 @@ function PriceLevelsCard({
   indicators,
   price,
   detail,
+  signalColor,
 }: {
   indicators: {
     ema_9: number;
@@ -1542,10 +1549,11 @@ function PriceLevelsCard({
   price: number | undefined | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
+  signalColor: string;
 }) {
   return (
     <Card style={{ marginBottom: 'var(--space-4)' }}>
-      <PriceLevelTriggers indicators={indicators} price={price} detail={detail} />
+      <PriceLevelTriggers indicators={indicators} price={price} detail={detail} signalColor={signalColor} />
     </Card>
   );
 }

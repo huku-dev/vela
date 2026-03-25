@@ -40,19 +40,29 @@ function getPositionHeadline(
       : rawContext.charAt(0).toLowerCase() + rawContext.slice(1)
     : null;
 
+  // Detect if market context contradicts position direction
+  // e.g. position is down but headline says "up 6.6%" — confusing when combined
+  const contextContradictsPosition =
+    marketContext != null &&
+    ((pnl < 0 && /\bup\s+\d/i.test(marketContext)) ||
+     (pnl > 0 && /\bdown\s+\d/i.test(marketContext)));
+
+  // Only append market context if it doesn't create a contradictory sentence
+  const safeContext = contextContradictsPosition ? null : marketContext;
+
   if (pnl >= 20) {
     return `Your ${symbol} ${side} is ${pnlSign}${pnlAbs}%. Looking great, consider taking some profit`;
   }
   if (pnl >= 5) {
-    const suffix = marketContext ? `, as ${marketContext}` : '. Looking good!';
+    const suffix = safeContext ? `, as ${safeContext}` : '. Looking good!';
     return `Your ${symbol} ${side} is up ${pnlAbs}%${suffix}`;
   }
   if (pnl >= 0) {
-    const suffix = marketContext ? `, and ${marketContext}` : '';
+    const suffix = safeContext ? `, and ${safeContext}` : '';
     return `Your ${symbol} ${side} is up ${pnlAbs}% so far${suffix}`;
   }
   if (pnl > -5) {
-    const suffix = marketContext ? `, but ${marketContext}` : '. Still early, Vela is watching';
+    const suffix = safeContext ? `. Meanwhile, ${safeContext}` : '. Still early, Vela is watching';
     return `Your ${symbol} ${side} is down ${pnlAbs}%${suffix}`;
   }
   if (pnl > -8) {

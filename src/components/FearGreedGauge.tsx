@@ -1,22 +1,33 @@
 interface FearGreedGaugeProps {
   value: number; // 0-100
-  label: string; // e.g. "Extreme Fear"
+  label?: string; // ignored — derived from value for consistency
+}
+
+/** Standard Fear & Greed Index label from value */
+function getFearGreedLabel(v: number): string {
+  if (v <= 24) return 'Extreme Fear';
+  if (v <= 44) return 'Fear';
+  if (v <= 55) return 'Neutral';
+  if (v <= 74) return 'Greed';
+  return 'Extreme Greed';
 }
 
 /** Map value to a semantic colour matching the gauge arc segments */
 function getMoodColor(v: number): string {
-  if (v <= 24) return '#EF4444'; // red — extreme fear / fear
-  if (v <= 44) return '#F59E0B'; // amber — fear / leaning cautious
+  if (v <= 24) return '#EF4444'; // red — extreme fear
+  if (v <= 44) return '#F59E0B'; // amber — fear
   if (v <= 55) return '#EAB308'; // yellow — neutral
-  return '#22C55E'; // green — greed / extreme greed
+  if (v <= 74) return '#22C55E'; // green — greed
+  return '#16A34A'; // darker green — extreme greed
 }
 
 /**
  * Neobrutalist semicircular gauge for Fear & Greed Index.
  * Left (0) = extreme fear (red), middle = neutral (yellow), right (100) = extreme greed (green).
  */
-export default function FearGreedGauge({ value, label }: FearGreedGaugeProps) {
+export default function FearGreedGauge({ value }: FearGreedGaugeProps) {
   const clampedValue = Math.max(0, Math.min(100, value));
+  const label = getFearGreedLabel(clampedValue);
   // Map 0-100 to 180-0 degrees (left to right on semicircle)
   const needleAngle = 180 - (clampedValue / 100) * 180;
 
