@@ -117,8 +117,17 @@ export default function AssetDetail() {
   const { assetId } = useParams<{ assetId: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { asset, signal, brief, recentBriefs, priceData, signalLookup, signalTimeline, loading, notFound } =
-    useAssetDetail(assetId!);
+  const {
+    asset,
+    signal,
+    brief,
+    recentBriefs,
+    priceData,
+    signalLookup,
+    signalTimeline,
+    loading,
+    notFound,
+  } = useAssetDetail(assetId!);
   const { isAuthenticated } = useAuthContext();
   const { proposals, positions, wallet, acceptProposal, declineProposal } = useTrading();
   const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
@@ -417,8 +426,11 @@ export default function AssetDetail() {
       /extreme fear|extreme greed|fear|neutral|greed/i
     )?.[0] || '';
 
-  // Parse summary into paragraphs
-  const summaryParagraphs = breakIntoParagraphs(brief?.summary || '', 2);
+  // Parse summary into paragraphs — strip any cite tags that leaked from web search
+  const summaryParagraphs = breakIntoParagraphs(
+    (brief?.summary || '').replace(/<\/?cite[^>]*>/g, ''),
+    2,
+  );
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
   return (
@@ -1621,17 +1633,17 @@ function WhatsMovingSection({
             ) : (
               <>
                 <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {item.title}
+                  {item.title.replace(/<\/?cite[^>]*>/g, '')}
                 </span>
                 {showAll && item.impact && (
                   <span style={{ color: 'var(--color-text-secondary)' }}>
                     {' '}
-                    &mdash; {item.impact}
+                    &mdash; {item.impact.replace(/<\/?cite[^>]*>/g, '')}
                   </span>
                 )}
                 {item.source && (
                   <>
-                    {' '}
+                    <br />
                     <a
                       href={
                         item.url ||
