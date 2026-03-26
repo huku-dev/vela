@@ -13,6 +13,37 @@ interface SignalCardProps {
 }
 
 /**
+ * Strip trading-action language from brief headlines for users with no position.
+ *
+ * Backend headlines include signal context like "going long on the breakout" or
+ * "short signal active on weak momentum". This is confusing for users who don't
+ * have a position — they see "going long" and wonder what that means for them.
+ *
+ * Strategy: remove known trading-action phrases. The market observation part
+ * of the headline remains (e.g. "Up 3.6% in 24 hours as momentum builds").
+ */
+function stripTradingAction(headline: string): string {
+  // Patterns that indicate trading-action language (case insensitive)
+  const TRADING_PHRASES = [
+    /,?\s*going (long|short)\b.*/i,
+    /,?\s*confirmed signals? turn (green|red)\b.*/i,
+    /,?\s*short signal active\b.*/i,
+    /,?\s*waiting for (a )?(better|clearer?) entry\b.*/i,
+  ];
+
+  let cleaned = headline;
+  for (const pattern of TRADING_PHRASES) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+
+  // Trim trailing punctuation artifacts
+  cleaned = cleaned.replace(/[,\s]+$/, '').trim();
+
+  // If we stripped everything (shouldn't happen), return original
+  return cleaned.length >= 20 ? cleaned : headline;
+}
+
+/**
  * Generate a position-aware headline for the signal card.
  * Tone: understated, encouraging when profitable, reassuring when losing.
  * Follows the "You Stay in Control" pillar — calm, confident, supportive.
@@ -58,11 +89,12 @@ export default function SignalCard({ data, position }: SignalCardProps) {
   const price = priceData?.price ?? signal?.price_at_signal;
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
-  // Position-aware headline weaves P&L with market context from the brief
+  // Position-aware headline: users with a position see P&L status,
+  // users without see market context (trading-action language stripped).
   const headline = position
     ? getPositionHeadline(position, asset.symbol.toUpperCase(), brief?.headline, price)
     : brief?.headline
-      ? stripAssetPrefix(brief.headline, asset.symbol)
+      ? stripTradingAction(stripAssetPrefix(brief.headline, asset.symbol))
       : null;
 
   return (
