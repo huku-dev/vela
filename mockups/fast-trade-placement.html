@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Trade Placement Options</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F5F0E8;
+    padding: 20px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    margin: 32px 0 12px;
+  }
+  h2:first-of-type { margin-top: 8px; }
+  .label-tag {
+    display: inline-block;
+    background: #E8F5E9;
+    color: #2E7D32;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .card {
+    background: #F0FAF0;
+    border: 3px solid #1A1A1A;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .top-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #1A1A1A;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .info { flex: 1; min-width: 0; }
+  .asset-name {
+    font-weight: 800;
+    font-size: 16px;
+    line-height: 1.2;
+    color: #1A1A1A;
+  }
+  .asset-sub {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.3;
+  }
+  .long-badge {
+    display: inline-block;
+    background: #2E7D32;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+  }
+  .pnl-col {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .pnl-pct {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    color: #2E7D32;
+    line-height: 1.2;
+  }
+  .pnl-dollar {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 600;
+    font-size: 12px;
+    color: #2E7D32;
+  }
+  .entry-line {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: #555;
+    margin-top: 12px;
+  }
+  .chevron {
+    color: #bbb;
+    font-size: 18px;
+    margin-left: 4px;
+  }
+  .fast-inline {
+    color: #888;
+    font-size: 12px;
+  }
+  .fast-bolt {
+    color: #F59E0B;
+  }
+  .separator { color: #ccc; margin: 0 2px; }
+  .note {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .winner {
+    border-color: #2E7D32;
+    background: #F0FAF0;
+  }
+</style>
+</head>
+<body>
+
+<h2>Current (baseline) — ⚡ on subtitle line</h2>
+<div class="note">This is what we have now. "Fast trade" competes with leverage + duration on the same line. Gets crowded on mobile.</div>
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC</div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open &lt;1h · <span class="fast-bolt">⚡</span> Fast trade
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+0.50%</div>
+      <div class="pnl-dollar">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $71,612 <span class="chevron">⌄</span></div>
+</div>
+
+<!-- Worst case scenario -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC</div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open 12d 5h · <span class="fast-bolt">⚡</span> Fast trade
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+12.50%</div>
+      <div class="pnl-dollar">+$125.00 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $80,125 <span class="chevron">⌄</span></div>
+</div>
+
+
+<h2>Option A — Next to asset name with dot separator</h2>
+<div class="note winner">Your suggestion. Clean, scales well. Fast trade sits outside the metadata line entirely.</div>
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span></div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open &lt;1h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+0.50%</div>
+      <div class="pnl-dollar">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $71,612 <span class="chevron">⌄</span></div>
+</div>
+
+<!-- Worst case -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span></div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open 12d 5h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+12.50%</div>
+      <div class="pnl-dollar">+$125.00 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $80,125 <span class="chevron">⌄</span></div>
+</div>
+
+
+<h2>Option B — Below asset name, own line</h2>
+<div class="note">More prominent, but adds vertical height to every BB2 card.</div>
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC</div>
+      <div style="margin: 2px 0;">
+        <span class="fast-inline"><span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open &lt;1h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+0.50%</div>
+      <div class="pnl-dollar">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $71,612 <span class="chevron">⌄</span></div>
+</div>
+
+<!-- Worst case -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC</div>
+      <div style="margin: 2px 0;">
+        <span class="fast-inline"><span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open 12d 5h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+12.50%</div>
+      <div class="pnl-dollar">+$125.00 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $80,125 <span class="chevron">⌄</span></div>
+</div>
+
+
+<h2>Option C — Just the bolt icon, no text</h2>
+<div class="note">Most compact. Users learn what ⚡ means. But less discoverable for new users.</div>
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC <span class="fast-bolt" style="font-size: 14px;">⚡</span></div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open &lt;1h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+0.50%</div>
+      <div class="pnl-dollar">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $71,612 <span class="chevron">⌄</span></div>
+</div>
+
+<!-- Worst case -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">B</div>
+    <div class="info">
+      <div class="asset-name">BTC <span class="fast-bolt" style="font-size: 14px;">⚡</span></div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open 12d 5h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+12.50%</div>
+      <div class="pnl-dollar">+$125.00 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $71,222 → Current $80,125 <span class="chevron">⌄</span></div>
+</div>
+
+
+<h2>Comparison: EMA trade (no fast badge)</h2>
+<div class="note">For reference — this is what a regular EMA trade looks like with all options.</div>
+<div class="card">
+  <div class="top-row">
+    <div class="icon">E</div>
+    <div class="info">
+      <div class="asset-name">ETH</div>
+      <div class="asset-sub">
+        <span class="long-badge">LONG</span>
+        &nbsp;2x · Open 1d 1h
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct">+0.90%</div>
+      <div class="pnl-dollar">+$2.38 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">Entry $2,161 → Current $2,181 <span class="chevron">⌄</span></div>
+</div>
+
+</body>
+</html>

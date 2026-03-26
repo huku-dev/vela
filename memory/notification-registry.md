@@ -1,6 +1,6 @@
 # Vela Notification Registry
 
-> **Last audited:** 2026-03-24
+> **Last audited:** 2026-03-25
 > **Source:** `/Users/henry/crypto-agent/supabase/functions/`
 > **Email design details:** See `memory/email-templates.md`
 > **Privacy incident history:** See `memory/incident-2026-03-19-notification-privacy.md`
@@ -150,6 +150,26 @@ These fire when the per-user or broadcast path can't reach users. Routed to admi
 
 ---
 
+## Signal Broadcast Exclusion (added 2026-03-25)
+
+Trading users (`mode = 'semi_auto'` or `mode = 'full_auto'`) are **excluded from signal change broadcasts** (both email and Telegram). These users receive their own trade proposal notification with accept/decline actions — sending both the generic signal alert and the personalized proposal was redundant and spammy.
+
+**Implementation:** `notifySignalChange()` in `notify.ts` queries `user_preferences.mode` and filters out trading users before broadcasting. Non-trading users (free tier, signal-only subscribers) still receive signal broadcasts.
+
+**This does NOT affect:** Daily digest broadcasts, admin notifications, or social posts — those go to everyone.
+
+---
+
+## Balance Nudge Rate Limiting (added 2026-03-25)
+
+Balance nudges (`notifyBalanceNudge()`) are rate-limited to **max 1 per user per 24 hours**. Without this, a user with a low balance would receive a nudge on every single trade execution — flooding their inbox.
+
+**Implementation:** Before sending, the function checks `audit_log` for a `balance_nudge_sent` entry for that user in the last 24h. If found, the nudge is silently skipped. After sending, a new `balance_nudge_sent` audit entry is created with the asset, balance, and variant.
+
+**Variants:** `running_low` (balance < 2x preferred size), `size_reduced` (trade executed at smaller size), `depleted` (balance too low to trade at all). All 3 variants share the same 24h rate limit.
+
+---
+
 ## Staging Gating
 
 - **User-facing notifications** (email + Telegram): Skipped on staging via `IS_STAGING` check
@@ -162,7 +182,16 @@ These fire when the per-user or broadcast path can't reach users. Routed to admi
 
 ---
 
-## Known Issues (as of 2026-03-24)
+## Recent Changes (2026-03-25)
+
+1. **Proposal email CTA:** Changed from "ACCEPT Open LONG" to "ACCEPT TRADE" — consistent, action-type-agnostic
+2. **Proposal email layout:** Removed "View details →" link, merged expiry notice into the full-auto nudge line
+3. **Signal broadcast exclusion:** Trading users excluded (see section above)
+4. **Balance nudge rate limit:** Max 1/user/24h (see section above)
+
+---
+
+## Known Issues (as of 2026-03-25)
 
 1. **BB2 expiry missing `continue`** — position-monitor BB2 close path doesn't `continue` after notification, so trailing stop logic can fire on same position in same loop iteration → duplicate user notification. Fix: add `continue` after line 1035.
 2. **Fallback user identification** — Proposal/trade-result fallbacks include `userId` (privy_did) but not email. Would need to pass email through function params or do a lookup.

@@ -1,6 +1,7 @@
 ---
 name: vela-debug
 description: Debug & investigate production/staging data using Supabase MCP — signal freshness, brief staleness, trade status, position health, cron jobs, and error investigation. Read-only queries only.
+context: fork
 ---
 
 # Vela Debug & Investigate

@@ -1017,8 +1017,8 @@ function LivePositionCard({
               >
                 {isBB2 && (
                   <>
-                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span>{' '}
-                    Fast trade ·{' '}
+                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span> Fast trade
+                    ·{' '}
                   </>
                 )}
                 Open {formatDuration(position.created_at)}
@@ -1320,8 +1320,8 @@ function ClosedPositionCard({
               >
                 {isBB2 && (
                   <>
-                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span>{' '}
-                    Fast trade ·{' '}
+                    <span style={{ color: '#F59E0B', fontSize: '0.75rem' }}>⚡</span> Fast trade
+                    ·{' '}
                   </>
                 )}
                 Closed{closedDate ? ` ${closedDate}` : ''}

@@ -1,6 +1,7 @@
 ---
 name: vela-ship
 description: Ship & verify pipeline — pre-flight checks, CI monitoring, deployment verification, Notion task updates, and cross-repo coordination via GitHub. Use when deploying, merging, or shipping features.
+context: fork
 ---
 
 # Vela Ship & Verify

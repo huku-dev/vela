@@ -344,7 +344,17 @@ export function useAssetDetail(assetId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `asset` read in error path is intentionally stale (current cache value)
   }, [assetId]);
 
-  return { asset, signal, brief, recentBriefs, priceData, signalLookup, signalTimeline, loading, notFound };
+  return {
+    asset,
+    signal,
+    brief,
+    recentBriefs,
+    priceData,
+    signalLookup,
+    signalTimeline,
+    loading,
+    notFound,
+  };
 }
 
 const PAGE_SIZE = 50;

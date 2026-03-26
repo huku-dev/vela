@@ -71,15 +71,23 @@ vela-start | vela-end | vela-tasks list | vela-tasks add
 
 ---
 
-## Context Loading — Read On Demand
+## Context Loading
 
-Do NOT pre-load these files. Read ONLY when the task matches:
+### Auto-loaded via `.claude/rules/` (path-scoped, no action needed)
+
+These rules load automatically when editing matching files:
+
+| Rule file | Activates on | Deep-dive reference |
+|-----------|-------------|---------------------|
+| `rules/design-system.md` | `src/components/`, `src/pages/`, `src/styles/` | `docs/claude-reference/design-system-guide.md` |
+| `rules/testing.md` | `*.test.*`, `*.spec.*` | `docs/claude-reference/testing-standards.md` |
+| `rules/security.md` | `.env*`, `src/lib/supabase*`, `src/lib/auth*` | `docs/claude-reference/security-checklist.md` |
+| `rules/financial-code.md` | `*trade*`, `*proposal*`, `*position*`, `*pnl*` | N/A (standalone) |
+
+### Read on demand (workflow-triggered, not path-scoped)
 
 | When you are... | Read first |
 |-----------------|------------|
-| Editing CSS, components, or styling | `docs/claude-reference/design-system-guide.md` |
-| Writing or modifying tests | `docs/claude-reference/testing-standards.md` |
-| Handling API keys, env vars, or auth | `docs/claude-reference/security-checklist.md` |
 | Deploying or running CI | `docs/claude-reference/deploy-workflow.md` |
 | QA testing or pre-launch checks | `docs/claude-reference/qa-checklist.md` |
 | Starting or ending a session | `docs/claude-reference/session-routines.md` |

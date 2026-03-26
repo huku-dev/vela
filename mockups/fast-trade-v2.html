@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Trade v2 — Combined Badge</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #F5F0E8;
+    padding: 20px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+  h2 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #666;
+    margin: 32px 0 12px;
+  }
+  h2:first-of-type { margin-top: 8px; }
+  .note {
+    background: #fff;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .card {
+    background: #F0FAF0;
+    border: 3px solid #1A1A1A;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-loss {
+    background: #FEF2F2;
+  }
+  .top-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #1A1A1A;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+    position: relative;
+    overflow: visible;
+  }
+  .icon img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .info { flex: 1; min-width: 0; }
+  .asset-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    line-height: 1.2;
+  }
+  .asset-name {
+    font-weight: 800;
+    font-size: 16px;
+    color: #1A1A1A;
+  }
+  .fast-inline {
+    font-size: 12px;
+    color: #888;
+  }
+  .fast-bolt { color: #F59E0B; }
+  .separator { color: #ccc; }
+  .meta-line {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.3;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-long {
+    display: inline-block;
+    background: #2E7D32;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1.5px solid #1A1A1A;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-short {
+    display: inline-block;
+    background: #D32F2F;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1.5px solid #1A1A1A;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .pnl-col {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .pnl-pct {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .pnl-pct-green { color: #2E7D32; }
+  .pnl-pct-red { color: #D32F2F; }
+  .pnl-dollar {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .pnl-dollar-green { color: #2E7D32; }
+  .pnl-dollar-red { color: #D32F2F; }
+  .entry-line {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: #555;
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .chevron { color: #bbb; font-size: 18px; }
+</style>
+</head>
+<body>
+
+<h2>Option A — Asset icon + combined "2X LONG" badge + Fast trade next to name</h2>
+<div class="note">Coin icon restored, leverage merged into direction badge, ⚡ Fast trade next to asset name. Clean 2-line layout.</div>
+
+<!-- BTC Fast trade, profit -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">BTC</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long">2X Long</span>
+        <span>· Open &lt;1h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+0.50%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $71,222 → Current $71,612</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<!-- SOL Fast trade, loss -->
+<div class="card card-loss">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/4128/small/solana.png" alt="SOL">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">SOL</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long">2X Long</span>
+        <span>· Open 6h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-red">-0.40%</div>
+      <div class="pnl-dollar pnl-dollar-red">-$0.13 loss</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $92.08 → Current $91.73</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<!-- HYPE EMA trade (no fast badge), loss -->
+<div class="card card-loss">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/40345/small/hyperliquid_logo.png" alt="HYPE">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">HYPE</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long">2X Long</span>
+        <span>· Open 2h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-red">-2.00%</div>
+      <div class="pnl-dollar pnl-dollar-red">-$0.94 loss</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $41.10 → Current $40.27</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<!-- ETH EMA trade, profit, 1x (no leverage shown) -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">ETH</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long">Long</span>
+        <span>· Open 1d 2h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+0.20%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$0.05 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $2,164 → Current $2,168</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<!-- Worst case: long duration, big numbers -->
+<h2>Stress test — Long duration + big P&L</h2>
+
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">BTC</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long">2X Long</span>
+        <span>· Open 12d 5h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+12.50%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$125.00 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $71,222 → Current $80,125</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<!-- Short trade example -->
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">ETH</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-short">2X Short</span>
+        <span>· Open 3h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+1.80%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$3.60 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $2,200 → Current $2,160</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<h2>Sentence case badges — "2x Long" instead of "2X LONG"</h2>
+<div class="note">Same layout, but badges use sentence case. Feels calmer, less aggressive. The color already communicates direction.</div>
+
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" alt="BTC">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">BTC</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long" style="text-transform: none;">2x Long</span>
+        <span>· Open &lt;1h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+0.50%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$0.61 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $71,222 → Current $71,612</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<div class="card card-loss">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/4128/small/solana.png" alt="SOL">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">SOL</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long" style="text-transform: none;">2x Long</span>
+        <span>· Open 6h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-red">-0.40%</div>
+      <div class="pnl-dollar pnl-dollar-red">-$0.13 loss</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $92.08 → Current $91.73</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">ETH</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-long" style="text-transform: none;">Long</span>
+        <span>· Open 1d 2h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+0.20%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$0.05 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $2,164 → Current $2,168</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="top-row">
+    <div class="icon">
+      <img src="https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" alt="ETH">
+    </div>
+    <div class="info">
+      <div class="asset-row">
+        <span class="asset-name">ETH</span>
+        <span class="fast-inline"><span class="separator">·</span> <span class="fast-bolt">⚡</span> Fast trade</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge-short" style="text-transform: none;">2x Short</span>
+        <span>· Open 3h</span>
+      </div>
+    </div>
+    <div class="pnl-col">
+      <div class="pnl-pct pnl-pct-green">+1.80%</div>
+      <div class="pnl-dollar pnl-dollar-green">+$3.60 profit</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $2,200 → Current $2,160</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+<h2>For comparison — current production layout</h2>
+<div class="note">No coin icon, LONG badge where icon should be, ⚡ cramped in subtitle</div>
+<div class="card">
+  <div class="top-row">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="badge-long">Long</span>
+      <div>
+        <div class="asset-name">BTC</div>
+        <div style="font-size: 12px; color: #888;">Open 2h · <span class="fast-bolt">⚡</span> Fast trade</div>
+      </div>
+    </div>
+    <div class="pnl-col" style="margin-left: auto;">
+      <div class="pnl-pct pnl-pct-red">-0.20%</div>
+      <div class="pnl-dollar pnl-dollar-red">-$0.02 loss</div>
+    </div>
+  </div>
+  <div class="entry-line">
+    <span>Entry $71,267 → Current $71,112</span>
+    <span class="chevron">⌄</span>
+  </div>
+</div>
+
+</body>
+</html>

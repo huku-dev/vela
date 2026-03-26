@@ -13,8 +13,8 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   if (text.includes('|||')) {
     return text
       .split('|||')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
   }
 
   // Fallback: split on sentence boundaries, but NOT after:
@@ -22,8 +22,8 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   //   - Single-letter abbreviations (e.g. "U.S.", "E.U.", "A.I.")
   // Strategy: replace abbreviation periods with a placeholder, split, then restore.
   const ABBR_PLACEHOLDER = '\u200B'; // zero-width space
-  const escaped = text.replace(/\b([A-Z]\.){2,}/g, (match) =>
-    match.split('.').join(ABBR_PLACEHOLDER),
+  const escaped = text.replace(/\b([A-Z]\.){2,}/g, match =>
+    match.split('.').join(ABBR_PLACEHOLDER)
   );
   const sentences = escaped.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [escaped];
 
@@ -46,7 +46,7 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   }
 
   // Restore abbreviation periods
-  return paragraphs.map((p) => p.split(ABBR_PLACEHOLDER).join('.'));
+  return paragraphs.map(p => p.split(ABBR_PLACEHOLDER).join('.'));
 }
 
 /**

@@ -429,7 +429,7 @@ export default function AssetDetail() {
   // Parse summary into paragraphs — strip any cite tags that leaked from web search
   const summaryParagraphs = breakIntoParagraphs(
     (brief?.summary || '').replace(/<\/?cite[^>]*>/g, ''),
-    2,
+    2
   );
   const iconUrl = getCoinIcon(asset.coingecko_id);
 
