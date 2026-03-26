@@ -1,19 +1,29 @@
 import type { Brief, BriefGroup, SignalColor } from '../types';
 
 /**
- * Breaks a block of text into paragraphs of ~2-3 sentences each,
- * to improve readability (addresses the "wall of text" feedback).
+ * Breaks a block of text into paragraphs for readability.
+ *
+ * If the text contains `|||` delimiters (daily digest format), splits on those
+ * to preserve the 3-item structure. Otherwise falls back to sentence-based splitting.
  */
 export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): string[] {
   if (!text) return [];
 
-  // Split on sentence boundaries, but NOT after:
+  // Daily digest format: items separated by ||| — split on the delimiter directly
+  if (text.includes('|||')) {
+    return text
+      .split('|||')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
+  // Fallback: split on sentence boundaries, but NOT after:
   //   - Decimal points in numbers (e.g. "$29.86")
   //   - Single-letter abbreviations (e.g. "U.S.", "E.U.", "A.I.")
   // Strategy: replace abbreviation periods with a placeholder, split, then restore.
   const ABBR_PLACEHOLDER = '\u200B'; // zero-width space
-  const escaped = text.replace(/\b([A-Z]\.){2,}/g, match =>
-    match.split('.').join(ABBR_PLACEHOLDER)
+  const escaped = text.replace(/\b([A-Z]\.){2,}/g, (match) =>
+    match.split('.').join(ABBR_PLACEHOLDER),
   );
   const sentences = escaped.match(/(?:[^.!?]|\.(?=\d))*[.!?]+[\s]*/g) || [escaped];
 
@@ -36,7 +46,7 @@ export function breakIntoParagraphs(text: string, sentencesPerParagraph = 3): st
   }
 
   // Restore abbreviation periods
-  return paragraphs.map(p => p.split(ABBR_PLACEHOLDER).join('.'));
+  return paragraphs.map((p) => p.split(ABBR_PLACEHOLDER).join('.'));
 }
 
 /**
