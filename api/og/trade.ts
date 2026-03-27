@@ -157,8 +157,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       <!-- Footer -->
       <div
-        style="display: flex; justify-content: flex-start; align-items: center; width: 1594px; height: 97px; padding: 0 56px; background-color: ${INK}; position: absolute; bottom: 0; left: 0;"
+        style="display: flex; justify-content: space-between; align-items: center; width: 1594px; height: 97px; padding: 0 56px; background-color: ${INK}; position: absolute; bottom: 0; left: 0;"
       >
+        <span
+          style="font-family: Inter; font-weight: 500; font-size: 26px; color: ${GREY_TEXT};"
+          >Markets never sleep. Neither does Vela.</span
+        >
         <span
           style="font-family: Inter; font-weight: 500; font-size: 26px; color: ${GREY_TEXT};"
           >getvela.xyz</span
