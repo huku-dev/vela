@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!validateAuth(req, res)) return;
 
-  const { asset, entry, exit, pnlPct, days, timestamp } = req.query;
+  const { asset, entry, exit, pnlPct, days, timestamp, direction } = req.query;
 
   if (!asset || !entry || !exit || !pnlPct || !days) {
     return res.status(400).json({
@@ -46,17 +46,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pnlPctNum = Number(pnlPct);
   const daysHeld = Number(days);
   const timestampStr = timestamp ? String(timestamp) : new Date().toISOString();
+  const directionStr = direction ? String(direction) : (exitPrice > entryPrice ? "Long" : "Short");
 
   const isProfit = pnlPctNum >= 0;
   const pnlColor = isProfit ? SIGNAL_GREEN : SIGNAL_RED;
-  const pnlSign = isProfit ? "" : "";
+  const pnlSign = isProfit ? "+" : "";
   const badgeBg = isProfit ? SIGNAL_GREEN : SIGNAL_RED;
   const badgeText = isProfit ? INK : CREAM;
   const holdText = daysHeld === 1 ? "1 day" : `${daysHeld} days`;
   const dateFormatted = formatTimestamp(timestampStr);
   const iconUri = getVelaIconDataUri();
 
-  const badgeLabel = `Trade Closed · ${pnlSign}${Math.abs(pnlPctNum).toFixed(1)}%`;
+  // "$1,000 invested would have returned..." — makes percentage tangible
+  const hypotheticalReturn = Math.abs(pnlPctNum * 10); // $1,000 * pct/100
+  const hypotheticalText = isProfit
+    ? `A $1,000 investment would have returned $${hypotheticalReturn.toFixed(0)} in profit`
+    : `A $1,000 investment would have lost $${hypotheticalReturn.toFixed(0)}`;
+
+  const badgeLabel = `${directionStr} · Trade Closed · ${pnlSign}${Math.abs(pnlPctNum).toFixed(1)}%`;
 
   const markup = html`
     <div
@@ -140,17 +147,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         >
       </div>
 
+      <!-- Hypothetical return -->
+      <div style="display: flex; padding: 20px 0 0 112px;">
+        <span
+          style="font-family: Inter; font-weight: 600; font-size: 26px; color: ${pnlColor};"
+          >${hypotheticalText}</span
+        >
+      </div>
+
       <!-- Footer -->
       <div
-        style="display: flex; justify-content: space-between; align-items: center; width: 1594px; height: 97px; padding: 0 56px; background-color: ${INK}; position: absolute; bottom: 0; left: 0;"
+        style="display: flex; justify-content: flex-start; align-items: center; width: 1594px; height: 97px; padding: 0 56px; background-color: ${INK}; position: absolute; bottom: 0; left: 0;"
       >
         <span
           style="font-family: Inter; font-weight: 500; font-size: 26px; color: ${GREY_TEXT};"
           >getvela.xyz</span
-        >
-        <span
-          style="font-family: Inter; font-weight: 600; font-size: 26px; color: #0FE68C;"
-          >View full track record</span
         >
       </div>
     </div>
