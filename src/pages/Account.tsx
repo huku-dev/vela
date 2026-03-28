@@ -232,6 +232,7 @@ interface BalanceCardProps {
   hasWallet: boolean;
   isTradingEnabled: boolean;
   showFundingNudge?: boolean;
+  enableLoading?: boolean;
   /** Open positions for computing capital in trades */
   openPositions?: import('../types').Position[];
   onEnableClick?: () => void;
@@ -244,6 +245,7 @@ function BalanceCard({
   hasWallet,
   isTradingEnabled,
   showFundingNudge,
+  enableLoading,
   openPositions,
   onEnableClick,
   onWithdrawClick,
@@ -318,13 +320,15 @@ function BalanceCard({
           </p>
           <button
             onClick={onEnableClick}
+            disabled={enableLoading}
             className="vela-btn vela-btn-primary vela-label-sm"
             style={{
               fontWeight: 600,
               padding: 'var(--space-2) var(--space-5)',
+              cursor: enableLoading ? 'wait' : 'pointer',
             }}
           >
-            Enable trading
+            {enableLoading ? 'Setting up wallet...' : 'Enable trading'}
           </button>
         </div>
       </div>
@@ -2479,6 +2483,30 @@ export default function Account() {
     document.body.appendChild(script);
   }, []);
 
+  // "Enable trading" — for paid users without a wallet, provision it directly
+  // with a sensible default mode. For free users, just expand the settings panel.
+  const [enableLoading, setEnableLoading] = useState(false);
+  async function handleEnableTrading() {
+    // Free tier users need to pick a mode / upgrade — just expand settings
+    if (currentTier === 'free' || hasWallet) {
+      setExpandedSection('trading');
+      return;
+    }
+
+    // Paid user without a wallet — provision directly
+    const defaultMode: TradingMode = currentTier === 'premium' ? 'full_auto' : 'semi_auto';
+    setEnableLoading(true);
+    try {
+      await enableTrading(defaultMode);
+    } catch (err) {
+      console.error('[Account] Enable trading failed:', err);
+      // Fall back to expanding the settings panel so user can retry manually
+      setExpandedSection('trading');
+    } finally {
+      setEnableLoading(false);
+    }
+  }
+
   const toggleSection = (section: string) => {
     setExpandedSection(prev => (prev === section ? null : section));
   };
@@ -2725,8 +2753,9 @@ export default function Account() {
         hasWallet={hasWallet}
         isTradingEnabled={isTradingEnabled}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
+        enableLoading={enableLoading}
         openPositions={positions}
-        onEnableClick={() => setExpandedSection('trading')}
+        onEnableClick={handleEnableTrading}
         onWithdrawClick={() => setShowWithdrawSheet(true)}
         onDepositClick={() => setShowDepositSheet(true)}
       />

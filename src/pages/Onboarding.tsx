@@ -1182,7 +1182,7 @@ type OnboardingStep = 'splash' | 'trading_mode' | 'wallet';
 export default function Onboarding() {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthContext();
-  const { updatePreferences } = useTrading();
+  const { updatePreferences, enableTrading } = useTrading();
   const { isOnboarded, completeOnboarding, resetOnboarding } = useOnboarding();
   const { startCheckout } = useSubscription();
 
@@ -1224,10 +1224,17 @@ export default function Onboarding() {
   const handleModeSelected = async (mode: TradingMode) => {
     track(AnalyticsEvent.TRADING_MODE_SELECTED, { mode });
     try {
-      await updatePreferences({ mode } as Record<string, unknown>);
+      // For trading modes, provision the wallet so the "Wallet created"
+      // screen is truthful. enableTrading saves mode + calls provision-wallet.
+      if (mode !== 'view_only') {
+        await enableTrading(mode);
+      } else {
+        await updatePreferences({ mode } as Record<string, unknown>);
+      }
     } catch {
-      // Best-effort — don't block onboarding if this fails
-      console.warn('[Onboarding] Failed to save trading mode preference');
+      // Best-effort — don't block onboarding if this fails.
+      // The Account page "Enable trading" button is a fallback path.
+      console.warn('[Onboarding] Failed to save trading mode / provision wallet');
     }
 
     // Track if user selected a paid mode so we can trigger checkout after onboarding
