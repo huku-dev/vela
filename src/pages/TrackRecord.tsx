@@ -292,11 +292,10 @@ export default function TrackRecord() {
           paddingLeft: 'var(--space-1)',
         }}
       >
-        <span
-          className="vela-label-sm vela-text-muted"
-          style={{ textTransform: 'uppercase' }}
-        >
-          Your trades
+        <span className="vela-label-sm vela-text-muted" style={{ textTransform: 'uppercase' }}>
+          {selectedAsset
+            ? `Your ${assetMap[selectedAsset]?.symbol ?? selectedAsset.toUpperCase()} trades`
+            : 'Your trades'}
         </span>
         {tradedAssets.length > 1 && (
           <select
@@ -363,72 +362,66 @@ export default function TrackRecord() {
         <div style={{ marginBottom: 'var(--space-5)' }}>
           {/* Position stats — 3-cell row, updates when asset filter changes */}
           {filteredStats && (
-            <div
-              style={{
-                display: 'flex',
-                marginBottom: 'var(--space-3)',
-                borderRadius: 'var(--radius-sm)',
-                overflow: 'hidden',
-              }}
-            >
-              {[
-                {
-                  label: selectedAsset
-                    ? `${assetMap[selectedAsset]?.symbol ?? selectedAsset.toUpperCase()} P&L`
-                    : 'Total P&L',
-                  value: `${filteredStats.totalPnl >= 0 ? '+' : '-'}$${Math.abs(filteredStats.totalPnl).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
-                  color: filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                },
-                {
-                  label: 'Trades',
-                  value: String(filteredStats.total),
-                  color: 'var(--color-text-primary)',
-                },
-                {
-                  label: 'Win rate',
-                  value: `${filteredStats.winRate}%`,
-                  color: 'var(--color-text-primary)',
-                },
-              ].map((stat, i) => (
-                <div
-                  key={stat.label}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    padding: 'var(--space-3) var(--space-2)',
-                    background: 'var(--color-bg-surface)',
-                    border: '1.5px solid var(--gray-200)',
-                    borderLeft: i > 0 ? 'none' : undefined,
-                    borderRadius:
-                      i === 0
-                        ? 'var(--radius-sm) 0 0 var(--radius-sm)'
-                        : i === 2
-                          ? '0 var(--radius-sm) var(--radius-sm) 0'
-                          : undefined,
-                  }}
-                >
-                  <span
-                    className="vela-label-sm"
+            <Card compact style={{ marginBottom: 'var(--space-3)', padding: 0, overflow: 'hidden' }}>
+              <div style={{ display: 'flex' }}>
+                {[
+                  {
+                    label: 'Total P&L',
+                    value: `${filteredStats.totalPnl >= 0 ? '+' : '-'}$${Math.abs(filteredStats.totalPnl).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
+                    color:
+                      filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                    mono: true,
+                  },
+                  {
+                    label: 'Trades',
+                    value: String(filteredStats.total),
+                    color: 'var(--color-text-primary)',
+                    mono: false,
+                  },
+                  {
+                    label: 'Win rate',
+                    value: `${filteredStats.winRate}%`,
+                    color: 'var(--color-text-primary)',
+                    mono: false,
+                  },
+                ].map((stat, i) => (
+                  <div
+                    key={stat.label}
                     style={{
-                      display: 'block',
-                      fontSize: '0.6rem',
-                      color: 'var(--color-text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.04em',
-                      marginBottom: 2,
+                      flex: 1,
+                      textAlign: 'center',
+                      padding: 'var(--space-4) var(--space-2)',
+                      borderLeft: i > 0 ? '1px solid var(--gray-200)' : undefined,
                     }}
                   >
-                    {stat.label}
-                  </span>
-                  <span
-                    className="vela-mono"
-                    style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: stat.color }}
-                  >
-                    {stat.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: 'var(--color-text-muted)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        marginBottom: 4,
+                      }}
+                    >
+                      {stat.label}
+                    </span>
+                    <span
+                      className={stat.mono ? 'vela-mono' : undefined}
+                      style={{
+                        fontWeight: 700,
+                        fontSize: '1.1rem',
+                        color: stat.color,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {stat.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
 
           {/* Pending proposals — actionable trades waiting for approval */}
@@ -498,7 +491,9 @@ export default function TrackRecord() {
                   paddingLeft: 'var(--space-1)',
                 }}
               >
-                Open positions
+                {selectedAsset
+                  ? `${assetMap[selectedAsset]?.symbol ?? selectedAsset.toUpperCase()} open positions`
+                  : 'Open positions'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                 {filteredOpenPositions.map(pos => {
