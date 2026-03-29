@@ -178,18 +178,14 @@ describe('TRACK-SRC: Source-verification — P&L colors', () => {
     expect(src).toContain("isPositive ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
-  it('TRUST CRITICAL: narrative stats use green-dark for positive P&L', () => {
-    // Real position stats use totalPnl for color
-    expect(src).toContain(
-      "realPositionStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'"
-    );
+  it('TRUST CRITICAL: stats row uses green-dark for positive P&L', () => {
+    // Filtered stats use totalPnl for color
+    expect(src).toContain("filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)'");
   });
 
-  it('TRUST CRITICAL: dollar P&L always says "profit" or "loss", never bare dollars', () => {
+  it('TRUST CRITICAL: dollar P&L always says "profit" or "loss" in BestTradeCard', () => {
     // In BestTradeCard
     expect(src).toContain("{dollarPnl >= 0 ? 'profit' : 'loss'}");
-    // In real position stats
-    expect(src).toContain("totalPnl >= 0 ? 'profit' : 'loss'");
   });
 });
 
@@ -332,10 +328,11 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
-    expect(screen.getByText(/total profit/i)).toBeInTheDocument();
+    // Stats row shows P&L with + prefix for profit
+    expect(screen.getByText(/\+\$300/)).toBeInTheDocument();
   });
 
-  it('TRUST CRITICAL: shows "loss" for negative total P&L in user stats', () => {
+  it('TRUST CRITICAL: shows negative P&L with - prefix in user stats', () => {
     mockUseTierAccess.mockReturnValue({
       tier: 'standard',
       canTrade: true,
@@ -359,7 +356,8 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
-    expect(screen.getByText(/total loss/i)).toBeInTheDocument();
+    // Stats row shows P&L with - prefix for loss
+    expect(screen.getByText(/-\$300/)).toBeInTheDocument();
   });
 
   it('shows trade count and win rate for user trades', () => {
@@ -386,8 +384,9 @@ describe('TRACK: Zone 1 — Your Trades (live trades)', () => {
     mockUseAuthContext.mockReturnValue({ isAuthenticated: true });
 
     render(<TrackRecord />);
-    expect(screen.getByText(/3 position/)).toBeInTheDocument();
-    expect(screen.getByText(/2 profitable/)).toBeInTheDocument();
+    // Stats row: trades count and win rate as separate cells
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('67%')).toBeInTheDocument();
   });
 
   it('shows "Start trading" upgrade prompt for free users with no trades', () => {

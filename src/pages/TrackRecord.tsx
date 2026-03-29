@@ -134,6 +134,7 @@ export default function TrackRecord() {
   const [expandedTradeId, setExpandedTradeId] = useState<string | null>(null);
   const [showVelaHistory, setShowVelaHistory] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<string | null>(null); // null = all assets
 
   const hasLivePositions = isAuthenticated && positions.length > 0;
 
@@ -173,17 +174,35 @@ export default function TrackRecord() {
     return livePrices[coingeckoId]?.price ?? null;
   };
 
-  // ── Real position stats (from positions table, not paper_trades) ──
-  // Includes both open and closed positions for a complete picture.
-  const realPositionStats = (() => {
-    const allPositions = [...closedPositions, ...positions];
-    if (allPositions.length === 0) return null;
+  // ── Unique traded assets for filter dropdown ──
+  const tradedAssets = (() => {
+    const ids = new Set<string>();
+    for (const pos of positions) ids.add(pos.asset_id);
+    for (const pos of closedPositions) ids.add(pos.asset_id);
+    return Array.from(ids).map(id => ({
+      id,
+      symbol: assetMap[id]?.symbol ?? id.toUpperCase(),
+      coingeckoId: assetMap[id]?.coingecko_id,
+    }));
+  })();
+
+  // ── Filtered positions based on selected asset ──
+  const filteredOpenPositions = selectedAsset
+    ? positions.filter(p => p.asset_id === selectedAsset)
+    : positions;
+  const filteredClosedPositions = selectedAsset
+    ? closedPositions.filter(p => p.asset_id === selectedAsset)
+    : closedPositions;
+
+  // ── Filtered stats (recomputed for selected asset) ──
+  const filteredStats = (() => {
+    const allPos = [...filteredClosedPositions, ...filteredOpenPositions];
+    if (allPos.length === 0) return null;
 
     let totalPnl = 0;
     let wins = 0;
-    const total = allPositions.length;
 
-    for (const pos of closedPositions) {
+    for (const pos of filteredClosedPositions) {
       const posFees = computePositionFees(pos);
       const hasPosFees = posFees.totalFees > 0.005;
       const pnl = hasPosFees
@@ -193,11 +212,10 @@ export default function TrackRecord() {
           : pctToDollar(pos.closed_pnl_pct ?? 0, pos.original_size_usd ?? pos.size_usd);
       const pct = hasPosFees ? posFees.netPnlPct : (pos.closed_pnl_pct ?? 0);
       totalPnl += pnl;
-      // Breakeven trades count as wins (successful risk management, not a loss)
       if (pct >= 0) wins++;
     }
 
-    for (const pos of positions) {
+    for (const pos of filteredOpenPositions) {
       const posAsset = assetMap[pos.asset_id];
       const livePrice = getLivePrice(posAsset?.coingecko_id);
       const { pnlDollar } = getEffectivePnl(pos, livePrice ?? undefined);
@@ -205,12 +223,12 @@ export default function TrackRecord() {
       if (pnlDollar >= 0) wins++;
     }
 
+    const total = allPos.length;
     return {
       total,
       wins,
       totalPnl,
       winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
-      openCount: positions.length,
     };
   })();
 
@@ -265,17 +283,49 @@ export default function TrackRecord() {
       {/* ══════════════════════════════════════════════════════
           ZONE 1: YOUR TRADES (primary)
           ══════════════════════════════════════════════════════ */}
-      <span
-        className="vela-label-sm vela-text-muted"
+      <div
         style={{
-          textTransform: 'uppercase',
-          display: 'block',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: 'var(--space-3)',
           paddingLeft: 'var(--space-1)',
         }}
       >
-        Your trades
-      </span>
+        <span
+          className="vela-label-sm vela-text-muted"
+          style={{ textTransform: 'uppercase' }}
+        >
+          Your trades
+        </span>
+        {tradedAssets.length > 1 && (
+          <select
+            value={selectedAsset ?? ''}
+            onChange={e => setSelectedAsset(e.target.value || null)}
+            style={{
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              padding: '5px 28px 5px 10px',
+              border: '1.5px solid var(--gray-200)',
+              borderRadius: 'var(--radius-sm)',
+              background: `var(--color-bg-surface) url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center`,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              cursor: 'pointer',
+              lineHeight: 1,
+            }}
+          >
+            <option value="">All assets</option>
+            {tradedAssets.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.symbol}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {!hasUserTrades ? (
         /* Empty state for "Your trades" */
@@ -311,35 +361,74 @@ export default function TrackRecord() {
         )
       ) : (
         <div style={{ marginBottom: 'var(--space-5)' }}>
-          {/* Real position stats — open + closed from positions table */}
-          {realPositionStats && (
-            <Card style={{ marginBottom: 'var(--space-3)' }}>
-              <p
-                style={{
-                  fontFamily: 'var(--type-mono-base-font)',
-                  fontWeight: 700,
-                  fontSize: 'var(--text-xl)',
-                  color: realPositionStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-                  margin: 0,
-                  lineHeight: 1.2,
-                }}
-              >
-                {realPositionStats.totalPnl >= 0 ? '+' : '-'}$
-                {Math.abs(realPositionStats.totalPnl).toLocaleString('en-US', {
-                  maximumFractionDigits: 2,
-                })}{' '}
-                total {realPositionStats.totalPnl >= 0 ? 'profit' : 'loss'}
-              </p>
-              <p
-                className="vela-body-sm"
-                style={{ color: 'var(--gray-600)', margin: 0, marginTop: 'var(--space-1)' }}
-              >
-                {realPositionStats.total} position
-                {realPositionStats.total !== 1 ? 's' : ''} · {realPositionStats.wins} profitable
-                {realPositionStats.total > 0 && ` (${realPositionStats.winRate}%)`}
-                {realPositionStats.openCount > 0 && ` · ${realPositionStats.openCount} open`}
-              </p>
-            </Card>
+          {/* Position stats — 3-cell row, updates when asset filter changes */}
+          {filteredStats && (
+            <div
+              style={{
+                display: 'flex',
+                marginBottom: 'var(--space-3)',
+                borderRadius: 'var(--radius-sm)',
+                overflow: 'hidden',
+              }}
+            >
+              {[
+                {
+                  label: selectedAsset
+                    ? `${assetMap[selectedAsset]?.symbol ?? selectedAsset.toUpperCase()} P&L`
+                    : 'Total P&L',
+                  value: `${filteredStats.totalPnl >= 0 ? '+' : '-'}$${Math.abs(filteredStats.totalPnl).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
+                  color: filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                },
+                {
+                  label: 'Trades',
+                  value: String(filteredStats.total),
+                  color: 'var(--color-text-primary)',
+                },
+                {
+                  label: 'Win rate',
+                  value: `${filteredStats.winRate}%`,
+                  color: 'var(--color-text-primary)',
+                },
+              ].map((stat, i) => (
+                <div
+                  key={stat.label}
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    padding: 'var(--space-3) var(--space-2)',
+                    background: 'var(--color-bg-surface)',
+                    border: '1.5px solid var(--gray-200)',
+                    borderLeft: i > 0 ? 'none' : undefined,
+                    borderRadius:
+                      i === 0
+                        ? 'var(--radius-sm) 0 0 var(--radius-sm)'
+                        : i === 2
+                          ? '0 var(--radius-sm) var(--radius-sm) 0'
+                          : undefined,
+                  }}
+                >
+                  <span
+                    className="vela-label-sm"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.6rem',
+                      color: 'var(--color-text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      marginBottom: 2,
+                    }}
+                  >
+                    {stat.label}
+                  </span>
+                  <span
+                    className="vela-mono"
+                    style={{ fontWeight: 700, fontSize: 'var(--text-base)', color: stat.color }}
+                  >
+                    {stat.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
 
           {/* Pending proposals — actionable trades waiting for approval */}
@@ -398,8 +487,8 @@ export default function TrackRecord() {
             </div>
           )}
 
-          {/* Live positions */}
-          {hasLivePositions && (
+          {/* Live positions (filtered) */}
+          {filteredOpenPositions.length > 0 && (
             <div style={{ marginBottom: 'var(--space-3)' }}>
               <p
                 className="vela-label-sm"
@@ -412,7 +501,7 @@ export default function TrackRecord() {
                 Open positions
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {positions.map(pos => {
+                {filteredOpenPositions.map(pos => {
                   const posAsset = assetMap[pos.asset_id];
                   const posCoingeckoId = posAsset?.coingecko_id;
                   const posLivePrice = posCoingeckoId
@@ -435,8 +524,8 @@ export default function TrackRecord() {
             </div>
           )}
 
-          {/* Closed positions (from positions table — real user trades) */}
-          {closedPositions.length > 0 && (
+          {/* Closed positions (filtered) */}
+          {filteredClosedPositions.length > 0 && (
             <div>
               <p
                 className="vela-label-sm"
@@ -446,10 +535,12 @@ export default function TrackRecord() {
                   paddingLeft: 'var(--space-1)',
                 }}
               >
-                Closed positions
+                {selectedAsset
+                  ? `${assetMap[selectedAsset]?.symbol ?? selectedAsset.toUpperCase()} closed positions`
+                  : 'Closed positions'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                {closedPositions.map(pos => {
+                {filteredClosedPositions.map(pos => {
                   const closedAsset = assetMap[pos.asset_id];
                   return (
                     <ClosedPositionCard
