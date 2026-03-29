@@ -40,7 +40,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
     balance?: number;
     depositDetected?: number | null;
   } | null>(null);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
+  // Error state removed — balance refresh failures are silent (users contact support if needed)
   const address = wallet.master_address;
 
   // ── Copy address ──
@@ -55,7 +55,6 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
   const handleRefreshBalance = useCallback(async () => {
     setRefreshing(true);
     setRefreshResult(null);
-    setRefreshError(null);
 
     try {
       const token = await getToken();
@@ -81,7 +80,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
       onRefresh?.();
     } catch (err) {
       console.error('[DepositSheet] Refresh error:', err);
-      setRefreshError(err instanceof Error ? err.message : 'Failed to refresh balance');
+      // Silent failure — no user-facing error for background balance checks
     } finally {
       setRefreshing(false);
     }
@@ -199,7 +198,6 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
               onCopy={handleCopy}
               refreshing={refreshing}
               refreshResult={refreshResult}
-              refreshError={refreshError}
               onConfirmSent={() => {
                 handleRefreshBalance();
               }}
@@ -252,7 +250,6 @@ function TransferTab({
   copied,
   onCopy,
   refreshResult,
-  refreshError,
   onConfirmSent,
 }: {
   address: string;
@@ -260,7 +257,6 @@ function TransferTab({
   onCopy: () => void;
   refreshing?: boolean;
   refreshResult: { balance?: number; depositDetected?: number | null } | null;
-  refreshError: string | null;
   onConfirmSent: () => void;
 }) {
   const [selectedNetwork, setSelectedNetwork] = useState<'arbitrum' | 'hyperliquid' | null>(null);
@@ -488,21 +484,7 @@ function TransferTab({
           </p>
         )}
 
-        {/* Error feedback */}
-        {refreshError && (
-          <p
-            className="vela-body-sm"
-            style={{
-              textAlign: 'center',
-              marginTop: 'var(--space-2)',
-              marginBottom: 0,
-              fontSize: '0.75rem',
-              color: 'var(--red-primary)',
-            }}
-          >
-            {refreshError}
-          </p>
-        )}
+        {/* Balance refresh errors are silent — no user-facing display */}
       </div>
     </>
   );
