@@ -154,6 +154,19 @@ const jargonMap: [RegExp, string][] = [
   [/\bcrossover\b/gi, 'cross above'],
   [/\bcrossunder\b/gi, 'cross below'],
 
+  // Strip raw numeric thresholds that only make sense with indicator context
+  [/\bpushing\s+above\s+\d+\b/gi, 'turning positive'],
+  [/\bpushing\s+below\s+\d+\b/gi, 'turning negative'],
+  [/\babove\s+\d+\s+and\b/gi, 'positive and'],
+  [/\bbelow\s+\d+\s+and\b/gi, 'negative and'],
+  [/\bclimb(?:s|ing)?\s+(?:back\s+)?above\s+\d+\b/gi, 'recovers'],
+  [/\bdrop(?:s|ping)?\s+below\s+\d+\b/gi, 'weakens'],
+  [/\binto\s+the\s+\d+[-–]\d+\s+range\b/gi, 'into a healthier range'],
+  [/\bmoving\s+into\s+the\s+\d+[-–]\d+\b/gi, 'moving into positive territory'],
+  // Simplify "50-day average" to plain language
+  [/\b50-day\s+average\b/gi, 'longer-term trend line'],
+  [/\b50-day\s+moving\s+average\b/gi, 'longer-term trend line'],
+
   // Contextual phrases (before generic catch-alls to avoid partial matches)
   [/\boversold\s+levels?\b/gi, 'low buying activity'],
   [/\boverbought\s+levels?\b/gi, 'high buying activity'],
