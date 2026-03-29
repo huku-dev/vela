@@ -59,29 +59,29 @@ const MODE_OPTIONS: {
   mode: TradingMode;
   label: string;
   description: string;
-  tier: string;
+  price: string;
   recommended?: boolean;
 }[] = [
   {
     mode: 'view_only',
     label: 'View only',
     description: 'See signals and analysis. Includes 1 free trade to try it out.',
-    tier: 'Free · included with your account',
+    price: 'Free',
   },
   {
     mode: 'semi_auto',
     label: 'Semi-auto',
     description:
-      'Vela proposes trades, you approve each one before it executes. A good balance of control and convenience.',
-    tier: 'Standard plan required · $10/mo',
+      'Vela proposes trades based on signals. You approve each one before it executes. A good balance of control and convenience.',
+    price: '$10/mo',
     recommended: true,
   },
   {
     mode: 'full_auto',
     label: 'Full auto',
     description:
-      'Vela executes trades the moment it spots an opportunity. Best way to capture optimal prices.',
-    tier: 'Premium plan required · $20/mo',
+      'Vela executes trades automatically the moment it spots an opportunity. Best way to capture optimal prices.',
+    price: '$20/mo',
   },
 ];
 
@@ -851,6 +851,7 @@ function WelcomeSplash({
 
 function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => void }) {
   const [selectedMode, setSelectedMode] = useState<TradingMode>('semi_auto');
+  const selectedOption = MODE_OPTIONS.find(o => o.mode === selectedMode);
 
   return (
     <div
@@ -869,14 +870,13 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
 
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
         <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
-          How do you want to trade?
+          How should Vela trade for you?
         </h2>
         <p className="vela-body-sm vela-text-secondary" style={{ marginBottom: 'var(--space-5)' }}>
-          Vela watches the markets 24/7 and flags the best moments to buy or sell. Choose how you
-          want to act on signals:
+          You can change this anytime.
         </p>
 
-        {/* Mode options */}
+        {/* Ultra-compact mode options: label + price on one line */}
         <div
           style={{
             display: 'flex',
@@ -884,7 +884,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
             gap: 'var(--space-2)',
           }}
         >
-          {MODE_OPTIONS.map(({ mode, label, description, tier, recommended }) => {
+          {MODE_OPTIONS.map(({ mode, label, price, recommended }) => {
             const isSelected = selectedMode === mode;
             return (
               <button
@@ -892,9 +892,9 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                 onClick={() => setSelectedMode(mode)}
                 style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  alignItems: 'center',
                   gap: 'var(--space-3)',
-                  padding: 'var(--space-3)',
+                  padding: 'var(--space-4)',
                   backgroundColor: isSelected ? 'var(--gray-100)' : 'transparent',
                   border: isSelected ? '2px solid var(--black)' : '1px solid var(--gray-200)',
                   borderRadius: 'var(--radius-sm)',
@@ -902,80 +902,89 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                   textAlign: 'left',
                   fontFamily: 'Inter, system-ui, sans-serif',
                   width: '100%',
-                  boxShadow: isSelected ? '3px 3px 0 var(--black)' : 'none',
-                  transition: 'all 150ms ease-out',
+                  boxShadow: isSelected ? '2px 2px 0 var(--black)' : 'none',
+                  transition: 'all 120ms ease-out',
                 }}
               >
                 {/* Radio circle */}
                 <div
                   style={{
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     borderRadius: '50%',
                     border: `2px solid ${isSelected ? 'var(--black)' : 'var(--gray-300)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    marginTop: 1,
                   }}
                 >
                   {isSelected && (
                     <div
                       style={{
-                        width: 10,
-                        height: 10,
+                        width: 8,
+                        height: 8,
                         borderRadius: '50%',
                         backgroundColor: 'var(--black)',
                       }}
                     />
                   )}
                 </div>
-                <div>
-                  <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+                <div style={{ flex: 1 }}>
+                  <span className="vela-body-sm" style={{ fontWeight: 600 }}>
                     {label}
-                    {recommended && (
-                      <span
-                        style={{
-                          marginLeft: 'var(--space-2)',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: 'var(--green-dark)',
-                          backgroundColor: 'var(--color-status-buy-bg)',
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        Recommended
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    className="vela-text-muted"
-                    style={{ margin: 0, marginTop: 2, fontSize: 13, lineHeight: 1.4 }}
-                  >
-                    {description}
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      marginTop: 'var(--space-2)',
-                      fontWeight: 600,
-                      fontSize: 11,
-                      color: 'var(--color-text-muted)',
-                      letterSpacing: '0.02em',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {tier}
-                  </p>
+                  </span>
+                  {recommended && (
+                    <span
+                      style={{
+                        marginLeft: 'var(--space-2)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: 'var(--green-dark)',
+                        backgroundColor: 'var(--color-status-buy-bg)',
+                        padding: '2px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                      }}
+                    >
+                      Recommended
+                    </span>
+                  )}
                 </div>
+                <span
+                  className="vela-body-sm"
+                  style={{ fontWeight: 600, flexShrink: 0 }}
+                >
+                  {price}
+                </span>
               </button>
             );
           })}
         </div>
+
+        {/* Detail panel for selected mode */}
+        {selectedOption && (
+          <div
+            style={{
+              marginTop: 'var(--space-4)',
+              padding: 'var(--space-4)',
+              backgroundColor: 'var(--gray-50)',
+              border: '1px solid var(--gray-200)',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0, marginBottom: 4 }}>
+              {selectedOption.label}
+            </p>
+            <p
+              className="vela-body-sm vela-text-muted"
+              style={{ margin: 0, lineHeight: 1.5 }}
+            >
+              {selectedOption.description}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Bottom CTA area */}
@@ -985,19 +994,8 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
           onClick={() => onContinue(selectedMode)}
           style={{ width: '100%' }}
         >
-          {selectedMode === 'view_only' ? 'Continue' : 'Select plan'}
+          {selectedMode === 'view_only' ? 'Continue' : 'Continue'}
         </button>
-        <p
-          style={{
-            margin: 0,
-            marginTop: 'var(--space-3)',
-            textAlign: 'center',
-            fontSize: 12,
-            color: 'var(--gray-400)',
-          }}
-        >
-          You can change this anytime in your account settings.
-        </p>
       </div>
     </div>
   );
