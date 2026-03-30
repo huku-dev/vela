@@ -952,10 +952,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
                     </span>
                   )}
                 </div>
-                <span
-                  className="vela-body-sm"
-                  style={{ fontWeight: 600, flexShrink: 0 }}
-                >
+                <span className="vela-body-sm" style={{ fontWeight: 600, flexShrink: 0 }}>
                   {price}
                 </span>
               </button>
@@ -977,10 +974,7 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
             <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0, marginBottom: 4 }}>
               {selectedOption.label}
             </p>
-            <p
-              className="vela-body-sm vela-text-muted"
-              style={{ margin: 0, lineHeight: 1.5 }}
-            >
+            <p className="vela-body-sm vela-text-muted" style={{ margin: 0, lineHeight: 1.5 }}>
               {selectedOption.description}
             </p>
           </div>
@@ -1181,7 +1175,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthContext();
   const { updatePreferences, enableTrading } = useTrading();
-  const { isOnboarded, completeOnboarding, resetOnboarding } = useOnboarding();
+  const { isOnboarded, isChecking, completeOnboarding, resetOnboarding } = useOnboarding();
   const { startCheckout } = useSubscription();
 
   // Track whether we're in the middle of a Stripe checkout redirect.
@@ -1203,12 +1197,16 @@ export default function Onboarding() {
   const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // When user authenticates (after Privy login), advance to next step
+  // When user authenticates (after Privy login), advance to next step —
+  // but only after the onboarding check completes. A returning user who is
+  // authenticated AND already onboarded will be redirected to '/' by the
+  // isOnboarded effect above, so we must not race past splash before that
+  // redirect can fire.
   useEffect(() => {
-    if (isAuthenticated && step === 'splash') {
+    if (isAuthenticated && !isChecking && !isOnboarded && step === 'splash') {
       setStep('trading_mode');
     }
-  }, [isAuthenticated, step]);
+  }, [isAuthenticated, isChecking, isOnboarded, step]);
 
   const handleGetStarted = () => {
     if (isAuthenticated) {

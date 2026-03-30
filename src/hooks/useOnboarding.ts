@@ -23,6 +23,12 @@ export function useOnboarding() {
       return;
     }
 
+    // Re-enter checking state when auth arrives but onboarding status unknown.
+    // Without this, a returning user in a fresh browser (no localStorage) would
+    // briefly appear non-onboarded because isChecking was cleared before the
+    // Supabase profile query could run.
+    setIsChecking(true);
+
     let cancelled = false;
 
     async function checkProfile() {
