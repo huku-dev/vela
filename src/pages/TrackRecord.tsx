@@ -362,14 +362,16 @@ export default function TrackRecord() {
         <div style={{ marginBottom: 'var(--space-5)' }}>
           {/* Position stats — 3-cell row, updates when asset filter changes */}
           {filteredStats && (
-            <Card compact style={{ marginBottom: 'var(--space-3)', padding: 0, overflow: 'hidden' }}>
+            <Card
+              compact
+              style={{ marginBottom: 'var(--space-3)', padding: 0, overflow: 'hidden' }}
+            >
               <div style={{ display: 'flex' }}>
                 {[
                   {
                     label: 'Total P&L',
                     value: `${filteredStats.totalPnl >= 0 ? '+' : '-'}$${Math.abs(filteredStats.totalPnl).toLocaleString('en-US', { maximumFractionDigits: 2 })}`,
-                    color:
-                      filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+                    color: filteredStats.totalPnl >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                     mono: true,
                   },
                   {

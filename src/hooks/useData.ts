@@ -59,9 +59,7 @@ async function fetchHyperliquidMids(): Promise<Record<string, number>> {
  * Compares the first candle open (24h ago) to the latest candle close.
  * Returns symbol → change% (e.g. { BTC: 2.3, ETH: -1.1 }).
  */
-async function fetchHyperliquid24hChanges(
-  symbols: string[]
-): Promise<Record<string, number>> {
+async function fetchHyperliquid24hChanges(symbols: string[]): Promise<Record<string, number>> {
   const now = Date.now();
   const oneDayAgo = now - 24 * 60 * 60 * 1000;
 

@@ -963,10 +963,7 @@ export default function AssetDetail() {
 
       {/* Tier 3: What's moving — only shown when there are actual news events */}
       {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
-        <WhatsMovingSection
-          events={detail.events_moving_markets}
-          assetName={asset.name}
-        />
+        <WhatsMovingSection events={detail.events_moving_markets} assetName={asset.name} />
       )}
 
       {/* Tier 4: Market mood — simplified inline Fear & Greed */}
@@ -1550,8 +1547,7 @@ function WherePriceStands({
   }, [symbol, price]);
 
   // Build "what would change" with bidirectional framing
-  const wwcText: string =
-    detail?.what_would_change || buildWhatWouldChange(indicators, price);
+  const wwcText: string = detail?.what_would_change || buildWhatWouldChange(indicators, price);
 
   return (
     <Card style={{ marginBottom: 'var(--space-4)' }}>
@@ -1685,11 +1681,7 @@ function WherePriceStands({
         >
           {parsePriceSegments(plainEnglish(wwcText)).map((seg, i) =>
             seg.type === 'price' ? (
-              <strong
-                key={i}
-                className="vela-mono"
-                style={{ fontWeight: 600 }}
-              >
+              <strong key={i} className="vela-mono" style={{ fontWeight: 600 }}>
                 {seg.value}
               </strong>
             ) : (
@@ -1812,9 +1804,7 @@ function WhatsMovingSection({
   const [showAll, setShowAll] = useState(false);
 
   // External news events only — filter out Vela's own analysis (redundant with signal card)
-  const externalEvents = events.filter(
-    e => !e.source?.toLowerCase().includes('vela')
-  );
+  const externalEvents = events.filter(e => !e.source?.toLowerCase().includes('vela'));
   const allItems = externalEvents.map(event => ({
     type: 'event' as const,
     title: event.title,
