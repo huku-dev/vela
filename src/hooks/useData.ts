@@ -16,6 +16,11 @@ const HYPERLIQUID_INFO = 'https://api.hyperliquid.xyz/info';
 const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
 const STALE_THRESHOLD = 60 * 1000; // 1 minute — skip refetch if data is younger
 
+// Price source toggle: "hyperliquid" (default) or "coingecko".
+// Flip via env var in Vercel to switch primary without a code deploy.
+const PRICE_PRIMARY: 'hyperliquid' | 'coingecko' =
+  import.meta.env.VITE_PRICE_PRIMARY === 'coingecko' ? 'coingecko' : 'hyperliquid';
+
 export const DEFAULT_POSITION_SIZE = 1000;
 
 // ── Module-level cache so data persists across navigations ──
@@ -50,6 +55,48 @@ async function fetchHyperliquidMids(): Promise<Record<string, number>> {
 }
 
 /**
+ * Compute 24h price change from Hyperliquid 1-hour candles.
+ * Compares the first candle open (24h ago) to the latest candle close.
+ * Returns symbol → change% (e.g. { BTC: 2.3, ETH: -1.1 }).
+ */
+async function fetchHyperliquid24hChanges(
+  symbols: string[]
+): Promise<Record<string, number>> {
+  const now = Date.now();
+  const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+  const results = await Promise.all(
+    symbols.map(async (symbol): Promise<[string, number | null]> => {
+      try {
+        const res = await fetch(HYPERLIQUID_INFO, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'candleSnapshot',
+            req: { coin: symbol, interval: '1h', startTime: oneDayAgo, endTime: now },
+          }),
+        });
+        if (!res.ok) return [symbol, null];
+        const candles = await res.json();
+        if (!Array.isArray(candles) || candles.length < 2) return [symbol, null];
+        const openPrice = parseFloat(candles[0].o);
+        const closePrice = parseFloat(candles[candles.length - 1].c);
+        if (openPrice <= 0) return [symbol, null];
+        return [symbol, ((closePrice - openPrice) / openPrice) * 100];
+      } catch {
+        return [symbol, null];
+      }
+    })
+  );
+
+  const out: Record<string, number> = {};
+  for (const [sym, change] of results) {
+    if (change !== null) out[sym] = change;
+  }
+  return out;
+}
+
+/**
  * Fetch prices + 24h change from CoinGecko (fallback for prices, primary for 24h change).
  */
 async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, PriceData>> {
@@ -78,47 +125,81 @@ async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, Price
 }
 
 /**
- * Dual-source price fetching: Hyperliquid primary, CoinGecko fallback.
+ * Dual-source price fetching with configurable primary (VITE_PRICE_PRIMARY).
+ *
+ * Default: Hyperliquid primary (prices + 24h change from candles), CoinGecko fallback.
+ * Toggle to "coingecko" to reverse the priority if HL is degraded.
  *
  * @param ids       - CoinGecko asset IDs (e.g. ["bitcoin", "ethereum"])
  * @param symbolMap - Optional mapping of CoinGecko ID → Hyperliquid symbol (e.g. { bitcoin: "BTC" })
- *
- * Priority:
- * 1. Hyperliquid mid-price (most accurate for trading)
- * 2. CoinGecko price (fallback)
- * 3. Both fail → empty result (caller uses signal.price_at_signal)
- *
- * 24h change always comes from CoinGecko (Hyperliquid allMids doesn't include it).
  */
 async function fetchLivePrices(
   ids: string[],
   symbolMap?: Record<string, string>
 ): Promise<Record<string, PriceData>> {
-  // Fetch both sources in parallel
-  const [hlMids, cgPrices] = await Promise.all([
-    symbolMap ? fetchHyperliquidMids() : Promise.resolve({} as Record<string, number>),
-    fetchCoinGeckoPrices(ids),
-  ]);
-
   const result: Record<string, PriceData> = {};
+  const hlSymbols = symbolMap ? ids.map(id => symbolMap[id]).filter(Boolean) : [];
 
-  for (const id of ids) {
-    const hlSymbol = symbolMap?.[id];
-    const hlPrice = hlSymbol ? hlMids[hlSymbol] : undefined;
-    const cgData = cgPrices[id];
+  if (PRICE_PRIMARY === 'hyperliquid' && hlSymbols.length > 0) {
+    // ── Hyperliquid primary: fetch prices + 24h change from HL ──
+    const [hlMids, hlChanges] = await Promise.all([
+      fetchHyperliquidMids(),
+      fetchHyperliquid24hChanges(hlSymbols),
+    ]);
 
-    if (hlPrice !== undefined) {
-      // Hyperliquid primary price + CoinGecko 24h change (fall back to cached value)
-      result[id] = {
-        price: hlPrice,
-        change24h: cgData?.change24h ?? lastKnownChange24h[id] ?? 0,
-        priceSource: 'hyperliquid',
-      };
-    } else if (cgData) {
-      // CoinGecko fallback
-      result[id] = cgData;
+    // Track which CG IDs still need data (HL miss)
+    const missingIds: string[] = [];
+
+    for (const id of ids) {
+      const hlSymbol = symbolMap?.[id];
+      const hlPrice = hlSymbol ? hlMids[hlSymbol] : undefined;
+      const hlChange = hlSymbol ? hlChanges[hlSymbol] : undefined;
+
+      if (hlPrice !== undefined) {
+        const change24h = hlChange ?? lastKnownChange24h[id] ?? 0;
+        result[id] = { price: hlPrice, change24h, priceSource: 'hyperliquid' };
+        // Cache HL-derived 24h change so it persists across transient failures
+        if (hlChange !== undefined) lastKnownChange24h[id] = hlChange;
+      } else {
+        missingIds.push(id);
+      }
     }
-    // If both fail: no entry → caller should use signal price + show stale warning
+
+    // Fallback to CoinGecko only for assets HL couldn't provide
+    if (missingIds.length > 0) {
+      const cgPrices = await fetchCoinGeckoPrices(missingIds);
+      for (const id of missingIds) {
+        if (cgPrices[id]) result[id] = cgPrices[id];
+      }
+    }
+  } else {
+    // ── CoinGecko primary (toggle or no symbolMap) ──
+    const [cgPrices, hlMids] = await Promise.all([
+      fetchCoinGeckoPrices(ids),
+      symbolMap ? fetchHyperliquidMids() : Promise.resolve({} as Record<string, number>),
+    ]);
+
+    for (const id of ids) {
+      const cgData = cgPrices[id];
+      const hlSymbol = symbolMap?.[id];
+      const hlPrice = hlSymbol ? hlMids[hlSymbol] : undefined;
+
+      if (cgData) {
+        // CG price but prefer HL mid-price if available (more accurate for trading)
+        result[id] = {
+          price: hlPrice ?? cgData.price,
+          change24h: cgData.change24h,
+          priceSource: hlPrice !== undefined ? 'hyperliquid' : 'coingecko',
+        };
+      } else if (hlPrice !== undefined) {
+        // CG failed entirely, HL fallback
+        result[id] = {
+          price: hlPrice,
+          change24h: lastKnownChange24h[id] ?? 0,
+          priceSource: 'hyperliquid',
+        };
+      }
+    }
   }
 
   return result;
