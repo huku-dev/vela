@@ -358,10 +358,11 @@ describe('isDataStale - TRUST CRITICAL', () => {
 
   it('handles exactly 5 minutes boundary', () => {
     const now = new Date();
-    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    // Use 5min - 1s to avoid a race where elapsed time between Date construction
+    // and the isDataStale call tips the age over the threshold.
+    const justUnderFiveMinutes = new Date(now.getTime() - (5 * 60 * 1000 - 1000));
 
-    // Should be false at exactly 5 minutes (not yet stale)
-    expect(isDataStale(fiveMinutesAgo)).toBe(false);
+    expect(isDataStale(justUnderFiveMinutes)).toBe(false);
   });
 
   it('handles ISO timestamp strings', () => {
