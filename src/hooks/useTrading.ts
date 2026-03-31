@@ -279,8 +279,7 @@ export function useTrading(): TradingState {
             .from('positions')
             .select('*')
             .eq('status', 'closed')
-            .order('closed_at', { ascending: false })
-            .limit(20),
+            .order('closed_at', { ascending: false }),
           supabaseClient.from('user_preferences').select('*').single(),
           supabaseClient
             .from('user_wallets')
