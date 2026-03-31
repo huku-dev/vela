@@ -7,6 +7,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { track, AnalyticsEvent } from '../lib/analytics';
 import VelaLogo from '../components/VelaLogo';
 import type { TradingMode } from '../types';
+import { TIER_DEFINITIONS } from '../lib/tier-definitions';
 
 // ── Splash panel data ──────────────────────────────────────
 
@@ -995,25 +996,48 @@ function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => v
   );
 }
 
-function WalletSetup({
-  onComplete,
+// WalletSetup removed — wallet is provisioned in handleModeSelected,
+// users go to plan selection then Stripe instead of seeing a wallet screen.
+
+// ── Plan selection (step 4 — after mode selection, before Stripe) ──
+
+function OnboardingPlanSelection({
+  recommendedTier,
+  onCheckout,
+  onSkipToFree,
   checkoutError,
 }: {
-  onComplete: () => void;
+  recommendedTier: 'standard' | 'premium';
+  onCheckout: (tier: 'standard' | 'premium', billingCycle: 'monthly' | 'annual') => Promise<void>;
+  onSkipToFree: () => void;
   checkoutError?: string | null;
 }) {
-  const walletEnv = import.meta.env.VITE_WALLET_ENVIRONMENT;
-  if (!walletEnv) {
-    console.error('[WalletSetup] VITE_WALLET_ENVIRONMENT is not set');
-  }
-  const isTestnet = walletEnv === 'testnet';
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const [checkingOut, setCheckingOut] = useState(false);
 
-  const handleFundNow = () => {
-    if (isTestnet) {
-      window.open('https://app.hyperliquid-testnet.xyz/drip', '_blank');
+  const handleCheckout = async (tier: 'standard' | 'premium') => {
+    setCheckingOut(true);
+    try {
+      await onCheckout(tier, billingCycle);
+    } finally {
+      setCheckingOut(false);
     }
-    // On mainnet, user deposits via Account page — just advance onboarding
-    onComplete();
+  };
+
+  const tiers = TIER_DEFINITIONS.filter(t => t.tier !== 'free');
+
+  const getPrice = (tier: typeof tiers[number]): string => {
+    if (billingCycle === 'annual') {
+      return `$${Math.ceil(tier.annual_price_usd / 12)}`;
+    }
+    return `$${tier.monthly_price_usd}`;
+  };
+
+  const getBillingNote = (tier: typeof tiers[number]): string => {
+    if (billingCycle === 'annual') {
+      return `$${tier.annual_price_usd}/yr (save 17%)`;
+    }
+    return '/mo';
   };
 
   return (
@@ -1023,144 +1047,204 @@ function WalletSetup({
         flexDirection: 'column',
         minHeight: '100dvh',
         backgroundColor: 'var(--color-bg-page)',
-        padding: 'var(--space-6) var(--space-4) var(--space-8)',
+        padding: 'var(--space-6) var(--space-4) var(--space-6)',
       }}
     >
-      {/* Header */}
-      <div style={{ marginBottom: 'var(--space-8)' }}>
+      <div style={{ marginBottom: 'var(--space-6)' }}>
         <VelaLogo size={40} />
       </div>
 
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
-        <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
-          Your trading wallet is ready
+        <h2
+          className="vela-heading-lg"
+          style={{ marginBottom: 'var(--space-2)', fontSize: '1.4rem' }}
+        >
+          Choose your plan
         </h2>
         <p
-          className="vela-body-base vela-text-secondary"
-          style={{ marginBottom: 'var(--space-6)' }}
+          className="vela-body-sm vela-text-secondary"
+          style={{ marginBottom: 'var(--space-5)' }}
         >
-          When Vela spots a trade opportunity, funds are drawn from this wallet to invest in
-          signalled assets. You can add funds now or do it later from your account settings.
+          Cancel anytime from your account settings.
         </p>
 
-        {/* Simple wallet visual */}
+        {/* Billing cycle toggle */}
         <div
-          className="vela-card"
           style={{
-            padding: 'var(--space-5)',
-            marginBottom: 'var(--space-6)',
-            textAlign: 'center',
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: 'var(--space-5)',
           }}
         >
-          <svg
-            width="40"
-            height="40"
-            viewBox="0 0 40 40"
-            fill="none"
-            style={{ margin: '0 auto var(--space-3)', display: 'block' }}
-          >
-            <rect
-              x="4"
-              y="12"
-              width="32"
-              height="22"
-              rx="4"
-              stroke="var(--black)"
-              strokeWidth="2.5"
-              fill="var(--gray-50)"
-            />
-            <circle
-              cx="28"
-              cy="23"
-              r="3"
-              fill="var(--green-primary)"
-              stroke="var(--black)"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M8 12V8a4 4 0 014-4h16a4 4 0 014 4v4"
-              stroke="var(--black)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          <p className="vela-body-base" style={{ fontWeight: 600, margin: 0 }}>
-            Wallet created
-          </p>
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{ margin: 0, marginTop: 'var(--space-1)' }}
-          >
-            Secured by Vela. Ready to fund when you are.
-          </p>
+          {(['monthly', 'annual'] as const).map(cycle => (
+            <button
+              key={cycle}
+              onClick={() => setBillingCycle(cycle)}
+              style={{
+                padding: 'var(--space-2) var(--space-4)',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: 'Inter, system-ui, sans-serif',
+                border: '1.5px solid var(--gray-200)',
+                borderLeft: cycle === 'annual' ? 'none' : undefined,
+                borderRadius:
+                  cycle === 'monthly'
+                    ? 'var(--radius-sm) 0 0 var(--radius-sm)'
+                    : '0 var(--radius-sm) var(--radius-sm) 0',
+                background: billingCycle === cycle ? 'var(--black)' : 'var(--color-bg-surface)',
+                color: billingCycle === cycle ? '#fff' : 'var(--color-text-muted)',
+                cursor: 'pointer',
+                transition: 'all 100ms',
+              }}
+            >
+              {cycle === 'monthly' ? 'Monthly' : 'Annual (save 17%)'}
+            </button>
+          ))}
+        </div>
 
-          {/* Balance display */}
+        {/* Plan cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {tiers.map(tier => {
+            const isRecommended = tier.tier === recommendedTier;
+            return (
+              <div
+                key={tier.tier}
+                style={{
+                  border: isRecommended
+                    ? '2px solid var(--black)'
+                    : '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: 'var(--space-4)',
+                  boxShadow: isRecommended ? '3px 3px 0 var(--black)' : 'none',
+                  background: 'var(--color-bg-surface)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 'var(--space-1)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 16 }}>
+                    {tier.display_name}
+                    {isRecommended && (
+                      <span
+                        style={{
+                          marginLeft: 'var(--space-2)',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: 'var(--green-dark)',
+                          backgroundColor: 'var(--color-status-buy-bg)',
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Selected
+                      </span>
+                    )}
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: 'var(--space-2)' }}>
+                  <span
+                    style={{
+                      fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif",
+                      fontWeight: 700,
+                      fontSize: 24,
+                    }}
+                  >
+                    {getPrice(tier)}
+                  </span>
+                  <span
+                    style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 2 }}
+                  >
+                    {billingCycle === 'annual' ? '/mo' : '/mo'}
+                  </span>
+                </div>
+
+                {billingCycle === 'annual' && (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--color-text-muted)',
+                      marginBottom: 'var(--space-2)',
+                    }}
+                  >
+                    {getBillingNote(tier)}
+                  </p>
+                )}
+
+                <p
+                  className="vela-body-sm"
+                  style={{
+                    color: 'var(--color-text-secondary)',
+                    lineHeight: 1.4,
+                    marginBottom: 'var(--space-3)',
+                    fontSize: 12,
+                  }}
+                >
+                  {tier.max_assets === 0 ? 'Unlimited' : tier.max_assets} asset
+                  {tier.max_assets !== 1 ? 's' : ''}
+                  {' · '}
+                  {tier.tier === 'premium' ? 'Full auto' : 'Semi-auto'}
+                  {' · '}
+                  {tier.max_leverage}x leverage
+                  {' · '}
+                  {tier.trade_fee_pct === 0
+                    ? 'No trade fee'
+                    : `${tier.trade_fee_pct}% trade fee`}
+                </p>
+
+                <button
+                  onClick={() => handleCheckout(tier.tier as 'standard' | 'premium')}
+                  disabled={checkingOut}
+                  className={`vela-btn ${isRecommended ? 'vela-btn-primary' : 'vela-btn-outline'}`}
+                  style={{
+                    width: '100%',
+                    fontSize: 13,
+                    padding: 'var(--space-2) var(--space-4)',
+                    cursor: checkingOut ? 'wait' : 'pointer',
+                  }}
+                >
+                  {checkingOut ? 'Redirecting...' : `Subscribe to ${tier.display_name}`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Checkout error */}
+        {checkoutError && (
           <div
             style={{
-              marginTop: 'var(--space-4)',
-              paddingTop: 'var(--space-4)',
-              borderTop: '1px solid var(--gray-200)',
+              marginTop: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              backgroundColor: 'var(--red-light, #FFF0F0)',
+              border: '2px solid var(--red-primary)',
+              borderRadius: 'var(--radius-sm)',
             }}
           >
-            <p
-              style={{
-                margin: 0,
-                fontSize: 11,
-                fontWeight: 500,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--color-text-muted)',
-                marginBottom: 'var(--space-1)',
-              }}
-            >
-              Balance
-            </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 28,
-                fontWeight: 700,
-                fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif",
-                color: 'var(--color-text-muted)',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              $0.00
+            <p className="vela-body-sm" style={{ margin: 0, color: 'var(--red-primary)' }}>
+              {checkoutError}
             </p>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Checkout error feedback */}
-      {checkoutError && (
-        <div
-          style={{
-            maxWidth: 440,
-            margin: '0 auto var(--space-3)',
-            width: '100%',
-            padding: 'var(--space-3)',
-            backgroundColor: 'var(--red-light, #FFF0F0)',
-            border: '2px solid var(--red-primary)',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        >
-          <p className="vela-body-sm" style={{ margin: 0, color: 'var(--red-primary)' }}>
-            {checkoutError}
-          </p>
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%' }}>
+      {/* Skip to free */}
+      <div
+        style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-3)' }}
+      >
         <button
-          className="vela-btn vela-btn-primary"
-          onClick={handleFundNow}
-          style={{ width: '100%', marginBottom: 'var(--space-3)' }}
+          onClick={onSkipToFree}
+          className="vela-btn vela-btn-ghost"
+          style={{ width: '100%', fontSize: 13 }}
         >
-          {isTestnet ? 'Get test USDC' : 'Fund wallet'}
-        </button>
-        <button className="vela-btn vela-btn-ghost" onClick={onComplete} style={{ width: '100%' }}>
-          Skip for now
+          Continue on free plan
         </button>
       </div>
     </div>
@@ -1169,7 +1253,7 @@ function WalletSetup({
 
 // ── Main onboarding orchestrator ───────────────────────────
 
-type OnboardingStep = 'splash' | 'trading_mode' | 'wallet';
+type OnboardingStep = 'splash' | 'trading_mode' | 'plan';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -1219,9 +1303,10 @@ export default function Onboarding() {
 
   const handleModeSelected = async (mode: TradingMode) => {
     track(AnalyticsEvent.TRADING_MODE_SELECTED, { mode });
+
+    // Always provision wallet + save preferences (regardless of tier).
+    // enableTrading calls updatePreferences + provision-wallet.
     try {
-      // For trading modes, provision the wallet so the "Wallet created"
-      // screen is truthful. enableTrading saves mode + calls provision-wallet.
       if (mode !== 'view_only') {
         await enableTrading(mode);
       } else {
@@ -1233,48 +1318,52 @@ export default function Onboarding() {
       console.warn('[Onboarding] Failed to save trading mode / provision wallet');
     }
 
-    // Track if user selected a paid mode so we can trigger checkout after onboarding
     if (mode === 'semi_auto') {
       setPendingCheckout('standard');
+      setStep('plan');
     } else if (mode === 'full_auto') {
       setPendingCheckout('premium');
+      setStep('plan');
     } else {
-      setPendingCheckout(null);
-    }
-
-    setCheckoutError(null);
-    setStep('wallet');
-  };
-
-  const handleComplete = async () => {
-    if (pendingCheckout) {
-      // User selected a paid mode — redirect to Stripe checkout.
-      // We must mark as onboarded BEFORE the Stripe redirect so the user
-      // can return to /account after checkout (OnboardingGate would block
-      // them otherwise). If checkout fails, we roll back with resetOnboarding().
-      checkoutInProgressRef.current = true;
-      setCheckoutError(null);
-
-      await completeOnboarding();
-
-      try {
-        await startCheckout(pendingCheckout, 'monthly');
-        // startCheckout sets window.location.href → hard redirect to Stripe
-      } catch (err) {
-        // Checkout failed — roll back onboarding so the user stays in the
-        // flow instead of landing on the dashboard in a limbo state.
-        resetOnboarding();
-        checkoutInProgressRef.current = false;
-        const msg = err instanceof Error ? err.message : 'Checkout failed';
-        console.error('[Onboarding] Checkout redirect failed:', msg);
-        setCheckoutError(
-          `Couldn\u2019t start checkout: ${msg}. You can try again or skip for now.`
-        );
-      }
-    } else {
+      // Free mode — skip plan selection, go straight to dashboard
       await completeOnboarding();
       navigate('/', { replace: true });
     }
+  };
+
+  const handlePlanCheckout = async (
+    tier: 'standard' | 'premium',
+    billingCycle: 'monthly' | 'annual'
+  ) => {
+    // Mark as onboarded BEFORE the Stripe redirect so the user
+    // can return to /account after checkout (OnboardingGate would block
+    // them otherwise). If checkout fails, we roll back.
+    checkoutInProgressRef.current = true;
+    setCheckoutError(null);
+
+    await completeOnboarding();
+
+    try {
+      await startCheckout(tier, billingCycle);
+      // startCheckout sets window.location.href → hard redirect to Stripe
+    } catch (err) {
+      // Checkout failed — roll back onboarding so the user stays in the
+      // flow instead of landing on the dashboard in a limbo state.
+      resetOnboarding();
+      checkoutInProgressRef.current = false;
+      const msg = err instanceof Error ? err.message : 'Checkout failed';
+      console.error('[Onboarding] Checkout redirect failed:', msg);
+      setCheckoutError(
+        `Couldn\u2019t start checkout: ${msg}. You can try again or continue on the free plan.`
+      );
+    }
+  };
+
+  const handleSkipToFree = async () => {
+    // User decided to skip paid plan — continue on free tier
+    setPendingCheckout(null);
+    await completeOnboarding();
+    navigate('/', { replace: true });
   };
 
   if (step === 'splash') {
@@ -1285,5 +1374,12 @@ export default function Onboarding() {
     return <TradingModeSetup onContinue={handleModeSelected} />;
   }
 
-  return <WalletSetup onComplete={handleComplete} checkoutError={checkoutError} />;
+  return (
+    <OnboardingPlanSelection
+      recommendedTier={pendingCheckout ?? 'standard'}
+      onCheckout={handlePlanCheckout}
+      onSkipToFree={handleSkipToFree}
+      checkoutError={checkoutError}
+    />
+  );
 }
