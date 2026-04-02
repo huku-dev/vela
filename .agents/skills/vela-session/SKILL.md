@@ -113,7 +113,33 @@ Use Notion MCP to update the Vela project workspace:
 - **Tasks database** (`3088414f7d9b811ebd25ffb6df813c5e`): Update task statuses (mark completed, add new follow-up tasks)
 - **Changelog database** (`3088414f7d9b8152a806d1109be2af30`): Add session summary entry
 
-### Step 6: Remind User
+### Step 6: Draft Release Notes (if user-facing work shipped)
+If the session included user-facing changes (new features, UX improvements, new pages), draft release notes for the public changelog at `getvela.xyz/changelog`.
+
+**Voice guidelines (study Slack's release notes for tone):**
+- Warm, conversational, occasionally witty. Never corporate.
+- Explain what changed and why a user should care, in 1-2 sentences.
+- Self-aware humor is good. "Because DND means DND" energy.
+- No em dashes. No jargon. No "we're excited to announce."
+
+**For each user-facing item, prepare an INSERT:**
+```sql
+INSERT INTO release_notes (title, body, emoji, published_at, link_url, link_text)
+VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-MM-DD', 'https://...', 'Try it out');
+```
+
+**Fields:**
+- `title`: Short, punchy. "Share your trades" not "Added trade sharing functionality"
+- `body`: 1-2 sentences. What changed + why it matters to the user. Slack voice.
+- `emoji`: One emoji that captures the vibe
+- `published_at`: Date the change shipped
+- `link_url` + `link_text`: Optional CTA if users can try the feature (e.g. Telegram bot link, app page)
+
+Present the draft to the user for approval before inserting. Insert into production (`dikybxkubbaabnshnreh`).
+
+**Skip this step if:** The session was purely backend/infra with no user-visible changes.
+
+### Step 7: Remind User
 Always end with:
 > **Reminder:** Run `vela-end` in terminal to complete interactive Notion logging (decisions + tasks prompts).
 
