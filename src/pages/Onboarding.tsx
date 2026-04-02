@@ -1026,14 +1026,14 @@ function OnboardingPlanSelection({
 
   const tiers = TIER_DEFINITIONS.filter(t => t.tier !== 'free');
 
-  const getPrice = (tier: typeof tiers[number]): string => {
+  const getPrice = (tier: (typeof tiers)[number]): string => {
     if (billingCycle === 'annual') {
       return `$${Math.ceil(tier.annual_price_usd / 12)}`;
     }
     return `$${tier.monthly_price_usd}`;
   };
 
-  const getBillingNote = (tier: typeof tiers[number]): string => {
+  const getBillingNote = (tier: (typeof tiers)[number]): string => {
     if (billingCycle === 'annual') {
       return `$${tier.annual_price_usd}/yr (save 17%)`;
     }
@@ -1061,10 +1061,7 @@ function OnboardingPlanSelection({
         >
           Choose your plan
         </h2>
-        <p
-          className="vela-body-sm vela-text-secondary"
-          style={{ marginBottom: 'var(--space-5)' }}
-        >
+        <p className="vela-body-sm vela-text-secondary" style={{ marginBottom: 'var(--space-5)' }}>
           Cancel anytime from your account settings.
         </p>
 
@@ -1110,9 +1107,7 @@ function OnboardingPlanSelection({
               <div
                 key={tier.tier}
                 style={{
-                  border: isRecommended
-                    ? '2px solid var(--black)'
-                    : '1.5px solid var(--gray-200)',
+                  border: isRecommended ? '2px solid var(--black)' : '1.5px solid var(--gray-200)',
                   borderRadius: 'var(--radius-sm)',
                   padding: 'var(--space-4)',
                   boxShadow: isRecommended ? '3px 3px 0 var(--black)' : 'none',
@@ -1159,9 +1154,7 @@ function OnboardingPlanSelection({
                   >
                     {getPrice(tier)}
                   </span>
-                  <span
-                    style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 2 }}
-                  >
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 2 }}>
                     {billingCycle === 'annual' ? '/mo' : '/mo'}
                   </span>
                 </div>
@@ -1194,9 +1187,7 @@ function OnboardingPlanSelection({
                   {' · '}
                   {tier.max_leverage}x leverage
                   {' · '}
-                  {tier.trade_fee_pct === 0
-                    ? 'No trade fee'
-                    : `${tier.trade_fee_pct}% trade fee`}
+                  {tier.trade_fee_pct === 0 ? 'No trade fee' : `${tier.trade_fee_pct}% trade fee`}
                 </p>
 
                 <button
@@ -1236,9 +1227,7 @@ function OnboardingPlanSelection({
       </div>
 
       {/* Skip to free */}
-      <div
-        style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-3)' }}
-      >
+      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-3)' }}>
         <button
           onClick={onSkipToFree}
           className="vela-btn vela-btn-ghost"

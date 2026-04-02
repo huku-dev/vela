@@ -64,13 +64,18 @@ export default function InstallPrompt() {
       if (!localStorage.getItem('vela_cookie_consent')) return;
 
       // Debug: ?pwa=ios or ?pwa=android to force-show on desktop
-      const debugOs = new URLSearchParams(window.location.search).get('pwa') as 'ios' | 'android' | null;
+      const debugOs = new URLSearchParams(window.location.search).get('pwa') as
+        | 'ios'
+        | 'android'
+        | null;
       const isDebug = !!debugOs;
 
       // Only show to users with accounts older than MIN_ACCOUNT_AGE_DAYS
       if (!isDebug && !isAccountOldEnough()) return;
 
-      const detected = getMobilePlatform() || (debugOs ? { os: debugOs, browser: debugOs === 'ios' ? 'Safari' : 'Chrome' } : null);
+      const detected =
+        getMobilePlatform() ||
+        (debugOs ? { os: debugOs, browser: debugOs === 'ios' ? 'Safari' : 'Chrome' } : null);
       if (detected) {
         setPlatformInfo(detected);
         setVisible(true);
@@ -208,38 +213,48 @@ export default function InstallPrompt() {
             <>
               <StepCard
                 number={1}
-                text={<>Tap the <strong>share icon</strong> in {browser}&apos;s toolbar</>}
+                text={
+                  <>
+                    Tap the <strong>share icon</strong> in {browser}&apos;s toolbar
+                  </>
+                }
               >
                 <BrowserMockup highlight="share" />
               </StepCard>
 
               <StepCard
                 number={2}
-                text={<>Choose <strong>Add to Home Screen</strong> from the options</>}
+                text={
+                  <>
+                    Choose <strong>Add to Home Screen</strong> from the options
+                  </>
+                }
               >
-                <MenuItemMockup
-                  icon={<PlusSquareIcon />}
-                  label="Add to Home Screen"
-                />
+                <MenuItemMockup icon={<PlusSquareIcon />} label="Add to Home Screen" />
               </StepCard>
             </>
           ) : (
             <>
               <StepCard
                 number={1}
-                text={<>Tap the <strong>menu icon</strong> in {browser}</>}
+                text={
+                  <>
+                    Tap the <strong>menu icon</strong> in {browser}
+                  </>
+                }
               >
                 <BrowserMockup highlight="menu" />
               </StepCard>
 
               <StepCard
                 number={2}
-                text={<>Choose <strong>Add to Home Screen</strong> from the options</>}
+                text={
+                  <>
+                    Choose <strong>Add to Home Screen</strong> from the options
+                  </>
+                }
               >
-                <MenuItemMockup
-                  icon={<PhoneIcon />}
-                  label="Add to Home Screen"
-                />
+                <MenuItemMockup icon={<PhoneIcon />} label="Add to Home Screen" />
               </StepCard>
             </>
           )}
@@ -351,7 +366,9 @@ function BrowserMockup({ highlight }: { highlight: 'share' | 'menu' }) {
           <>
             <ToolbarIcon>‹</ToolbarIcon>
             <ToolbarIcon>›</ToolbarIcon>
-            <ToolbarIcon highlight><ShareIcon /></ToolbarIcon>
+            <ToolbarIcon highlight>
+              <ShareIcon />
+            </ToolbarIcon>
             <ToolbarIcon>☰</ToolbarIcon>
             <ToolbarIcon>⊞</ToolbarIcon>
           </>
@@ -379,7 +396,15 @@ function BrowserMockup({ highlight }: { highlight: 'share' | 'menu' }) {
         }}
       >
         <svg width="2" height="14" style={{ opacity: 0.35 }}>
-          <line x1="1" y1="0" x2="1" y2="14" stroke="#0fe68c" strokeWidth="1.5" strokeDasharray="3 3" />
+          <line
+            x1="1"
+            y1="0"
+            x2="1"
+            y2="14"
+            stroke="#0fe68c"
+            strokeWidth="1.5"
+            strokeDasharray="3 3"
+          />
         </svg>
         <svg width="8" height="6" viewBox="0 0 10 8" style={{ opacity: 0.35, marginTop: -1 }}>
           <polygon points="5,8 0,0 10,0" fill="#0fe68c" />
@@ -389,13 +414,7 @@ function BrowserMockup({ highlight }: { highlight: 'share' | 'menu' }) {
   );
 }
 
-function ToolbarIcon({
-  children,
-  highlight,
-}: {
-  children: React.ReactNode;
-  highlight?: boolean;
-}) {
+function ToolbarIcon({ children, highlight }: { children: React.ReactNode; highlight?: boolean }) {
   return (
     <div style={{ position: 'relative' }}>
       <div
@@ -432,13 +451,7 @@ function ToolbarIcon({
   );
 }
 
-function MenuItemMockup({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode;
-  label: string;
-}) {
+function MenuItemMockup({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
     <div
       style={{
@@ -450,9 +463,7 @@ function MenuItemMockup({
         padding: '9px 12px',
       }}
     >
-      <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: 16 }}>
-        {icon}
-      </span>
+      <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: 16 }}>{icon}</span>
       <span
         style={{
           fontSize: 12,
@@ -480,7 +491,16 @@ function MenuItemMockup({
 
 function ShareIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
       <polyline points="16 6 12 2 8 6" />
       <line x1="12" y1="2" x2="12" y2="15" />
@@ -490,7 +510,16 @@ function ShareIcon() {
 
 function PlusSquareIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
       <line x1="12" y1="8" x2="12" y2="16" />
       <line x1="8" y1="12" x2="16" y2="12" />
@@ -500,7 +529,16 @@ function PlusSquareIcon() {
 
 function PhoneIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
       <line x1="12" y1="18" x2="12.01" y2="18" />
     </svg>
@@ -509,7 +547,16 @@ function PhoneIcon() {
 
 function LockIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="rgba(255,255,255,0.3)"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
       <path d="M7 11V7a5 5 0 0110 0v4" />
     </svg>
