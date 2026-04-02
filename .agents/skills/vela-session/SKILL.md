@@ -124,18 +124,27 @@ If the session included user-facing changes (new features, UX improvements, new 
 
 **For each user-facing item, prepare an INSERT:**
 ```sql
-INSERT INTO release_notes (title, body, emoji, published_at, link_url, link_text)
-VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-MM-DD', 'https://...', 'Try it out');
+INSERT INTO release_notes (title, body, emoji, published_at, link_url, link_text, category, is_major)
+VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-MM-DD', 'https://...', 'Try it out', 'feature', false);
 ```
 
 **Fields:**
 - `title`: Short, punchy. "Share your trades" not "Added trade sharing functionality"
-- `body`: 1-2 sentences. What changed + why it matters to the user. Slack voice.
+- `body`: 1-2 sentences. What changed + why it matters to the user. Slack voice. Always frame in terms of user value.
 - `emoji`: One emoji that captures the vibe
 - `published_at`: Date the change shipped
 - `link_url` + `link_text`: Optional CTA if users can try the feature (e.g. Telegram bot link, app page)
+- `category`: One of `feature`, `improvement`, `fix`
+- `is_major`: Discuss with user. Major releases get hero card treatment on the changelog page.
+
+**Major vs minor classification (always confirm with user):**
+- **Major (`is_major = true`):** New capabilities that fundamentally expand what Vela can do. Examples: platform launch, new product surface (Telegram bot), new asset class support, new execution venue. These get hero cards with optional images and prominent CTAs.
+- **Minor (`is_major = false`):** Improvements, refinements, and fixes to existing functionality. Examples: redesigned cards, better emails, price source changes, language updates. These render as compact timeline entries.
+- When in doubt, default to minor. Ask the user: "Should any of these be flagged as a major release?"
 
 Present the draft to the user for approval before inserting. Insert into production (`dikybxkubbaabnshnreh`).
+
+**Broadcast behavior:** New release notes with `broadcast_at = NULL` get automatically broadcast to Telegram users on the next cron tick (max 1 broadcast per day, extras batch to next day).
 
 **Skip this step if:** The session was purely backend/infra with no user-visible changes.
 
