@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CookieConsent from './components/CookieConsent';
+import InstallPrompt from './components/InstallPrompt';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import PageLoader from './components/PageLoader';
@@ -27,6 +28,7 @@ export default function App() {
         </Routes>
       </Suspense>
       <CookieConsent />
+      <InstallPrompt />
       <Analytics />
       <SpeedInsights />
     </BrowserRouter>

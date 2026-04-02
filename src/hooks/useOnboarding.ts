@@ -35,12 +35,18 @@ export function useOnboarding() {
       try {
         const { data } = await supabaseClient!
           .from('profiles')
-          .select('onboarding_completed')
+          .select('onboarding_completed, created_at')
           .single();
 
-        if (!cancelled && data?.onboarding_completed) {
-          localStorage.setItem(STORAGE_KEY, 'true');
-          setIsOnboarded(true);
+        if (!cancelled && data) {
+          // Store account creation time for install prompt gating
+          if (data.created_at) {
+            localStorage.setItem('vela_account_created_at', data.created_at);
+          }
+          if (data.onboarding_completed) {
+            localStorage.setItem(STORAGE_KEY, 'true');
+            setIsOnboarded(true);
+          }
         }
       } catch {
         // Profile might not have the column yet — treat as not onboarded

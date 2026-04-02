@@ -1,7 +1,8 @@
 // Privy configuration for Vela authentication
 // Privy serves dual purpose: user auth + wallet provider
 //
-// Login methods: email, Google, Apple.
+// Login methods: email, Google.
+// Apple login intentionally excluded — not configured in Apple Developer.
 // External wallets (WalletConnect) intentionally excluded — Vela uses
 // Privy embedded wallets for trading, not user-supplied wallets.
 
@@ -10,7 +11,7 @@ import type { PrivyClientConfig } from '@privy-io/react-auth';
 export const PRIVY_APP_ID = import.meta.env.VITE_PRIVY_APP_ID;
 
 export const privyConfig: PrivyClientConfig = {
-  loginMethods: ['email', 'google', 'apple'],
+  loginMethods: ['email', 'google'],
   appearance: {
     theme: 'light',
     accentColor: '#0A0A0A',
