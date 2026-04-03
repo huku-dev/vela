@@ -171,6 +171,23 @@ function WalletPanel({ address }: { address?: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  if (!address) {
+    return (
+      <div style={{ padding: 'var(--space-4)' }}>
+        <p
+          className="vela-label-sm"
+          style={{ marginBottom: 'var(--space-3)', color: 'var(--color-text-muted)' }}
+        >
+          WALLET ADDRESS
+        </p>
+        <p className="vela-body-sm vela-text-muted">
+          Your trading wallet will be created when you enable trading. Tap &ldquo;Enable
+          trading&rdquo; above to get started.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 'var(--space-4)' }}>
       <p
@@ -199,29 +216,28 @@ function WalletPanel({ address }: { address?: string }) {
             textOverflow: 'ellipsis',
           }}
         >
-          {address ?? 'Wallet is being created...'}
+          {address}
         </span>
-        {address && (
-          <button
-            onClick={handleCopy}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 'var(--space-1)',
-              color: copied ? 'var(--color-success)' : 'var(--color-text-muted)',
-              fontFamily: 'Inter, system-ui, sans-serif',
-              fontSize: 12,
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        )}
+        <button
+          onClick={handleCopy}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 'var(--space-1)',
+            color: copied ? 'var(--color-success)' : 'var(--color-text-muted)',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: 12,
+            fontWeight: 600,
+            flexShrink: 0,
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
       </div>
       <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-2)' }}>
-        This is your embedded Ethereum wallet, created and secured by Vela.
+        This is your Vela trading wallet on Arbitrum. Deposit USDC to this address to start
+        trading.
       </p>
     </div>
   );
@@ -2495,8 +2511,7 @@ export default function Account() {
     }
 
     // Provision wallet with a sensible default mode
-    const defaultMode: TradingMode =
-      currentTier === 'premium' ? 'full_auto' : 'semi_auto';
+    const defaultMode: TradingMode = currentTier === 'premium' ? 'full_auto' : 'semi_auto';
     setEnableLoading(true);
     try {
       await enableTrading(defaultMode);
@@ -2892,16 +2907,14 @@ export default function Account() {
           value={
             wallet?.master_address
               ? truncateAddress(wallet.master_address)
-              : user?.walletAddress
-                ? truncateAddress(user.walletAddress)
-                : '—'
+              : 'Not set up'
           }
           onClick={() => toggleSection('wallet')}
           expanded={expandedSection === 'wallet'}
         />
         {expandedSection === 'wallet' && (
           <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <WalletPanel address={wallet?.master_address ?? user?.walletAddress} />
+            <WalletPanel address={wallet?.master_address} />
           </div>
         )}
 
