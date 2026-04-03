@@ -2483,18 +2483,20 @@ export default function Account() {
     document.body.appendChild(script);
   }, []);
 
-  // "Enable trading" — for paid users without a wallet, provision it directly
-  // with a sensible default mode. For free users, just expand the settings panel.
+  // "Enable trading" — provision wallet and set a default trading mode.
+  // Free-tier users get semi_auto (they have a trial trade available).
+  // Paid users get a mode based on their tier.
   const [enableLoading, setEnableLoading] = useState(false);
   async function handleEnableTrading() {
-    // Free tier users need to pick a mode / upgrade — just expand settings
-    if (currentTier === 'free' || hasWallet) {
+    // Already has a wallet — just expand settings to show deposit/withdraw
+    if (hasWallet) {
       setExpandedSection('trading');
       return;
     }
 
-    // Paid user without a wallet — provision directly
-    const defaultMode: TradingMode = currentTier === 'premium' ? 'full_auto' : 'semi_auto';
+    // Provision wallet with a sensible default mode
+    const defaultMode: TradingMode =
+      currentTier === 'premium' ? 'full_auto' : 'semi_auto';
     setEnableLoading(true);
     try {
       await enableTrading(defaultMode);
