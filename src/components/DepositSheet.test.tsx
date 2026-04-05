@@ -149,23 +149,25 @@ describe('DepositSheet', () => {
     });
   });
 
-  it('shows transferring banner after successful purchase', async () => {
+  it('returns to idle after completed purchase (no false payment confirmation)', async () => {
     mockFundWallet.mockResolvedValueOnce({ status: 'completed' });
     const user = userEvent.setup();
     renderSheet();
     await user.click(screen.getByRole('button', { name: /add funds/i }));
+    // Should NOT show "payment received" — only on-chain detection can confirm
     await waitFor(() => {
-      expect(screen.getByText(/payment received, processing/i)).toBeInTheDocument();
+      expect(screen.getByText('Add funds')).toBeInTheDocument();
     });
+    expect(screen.queryByText(/payment received/i)).not.toBeInTheDocument();
   });
 
-  it('shows error message when funding fails', async () => {
-    mockFundWallet.mockRejectedValueOnce(new Error('Network error'));
+  it('returns to idle when funding throws (popup closed)', async () => {
+    mockFundWallet.mockRejectedValueOnce(new Error('User closed popup'));
     const user = userEvent.setup();
     renderSheet();
     await user.click(screen.getByRole('button', { name: /add funds/i }));
     await waitFor(() => {
-      expect(screen.getByText('Network error')).toBeInTheDocument();
+      expect(screen.getByText('Add funds')).toBeInTheDocument();
     });
   });
 

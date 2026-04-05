@@ -508,8 +508,8 @@ const DEPOSIT_CONFIRMATION_MS = 4000;
  * MoonPay (and other enabled providers). Funds land as USDC on Arbitrum,
  * then the existing deposit-monitor cron auto-bridges to Hyperliquid.
  *
- * States: idle → pending (opening checkout) → transferring (purchased,
- * waiting for Arb→HL) → confirmed (brief flash) → back to idle.
+ * States: idle → pending (opening checkout) → idle.
+ * Deposit confirmation only shown when on-chain detection (auto-poll) finds funds.
  */
 function CardFundingTab({
   wallet,
@@ -521,20 +521,16 @@ function CardFundingTab({
   onFundingComplete: () => void;
 }) {
   const { fundWallet } = useFundWallet();
-  const [fundingState, setFundingState] = useState<
-    'idle' | 'pending' | 'transferring' | 'confirmed' | 'error'
-  >('idle');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fundingState, setFundingState] = useState<'idle' | 'pending' | 'confirmed'>('idle');
   const [confirmedAmount, setConfirmedAmount] = useState<number | null>(null);
   const [confirmedBalance, setConfirmedBalance] = useState<number | null>(null);
 
   const handleFund = async () => {
     track(AnalyticsEvent.DEPOSIT_ONRAMP_STARTED);
     setFundingState('pending');
-    setErrorMessage(null);
 
     try {
-      const result = await fundWallet({
+      await fundWallet({
         address: wallet.master_address,
         options: {
           chain: { id: 42161 }, // Arbitrum
@@ -545,41 +541,26 @@ function CardFundingTab({
         },
       });
 
-      if (result.status === 'completed') {
-        // Funds purchased — now waiting for Arbitrum → Hyperliquid (2-4 min)
-        setFundingState('transferring');
-        onFundingComplete();
-      } else {
-        // User cancelled the checkout flow
-        setFundingState('idle');
-      }
+      // fundWallet resolved — user went through the flow.
+      // Do NOT trust client-side status for payment confirmation.
+      // Only the deposit-monitor (on-chain detection) can confirm funds arrived.
+      // Just return to idle and let the auto-poll handle detection.
+      setFundingState('idle');
+      onFundingComplete(); // Trigger an immediate balance check
     } catch (err) {
-      // Privy may throw when user closes the popup — treat as cancellation, not error
-      const message = err instanceof Error ? err.message : '';
-      const isCancellation =
-        message.includes('cancel') ||
-        message.includes('closed') ||
-        message.includes('rejected') ||
-        message.includes('user denied') ||
-        message.includes('popup');
-
-      if (isCancellation) {
-        console.log('[DepositSheet] Funding cancelled by user');
-        setFundingState('idle');
-      } else {
-        console.error('[DepositSheet] Funding error:', err);
-        setFundingState('error');
-        setErrorMessage(message || 'Something went wrong. Try again.');
-      }
+      // Privy throws when user closes popup, cancels, or hits an error.
+      // All cases: just return to idle. No false "payment received" messages.
+      console.log('[DepositSheet] Funding flow ended:', err instanceof Error ? err.message : err);
+      setFundingState('idle');
     }
   };
 
-  // When deposit detected on Hyperliquid, briefly show confirmation then reset
+  // When auto-poll detects a deposit on Hyperliquid, briefly show confirmation
   useEffect(() => {
     if (
-      fundingState === 'transferring' &&
       refreshResult?.depositDetected != null &&
-      refreshResult.depositDetected > 0
+      refreshResult.depositDetected > 0 &&
+      fundingState !== 'confirmed'
     ) {
       setConfirmedAmount(refreshResult.depositDetected);
       setConfirmedBalance(refreshResult.balance ?? null);
@@ -597,30 +578,7 @@ function CardFundingTab({
     <div>
       {/* ── Status banners (slot in above the default content) ── */}
 
-      {/* Transferring — payment done, waiting for funds to arrive */}
-      {fundingState === 'transferring' && (
-        <div
-          style={{
-            padding: 'var(--space-3)',
-            backgroundColor: 'var(--blue-light, #EBF5FF)',
-            border: '2px solid var(--blue-primary, #3B82F6)',
-            borderRadius: 'var(--radius-sm)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem' }}>
-            &#9203; Payment received, processing.
-          </p>
-          <p
-            className="vela-body-sm vela-text-muted"
-            style={{ margin: 0, marginTop: 'var(--space-1)', fontSize: '0.7rem' }}
-          >
-            Transferring funds to your trading wallet.
-          </p>
-        </div>
-      )}
-
-      {/* Confirmed — brief flash before returning to idle */}
+      {/* Confirmed — brief flash when deposit detected on-chain, then returns to idle */}
       {fundingState === 'confirmed' && confirmedAmount != null && (
         <div
           style={{
@@ -642,23 +600,6 @@ function CardFundingTab({
               New balance: ${confirmedBalance.toFixed(2)}
             </p>
           )}
-        </div>
-      )}
-
-      {/* Error */}
-      {fundingState === 'error' && errorMessage && (
-        <div
-          style={{
-            padding: 'var(--space-3)',
-            backgroundColor: 'var(--red-light, #FFF5F5)',
-            border: '2px solid var(--red-primary, #E53E3E)',
-            borderRadius: 'var(--radius-sm)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          <p className="vela-body-sm" style={{ margin: 0, fontWeight: 600, fontSize: '0.8rem' }}>
-            {errorMessage}
-          </p>
         </div>
       )}
 
