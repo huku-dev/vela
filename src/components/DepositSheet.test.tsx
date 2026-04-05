@@ -15,6 +15,11 @@ vi.mock('../contexts/AuthContext', () => ({
   }),
 }));
 
+const mockFundWallet = vi.fn();
+vi.mock('@privy-io/react-auth', () => ({
+  useFundWallet: () => ({ fundWallet: mockFundWallet }),
+}));
+
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
@@ -75,33 +80,126 @@ describe('DepositSheet', () => {
     expect(screen.getByText('Deposit to Wallet')).toBeInTheDocument();
   });
 
-  it('renders two tabs: Transfer USDC and Fund with card / bank', () => {
+  it('renders two tabs: Deposit cash and Transfer USDC', () => {
     renderSheet();
+    expect(screen.getByText('Deposit cash')).toBeInTheDocument();
     expect(screen.getByText('Transfer USDC')).toBeInTheDocument();
-    expect(screen.getByText('Fund with card / bank')).toBeInTheDocument();
+  });
+
+  it('defaults to "Deposit cash" tab', () => {
+    renderSheet();
+    expect(screen.getByText('Add funds')).toBeInTheDocument();
+    // Transfer tab content should not be visible
+    expect(screen.queryByText('YOUR DEPOSIT ADDRESS')).not.toBeInTheDocument();
+  });
+
+  // ── Deposit Cash Tab ──
+
+  it('shows payment method labels', () => {
+    renderSheet();
+    expect(screen.getByText('Debit card')).toBeInTheDocument();
+    expect(screen.getByText('Bank transfer')).toBeInTheDocument();
+    expect(screen.getByText('Apple Pay')).toBeInTheDocument();
+  });
+
+  it('shows minimum deposit notice', () => {
+    renderSheet();
+    expect(screen.getByText(/Minimum deposit: \$5/)).toBeInTheDocument();
+    expect(screen.getByText(/can't be credited/i)).toBeInTheDocument();
+  });
+
+  it('shows "Add funds" button', () => {
+    renderSheet();
+    expect(screen.getByRole('button', { name: /add funds/i })).toBeInTheDocument();
+  });
+
+  it('calls fundWallet with Arbitrum USDC config when "Add funds" clicked', async () => {
+    mockFundWallet.mockResolvedValueOnce({ status: 'cancelled' });
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /add funds/i }));
+    expect(mockFundWallet).toHaveBeenCalledWith({
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      options: {
+        chain: { id: 42161 },
+        amount: '5',
+        asset: 'USDC',
+      },
+    });
+  });
+
+  it('shows "Connecting to payment provider..." while pending', async () => {
+    // Never resolve — keep in pending state
+    mockFundWallet.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /add funds/i }));
+    expect(screen.getByText(/connecting to payment provider/i)).toBeInTheDocument();
+  });
+
+  it('returns to idle when user cancels the checkout', async () => {
+    mockFundWallet.mockResolvedValueOnce({ status: 'cancelled' });
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /add funds/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Add funds')).toBeInTheDocument();
+    });
+  });
+
+  it('shows transferring banner after successful purchase', async () => {
+    mockFundWallet.mockResolvedValueOnce({ status: 'completed' });
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /add funds/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/payment received, processing/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message when funding fails', async () => {
+    mockFundWallet.mockRejectedValueOnce(new Error('Network error'));
+    const user = userEvent.setup();
+    renderSheet();
+    await user.click(screen.getByRole('button', { name: /add funds/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+  });
+
+  it('does not show "I\'ve sent the USDC" button on deposit cash tab', () => {
+    renderSheet();
+    expect(screen.queryByRole('button', { name: /i've sent the usdc/i })).not.toBeInTheDocument();
   });
 
   // ── Transfer Tab ──
 
-  it('shows deposit address label', () => {
+  it('shows deposit address when Transfer USDC tab selected', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     expect(screen.getByText('YOUR DEPOSIT ADDRESS')).toBeInTheDocument();
   });
 
-  it('shows full wallet address (not truncated)', () => {
+  it('shows full wallet address on transfer tab (not truncated)', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     expect(screen.getByText('0x1234567890abcdef1234567890abcdef12345678')).toBeInTheDocument();
   });
 
-  it('renders QR code SVG', () => {
+  it('renders QR code SVG on transfer tab', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     const svgs = document.querySelectorAll('svg');
     expect(svgs.length).toBeGreaterThan(0);
   });
 
-  it('copy button triggers clipboard write', async () => {
+  it('copy button triggers clipboard write on transfer tab', async () => {
     const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     const copyBtn = screen.getByRole('button', { name: /copy/i });
     await user.click(copyBtn);
     await waitFor(() => {
@@ -109,22 +207,21 @@ describe('DepositSheet', () => {
     });
   });
 
-  it('shows Copy button label initially', () => {
-    renderSheet();
-    expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
-  });
+  // ── Network Dropdown (Transfer Tab) ──
 
-  // ── Network Dropdown ──
-
-  it('shows network dropdown with placeholder', () => {
+  it('shows network dropdown with placeholder on transfer tab', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     const select = screen.getByLabelText('Select deposit network');
     expect(select).toBeInTheDocument();
     expect(select).toHaveValue('');
   });
 
-  it('does not show USDC warning when no network is selected', () => {
+  it('does not show USDC warning when no network is selected', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     expect(screen.queryByText(/only send usdc/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/only send via hyperliquid/i)).not.toBeInTheDocument();
   });
@@ -132,6 +229,7 @@ describe('DepositSheet', () => {
   it('shows Arbitrum warning when Arbitrum is selected', async () => {
     const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     await user.selectOptions(screen.getByLabelText('Select deposit network'), 'arbitrum');
     expect(screen.getByText(/only send usdc on arbitrum/i)).toBeInTheDocument();
   });
@@ -139,46 +237,24 @@ describe('DepositSheet', () => {
   it('shows Hyperliquid warning when Hyperliquid is selected', async () => {
     const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     await user.selectOptions(screen.getByLabelText('Select deposit network'), 'hyperliquid');
     expect(screen.getByText(/only send via hyperliquid usdsend/i)).toBeInTheDocument();
   });
 
-  // ── Swapped Onramp Tab ──
+  // ── Refresh Balance (Transfer Tab) ──
 
-  it('shows coming soon message when VITE_SWAPPED_API_KEY is not set', async () => {
+  it('shows "I\'ve sent the USDC" button on transfer tab', async () => {
     const user = userEvent.setup();
     renderSheet();
-    await user.click(screen.getByText('Fund with card / bank'));
-    await waitFor(() => {
-      expect(screen.getByText(/card and bank funding coming soon/i)).toBeInTheDocument();
-    });
-  });
-
-  it('onramp tab does not show "I\'ve sent the USDC" button', async () => {
-    const user = userEvent.setup();
-    renderSheet();
-    await user.click(screen.getByText('Fund with card / bank'));
-    expect(screen.queryByRole('button', { name: /i've sent the usdc/i })).not.toBeInTheDocument();
-  });
-
-  it('shows description text on coming soon state', async () => {
-    const user = userEvent.setup();
-    renderSheet();
-    await user.click(screen.getByText('Fund with card / bank'));
-    await waitFor(() => {
-      expect(screen.getByText(/adding support for credit cards/i)).toBeInTheDocument();
-    });
-  });
-
-  // ── Refresh Balance ──
-
-  it('shows "I\'ve sent the USDC" button on transfer tab', () => {
-    renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     expect(screen.getByRole('button', { name: /i've sent the usdc/i })).toBeInTheDocument();
   });
 
-  it('does not show "Check balance now" button', () => {
+  it('does not show "Check balance now" button', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     expect(screen.queryByRole('button', { name: /check balance now/i })).not.toBeInTheDocument();
   });
 
@@ -192,6 +268,9 @@ describe('DepositSheet', () => {
     const onClose = vi.fn();
     const onRefresh = vi.fn();
     render(<DepositSheet wallet={mockWallet} onClose={onClose} onRefresh={onRefresh} />);
+
+    // Switch to transfer tab first
+    await user.click(screen.getByText('Transfer USDC'));
 
     // Must select a network first — button is disabled until network chosen
     await user.selectOptions(screen.getByLabelText('Select deposit network'), 'arbitrum');
@@ -214,8 +293,10 @@ describe('DepositSheet', () => {
     });
   });
 
-  it('"I\'ve sent the USDC" button is disabled until network is selected', () => {
+  it('"I\'ve sent the USDC" button is disabled until network is selected', async () => {
+    const user = userEvent.setup();
     renderSheet();
+    await user.click(screen.getByText('Transfer USDC'));
     const btn = screen.getByRole('button', { name: /i've sent the usdc/i });
     expect(btn).toBeDisabled();
   });
