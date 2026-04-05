@@ -97,9 +97,9 @@ describe('DepositSheet', () => {
 
   it('shows payment method labels', () => {
     renderSheet();
-    expect(screen.getByText('Debit card')).toBeInTheDocument();
-    expect(screen.getByText('Bank transfer')).toBeInTheDocument();
+    expect(screen.getByText('Card')).toBeInTheDocument();
     expect(screen.getByText('Apple Pay')).toBeInTheDocument();
+    expect(screen.getByText('Bank transfer')).toBeInTheDocument();
   });
 
   it('shows minimum deposit notice', () => {
@@ -122,8 +122,10 @@ describe('DepositSheet', () => {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       options: {
         chain: { id: 42161 },
-        amount: '5',
+        amount: '50',
         asset: 'USDC',
+        defaultFundingMethod: 'card',
+        card: { preferredProvider: 'moonpay' },
       },
     });
   });

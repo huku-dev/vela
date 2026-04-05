@@ -187,7 +187,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
         </div>
 
         {/* Tab content — min-height prevents layout shift when switching tabs */}
-        <div style={{ minHeight: 340 }}>
+        <div style={{ minHeight: 460 }}>
           {activeTab === 'card' && (
             <CardFundingTab
               wallet={wallet}
@@ -538,8 +538,10 @@ function CardFundingTab({
         address: wallet.master_address,
         options: {
           chain: { id: 42161 }, // Arbitrum
-          amount: String(MIN_DEPOSIT_USDC),
+          amount: '50',
           asset: 'USDC',
+          defaultFundingMethod: 'card',
+          card: { preferredProvider: 'moonpay' },
         },
       });
 
@@ -552,9 +554,23 @@ function CardFundingTab({
         setFundingState('idle');
       }
     } catch (err) {
-      console.error('[DepositSheet] Funding error:', err);
-      setFundingState('error');
-      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong. Try again.');
+      // Privy may throw when user closes the popup — treat as cancellation, not error
+      const message = err instanceof Error ? err.message : '';
+      const isCancellation =
+        message.includes('cancel') ||
+        message.includes('closed') ||
+        message.includes('rejected') ||
+        message.includes('user denied') ||
+        message.includes('popup');
+
+      if (isCancellation) {
+        console.log('[DepositSheet] Funding cancelled by user');
+        setFundingState('idle');
+      } else {
+        console.error('[DepositSheet] Funding error:', err);
+        setFundingState('error');
+        setErrorMessage(message || 'Something went wrong. Try again.');
+      }
     }
   };
 
@@ -658,7 +674,7 @@ function CardFundingTab({
           color: 'var(--color-text-muted)',
         }}
       >
-        Fund your Vela wallet with one of these payment methods:
+        Add funds to your Vela wallet using one of these methods:
       </p>
 
       {/* Payment methods — non-interactive indicators */}
@@ -669,9 +685,9 @@ function CardFundingTab({
           marginBottom: 'var(--space-4)',
         }}
       >
-        <PaymentMethodLabel icon={<CardIcon />} label="Debit card" />
-        <PaymentMethodLabel icon={<BankIcon />} label="Bank transfer" />
+        <PaymentMethodLabel icon={<CardIcon />} label="Card" />
         <PaymentMethodLabel icon={<ApplePayIcon />} label="Apple Pay" />
+        <PaymentMethodLabel icon={<BankIcon />} label="Bank transfer" />
       </div>
 
       {/* CTA */}
