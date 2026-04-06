@@ -193,8 +193,8 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
           />
         </div>
 
-        {/* Tab content — min-height prevents layout shift when switching tabs */}
-        <div style={{ minHeight: 460 }}>
+        {/* Tab content */}
+        <div>
           {activeTab === 'card' && (
             <CardFundingTab
               wallet={wallet}
