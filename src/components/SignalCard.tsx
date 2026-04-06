@@ -87,7 +87,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
   const { asset, signal, brief, priceData } = data;
 
   const price = priceData?.price ?? signal?.price_at_signal;
-  const iconUrl = getCoinIcon(asset.coingecko_id);
+  const iconUrl = asset.icon_url ?? (asset.coingecko_id ? getCoinIcon(asset.coingecko_id) : null);
 
   // Position-aware headline: users with a position see P&L status,
   // users without see market context (trading-action language stripped).

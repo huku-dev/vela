@@ -10,7 +10,7 @@ interface EngagementCardProps {
   briefId: string;
   assetId: string;
   assetName: string;
-  coingeckoId: string;
+  coingeckoId: string | null;
   signal: SignalColor | null;
   price: number | null;
   priceChange24h: number | null;
@@ -281,14 +281,16 @@ export default function EngagementCard({
     track(AnalyticsEvent.SIGNAL_SHARED, { asset_id: assetId, signal, method: 'share' });
 
     // Pre-load asset icon
-    const iconUrl = getCoinIcon(coingeckoId);
-    const iconImg = await new Promise<HTMLImageElement | null>(resolve => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = () => resolve(null);
-      img.src = iconUrl;
-    });
+    const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+    const iconImg: HTMLImageElement | null = iconUrl
+      ? await new Promise<HTMLImageElement | null>(resolve => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = iconUrl;
+        })
+      : null;
 
     const dataUrl = generateSignalImage({
       assetName,

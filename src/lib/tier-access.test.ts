@@ -64,9 +64,9 @@ describe('Tier Definitions', () => {
     expect(free.max_assets).toBe(1);
   });
 
-  it('standard tier: max_assets = 3', () => {
+  it('standard tier: max_assets = 5', () => {
     const standard = getTierConfig('standard');
-    expect(standard.max_assets).toBe(3);
+    expect(standard.max_assets).toBe(5);
   });
 
   it('premium tier: max_assets = 0 (unlimited)', () => {
@@ -89,7 +89,7 @@ describe('Tier Definitions', () => {
   it('comparison features display numeric count for free/standard', () => {
     const assetsRow = COMPARISON_FEATURES.find(f => f.key === 'assets')!;
     expect(assetsRow.getValue(getTierConfig('free'))).toBe('1');
-    expect(assetsRow.getValue(getTierConfig('standard'))).toBe('3');
+    expect(assetsRow.getValue(getTierConfig('standard'))).toBe('5');
   });
 });
 
@@ -116,7 +116,7 @@ describe('canAccessAsset', () => {
     });
   });
 
-  describe('standard tier (max_assets=3)', () => {
+  describe('standard tier (max_assets=5)', () => {
     const max = 3;
 
     it('can access BTC (index 0)', () => {
@@ -179,7 +179,7 @@ describe('partitionAssets', () => {
     });
   });
 
-  describe('standard tier (max_assets=3)', () => {
+  describe('standard tier (max_assets=5)', () => {
     it('puts BTC, ETH, HYPE in accessible; SOL in locked', () => {
       const { accessible, locked } = partitionAssets(items, 3);
       expect(accessible).toHaveLength(3);

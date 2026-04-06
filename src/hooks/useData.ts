@@ -236,17 +236,19 @@ export function useDashboard() {
       const signals = signalsRes.data || [];
       const briefs = briefsRes.data || [];
 
-      const coingeckoIds = assets.map((a: Asset) => a.coingecko_id);
+      const coingeckoIds = assets
+        .map((a: Asset) => a.coingecko_id)
+        .filter((id): id is string => id != null);
       // Build CoinGecko ID → Hyperliquid symbol map for dual-source pricing
       const symbolMap: Record<string, string> = {};
       for (const a of assets) {
-        symbolMap[a.coingecko_id] = a.symbol;
+        if (a.coingecko_id) symbolMap[a.coingecko_id] = a.symbol;
       }
       const livePrices = await fetchLivePrices(coingeckoIds, symbolMap);
 
       const dashboard: AssetDashboard[] = assets.map((asset: Asset) => {
         const signal = signals.find((s: Signal) => s.asset_id === asset.id) || null;
-        const livePrice = livePrices[asset.coingecko_id];
+        const livePrice = asset.coingecko_id ? livePrices[asset.coingecko_id] : undefined;
 
         // Fall back to signal price when both live sources fail
         const priceData: PriceData | null = livePrice
