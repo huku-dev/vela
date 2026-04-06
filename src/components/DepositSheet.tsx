@@ -28,8 +28,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
  */
 export default function DepositSheet({ wallet, onClose, onRefresh }: DepositSheetProps) {
   useBodyScrollLock();
-  track(AnalyticsEvent.DEPOSIT_SHEET_OPENED);
   const { getToken } = useAuthContext();
+
+  // Track sheet open once on mount (not on every re-render)
+  useEffect(() => {
+    track(AnalyticsEvent.DEPOSIT_SHEET_OPENED);
+  }, []);
   const [activeTab, setActiveTab] = useState<'transfer' | 'card'>('card');
   const [copied, setCopied] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -49,9 +53,11 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
   }, [address]);
 
   // ── Refresh balance ──
+  const refreshingRef = useRef(false);
   const handleRefreshBalance = useCallback(async () => {
+    if (refreshingRef.current) return; // Skip if already in flight
+    refreshingRef.current = true;
     setRefreshing(true);
-    setRefreshResult(null);
 
     try {
       const token = await getToken();
@@ -80,6 +86,7 @@ export default function DepositSheet({ wallet, onClose, onRefresh }: DepositShee
       // Silent failure — no user-facing error for background balance checks
     } finally {
       setRefreshing(false);
+      refreshingRef.current = false;
     }
   }, [getToken, onRefresh]);
 
@@ -622,7 +629,7 @@ function CardFundingTab({
       <div
         style={{
           display: 'flex',
-          gap: 'var(--space-2)',
+          justifyContent: 'space-evenly',
           marginBottom: 'var(--space-4)',
         }}
       >
@@ -675,11 +682,9 @@ function PaymentMethodLabel({ icon, label }: { icon: React.ReactNode; label: str
   return (
     <div
       style={{
-        flex: 1,
         display: 'flex',
         alignItems: 'center',
-        gap: 'var(--space-2)',
-        padding: 'var(--space-2) var(--space-2)',
+        gap: 6,
       }}
     >
       <span style={{ flexShrink: 0, display: 'flex', color: 'var(--color-text-primary)' }}>
