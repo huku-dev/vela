@@ -19,7 +19,8 @@
 2. Commit with conventional commit message
 3. Push to trigger Vercel deployment
 4. Verify CI passes after push (`gh run list`)
-5. **Clean up worktrees (MANDATORY):** Stale Claude Code worktrees cause vitest to discover duplicate test files that fail with React errors. For each worktree:
+5. **Release note proposal (if applicable):** If the session shipped a user-facing feature or significant change, draft a release note entry for the `release_notes` table and propose it to the user for approval before the session ends. Follow the established voice: benefit-focused, 1-2 sentences, no jargon, emoji prefix. Once approved, insert into the production `release_notes` table. The `publish-scheduled` cron will broadcast it to Telegram and the website changelog pulls live from the table.
+6. **Clean up worktrees (MANDATORY):** Stale Claude Code worktrees cause vitest to discover duplicate test files that fail with React errors. For each worktree:
    ```bash
    git worktree list                                    # see what exists
    ```
@@ -36,8 +37,8 @@
    ```bash
    git worktree prune                                   # clean orphaned refs
    ```
-6. Update MEMORY.md following the routing rules in `documentation-maintenance.md` — detail goes in topic files, main file stays ≤200 lines
-7. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. Cover every section below with specific examples and honest reflection:
+7. Update MEMORY.md following the routing rules in `documentation-maintenance.md` — detail goes in topic files, main file stays ≤200 lines
+8. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. Cover every section below with specific examples and honest reflection:
    - **What was accomplished:** List each distinct piece of work with enough detail that someone reading it cold understands what shipped. Include file paths, deployment targets, and what changed.
    - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework? Call out specific moments. Be honest — don't just say "your prompts were great."
    - **Efficiency feedback:** Where could Claude have been better? Identify specific wasted steps, wrong approaches tried first, things that should have been anticipated, unnecessary round-trips. This is the most important section — be self-critical.
@@ -46,7 +47,7 @@
    - **Open items:** Anything left unfinished, blocked, or deferred. If nothing, say so.
 
    **DO NOT summarize or abbreviate the retro.** The user has repeatedly asked for full retrospectives. A 3-bullet summary is not a retro.
-8. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
+9. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
 
 ---
 
