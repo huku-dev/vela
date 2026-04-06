@@ -236,8 +236,7 @@ function WalletPanel({ address }: { address?: string }) {
         </button>
       </div>
       <p className="vela-body-sm vela-text-muted" style={{ marginTop: 'var(--space-2)' }}>
-        This is your Vela trading wallet on Arbitrum. Deposit USDC to this address to start
-        trading.
+        This is your Vela trading wallet on Arbitrum. Deposit USDC to this address to start trading.
       </p>
     </div>
   );
@@ -351,18 +350,18 @@ function BalanceCard({
     );
   }
 
-  const balance = wallet.balance_usdc;
   const isTestnet = wallet.environment === 'testnet';
-  // "In trades" = margin locked + unrealized PnL.
-  // For leveraged perps, margin = notional / leverage.
-  // For spot (leverage=1), margin = notional. balance_usdc is the cross-margin available
-  // balance from Hyperliquid (NOT total equity), so we must add margin, not notional.
+  // balance_usdc is the TOTAL account equity from Hyperliquid's marginSummary
+  // (cross-margin + isolated margin + unrealized PnL) plus spot USDC.
+  // "In trades" shows how much of that equity is locked in open positions.
+  // "Available" is the remainder that can be used for new trades or withdrawn.
   const inTrades = (openPositions ?? []).reduce((sum, p) => {
     const lev = p.leverage > 0 ? p.leverage : 1;
     const margin = p.size_usd / lev;
     return sum + margin + (p.unrealized_pnl ?? 0);
   }, 0);
-  const totalValue = balance + inTrades;
+  const totalValue = wallet.balance_usdc;
+  const balance = totalValue - inTrades;
   const hasOpenPositions = (openPositions ?? []).length > 0;
 
   return (
@@ -2904,11 +2903,7 @@ export default function Account() {
 
         <SettingsItem
           label="Connected wallet"
-          value={
-            wallet?.master_address
-              ? truncateAddress(wallet.master_address)
-              : 'Not set up'
-          }
+          value={wallet?.master_address ? truncateAddress(wallet.master_address) : 'Not set up'}
           onClick={() => toggleSection('wallet')}
           expanded={expandedSection === 'wallet'}
         />
