@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/VelaComponents';
 import SignalChip from '../components/SignalChip';
 import { useDashboard } from '../hooks/useData';
-import { breakIntoParagraphs, formatPrice } from '../lib/helpers';
+import { breakIntoParagraphs, formatPrice, getCoinIcon } from '../lib/helpers';
 import type { SignalColor } from '../types';
 
 // ── Market Pulse indicator config ──
@@ -55,18 +55,18 @@ function pulseColor(key: string, value: number): string {
   switch (key) {
     case 'cryptoSentiment':
     case 'overallMood':
-      if (value >= 55) return 'var(--color-signal-buy)';
-      if (value <= 35) return 'var(--color-signal-sell)';
+      if (value >= 55) return 'var(--color-status-buy-text)';
+      if (value <= 35) return 'var(--color-status-sell-text)';
       return 'var(--color-text-primary)';
     case 'stockMarketFear':
       // VIX: low = calm (green), high = fear (red)
-      if (value <= 20) return 'var(--color-signal-buy)';
-      if (value >= 30) return 'var(--color-signal-sell)';
+      if (value <= 20) return 'var(--color-status-buy-text)';
+      if (value >= 30) return 'var(--color-status-sell-text)';
       return 'var(--color-text-primary)';
     case 'dollarStrength':
       // DXY: weakening can be bullish for assets
-      if (value <= 100) return 'var(--color-signal-buy)';
-      if (value >= 105) return 'var(--color-signal-sell)';
+      if (value <= 100) return 'var(--color-status-buy-text)';
+      if (value >= 105) return 'var(--color-status-sell-text)';
       return 'var(--color-text-primary)';
     default:
       return 'var(--color-text-primary)';
@@ -169,8 +169,8 @@ export default function DailyBrief() {
   });
 
   // Market pulse from embedded detail (Option C: snapshot at generation time)
-  const marketPulse: MarketPulseData = (digest.detail as { marketPulse?: MarketPulseData })
-    ?.marketPulse ?? {};
+  const marketPulse: MarketPulseData =
+    (digest.detail as { marketPulse?: MarketPulseData })?.marketPulse ?? {};
   const hasPulse = Object.keys(marketPulse).some(
     k => k !== 'fetchedAt' && marketPulse[k as keyof MarketPulseData]
   );
@@ -255,7 +255,11 @@ export default function DailyBrief() {
             </span>
             {pulseAge != null && (
               <span className="vela-body-xs vela-text-muted">
-                {pulseAge < 1 ? 'Just now' : pulseAge < 24 ? `${pulseAge}h ago` : `${Math.round(pulseAge / 24)}d ago`}
+                {pulseAge < 1
+                  ? 'Just now'
+                  : pulseAge < 24
+                    ? `${pulseAge}h ago`
+                    : `${Math.round(pulseAge / 24)}d ago`}
               </span>
             )}
           </div>
@@ -344,6 +348,37 @@ export default function DailyBrief() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {(() => {
+                    const iconUrl = item.asset.icon_url ?? (item.asset.coingecko_id ? getCoinIcon(item.asset.coingecko_id) : null);
+                    return iconUrl ? (
+                      <img
+                        src={iconUrl}
+                        alt={item.asset.symbol}
+                        width={20}
+                        height={20}
+                        style={{ borderRadius: '50%', flexShrink: 0 }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: '50%',
+                          background: 'var(--gray-200)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: 'var(--color-text-muted)',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {item.asset.symbol.slice(0, 2)}
+                      </span>
+                    );
+                  })()}
                   <span
                     style={{
                       fontFamily: "'Space Grotesk', sans-serif",
@@ -353,10 +388,7 @@ export default function DailyBrief() {
                   >
                     {item.asset.name}
                   </span>
-                  <span
-                    className="vela-body-xs vela-text-muted"
-                    style={{ fontSize: 11 }}
-                  >
+                  <span className="vela-body-xs vela-text-muted" style={{ fontSize: 11 }}>
                     {item.asset.symbol}
                   </span>
                 </div>
@@ -373,7 +405,7 @@ export default function DailyBrief() {
                     </span>
                   )}
                   {item.signal && (
-                    <SignalChip color={item.signal.signal_color as SignalColor} size="small" />
+                    <SignalChip color={item.signal.signal_color as SignalColor} />
                   )}
                 </div>
               </div>

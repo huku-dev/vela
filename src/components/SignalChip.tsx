@@ -1,9 +1,24 @@
 import type { SignalColor } from '../types';
 
-const colorMap: Record<SignalColor, { bg: string; text: string; label: string }> = {
-  green: { bg: 'var(--color-status-buy-bg)', text: 'var(--color-status-buy-text)', label: 'BUY' },
-  red: { bg: 'var(--color-status-sell-bg)', text: 'var(--color-status-sell-text)', label: 'SHORT' },
-  grey: { bg: 'var(--color-status-wait-bg)', text: 'var(--color-status-wait-text)', label: 'WAIT' },
+const colorMap: Record<
+  SignalColor,
+  { text: string; border: string; label: string }
+> = {
+  green: {
+    text: 'var(--color-status-buy-text)',
+    border: 'var(--color-status-buy-border)',
+    label: 'Buy',
+  },
+  red: {
+    text: 'var(--color-status-sell-text)',
+    border: 'var(--color-status-sell-border)',
+    label: 'Sell',
+  },
+  grey: {
+    text: 'var(--color-status-wait-text)',
+    border: 'var(--color-status-wait-border)',
+    label: 'Wait',
+  },
 };
 
 interface SignalChipProps {
@@ -12,43 +27,47 @@ interface SignalChipProps {
   nearConfirmation?: boolean;
 }
 
-export default function SignalChip({ color, size = 'medium', nearConfirmation }: SignalChipProps) {
-  const { bg, text, label } = colorMap[color];
+export default function SignalChip({
+  color,
+  size = 'medium',
+  nearConfirmation,
+}: SignalChipProps) {
+  const { text, border, label } = colorMap[color];
   const isSmall = size === 'small';
   const isNearConfirm = color === 'grey' && nearConfirmation;
+
+  const chipBorder = isNearConfirm ? 'var(--color-status-wait-near-border)' : border;
+  const chipDot = isNearConfirm ? 'var(--color-status-wait-near-dot)' : border;
+  const chipText = isNearConfirm ? 'var(--color-status-wait-near-text)' : text;
 
   return (
     <span
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: isSmall ? 3 : 4,
-        backgroundColor: isNearConfirm ? 'var(--color-status-wait-near-bg)' : bg,
-        color: isNearConfirm ? 'var(--color-status-wait-near-text)' : text,
+        gap: isSmall ? 4 : 5,
+        backgroundColor: 'transparent',
+        color: chipText,
         fontFamily: 'var(--type-label-sm-font)',
-        fontWeight: 800,
-        fontSize: isSmall ? '0.65rem' : '0.75rem',
-        letterSpacing: '0.1em',
+        fontWeight: 700,
+        fontSize: isSmall ? '0.6rem' : '0.7rem',
+        letterSpacing: '0.05em',
         textTransform: 'uppercase',
-        border: `var(--border-medium) solid ${isNearConfirm ? 'var(--color-status-wait-near-border)' : 'var(--color-border-default)'}`,
-        borderRadius: 'var(--radius-sm)',
-        boxShadow: 'var(--shadow-xs)',
-        height: isSmall ? 26 : 32,
-        padding: '0 var(--space-2)',
+        border: `1.5px solid ${chipBorder}`,
+        borderRadius: '9999px',
+        height: isSmall ? 22 : 26,
+        padding: isSmall ? '0 8px' : '0 10px',
       }}
     >
-      {isNearConfirm && (
-        <span
-          style={{
-            width: isSmall ? 5 : 6,
-            height: isSmall ? 5 : 6,
-            borderRadius: '50%',
-            backgroundColor: 'var(--color-status-wait-near-dot)',
-            flexShrink: 0,
-          }}
-        />
-      )}
+      <span
+        style={{
+          width: isSmall ? 5 : 6,
+          height: isSmall ? 5 : 6,
+          borderRadius: '50%',
+          backgroundColor: chipDot,
+          flexShrink: 0,
+        }}
+      />
       {label}
     </span>
   );
