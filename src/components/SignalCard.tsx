@@ -126,7 +126,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
             width: 44,
             height: 44,
             borderRadius: '50%',
-            border: 'var(--border-medium) solid var(--color-border-default)',
+            border: '1.5px solid var(--gray-200)',
             overflow: 'hidden',
             flexShrink: 0,
             display: 'flex',
