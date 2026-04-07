@@ -351,17 +351,13 @@ function BalanceCard({
   }
 
   const isTestnet = wallet.environment === 'testnet';
-  // balance_usdc is the TOTAL account equity from Hyperliquid's marginSummary
-  // (cross-margin + isolated margin + unrealized PnL) plus spot USDC.
-  // "In trades" shows how much of that equity is locked in open positions.
-  // "Available" is the remainder that can be used for new trades or withdrawn.
-  const inTrades = (openPositions ?? []).reduce((sum, p) => {
-    const lev = p.leverage > 0 ? p.leverage : 1;
-    const margin = p.size_usd / lev;
-    return sum + margin + (p.unrealized_pnl ?? 0);
-  }, 0);
+  // balance_usdc = total account equity (from exchange marginSummary + spot USDC)
+  // available_balance = withdrawable cash (from exchange withdrawable + spot USDC)
+  // Both are synced every 2 minutes by position-monitor.
+  // "In trades" = total - available (derived, not computed from positions).
   const totalValue = wallet.balance_usdc;
-  const balance = totalValue - inTrades;
+  const balance = wallet.available_balance ?? totalValue;
+  const inTrades = totalValue - balance;
   const hasOpenPositions = (openPositions ?? []).length > 0;
 
   return (
