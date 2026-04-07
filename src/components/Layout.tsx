@@ -103,6 +103,11 @@ export default function Layout() {
   const { needsFunding } = useTierAccess();
   const pendingCount = proposals.filter(p => p.status === 'pending').length;
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   // Global failure toast — detect when any proposal transitions to 'failed'
   const [failureToast, setFailureToast] = useState<string | null>(null);
   const prevProposalStatusesRef = useRef<Map<string, string>>(new Map());
