@@ -258,7 +258,7 @@ export default function AssetDetail() {
   // Tier gate: show upgrade prompt if asset is outside user's tier allowance
   if (!hasAccess) {
     const price = priceData?.price ?? signal?.price_at_signal;
-    const iconUrl = getCoinIcon(asset.coingecko_id);
+    const iconUrl = asset.icon_url ?? (asset.coingecko_id ? getCoinIcon(asset.coingecko_id) : null);
 
     return (
       <div
@@ -432,7 +432,7 @@ export default function AssetDetail() {
     (brief?.summary || '').replace(/<\/?cite[^>]*>/g, ''),
     2
   );
-  const iconUrl = getCoinIcon(asset.coingecko_id);
+  const iconUrl = asset.icon_url ?? (asset.coingecko_id ? getCoinIcon(asset.coingecko_id) : null);
 
   return (
     <div
@@ -618,7 +618,7 @@ export default function AssetDetail() {
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
             currentPrice={price ?? undefined}
-            iconUrl={iconUrl}
+            iconUrl={iconUrl ?? undefined}
             positionEntryPrice={assetPosition?.entry_price}
             positionSizeUsd={assetPosition?.size_usd}
           />
@@ -637,7 +637,7 @@ export default function AssetDetail() {
             upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
             onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
             currentPrice={price ?? undefined}
-            iconUrl={iconUrl}
+            iconUrl={iconUrl ?? undefined}
             positionEntryPrice={assetPosition?.entry_price}
             positionSizeUsd={assetPosition?.size_usd}
           />

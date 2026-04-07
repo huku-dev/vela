@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import type { AssetClass } from '../types';
 import { Card } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
 import LockedSignalCard from '../components/LockedSignalCard';
@@ -40,6 +41,22 @@ export default function Home() {
   const { tier, partitionAssets, upgradeLabel, startCheckout } = useTierAccess();
   const [digestExpanded, setDigestExpanded] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [selectedClass, setSelectedClass] = useState<'all' | AssetClass>(() => {
+    try {
+      const stored = localStorage.getItem('vela_signal_tab');
+      if (
+        stored === 'all' ||
+        stored === 'crypto' ||
+        stored === 'equities' ||
+        stored === 'commodities' ||
+        stored === 'indices'
+      )
+        return stored;
+    } catch {
+      /* noop */
+    }
+    return 'all';
+  });
   const [tgNudgeDismissed, setTgNudgeDismissed] = useState(() => {
     try {
       return localStorage.getItem(TG_NUDGE_DISMISSED_KEY) === 'true';
@@ -54,6 +71,52 @@ export default function Home() {
       return false;
     }
   });
+
+  // Persist selected asset class tab
+  useEffect(() => {
+    try {
+      localStorage.setItem('vela_signal_tab', selectedClass);
+    } catch {
+      /* noop */
+    }
+  }, [selectedClass]);
+
+  // Asset class filtering
+  const classCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: data.length };
+    for (const item of data) {
+      const cls = item.asset.asset_class ?? 'crypto';
+      counts[cls] = (counts[cls] ?? 0) + 1;
+    }
+    return counts;
+  }, [data]);
+
+  const filteredData = useMemo(
+    () =>
+      selectedClass === 'all'
+        ? data
+        : data.filter(item => (item.asset.asset_class ?? 'crypto') === selectedClass),
+    [data, selectedClass],
+  );
+
+  const availableTabs = useMemo(() => {
+    const tabs: Array<{ key: 'all' | AssetClass; label: string }> = [
+      { key: 'all', label: 'All' },
+    ];
+    if (classCounts.crypto) tabs.push({ key: 'crypto', label: 'Crypto' });
+    if (classCounts.equities) tabs.push({ key: 'equities', label: 'Equities' });
+    if (classCounts.commodities) tabs.push({ key: 'commodities', label: 'Commodities' });
+    if (classCounts.indices) tabs.push({ key: 'indices', label: 'Indices' });
+    return tabs;
+  }, [classCounts]);
+
+  const CLASS_ORDER: AssetClass[] = ['crypto', 'equities', 'commodities', 'indices'];
+  const CLASS_LABELS: Record<AssetClass, string> = {
+    crypto: 'Crypto',
+    equities: 'Equities',
+    commodities: 'Commodities',
+    indices: 'Indices',
+  };
 
   // Set post-checkout prompt flag when returning from successful checkout
   useEffect(() => {
@@ -389,6 +452,32 @@ export default function Home() {
               {digestExpanded ? 'Show less' : 'View more'}
             </span>
           )}
+          {digestExpanded && (
+            <span
+              className="vela-body-sm"
+              role="button"
+              tabIndex={0}
+              style={{
+                color: 'var(--color-text-primary)',
+                fontWeight: 600,
+                marginTop: 'var(--space-2)',
+                cursor: 'pointer',
+                display: 'block',
+              }}
+              onClick={e => {
+                e.stopPropagation();
+                // TODO: Navigate to /brief when DailyBrief page is implemented
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  // TODO: Navigate to /brief when DailyBrief page is implemented
+                }
+              }}
+            >
+              Read full brief &rarr;
+            </span>
+          )}
         </Card>
       )}
 
@@ -405,20 +494,63 @@ export default function Home() {
         Signals
       </span>
 
-      {data.length === 0 ? (
+      {/* Asset class tab bar */}
+      {availableTabs.length > 2 && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-2)',
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            marginBottom: 'var(--space-4)',
+            maskImage:
+              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+            WebkitMaskImage:
+              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+          }}
+        >
+          {availableTabs.map(tab => {
+            const isActive = selectedClass === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setSelectedClass(tab.key)}
+                className="vela-btn vela-btn-sm"
+                style={{
+                  flexShrink: 0,
+                  borderRadius: '9999px',
+                  background: isActive ? 'var(--ink)' : 'var(--color-bg-surface)',
+                  color: isActive ? 'var(--white)' : 'var(--color-text-muted)',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {tab.label}
+                <span style={{ opacity: 0.5, fontSize: 'var(--text-xs)' }}>
+                  {classCounts[tab.key] ?? 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {filteredData.length === 0 && data.length > 0 ? (
+        <p
+          className="vela-body-sm vela-text-muted"
+          style={{ textAlign: 'center', padding: 'var(--space-6) 0' }}
+        >
+          No {selectedClass} signals available
+        </p>
+      ) : data.length === 0 ? (
         <EmptyState type="no-signals" />
       ) : (
         (() => {
-          const { accessible, locked } = partitionAssets(data);
-          return (
-            <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
-              {accessible.map(item => {
-                const assetPosition = isAuthenticated
-                  ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
-                  : undefined;
-                return <SignalCard key={item.asset.id} data={item} position={assetPosition} />;
-              })}
-              {locked.map(item => (
+          const { accessible, locked } = partitionAssets(filteredData);
+
+          const renderCard = (item: (typeof accessible)[0], isLocked: boolean) => {
+            if (isLocked) {
+              return (
                 <LockedSignalCard
                   key={item.asset.id}
                   asset={item.asset}
@@ -426,7 +558,54 @@ export default function Home() {
                   upgradeLabel={upgradeLabel(`see ${item.asset.symbol} signals`)}
                   onUpgradeClick={() => setShowTierSheet(true)}
                 />
-              ))}
+              );
+            }
+            const assetPosition = isAuthenticated
+              ? positions.find(p => p.asset_id === item.asset.id && p.status === 'open')
+              : undefined;
+            return <SignalCard key={item.asset.id} data={item} position={assetPosition} />;
+          };
+
+          if (selectedClass === 'all') {
+            const elements: React.ReactNode[] = [];
+            for (const cls of CLASS_ORDER) {
+              const classAccessible = accessible.filter(
+                i => (i.asset.asset_class ?? 'crypto') === cls,
+              );
+              const classLocked = locked.filter(
+                i => (i.asset.asset_class ?? 'crypto') === cls,
+              );
+              if (classAccessible.length + classLocked.length === 0) continue;
+
+              elements.push(
+                <span
+                  key={`header-${cls}`}
+                  className="vela-label-sm vela-text-muted"
+                  style={{
+                    textTransform: 'uppercase',
+                    display: 'block',
+                    letterSpacing: '0.06em',
+                    paddingTop: elements.length > 0 ? 'var(--space-3)' : 0,
+                  }}
+                >
+                  {CLASS_LABELS[cls]}
+                </span>,
+              );
+
+              for (const item of classAccessible) elements.push(renderCard(item, false));
+              for (const item of classLocked) elements.push(renderCard(item, true));
+            }
+            return (
+              <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
+                {elements}
+              </div>
+            );
+          }
+
+          return (
+            <div className="vela-stack" style={{ gap: 'var(--space-4)' }}>
+              {accessible.map(item => renderCard(item, false))}
+              {locked.map(item => renderCard(item, true))}
             </div>
           );
         })()

@@ -55,6 +55,48 @@ async function fetchHyperliquidMids(): Promise<Record<string, number>> {
 }
 
 /**
+ * Fetch prices for builder perps via metaAndAssetCtxs(dex=...).
+ * Used for non-crypto assets that don't appear in allMids by name.
+ * Returns hlSymbol → price map (e.g. { "xyz:NVDA": 175.2 }).
+ */
+async function fetchBuilderPerpPrices(
+  hlSymbols: string[],
+): Promise<Record<string, number>> {
+  if (hlSymbols.length === 0) return {};
+  const result: Record<string, number> = {};
+
+  // Group by dex prefix
+  const byDex: Record<string, string[]> = {};
+  for (const hl of hlSymbols) {
+    const colonIdx = hl.indexOf(':');
+    if (colonIdx === -1) continue;
+    const dex = hl.substring(0, colonIdx);
+    (byDex[dex] ??= []).push(hl);
+  }
+
+  for (const [dex, coins] of Object.entries(byDex)) {
+    try {
+      const res = await fetch(HYPERLIQUID_INFO, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'metaAndAssetCtxs', dex }),
+      });
+      if (!res.ok) continue;
+      const [meta, contexts] = await res.json();
+      const universe = meta.universe as Array<{ name: string }>;
+      for (let i = 0; i < universe.length && i < contexts.length; i++) {
+        if (coins.includes(universe[i].name) && contexts[i]?.midPx) {
+          result[universe[i].name] = parseFloat(contexts[i].midPx);
+        }
+      }
+    } catch {
+      // Non-fatal — builder perp prices unavailable
+    }
+  }
+  return result;
+}
+
+/**
  * Compute 24h price change from Hyperliquid 1-hour candles.
  * Compares the first candle open (24h ago) to the latest candle close.
  * Returns symbol → change% (e.g. { BTC: 2.3, ETH: -1.1 }).
@@ -236,17 +278,30 @@ export function useDashboard() {
       const signals = signalsRes.data || [];
       const briefs = briefsRes.data || [];
 
-      const coingeckoIds = assets.map((a: Asset) => a.coingecko_id);
+      const coingeckoIds = assets
+        .map((a: Asset) => a.coingecko_id)
+        .filter((id): id is string => id != null);
       // Build CoinGecko ID → Hyperliquid symbol map for dual-source pricing
       const symbolMap: Record<string, string> = {};
       for (const a of assets) {
-        symbolMap[a.coingecko_id] = a.symbol;
+        if (a.coingecko_id) symbolMap[a.coingecko_id] = a.symbol;
       }
       const livePrices = await fetchLivePrices(coingeckoIds, symbolMap);
 
+      // Fetch builder perp prices for non-crypto assets
+      const builderPerpSymbols = assets
+        .filter((a: Asset) => !a.coingecko_id && a.hl_symbol && a.hl_symbol.includes(':'))
+        .map((a: Asset) => a.hl_symbol!);
+      const builderPerpPrices = await fetchBuilderPerpPrices(builderPerpSymbols);
+
       const dashboard: AssetDashboard[] = assets.map((asset: Asset) => {
         const signal = signals.find((s: Signal) => s.asset_id === asset.id) || null;
-        const livePrice = livePrices[asset.coingecko_id];
+        // Try CoinGecko price first, then builder perp price
+        const livePrice = asset.coingecko_id
+          ? livePrices[asset.coingecko_id]
+          : asset.hl_symbol && builderPerpPrices[asset.hl_symbol]
+            ? { price: builderPerpPrices[asset.hl_symbol], change24h: 0, priceSource: 'hyperliquid' as const }
+            : undefined;
 
         // Fall back to signal price when both live sources fail
         const priceData: PriceData | null = livePrice
@@ -406,10 +461,15 @@ export function useAssetDetail(assetId: string) {
           const symMap = { [assetData.coingecko_id]: assetData.symbol };
           const prices = await fetchLivePrices([assetData.coingecko_id], symMap);
           const freshPrice = prices[assetData.coingecko_id];
-          // Only overwrite cached priceData if we got a valid response —
-          // prevents wiping cached change24h on transient CoinGecko failures
           if (freshPrice) {
             setPriceData(freshPrice);
+          }
+        } else if (assetData?.hl_symbol && assetData.hl_symbol.includes(':')) {
+          // Builder perp: fetch price via metaAndAssetCtxs
+          const bpPrices = await fetchBuilderPerpPrices([assetData.hl_symbol]);
+          const bpPrice = bpPrices[assetData.hl_symbol];
+          if (bpPrice) {
+            setPriceData({ price: bpPrice, change24h: 0, priceSource: 'hyperliquid' });
           }
         }
       } catch (err) {

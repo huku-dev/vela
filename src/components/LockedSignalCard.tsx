@@ -22,7 +22,7 @@ export default function LockedSignalCard({
   onUpgradeClick,
   briefHeadline,
 }: LockedSignalCardProps) {
-  const iconUrl = getCoinIcon(asset.coingecko_id);
+  const iconUrl = asset.icon_url ?? (asset.coingecko_id ? getCoinIcon(asset.coingecko_id) : null);
   const cleanHeadline = briefHeadline ? stripAssetPrefix(briefHeadline, asset.symbol) : null;
 
   return (

@@ -177,12 +177,12 @@ describe('TIER-ADV: Authorization bypass — free users cannot access paid featu
     expect(locked).toHaveLength(3);
   });
 
-  it('TIER-ADV: standard tier cannot access more than 3 assets', () => {
+  it('TIER-ADV: standard tier can access all 4 assets with max_assets=5', () => {
     const standard = getTierConfig('standard');
     const items = wrapAssets(ALL_ASSETS);
     const { accessible, locked } = partitionAssets(items, standard.max_assets);
-    expect(accessible).toHaveLength(3);
-    expect(locked).toHaveLength(1);
+    expect(accessible).toHaveLength(4);
+    expect(locked).toHaveLength(0);
   });
 });
 
@@ -195,8 +195,8 @@ describe('TIER-ADV: Scope leakage — boundary conditions on asset access', () =
 
   it('TIER-ADV: standard user cannot access asset at exact boundary (index === max_assets)', () => {
     const standard = getTierConfig('standard');
-    // max_assets = 3, so index 3 (SOL) should be locked
-    expect(canAccessAsset('sol', ALL_ASSETS, standard.max_assets)).toBe(false);
+    // max_assets = 5, with 4 assets SOL is accessible
+    expect(canAccessAsset('sol', ALL_ASSETS, standard.max_assets)).toBe(true);
   });
 
   it('TIER-ADV: asset access is position-based, not ID-based (reordering changes access)', () => {
@@ -236,9 +236,9 @@ describe('TIER-ADV: Guard bypass — tier limits enforced consistently', () => {
     const standard = getTierConfig('standard');
     const premium = getTierConfig('premium');
 
-    // max_assets: free(1) < standard(3) < premium(unlimited=0)
+    // max_assets: free(1) < standard(5) < premium(unlimited=0)
     expect(free.max_assets).toBe(1);
-    expect(standard.max_assets).toBe(3);
+    expect(standard.max_assets).toBe(5);
     expect(premium.max_assets).toBe(0); // 0 = unlimited
 
     // max_leverage: free(1) < standard(2) < premium(5)

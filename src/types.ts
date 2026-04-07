@@ -1,13 +1,17 @@
 export type SignalColor = 'green' | 'red' | 'grey';
 export type BriefType = 'signal_change' | 'notable_update' | 'daily_digest';
 export type TradeStatus = 'open' | 'closed';
+export type AssetClass = 'crypto' | 'equities' | 'commodities' | 'indices';
 
 export interface Asset {
   id: string;
   symbol: string;
   name: string;
-  coingecko_id: string;
+  coingecko_id: string | null;
   enabled: boolean;
+  asset_class?: AssetClass;
+  hl_symbol?: string | null;
+  icon_url?: string | null;
 }
 
 export interface Signal {
