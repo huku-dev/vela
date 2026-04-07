@@ -14,6 +14,7 @@ const Home = lazy(() => import('../pages/Home'));
 const AssetDetail = lazy(() => import('../pages/AssetDetail'));
 const TrackRecord = lazy(() => import('../pages/TrackRecord'));
 const Account = lazy(() => import('../pages/Account'));
+const DailyBrief = lazy(() => import('../pages/DailyBrief'));
 const Onboarding = lazy(() => import('../pages/Onboarding'));
 const Login = lazy(() => import('../pages/Login'));
 
@@ -111,6 +112,14 @@ export default function AuthShell() {
                   element={
                     <ErrorBoundary>
                       <Account />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/brief"
+                  element={
+                    <ErrorBoundary>
+                      <DailyBrief />
                     </ErrorBoundary>
                   }
                 />
