@@ -981,6 +981,7 @@ export default function AssetDetail() {
           assetId={assetId!}
           assetName={asset.name}
           coingeckoId={asset.coingecko_id}
+          iconUrl={asset.icon_url}
           signal={signal?.signal_color ?? null}
           price={price ?? null}
           priceChange24h={change24h ?? null}

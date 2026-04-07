@@ -118,7 +118,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
       }}
       style={{ cursor: 'pointer' }}
     >
-      {/* Top row */}
+      {/* Top row: icon + name/symbol + price/change */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
         {/* Asset icon */}
         <div
@@ -159,27 +159,26 @@ export default function SignalCard({ data, position }: SignalCardProps) {
           )}
         </div>
 
-        {/* Name */}
+        {/* Name + symbol */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <span
             className="vela-heading-base"
             style={{
-              display: 'block',
               fontWeight: 'var(--weight-bold)',
               lineHeight: 1.2,
             }}
           >
-            {asset.symbol}
+            {asset.name}
           </span>
           <span
             className="vela-body-sm vela-text-muted"
-            style={{ fontSize: 'var(--text-xs)', lineHeight: 1.3 }}
+            style={{ fontSize: 'var(--text-xs)', marginLeft: 'var(--space-2)' }}
           >
-            {asset.name}
+            {asset.symbol}
           </span>
         </div>
 
-        {/* Price + arrow */}
+        {/* Price + change */}
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <span
             className="vela-mono"
@@ -233,15 +232,40 @@ export default function SignalCard({ data, position }: SignalCardProps) {
             </span>
           ) : null}
         </div>
+      </div>
 
-        {/* Signal chip */}
+      {/* Bottom row: signal chip + headline + chevron */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+          marginTop: 'var(--space-3)',
+          paddingTop: 'var(--space-3)',
+          borderTop: '1px solid var(--gray-200)',
+        }}
+      >
         <SignalChip
           color={signal?.signal_color || 'grey'}
           size="small"
           nearConfirmation={signal?.near_confirmation}
         />
-
-        {/* Chevron */}
+        {headline && (
+          <span
+            className="vela-body-sm"
+            style={{
+              color: 'var(--color-text-muted)',
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              lineHeight: 1.4,
+            }}
+          >
+            {headline}
+          </span>
+        )}
         <svg
           width="16"
           height="16"
@@ -261,22 +285,6 @@ export default function SignalCard({ data, position }: SignalCardProps) {
           />
         </svg>
       </div>
-
-      {/* Headline — position-aware when user has an open position */}
-      {headline && (
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.5,
-            marginTop: 'var(--space-3)',
-            paddingTop: 'var(--space-3)',
-            borderTop: 'var(--border-medium) solid var(--gray-200)',
-          }}
-        >
-          {headline}
-        </p>
-      )}
     </div>
   );
 }

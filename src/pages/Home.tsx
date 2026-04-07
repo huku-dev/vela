@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AssetClass } from '../types';
 import { Card } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
@@ -35,6 +36,7 @@ const TG_NUDGE_DISMISSED_KEY = 'vela_telegram_nudge_dismissed';
 const TG_CHECKOUT_PROMPT_KEY = 'vela_show_telegram_prompt';
 
 export default function Home() {
+  const navigate = useNavigate();
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
   const { positions, preferences } = useTrading();
@@ -96,13 +98,11 @@ export default function Home() {
       selectedClass === 'all'
         ? data
         : data.filter(item => (item.asset.asset_class ?? 'crypto') === selectedClass),
-    [data, selectedClass],
+    [data, selectedClass]
   );
 
   const availableTabs = useMemo(() => {
-    const tabs: Array<{ key: 'all' | AssetClass; label: string }> = [
-      { key: 'all', label: 'All' },
-    ];
+    const tabs: Array<{ key: 'all' | AssetClass; label: string }> = [{ key: 'all', label: 'All' }];
     if (classCounts.crypto) tabs.push({ key: 'crypto', label: 'Crypto' });
     if (classCounts.equities) tabs.push({ key: 'equities', label: 'Equities' });
     if (classCounts.commodities) tabs.push({ key: 'commodities', label: 'Commodities' });
@@ -452,21 +452,34 @@ export default function Home() {
               {digestExpanded ? 'Show less' : 'View more'}
             </span>
           )}
+          {digestExpanded && (
+            <span
+              className="vela-body-sm"
+              role="button"
+              tabIndex={0}
+              style={{
+                color: 'var(--color-text-primary)',
+                fontWeight: 600,
+                marginTop: 'var(--space-2)',
+                cursor: 'pointer',
+                display: 'block',
+              }}
+              onClick={e => {
+                e.stopPropagation();
+                navigate('/brief');
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.stopPropagation();
+                  navigate('/brief');
+                }
+              }}
+            >
+              Read full brief &rarr;
+            </span>
+          )}
         </Card>
       )}
-
-      {/* Signals section */}
-      <span
-        className="vela-label-sm vela-text-muted"
-        style={{
-          textTransform: 'uppercase',
-          display: 'block',
-          marginBottom: 'var(--space-3)',
-          paddingLeft: 'var(--space-1)',
-        }}
-      >
-        Signals
-      </span>
 
       {/* Asset class tab bar */}
       {availableTabs.length > 2 && (
@@ -478,41 +491,66 @@ export default function Home() {
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
             marginBottom: 'var(--space-4)',
-            maskImage:
-              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+            padding: '4px 2px 6px',
+            maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
           }}
         >
-          {availableTabs.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedClass(tab.key)}
-              className={
-                selectedClass === tab.key
-                  ? 'vela-btn vela-btn-primary'
-                  : 'vela-btn vela-btn-secondary'
-              }
-              style={{
-                flexShrink: 0,
-                padding: 'var(--space-2) var(--space-4)',
-                borderRadius: 'var(--radius-full)',
-                fontSize: 'var(--text-sm)',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              {tab.label}
+          {availableTabs.map(tab => {
+            const isActive = selectedClass === tab.key;
+            return (
               <span
+                key={tab.key}
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedClass(tab.key)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedClass(tab.key);
+                }}
                 style={{
-                  marginLeft: 'var(--space-1)',
-                  opacity: 0.5,
-                  fontSize: 'var(--text-xs)',
+                  flexShrink: 0,
+                  borderRadius: '9999px',
+                  background: isActive ? 'var(--color-border-default)' : '#fff',
+                  color: isActive ? '#fff' : 'var(--gray-600)',
+                  border: '2px solid var(--color-border-default)',
+                  boxShadow: '2px 2px 0 var(--color-border-default)',
+                  padding: '7px 16px',
+                  fontSize: 13,
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  WebkitTapHighlightColor: 'transparent',
+                  transition:
+                    'transform 120ms ease-out, box-shadow 120ms ease-out, background 120ms ease-out, color 120ms ease-out',
+                  userSelect: 'none',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translate(-1px, -1px)';
+                  e.currentTarget.style.boxShadow = '3px 3px 0 var(--color-border-default)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = '';
+                  e.currentTarget.style.boxShadow = '2px 2px 0 var(--color-border-default)';
+                }}
+                onMouseDown={e => {
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = '1px 1px 0 var(--color-border-default)';
+                }}
+                onMouseUp={e => {
+                  e.currentTarget.style.transform = 'translate(-1px, -1px)';
+                  e.currentTarget.style.boxShadow = '3px 3px 0 var(--color-border-default)';
                 }}
               >
-                {classCounts[tab.key] ?? 0}
+                {tab.label}
+                <span style={{ opacity: isActive ? 0.7 : 0.5, fontSize: 11 }}>
+                  {classCounts[tab.key] ?? 0}
+                </span>
               </span>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -551,11 +589,9 @@ export default function Home() {
             const elements: React.ReactNode[] = [];
             for (const cls of CLASS_ORDER) {
               const classAccessible = accessible.filter(
-                i => (i.asset.asset_class ?? 'crypto') === cls,
+                i => (i.asset.asset_class ?? 'crypto') === cls
               );
-              const classLocked = locked.filter(
-                i => (i.asset.asset_class ?? 'crypto') === cls,
-              );
+              const classLocked = locked.filter(i => (i.asset.asset_class ?? 'crypto') === cls);
               if (classAccessible.length + classLocked.length === 0) continue;
 
               elements.push(
@@ -570,7 +606,7 @@ export default function Home() {
                   }}
                 >
                   {CLASS_LABELS[cls]}
-                </span>,
+                </span>
               );
 
               for (const item of classAccessible) elements.push(renderCard(item, false));

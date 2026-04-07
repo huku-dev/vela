@@ -59,9 +59,7 @@ async function fetchHyperliquidMids(): Promise<Record<string, number>> {
  * Used for non-crypto assets that don't appear in allMids by name.
  * Returns hlSymbol → price map (e.g. { "xyz:NVDA": 175.2 }).
  */
-async function fetchBuilderPerpPrices(
-  hlSymbols: string[],
-): Promise<Record<string, number>> {
+async function fetchBuilderPerpPrices(hlSymbols: string[]): Promise<Record<string, number>> {
   if (hlSymbols.length === 0) return {};
   const result: Record<string, number> = {};
 
@@ -288,11 +286,14 @@ export function useDashboard() {
       }
       const livePrices = await fetchLivePrices(coingeckoIds, symbolMap);
 
-      // Fetch builder perp prices for non-crypto assets
+      // Fetch builder perp prices + 24h changes for non-crypto assets
       const builderPerpSymbols = assets
         .filter((a: Asset) => !a.coingecko_id && a.hl_symbol && a.hl_symbol.includes(':'))
         .map((a: Asset) => a.hl_symbol!);
-      const builderPerpPrices = await fetchBuilderPerpPrices(builderPerpSymbols);
+      const [builderPerpPrices, builderPerp24hChanges] = await Promise.all([
+        fetchBuilderPerpPrices(builderPerpSymbols),
+        fetchHyperliquid24hChanges(builderPerpSymbols),
+      ]);
 
       const dashboard: AssetDashboard[] = assets.map((asset: Asset) => {
         const signal = signals.find((s: Signal) => s.asset_id === asset.id) || null;
@@ -300,7 +301,11 @@ export function useDashboard() {
         const livePrice = asset.coingecko_id
           ? livePrices[asset.coingecko_id]
           : asset.hl_symbol && builderPerpPrices[asset.hl_symbol]
-            ? { price: builderPerpPrices[asset.hl_symbol], change24h: 0, priceSource: 'hyperliquid' as const }
+            ? {
+                price: builderPerpPrices[asset.hl_symbol],
+                change24h: builderPerp24hChanges[asset.hl_symbol] ?? 0,
+                priceSource: 'hyperliquid' as const,
+              }
             : undefined;
 
         // Fall back to signal price when both live sources fail
@@ -465,11 +470,18 @@ export function useAssetDetail(assetId: string) {
             setPriceData(freshPrice);
           }
         } else if (assetData?.hl_symbol && assetData.hl_symbol.includes(':')) {
-          // Builder perp: fetch price via metaAndAssetCtxs
-          const bpPrices = await fetchBuilderPerpPrices([assetData.hl_symbol]);
+          // Builder perp: fetch price + 24h change via HL APIs
+          const [bpPrices, bpChanges] = await Promise.all([
+            fetchBuilderPerpPrices([assetData.hl_symbol]),
+            fetchHyperliquid24hChanges([assetData.hl_symbol]),
+          ]);
           const bpPrice = bpPrices[assetData.hl_symbol];
           if (bpPrice) {
-            setPriceData({ price: bpPrice, change24h: 0, priceSource: 'hyperliquid' });
+            setPriceData({
+              price: bpPrice,
+              change24h: bpChanges[assetData.hl_symbol] ?? 0,
+              priceSource: 'hyperliquid',
+            });
           }
         }
       } catch (err) {
@@ -500,7 +512,8 @@ const PAGE_SIZE = 50;
 
 export interface TradeAssetInfo {
   symbol: string;
-  coingecko_id: string;
+  coingecko_id: string | null;
+  icon_url?: string | null;
 }
 
 /** Enriched trade with brief headlines and reason codes for storytelling */
@@ -613,11 +626,14 @@ export function useTrackRecord() {
       setHasMore(false);
       setStats(statsRes.data || []);
 
-      // Build asset map for logos
+      // Build asset map for logos (include non-crypto assets with null coingecko_id)
       const aMap: Record<string, TradeAssetInfo> = {};
       for (const t of mapped) {
-        if (t.asset_symbol && t.asset_coingecko_id) {
-          aMap[t.asset_id] = { symbol: t.asset_symbol, coingecko_id: t.asset_coingecko_id };
+        if (t.asset_symbol) {
+          aMap[t.asset_id] = {
+            symbol: t.asset_symbol,
+            coingecko_id: t.asset_coingecko_id ?? null,
+          };
         }
       }
       setAssetMap(aMap);
@@ -636,15 +652,19 @@ export function useTrackRecord() {
       }
 
       // Fetch live prices for all known assets (covers both open paper_trades and real positions)
-      const allAssetIds = [...new Set(Object.values(aMap).map(a => a.coingecko_id))].filter(
-        Boolean
-      );
+      const allAssetIds = [
+        ...new Set(
+          Object.values(aMap)
+            .map(a => a.coingecko_id)
+            .filter((id): id is string => id != null)
+        ),
+      ];
 
       if (allAssetIds.length > 0) {
         // Build symbolMap so fetchLivePrices uses Hyperliquid real-time feed (not just CoinGecko)
         const symbolMap: Record<string, string> = {};
         for (const a of Object.values(aMap)) {
-          symbolMap[a.coingecko_id] = a.symbol;
+          if (a.coingecko_id) symbolMap[a.coingecko_id] = a.symbol;
         }
         const prices = await fetchLivePrices(allAssetIds, symbolMap);
         setLivePrices(prices);

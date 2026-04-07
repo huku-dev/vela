@@ -125,7 +125,12 @@
   --color-action-primary-hover: var(--blue-hover);
   --color-action-primary-bg: var(--blue-light);
 
-  /* Status colors - Trading signals */
+  /* Signal colors — semantic aliases for signal direction */
+  --color-signal-buy: var(--green-primary);
+  --color-signal-sell: var(--red-primary);
+  --color-signal-wait: var(--amber-primary);
+
+  /* Status colors - Trading signals (chip backgrounds, text, borders) */
   --color-status-buy-bg: var(--green-bg);
   --color-status-buy-text: var(--green-dark);
   --color-status-buy-border: var(--green-primary);
@@ -777,14 +782,21 @@ body {
     --color-border-default: #334155;
     --color-border-subtle: #475569;
 
+    --color-signal-buy: #4ade80;
+    --color-signal-sell: #f87171;
+    --color-signal-wait: #fbbf24;
+
     --color-status-buy-bg: #064e3b;
     --color-status-buy-text: #bbf7d0;
+    --color-status-buy-border: #4ade80;
 
     --color-status-sell-bg: #7f1d1d;
     --color-status-sell-text: #fecaca;
+    --color-status-sell-border: #f87171;
 
     --color-status-wait-bg: #78350f;
     --color-status-wait-text: #fde68a;
+    --color-status-wait-border: #fbbf24;
 
     --color-status-wait-near-bg: #064e3b;
     --color-status-wait-near-text: #a7f3d0;
