@@ -310,6 +310,8 @@ export interface UserWallet {
   agent_address: string | null;
   agent_registered: boolean;
   balance_usdc: number;
+  /** Withdrawable USDC not locked in positions (from exchange). */
+  available_balance?: number | null;
   balance_last_synced_at: string | null;
   /** Free tier: true after the user's 1 lifetime trial trade has been opened */
   trial_trade_used: boolean;
