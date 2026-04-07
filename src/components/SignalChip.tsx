@@ -1,9 +1,6 @@
 import type { SignalColor } from '../types';
 
-const colorMap: Record<
-  SignalColor,
-  { text: string; border: string; label: string }
-> = {
+const colorMap: Record<SignalColor, { text: string; border: string; label: string }> = {
   green: {
     text: 'var(--color-status-buy-text)',
     border: 'var(--color-status-buy-border)',
@@ -27,11 +24,7 @@ interface SignalChipProps {
   nearConfirmation?: boolean;
 }
 
-export default function SignalChip({
-  color,
-  size = 'medium',
-  nearConfirmation,
-}: SignalChipProps) {
+export default function SignalChip({ color, size = 'medium', nearConfirmation }: SignalChipProps) {
   const { text, border, label } = colorMap[color];
   const isSmall = size === 'small';
   const isNearConfirm = color === 'grey' && nearConfirmation;

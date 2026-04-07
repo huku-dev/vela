@@ -349,7 +349,9 @@ export default function DailyBrief() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => {
-                    const iconUrl = item.asset.icon_url ?? (item.asset.coingecko_id ? getCoinIcon(item.asset.coingecko_id) : null);
+                    const iconUrl =
+                      item.asset.icon_url ??
+                      (item.asset.coingecko_id ? getCoinIcon(item.asset.coingecko_id) : null);
                     return iconUrl ? (
                       <img
                         src={iconUrl}
@@ -357,7 +359,9 @@ export default function DailyBrief() {
                         width={20}
                         height={20}
                         style={{ borderRadius: '50%', flexShrink: 0 }}
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        onError={e => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     ) : (
                       <span
@@ -404,9 +408,7 @@ export default function DailyBrief() {
                       {formatPrice(item.priceData.price)}
                     </span>
                   )}
-                  {item.signal && (
-                    <SignalChip color={item.signal.signal_color as SignalColor} />
-                  )}
+                  {item.signal && <SignalChip color={item.signal.signal_color as SignalColor} />}
                 </div>
               </div>
             ))}
