@@ -59,9 +59,7 @@ async function fetchHyperliquidMids(): Promise<Record<string, number>> {
  * Used for non-crypto assets that don't appear in allMids by name.
  * Returns hlSymbol → price map (e.g. { "xyz:NVDA": 175.2 }).
  */
-async function fetchBuilderPerpPrices(
-  hlSymbols: string[],
-): Promise<Record<string, number>> {
+async function fetchBuilderPerpPrices(hlSymbols: string[]): Promise<Record<string, number>> {
   if (hlSymbols.length === 0) return {};
   const result: Record<string, number> = {};
 
@@ -300,7 +298,11 @@ export function useDashboard() {
         const livePrice = asset.coingecko_id
           ? livePrices[asset.coingecko_id]
           : asset.hl_symbol && builderPerpPrices[asset.hl_symbol]
-            ? { price: builderPerpPrices[asset.hl_symbol], change24h: 0, priceSource: 'hyperliquid' as const }
+            ? {
+                price: builderPerpPrices[asset.hl_symbol],
+                change24h: 0,
+                priceSource: 'hyperliquid' as const,
+              }
             : undefined;
 
         // Fall back to signal price when both live sources fail

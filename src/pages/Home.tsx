@@ -96,13 +96,11 @@ export default function Home() {
       selectedClass === 'all'
         ? data
         : data.filter(item => (item.asset.asset_class ?? 'crypto') === selectedClass),
-    [data, selectedClass],
+    [data, selectedClass]
   );
 
   const availableTabs = useMemo(() => {
-    const tabs: Array<{ key: 'all' | AssetClass; label: string }> = [
-      { key: 'all', label: 'All' },
-    ];
+    const tabs: Array<{ key: 'all' | AssetClass; label: string }> = [{ key: 'all', label: 'All' }];
     if (classCounts.crypto) tabs.push({ key: 'crypto', label: 'Crypto' });
     if (classCounts.equities) tabs.push({ key: 'equities', label: 'Equities' });
     if (classCounts.commodities) tabs.push({ key: 'commodities', label: 'Commodities' });
@@ -504,10 +502,8 @@ export default function Home() {
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
             marginBottom: 'var(--space-4)',
-            maskImage:
-              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+            maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
           }}
         >
           {availableTabs.map(tab => {
@@ -570,11 +566,9 @@ export default function Home() {
             const elements: React.ReactNode[] = [];
             for (const cls of CLASS_ORDER) {
               const classAccessible = accessible.filter(
-                i => (i.asset.asset_class ?? 'crypto') === cls,
+                i => (i.asset.asset_class ?? 'crypto') === cls
               );
-              const classLocked = locked.filter(
-                i => (i.asset.asset_class ?? 'crypto') === cls,
-              );
+              const classLocked = locked.filter(i => (i.asset.asset_class ?? 'crypto') === cls);
               if (classAccessible.length + classLocked.length === 0) continue;
 
               elements.push(
@@ -589,7 +583,7 @@ export default function Home() {
                   }}
                 >
                   {CLASS_LABELS[cls]}
-                </span>,
+                </span>
               );
 
               for (const item of classAccessible) elements.push(renderCard(item, false));
