@@ -498,33 +498,56 @@ export default function Home() {
           {availableTabs.map(tab => {
             const isActive = selectedClass === tab.key;
             return (
-              <button
+              <span
                 key={tab.key}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedClass(tab.key)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') setSelectedClass(tab.key);
+                }}
                 style={{
                   flexShrink: 0,
                   borderRadius: '9999px',
-                  background: isActive ? 'var(--ink)' : 'var(--color-bg-surface)',
-                  color: isActive ? 'var(--white)' : 'var(--color-text-primary)',
-                  border: '2.5px solid var(--ink)',
-                  boxShadow: isActive ? 'none' : '2px 2px 0 var(--ink)',
-                  padding: '8px 18px',
-                  fontSize: 'var(--text-sm)',
-                  fontFamily: "'Space Grotesk', sans-serif",
+                  background: isActive ? 'var(--color-border-default)' : '#fff',
+                  color: isActive ? '#fff' : 'var(--gray-600)',
+                  border: '2px solid var(--color-border-default)',
+                  boxShadow: '2px 2px 0 var(--color-border-default)',
+                  padding: '7px 16px',
+                  fontSize: 13,
+                  fontFamily: 'Inter, sans-serif',
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
+                  gap: 5,
                   WebkitTapHighlightColor: 'transparent',
-                  transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
+                  transition:
+                    'transform 120ms ease-out, box-shadow 120ms ease-out, background 120ms ease-out, color 120ms ease-out',
+                  userSelect: 'none',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translate(-1px, -1px)';
+                  e.currentTarget.style.boxShadow = '3px 3px 0 var(--color-border-default)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = '';
+                  e.currentTarget.style.boxShadow = '2px 2px 0 var(--color-border-default)';
+                }}
+                onMouseDown={e => {
+                  e.currentTarget.style.transform = 'translate(0, 0)';
+                  e.currentTarget.style.boxShadow = '1px 1px 0 var(--color-border-default)';
+                }}
+                onMouseUp={e => {
+                  e.currentTarget.style.transform = 'translate(-1px, -1px)';
+                  e.currentTarget.style.boxShadow = '3px 3px 0 var(--color-border-default)';
                 }}
               >
                 {tab.label}
-                <span style={{ opacity: isActive ? 0.7 : 0.4, fontSize: 'var(--text-xs)' }}>
+                <span style={{ opacity: isActive ? 0.7 : 0.5, fontSize: 11 }}>
                   {classCounts[tab.key] ?? 0}
                 </span>
-              </button>
+              </span>
             );
           })}
         </div>
