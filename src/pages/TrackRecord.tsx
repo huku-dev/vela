@@ -459,7 +459,7 @@ export default function TrackRecord() {
                       upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
                       onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
                       currentPrice={livePrice ?? undefined}
-                      iconUrl={coingeckoId ? getCoinIcon(coingeckoId) : undefined}
+                      iconUrl={asset?.icon_url ?? (coingeckoId ? getCoinIcon(coingeckoId) : undefined)}
                       positionEntryPrice={assetPosition?.entry_price}
                       positionSizeUsd={assetPosition?.size_usd}
                     />
@@ -510,6 +510,7 @@ export default function TrackRecord() {
                       position={pos}
                       livePrice={posLivePrice}
                       coingeckoId={posCoingeckoId ?? undefined}
+                      assetIconUrl={posAsset?.icon_url}
                       expanded={expandedTradeId === pos.id}
                       onToggle={() =>
                         setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
@@ -544,6 +545,7 @@ export default function TrackRecord() {
                       key={pos.id}
                       position={pos}
                       coingeckoId={closedAsset?.coingecko_id ?? undefined}
+                      assetIconUrl={closedAsset?.icon_url}
                       expanded={expandedTradeId === pos.id}
                       onToggle={() =>
                         setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
@@ -737,6 +739,7 @@ export default function TrackRecord() {
                 group={bestPaperGroup}
                 positionPnl={bestPaperPnl}
                 coingeckoId={assetMap[bestPaperGroup.trade.asset_id]?.coingecko_id ?? undefined}
+                assetIconUrl={assetMap[bestPaperGroup.trade.asset_id]?.icon_url}
               />
             )}
           </div>
@@ -769,17 +772,19 @@ function BestTradeCard({
   group,
   positionPnl,
   coingeckoId,
+  assetIconUrl,
   onTap,
 }: {
   group: GroupedTrade;
   positionPnl: ReturnType<typeof computePositionPnl>;
   coingeckoId: string | undefined;
+  assetIconUrl?: string | null;
   onTap?: () => void;
 }) {
   const trade = group.trade;
   const dollarPnl = positionPnl.totalDollarPnl;
   const pnlPct = positionPnl.totalPnlPct;
-  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const iconUrl = assetIconUrl ?? (coingeckoId ? getCoinIcon(coingeckoId) : null);
   const symbol = trade.asset_symbol || trade.asset_id.toUpperCase();
   const isPositive = dollarPnl >= 0;
 
@@ -1025,18 +1030,20 @@ function LivePositionCard({
   position,
   livePrice,
   coingeckoId,
+  assetIconUrl,
   expanded,
   onToggle,
 }: {
   position: Position;
   livePrice?: number;
   coingeckoId?: string;
+  assetIconUrl?: string | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
   const { pnlPct, pnlDollar } = getEffectivePnl(position, livePrice);
-  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const iconUrl = assetIconUrl ?? (coingeckoId ? getCoinIcon(coingeckoId) : null);
   const symbol = position.asset_id.toUpperCase();
   const isBB2 = isBB2Position(position);
   const leverageLabel = position.leverage > 1 ? `${position.leverage}x ` : '';
@@ -1304,16 +1311,18 @@ function LivePositionCard({
 function ClosedPositionCard({
   position,
   coingeckoId,
+  assetIconUrl,
   expanded,
   onToggle,
 }: {
   position: Position;
   coingeckoId?: string;
+  assetIconUrl?: string | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const isLong = position.side === 'long';
-  const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+  const iconUrl = assetIconUrl ?? (coingeckoId ? getCoinIcon(coingeckoId) : null);
   const symbol = position.asset_id.toUpperCase();
   const isBB2 = isBB2Position(position);
   const leverageLabel = position.leverage > 1 ? `${position.leverage}x ` : '';

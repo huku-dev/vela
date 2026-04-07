@@ -519,7 +519,8 @@ export interface TradeAssetInfo {
 /** Enriched trade with brief headlines and reason codes for storytelling */
 export type EnrichedTrade = PaperTrade & {
   asset_symbol?: string;
-  asset_coingecko_id?: string;
+  asset_coingecko_id?: string | null;
+  asset_icon_url?: string | null;
   entry_headline?: string;
   exit_headline?: string;
   entry_reason_code?: string;
@@ -540,13 +541,16 @@ export function useTrackRecord() {
   const briefMapRef = useRef<Record<string, string>>({});
 
   const mapTrades = (
-    data: (PaperTrade & { assets?: { symbol: string; coingecko_id: string } })[]
+    data: (PaperTrade & {
+      assets?: { symbol: string; coingecko_id: string | null; icon_url: string | null };
+    })[]
   ) =>
     data.map(t => ({
       ...t,
       source: t.source || ('backtest' as const),
       asset_symbol: t.assets?.symbol,
       asset_coingecko_id: t.assets?.coingecko_id,
+      asset_icon_url: t.assets?.icon_url,
     }));
 
   /**
@@ -616,7 +620,7 @@ export function useTrackRecord() {
       const [tradesRes, statsRes] = await Promise.all([
         supabase
           .from('paper_trades')
-          .select('*, assets(symbol, coingecko_id)')
+          .select('*, assets(symbol, coingecko_id, icon_url)')
           .order('opened_at', { ascending: false }),
         supabase.from('paper_trade_stats').select('*'),
       ]);
@@ -633,6 +637,7 @@ export function useTrackRecord() {
           aMap[t.asset_id] = {
             symbol: t.asset_symbol,
             coingecko_id: t.asset_coingecko_id ?? null,
+            icon_url: t.asset_icon_url ?? null,
           };
         }
       }
@@ -679,7 +684,7 @@ export function useTrackRecord() {
     setLoadingMore(true);
     const res = await supabase
       .from('paper_trades')
-      .select('*, assets(symbol, coingecko_id)')
+      .select('*, assets(symbol, coingecko_id, icon_url)')
       .order('opened_at', { ascending: false })
       .range(trades.length, trades.length + PAGE_SIZE);
 
