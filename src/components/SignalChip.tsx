@@ -1,17 +1,20 @@
 import type { SignalColor } from '../types';
 
-const colorMap: Record<SignalColor, { text: string; border: string; label: string }> = {
+const colorMap: Record<SignalColor, { bg: string; text: string; border: string; label: string }> = {
   green: {
+    bg: 'var(--color-status-buy-bg)',
     text: 'var(--color-status-buy-text)',
     border: 'var(--color-status-buy-border)',
     label: 'Buy',
   },
   red: {
+    bg: 'var(--color-status-sell-bg)',
     text: 'var(--color-status-sell-text)',
     border: 'var(--color-status-sell-border)',
     label: 'Sell',
   },
   grey: {
+    bg: 'var(--color-status-wait-bg)',
     text: 'var(--color-status-wait-text)',
     border: 'var(--color-status-wait-border)',
     label: 'Wait',
@@ -25,10 +28,11 @@ interface SignalChipProps {
 }
 
 export default function SignalChip({ color, size = 'medium', nearConfirmation }: SignalChipProps) {
-  const { text, border, label } = colorMap[color];
+  const { bg, text, border, label } = colorMap[color];
   const isSmall = size === 'small';
   const isNearConfirm = color === 'grey' && nearConfirmation;
 
+  const chipBg = isNearConfirm ? 'var(--color-status-wait-near-bg)' : bg;
   const chipBorder = isNearConfirm ? 'var(--color-status-wait-near-border)' : border;
   const chipDot = isNearConfirm ? 'var(--color-status-wait-near-dot)' : border;
   const chipText = isNearConfirm ? 'var(--color-status-wait-near-text)' : text;
@@ -39,7 +43,7 @@ export default function SignalChip({ color, size = 'medium', nearConfirmation }:
         display: 'inline-flex',
         alignItems: 'center',
         gap: isSmall ? 4 : 5,
-        backgroundColor: 'transparent',
+        backgroundColor: chipBg,
         color: chipText,
         fontFamily: 'var(--type-label-sm-font)',
         fontWeight: 700,
