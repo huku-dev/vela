@@ -481,19 +481,6 @@ export default function Home() {
         </Card>
       )}
 
-      {/* Signals section */}
-      <span
-        className="vela-label-sm vela-text-muted"
-        style={{
-          textTransform: 'uppercase',
-          display: 'block',
-          marginBottom: 'var(--space-3)',
-          paddingLeft: 'var(--space-1)',
-        }}
-      >
-        Signals
-      </span>
-
       {/* Asset class tab bar */}
       {availableTabs.length > 2 && (
         <div
@@ -514,17 +501,27 @@ export default function Home() {
               <button
                 key={tab.key}
                 onClick={() => setSelectedClass(tab.key)}
-                className="vela-btn vela-btn-sm"
                 style={{
                   flexShrink: 0,
                   borderRadius: '9999px',
                   background: isActive ? 'var(--ink)' : 'var(--color-bg-surface)',
-                  color: isActive ? 'var(--white)' : 'var(--color-text-muted)',
+                  color: isActive ? 'var(--white)' : 'var(--color-text-primary)',
+                  border: '2.5px solid var(--ink)',
+                  boxShadow: isActive ? 'none' : '2px 2px 0 var(--ink)',
+                  padding: '8px 18px',
+                  fontSize: 'var(--text-sm)',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
                   WebkitTapHighlightColor: 'transparent',
+                  transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
                 }}
               >
                 {tab.label}
-                <span style={{ opacity: 0.5, fontSize: 'var(--text-xs)' }}>
+                <span style={{ opacity: isActive ? 0.7 : 0.4, fontSize: 'var(--text-xs)' }}>
                   {classCounts[tab.key] ?? 0}
                 </span>
               </button>
