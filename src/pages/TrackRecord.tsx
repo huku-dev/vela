@@ -169,7 +169,7 @@ export default function TrackRecord() {
   const paperTrades = trades.filter(t => t.opened_at >= TRACK_RECORD_START);
 
   // ── Helper: get live price for an asset ──
-  const getLivePrice = (coingeckoId: string | undefined): number | null => {
+  const getLivePrice = (coingeckoId: string | null | undefined): number | null => {
     if (!coingeckoId) return null;
     return livePrices[coingeckoId]?.price ?? null;
   };
@@ -459,7 +459,7 @@ export default function TrackRecord() {
                       upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
                       onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
                       currentPrice={livePrice ?? undefined}
-                      iconUrl={getCoinIcon(coingeckoId)}
+                      iconUrl={coingeckoId ? getCoinIcon(coingeckoId) : undefined}
                       positionEntryPrice={assetPosition?.entry_price}
                       positionSizeUsd={assetPosition?.size_usd}
                     />
@@ -509,7 +509,7 @@ export default function TrackRecord() {
                       key={pos.id}
                       position={pos}
                       livePrice={posLivePrice}
-                      coingeckoId={posCoingeckoId}
+                      coingeckoId={posCoingeckoId ?? undefined}
                       expanded={expandedTradeId === pos.id}
                       onToggle={() =>
                         setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
@@ -543,7 +543,7 @@ export default function TrackRecord() {
                     <ClosedPositionCard
                       key={pos.id}
                       position={pos}
-                      coingeckoId={closedAsset?.coingecko_id}
+                      coingeckoId={closedAsset?.coingecko_id ?? undefined}
                       expanded={expandedTradeId === pos.id}
                       onToggle={() =>
                         setExpandedTradeId(expandedTradeId === pos.id ? null : pos.id)
@@ -736,7 +736,7 @@ export default function TrackRecord() {
               <BestTradeCard
                 group={bestPaperGroup}
                 positionPnl={bestPaperPnl}
-                coingeckoId={assetMap[bestPaperGroup.trade.asset_id]?.coingecko_id}
+                coingeckoId={assetMap[bestPaperGroup.trade.asset_id]?.coingecko_id ?? undefined}
               />
             )}
           </div>

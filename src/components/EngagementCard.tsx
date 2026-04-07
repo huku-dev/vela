@@ -11,6 +11,7 @@ interface EngagementCardProps {
   assetId: string;
   assetName: string;
   coingeckoId: string | null;
+  iconUrl?: string | null;
   signal: SignalColor | null;
   price: number | null;
   priceChange24h: number | null;
@@ -232,6 +233,7 @@ export default function EngagementCard({
   assetId,
   assetName,
   coingeckoId,
+  iconUrl: iconUrlProp,
   signal,
   price,
   priceChange24h,
@@ -281,7 +283,7 @@ export default function EngagementCard({
     track(AnalyticsEvent.SIGNAL_SHARED, { asset_id: assetId, signal, method: 'share' });
 
     // Pre-load asset icon
-    const iconUrl = coingeckoId ? getCoinIcon(coingeckoId) : null;
+    const iconUrl = iconUrlProp ?? (coingeckoId ? getCoinIcon(coingeckoId) : null);
     const iconImg: HTMLImageElement | null = iconUrl
       ? await new Promise<HTMLImageElement | null>(resolve => {
           const img = new Image();
@@ -327,7 +329,7 @@ export default function EngagementCard({
       a.download = `vela-${assetId}-signal.png`;
       a.click();
     }
-  }, [assetId, assetName, coingeckoId, signal, price, priceChange24h, headline]);
+  }, [assetId, assetName, coingeckoId, iconUrlProp, signal, price, priceChange24h, headline]);
 
   const handleCopyLink = useCallback(() => {
     const url = `https://getvela.xyz/assets/${assetId}/`;

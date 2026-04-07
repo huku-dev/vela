@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { AssetClass } from '../types';
 import { Card } from '../components/VelaComponents';
 import SignalCard from '../components/SignalCard';
@@ -35,6 +36,7 @@ const TG_NUDGE_DISMISSED_KEY = 'vela_telegram_nudge_dismissed';
 const TG_CHECKOUT_PROMPT_KEY = 'vela_show_telegram_prompt';
 
 export default function Home() {
+  const navigate = useNavigate();
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
   const { positions, preferences } = useTrading();
@@ -464,12 +466,12 @@ export default function Home() {
               }}
               onClick={e => {
                 e.stopPropagation();
-                // TODO: Navigate to /brief when DailyBrief page is implemented
+                navigate('/brief');
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.stopPropagation();
-                  // TODO: Navigate to /brief when DailyBrief page is implemented
+                  navigate('/brief');
                 }
               }}
             >
