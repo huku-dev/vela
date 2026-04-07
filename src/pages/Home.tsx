@@ -491,6 +491,7 @@ export default function Home() {
             scrollbarWidth: 'none',
             WebkitOverflowScrolling: 'touch',
             marginBottom: 'var(--space-4)',
+            padding: '4px 2px 6px',
             maskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
             WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 32px), transparent 100%)',
           }}
