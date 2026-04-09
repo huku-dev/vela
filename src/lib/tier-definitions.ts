@@ -80,7 +80,11 @@ export const COMPARISON_FEATURES: {
     key: 'mode',
     label: 'Trading mode',
     getValue: t =>
-      t.features.auto_mode ? 'Full auto' : t.features.semi_auto ? 'Semi-auto' : 'View only',
+      t.features.auto_mode
+        ? 'Auto-execute'
+        : t.features.semi_auto
+          ? 'Manual approval'
+          : 'View only',
   },
   {
     key: 'signal',

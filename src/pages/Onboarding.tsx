@@ -71,7 +71,7 @@ const MODE_OPTIONS: {
   },
   {
     mode: 'semi_auto',
-    label: 'Semi-auto',
+    label: 'Manual approval',
     description:
       'Vela proposes trades based on signals. You approve each one before it executes. A good balance of control and convenience.',
     price: '$10/mo',
@@ -79,7 +79,7 @@ const MODE_OPTIONS: {
   },
   {
     mode: 'full_auto',
-    label: 'Full auto',
+    label: 'Auto-execute',
     description:
       'Vela executes trades automatically the moment it spots an opportunity. Best way to capture optimal prices.',
     price: '$20/mo',
@@ -1183,7 +1183,7 @@ function OnboardingPlanSelection({
                   {tier.max_assets === 0 ? 'Unlimited' : tier.max_assets} asset
                   {tier.max_assets !== 1 ? 's' : ''}
                   {' · '}
-                  {tier.tier === 'premium' ? 'Full auto' : 'Semi-auto'}
+                  {tier.tier === 'premium' ? 'Auto-execute' : 'Manual approval'}
                   {' · '}
                   {tier.max_leverage}x leverage
                   {' · '}

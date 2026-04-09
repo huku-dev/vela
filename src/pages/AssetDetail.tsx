@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Alert } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
@@ -133,6 +133,19 @@ export default function AssetDetail() {
   const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
   const { data: dashboardData } = useDashboard();
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [headerStuck, setHeaderStuck] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeaderStuck(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Check tier access — use dashboard data for ordered asset list
   const allAssets = dashboardData.map(d => d.asset);
@@ -443,14 +456,30 @@ export default function AssetDetail() {
         margin: '0 auto',
       }}
     >
-      {/* Header */}
+      {/* Scroll sentinel for sticky header border */}
+      <div ref={sentinelRef} style={{ height: 0 }} />
+
+      {/* Header (sticky) */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 'var(--space-3)',
-          marginBottom: 'var(--space-6)',
-          marginTop: 'var(--space-2)',
+          paddingBottom: 'var(--space-3)',
+          paddingTop: 'var(--space-2)',
+          paddingLeft: 'var(--space-4)',
+          paddingRight: 'var(--space-4)',
+          marginLeft: 'calc(-1 * var(--space-4))',
+          marginRight: 'calc(-1 * var(--space-4))',
+          position: 'sticky',
+          top: 0,
+          zIndex: 200,
+          backgroundColor: 'var(--color-bg-page)',
+          borderBottom: headerStuck
+            ? '1px solid var(--color-border-default)'
+            : '1px solid transparent',
+          transition: 'border-color 150ms ease',
+          marginBottom: 'var(--space-3)',
         }}
       >
         <button
