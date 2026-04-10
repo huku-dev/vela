@@ -133,6 +133,13 @@ export default function AssetDetail() {
   const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
   const { data: dashboardData } = useDashboard();
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [firstProposalShown, setFirstProposalShown] = useState(() => {
+    try {
+      return localStorage.getItem('vela_first_proposal_shown') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [headerStuck, setHeaderStuck] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -633,7 +640,7 @@ export default function AssetDetail() {
       )}
 
       {/* Trade proposals — pending (actionable) + in-flight (status feedback) */}
-      {pendingProposals.map(proposal => (
+      {pendingProposals.map((proposal, idx) => (
         <div key={proposal.id} style={{ marginBottom: 'var(--space-4)' }}>
           <TradeProposalCard
             proposal={proposal}
@@ -649,6 +656,15 @@ export default function AssetDetail() {
             iconUrl={iconUrl ?? undefined}
             positionEntryPrice={assetPosition?.entry_price}
             positionSizeUsd={assetPosition?.size_usd}
+            showFirstProposalIntro={!firstProposalShown && idx === 0}
+            onFirstProposalIntroShown={() => {
+              try {
+                localStorage.setItem('vela_first_proposal_shown', 'true');
+              } catch {
+                /* noop */
+              }
+              setFirstProposalShown(true);
+            }}
           />
         </div>
       ))}

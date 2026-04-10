@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from './VelaComponents';
 import TradeConfirmationSheet from './TradeConfirmationSheet';
 import VelaLogo from './VelaLogo';
@@ -89,6 +89,10 @@ interface TradeProposalCardProps {
   positionEntryPrice?: number;
   /** Current total position size in USD for trim context */
   positionSizeUsd?: number;
+  /** Show first-proposal intro bar (one-time) */
+  showFirstProposalIntro?: boolean;
+  /** Called when the intro bar has been rendered (to set localStorage flag) */
+  onFirstProposalIntroShown?: () => void;
 }
 
 /**
@@ -111,6 +115,8 @@ export default function TradeProposalCard({
   iconUrl,
   positionEntryPrice,
   positionSizeUsd,
+  showFirstProposalIntro,
+  onFirstProposalIntroShown,
 }: TradeProposalCardProps) {
   const [acting, setActing] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +125,12 @@ export default function TradeProposalCard({
   const [showLeverageWarning, setShowLeverageWarning] = useState(false);
   const [iconError, setIconError] = useState(false);
   const { tierConfig } = useTierAccess();
+
+  // Fire callback once when first-proposal intro is shown
+  useEffect(() => {
+    if (showFirstProposalIntro) onFirstProposalIntroShown?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isTrim = proposal.proposal_type === 'trim';
   const isLong = proposal.side === 'long';
@@ -300,6 +312,24 @@ export default function TradeProposalCard({
       }}
       compact
     >
+      {/* First-proposal intro bar (one-time) */}
+      {showFirstProposalIntro && (
+        <div
+          style={{
+            backgroundColor: 'var(--warm-cream)',
+            border: '1px solid var(--warm-cream-border)',
+            borderRadius: 'var(--radius-sm)',
+            padding: 'var(--space-2) var(--space-3)',
+            marginBottom: 'var(--space-3)',
+          }}
+        >
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+            Your first trade proposal from Vela! Review the reasoning below, then approve or
+            decline.
+          </p>
+        </div>
+      )}
+
       {/* Header: badge + icon + asset name + expiry */}
       <div
         style={{
@@ -664,7 +694,8 @@ function PriceContextMessage({
   // Trims: info card with profit context
   if (isTrim) {
     if (positionEntryPrice != null && currentPrice != null) {
-      const pnlPct = ((currentPrice - positionEntryPrice) / positionEntryPrice) * 100;
+      const rawPct = ((currentPrice - positionEntryPrice) / positionEntryPrice) * 100;
+      const pnlPct = isLong ? rawPct : -rawPct;
       if (pnlPct >= 0) {
         return (
           <InfoCard>
