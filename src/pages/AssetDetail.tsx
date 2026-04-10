@@ -139,10 +139,9 @@ export default function AssetDetail() {
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setHeaderStuck(!entry.isIntersecting),
-      { threshold: 0 }
-    );
+    const observer = new IntersectionObserver(([entry]) => setHeaderStuck(!entry.isIntersecting), {
+      threshold: 0,
+    });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
@@ -985,7 +984,7 @@ export default function AssetDetail() {
           indicators={detail.indicators}
           price={price}
           detail={detail}
-          symbol={asset.symbol}
+          symbol={asset.hl_symbol ?? asset.symbol}
           change24h={change24h}
         />
       )}
@@ -1541,12 +1540,14 @@ function WherePriceStands({
   useEffect(() => {
     fetch7dRange(symbol).then(r => {
       if (r) {
-        setRange7d(r);
-        // Approximate 7d change from range: (current - 7d-ago open) / 7d-ago open
-        // More accurate: use first candle's open as the 7d-ago price
+        // Sanity guard: if range is wildly different from current price, discard (bad data)
+        const midRange = (r.high + r.low) / 2;
+        if (price > 0 && midRange > 0 && Math.abs(price - midRange) / price < 5) {
+          setRange7d(r);
+        }
       }
     });
-  }, [symbol]);
+  }, [symbol, price]);
 
   // Fetch 7d change from candles (first candle open vs current price)
   useEffect(() => {
@@ -1567,7 +1568,9 @@ function WherePriceStands({
         if (Array.isArray(candles) && candles.length > 0) {
           const openPrice = parseFloat(candles[0].o);
           if (openPrice > 0) {
-            setChange7d(((price - openPrice) / openPrice) * 100);
+            const pct = ((price - openPrice) / openPrice) * 100;
+            // Sanity guard: >1000% change in 7 days is almost certainly bad data
+            if (Math.abs(pct) < 1000) setChange7d(pct);
           }
         }
       } catch {

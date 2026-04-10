@@ -116,15 +116,15 @@ export default function SignalCard({ data, position }: SignalCardProps) {
           navigate(`/asset/${asset.id}`);
         }
       }}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', padding: 'var(--space-4) var(--space-5)' }}
     >
       {/* Top row: icon + name/symbol + price/change */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {/* Asset icon */}
         <div
           style={{
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             borderRadius: '50%',
             border: '1.5px solid var(--gray-200)',
             overflow: 'hidden',
@@ -139,8 +139,8 @@ export default function SignalCard({ data, position }: SignalCardProps) {
             <img
               src={iconUrl}
               alt={asset.symbol}
-              width={36}
-              height={36}
+              width={28}
+              height={28}
               style={{ objectFit: 'cover', borderRadius: '50%' }}
               onError={e => {
                 (e.target as HTMLImageElement).style.display = 'none';
@@ -240,8 +240,8 @@ export default function SignalCard({ data, position }: SignalCardProps) {
           display: 'flex',
           alignItems: 'center',
           gap: 'var(--space-2)',
-          marginTop: 'var(--space-3)',
-          paddingTop: 'var(--space-3)',
+          marginTop: '10px',
+          paddingTop: '10px',
           borderTop: '1px solid var(--gray-200)',
         }}
       >
