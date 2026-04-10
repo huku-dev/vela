@@ -252,65 +252,8 @@ export default function Home() {
     tgNudgeDismissed,
   ]);
 
-  // ── Post-checkout interstitial (early return) ──
-  if (showInterstitial) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '80vh',
-          padding: 'var(--space-6)',
-          textAlign: 'center',
-        }}
-      >
-        <span className="vela-interstitial-emoji" style={{ fontSize: 48, marginBottom: 16 }}>
-          🎉
-        </span>
-        <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
-          You&apos;re in!
-        </h2>
-        <p
-          className="vela-body-base vela-text-muted"
-          style={{ maxWidth: 340, lineHeight: 1.5, marginBottom: 'var(--space-6)' }}
-        >
-          Your account is all set up. Fund your wallet so Vela can start executing trades for you.
-        </p>
-        <button
-          className="vela-btn vela-btn-primary"
-          onClick={() => dismissInterstitial(true)}
-          style={{ width: '100%', maxWidth: 320, marginBottom: 'var(--space-3)' }}
-        >
-          Deposit now
-        </button>
-        <button
-          onClick={() => dismissInterstitial(false)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-text-muted)',
-            fontSize: '0.85rem',
-            cursor: 'pointer',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            padding: 'var(--space-2)',
-          }}
-        >
-          I&apos;ll do this later
-        </button>
-
-        {/* DepositSheet rendered here too for the interstitial flow */}
-        {showDepositSheet && wallet && (
-          <DepositSheet
-            wallet={wallet}
-            onClose={() => setShowDepositSheet(false)}
-            onRefresh={() => refresh()}
-          />
-        )}
-      </div>
-    );
-  }
+  // Note: interstitial renders as a fixed overlay inside the main return, not an early return.
+  // This keeps hooks stable and covers the bottom nav.
 
   if (loading) {
     return (
@@ -344,8 +287,8 @@ export default function Home() {
   // Look up asset symbol for first-trade celebration card
   const firstTradeAssetSymbol =
     firstTradeMoment?.type === 'first-trade'
-      ? data.find(d => d.asset.id === firstTradeMoment.assetId)?.asset.symbol ??
-        firstTradeMoment.assetId.toUpperCase()
+      ? (data.find(d => d.asset.id === firstTradeMoment.assetId)?.asset.symbol ??
+        firstTradeMoment.assetId.toUpperCase())
       : null;
 
   return (
@@ -539,12 +482,24 @@ export default function Home() {
           >
             ✕
           </button>
-          <p style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0, paddingRight: 'var(--space-6)' }}>
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              margin: 0,
+              paddingRight: 'var(--space-6)',
+            }}
+          >
             <span className="vela-interstitial-emoji">🎉</span> Congrats on your first Vela trade!
           </p>
           <p
             className="vela-body-sm"
-            style={{ color: 'var(--gray-600)', margin: 'var(--space-2) 0 0', lineHeight: 1.5, paddingRight: 'var(--space-6)' }}
+            style={{
+              color: 'var(--gray-600)',
+              margin: 'var(--space-2) 0 0',
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-6)',
+            }}
           >
             Vela spotted an opportunity for {firstTradeAssetSymbol} and executed a{' '}
             {firstTradeMoment.side} at ${firstTradeMoment.price.toLocaleString()}. Based on your
@@ -600,7 +555,12 @@ export default function Home() {
           </button>
           <p
             className="vela-body-sm"
-            style={{ color: 'var(--gray-600)', margin: 0, lineHeight: 1.5, paddingRight: 'var(--space-8, 32px)' }}
+            style={{
+              color: 'var(--gray-600)',
+              margin: 0,
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-8, 32px)',
+            }}
           >
             <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
               You passed on your first proposal.
@@ -658,7 +618,12 @@ export default function Home() {
           </button>
           <p
             className="vela-body-sm"
-            style={{ color: 'var(--gray-600)', margin: 0, lineHeight: 1.5, paddingRight: 'var(--space-8, 32px)' }}
+            style={{
+              color: 'var(--gray-600)',
+              margin: 0,
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-8, 32px)',
+            }}
           >
             <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
               Your first trade proposal expired.
@@ -940,6 +905,58 @@ export default function Home() {
           onClose={() => setShowDepositSheet(false)}
           onRefresh={() => refresh()}
         />
+      )}
+
+      {/* Post-checkout interstitial modal (covers entire viewport including nav) */}
+      {showInterstitial && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'var(--color-bg-page)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--space-6)',
+            textAlign: 'center',
+          }}
+        >
+          <span className="vela-interstitial-emoji" style={{ fontSize: 48, marginBottom: 16 }}>
+            🎉
+          </span>
+          <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
+            You&apos;re in!
+          </h2>
+          <p
+            className="vela-body-base vela-text-muted"
+            style={{ maxWidth: 340, lineHeight: 1.5, marginBottom: 'var(--space-6)' }}
+          >
+            Your account is all set up. Fund your wallet so Vela can start executing trades for you.
+          </p>
+          <button
+            className="vela-btn vela-btn-primary"
+            onClick={() => dismissInterstitial(true)}
+            style={{ width: '100%', maxWidth: 320, marginBottom: 'var(--space-3)' }}
+          >
+            Deposit now
+          </button>
+          <button
+            onClick={() => dismissInterstitial(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-muted)',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              padding: 'var(--space-2)',
+            }}
+          >
+            I&apos;ll do this later
+          </button>
+        </div>
       )}
     </div>
   );
