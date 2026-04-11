@@ -122,6 +122,10 @@ export function useSubscription(): SubscriptionState {
     const params = new URLSearchParams(window.location.search);
     if (params.get('checkout') === 'success') {
       track(AnalyticsEvent.CHECKOUT_COMPLETED);
+      // Meta Pixel: Subscribe conversion
+      if (typeof window.fbq === 'function') {
+        window.fbq('track', 'Subscribe');
+      }
       // Give the webhook a moment to process before we poll
       const timer = setTimeout(() => fetchSubscription(), 1500);
       return () => clearTimeout(timer);
@@ -131,6 +135,10 @@ export function useSubscription(): SubscriptionState {
   const startCheckout = useCallback(
     async (tier: 'standard' | 'premium', billingCycle: 'monthly' | 'annual') => {
       track(AnalyticsEvent.CHECKOUT_STARTED, { tier, billing_cycle: billingCycle });
+      // Meta Pixel: InitiateCheckout
+      if (typeof window.fbq === 'function') {
+        window.fbq('track', 'InitiateCheckout');
+      }
       const token = await getToken();
       if (!token) throw new Error('Not authenticated');
 

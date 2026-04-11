@@ -120,8 +120,8 @@ All data needed lives in Supabase production:
 
 | Data | Table | Key columns |
 |------|-------|-------------|
-| Trade history | `positions` | entry_price, exit_price, side, asset_id, opened_at, closed_at, realized_pnl_pct |
-| Signal changes | `signals` | signal_state, previous_state, changed_at, asset_id |
+| Trade history | `positions` | entry_price, current_price, side, asset_id, opened_at, closed_at, closed_pnl_pct, total_pnl, close_reason, leverage, size_usd, position_type |
+| Signal changes | `signals` | signal_color, price_at_signal, timestamp, asset_id |
 | Signal details | `asset_briefs` | headline, signal_breakdown |
 | Benchmarks | External API | BTC price at period start/end, S&P 500 |
 

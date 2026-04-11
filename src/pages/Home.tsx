@@ -111,9 +111,12 @@ export default function Home() {
   const firstTradeMoment: FirstTradeMoment = useMemo(() => {
     if (!isAuthenticated || tier === 'free') return null;
 
-    // First successfully executed trade (must be status=executed, not just auto-approved)
-    const executedProposal = proposals.find(p => p.status === 'executed');
-    if (executedProposal && !safeGetItem('vela_first_trade_celebrated')) {
+    // First successfully executed trade (must be status=executed, not just auto-approved).
+    // Only trigger if exactly 1 executed proposal exists — prevents showing to existing users
+    // who had trades before this feature shipped (they lack the localStorage key but have many trades).
+    const executedProposals = proposals.filter(p => p.status === 'executed');
+    if (executedProposals.length === 1 && !safeGetItem('vela_first_trade_celebrated')) {
+      const executedProposal = executedProposals[0];
       return {
         type: 'first-trade',
         assetId: executedProposal.asset_id,
