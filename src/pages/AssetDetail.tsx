@@ -1015,7 +1015,13 @@ export default function AssetDetail() {
 
       {/* Tier 5: Why we think this — collapsible technical details */}
       {detail && (
-        <WhyWeThinkThis detail={detail} brief={brief} recentBriefs={recentBriefs} price={price} />
+        <WhyWeThinkThis
+          detail={detail}
+          brief={brief}
+          recentBriefs={recentBriefs}
+          price={price}
+          assetClass={asset.asset_class}
+        />
       )}
 
       {/* Engagement — rating + share */}
@@ -1154,6 +1160,7 @@ function WhyWeThinkThis({
   brief,
   recentBriefs,
   price,
+  assetClass,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -1162,6 +1169,7 @@ function WhyWeThinkThis({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recentBriefs: any[];
   price: number | undefined | null;
+  assetClass?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const indicators = detail?.indicators;
@@ -1240,8 +1248,15 @@ function WhyWeThinkThis({
           {/* Technical Analysis — signal breakdown + relevant market context merged.
               Fear & Greed filtered out (already shown in Market Mood widget above). */}
           {(() => {
+            const isCrypto = !assetClass || assetClass === 'crypto';
             const contextEntries = Object.entries(marketContext)
-              .filter(([key]) => key !== 'fear_greed')
+              .filter(([key, value]) => {
+                if (key === 'fear_greed') return false; // shown in Market Mood widget
+                if (!isCrypto && /dominance|btc/i.test(key)) return false; // crypto-only key
+                if (!isCrypto && /bitcoin dominance|btc dominance|altcoin/i.test(value as string))
+                  return false; // crypto-only content
+                return true;
+              })
               .map(([key, value]) => ({ key: `ctx_${key}`, value: value as string }));
             const breakdownEntries = Object.entries(signalBreakdown).map(([key, value]) => ({
               key: `sig_${key}`,

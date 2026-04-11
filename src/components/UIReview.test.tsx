@@ -221,7 +221,11 @@ describe('CONTEXT-SRC: market context improvements', () => {
   });
 
   it('filters fear_greed from market context (shown in Market Mood widget)', () => {
-    expect(assetDetailSrc).toContain("key !== 'fear_greed'");
+    expect(assetDetailSrc).toContain("key === 'fear_greed'");
+  });
+
+  it('filters crypto-specific context from non-crypto assets', () => {
+    expect(assetDetailSrc).toContain('/dominance|btc/i.test(key)');
   });
 });
 
