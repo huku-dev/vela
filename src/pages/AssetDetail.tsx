@@ -1224,13 +1224,36 @@ function WhyWeThinkThis({
       {/* Collapsible content */}
       {expanded && (
         <div style={{ padding: '0 var(--space-5) var(--space-5)' }}>
-          {/* Signal Breakdown — always shown; uses AI data or indicator-generated fallback */}
-          {Object.keys(signalBreakdown).length > 0 && (
+          {/* Momentum Indicators — shown first for context */}
+          {indicators && (
             <>
+              <IndicatorsSection
+                indicators={indicators}
+                price={price}
+                brief={brief}
+                recentBriefs={recentBriefs}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* Technical Analysis — signal breakdown + relevant market context merged.
+              Fear & Greed filtered out (already shown in Market Mood widget above). */}
+          {(() => {
+            const contextEntries = Object.entries(marketContext)
+              .filter(([key]) => key !== 'fear_greed')
+              .map(([key, value]) => ({ key: `ctx_${key}`, value: value as string }));
+            const breakdownEntries = Object.entries(signalBreakdown).map(([key, value]) => ({
+              key: `sig_${key}`,
+              value: value as string,
+            }));
+            const allEntries = [...breakdownEntries, ...contextEntries];
+
+            return allEntries.length > 0 ? (
               <div style={{ marginBottom: 'var(--space-4)' }}>
                 <SubLabel>Technical analysis</SubLabel>
                 <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                  {Object.entries(signalBreakdown).map(([key, value]) => (
+                  {allEntries.map(({ key, value }) => (
                     <li
                       key={key}
                       className="vela-body-sm"
@@ -1241,63 +1264,15 @@ function WhyWeThinkThis({
                       }}
                     >
                       {(() => {
-                        const t = plainEnglish(value as string);
+                        const t = plainEnglish(value);
                         return t.charAt(0).toUpperCase() + t.slice(1);
                       })()}
                     </li>
                   ))}
                 </ul>
               </div>
-              <Divider />
-            </>
-          )}
-
-          {/* Market Context — bullets only (Fear & Greed gauge moved to top-level MarketMoodInline) */}
-          {Object.keys(marketContext).length > 0 && (
-            <>
-              <div style={{ marginBottom: 'var(--space-4)' }}>
-                <SubLabel>Market context</SubLabel>
-                <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                  {Object.entries(marketContext)
-                    .sort(([keyA], [keyB]) => {
-                      // Push dominance-related keys to end of list
-                      const isDomA = /dominance/i.test(keyA);
-                      const isDomB = /dominance/i.test(keyB);
-                      if (isDomA && !isDomB) return 1;
-                      if (!isDomA && isDomB) return -1;
-                      return 0;
-                    })
-                    .map(([key, value]) => (
-                      <li
-                        key={key}
-                        className="vela-body-sm"
-                        style={{
-                          color: 'var(--color-text-secondary)',
-                          marginBottom: 'var(--space-1)',
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {(() => {
-                          const t = plainEnglish(value as string);
-                          return t.charAt(0).toUpperCase() + t.slice(1);
-                        })()}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-              <Divider />
-            </>
-          )}
-
-          {/* Indicators — Plain English (price levels moved to top-level PriceLevelsCard) */}
-          {indicators && (
-            <IndicatorsSection
-              indicators={indicators}
-              price={price}
-              brief={brief}
-              recentBriefs={recentBriefs}
-            />
-          )}
+            ) : null;
+          })()}
         </div>
       )}
     </div>

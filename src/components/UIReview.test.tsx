@@ -214,18 +214,14 @@ describe('JARGON-SRC: enriched plainEnglish mappings', () => {
 // ── Market Context ──
 
 describe('CONTEXT-SRC: market context improvements', () => {
-  it('applies plainEnglish to market context values', () => {
-    expect(assetDetailSrc).toContain('plainEnglish(value as string)');
-    // Verify it's in the market context section, not just signal_breakdown
-    const marketSection = assetDetailSrc.slice(
-      assetDetailSrc.indexOf('Market context'),
-      assetDetailSrc.indexOf('Indicators')
-    );
-    expect(marketSection).toContain('plainEnglish(value as string)');
+  it('applies plainEnglish to merged technical analysis values', () => {
+    // Market context entries are merged into technical analysis section
+    // and processed through plainEnglish
+    expect(assetDetailSrc).toContain('plainEnglish(value)');
   });
 
-  it('sorts dominance keys to end', () => {
-    expect(assetDetailSrc).toContain('/dominance/i.test(key');
+  it('filters fear_greed from market context (shown in Market Mood widget)', () => {
+    expect(assetDetailSrc).toContain("key !== 'fear_greed'");
   });
 });
 
