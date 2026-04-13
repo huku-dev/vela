@@ -677,6 +677,7 @@ function RecentActivity() {
           .from('funding_events')
           .select('*')
           .neq('status', 'failed')
+          .in('event_type', ['deposit', 'withdrawal'])
           .order('created_at', { ascending: false })
           .limit(20),
         supabaseClient
