@@ -16,7 +16,13 @@ const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exc
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 if (DEV_BYPASS && typeof window !== 'undefined') {
-  localStorage.setItem('vela_onboarded', 'true');
+  // Only seed the onboarded flag if it hasn't been explicitly set. This
+  // lets you test the onboarding flow under dev bypass by running
+  //   localStorage.setItem('vela_onboarded', 'false')
+  // in devtools and refreshing.
+  if (localStorage.getItem('vela_onboarded') === null) {
+    localStorage.setItem('vela_onboarded', 'true');
+  }
   console.info('[useAuth] DEV BYPASS active — using mock auth state');
 }
 

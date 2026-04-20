@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 interface BailSheetProps {
   onChoosePlan: () => void;
@@ -11,17 +11,16 @@ interface BailSheetProps {
  * or Escape key.
  *
  * Wireframe: mockups/stripe-bail-prompt-v1.html
+ *
+ * Note on focus: we deliberately do NOT programmatically focus the CTA on
+ * mount. The design-system focus ring (blue, 3px) was visually jarring on
+ * auto-focus and added no real a11y value here — the dialog has only one
+ * focusable element, so Tab lands on it naturally, and screen readers
+ * announce the sheet via aria-modal + aria-labelledby.
  */
 export function BailSheet({ onChoosePlan }: BailSheetProps) {
-  const primaryButtonRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-
   useEffect(() => {
-    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    // Auto-focus the primary CTA so keyboard users land on the meaningful
-    // action, not on the invisible backdrop.
-    primaryButtonRef.current?.focus();
-
+    // Lock body scroll while the sheet is open.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
@@ -36,8 +35,6 @@ export function BailSheet({ onChoosePlan }: BailSheetProps) {
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', handleKey);
-      // Restore focus to the element that opened the sheet, if still mounted.
-      previouslyFocusedRef.current?.focus?.();
     };
   }, [onChoosePlan]);
 
@@ -153,7 +150,6 @@ export function BailSheet({ onChoosePlan }: BailSheetProps) {
         </div>
 
         <button
-          ref={primaryButtonRef}
           onClick={onChoosePlan}
           className="vela-btn vela-btn-primary"
           style={{
