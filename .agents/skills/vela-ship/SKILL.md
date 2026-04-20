@@ -49,6 +49,7 @@ git -C /Users/henry/crypto-agent diff --name-only develop..HEAD 2>/dev/null
 
 ### Step 1: Push & Monitor CI
 ```bash
+touch /tmp/vela-deploy.lock
 git push origin develop
 ```
 
@@ -90,6 +91,16 @@ cd /Users/henry/crypto-agent
 ./scripts/verify-deployment.sh --staging
 ```
 
+### Step 2.5: Code Review Gate (before production)
+
+Run `/ultrareview` to perform parallel multi-agent analysis of the branch before promoting to production:
+
+```
+/ultrareview
+```
+
+This runs a comprehensive review across multiple agents in parallel and flags issues before they hit prod. Fix any HIGH findings before proceeding. MEDIUM findings require explicit sign-off.
+
 ### Step 3: Production Merge (if user confirms)
 
 For significant changes, create a PR instead of direct merge:
@@ -128,6 +139,10 @@ gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId')
 > ./scripts/deploy.sh --prod
 > ./scripts/verify-deployment.sh --prod
 > ```
+
+```bash
+rm -f /tmp/vela-deploy.lock
+```
 
 ### Step 4: Post-Ship Documentation
 
