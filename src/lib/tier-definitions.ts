@@ -33,7 +33,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_leverage: 2,
     signal_frequency_hours: 2,
     max_active_positions: 2,
-    max_assets: 5,
+    max_assets: 8,
     features: {
       auto_mode: false,
       semi_auto: true,
