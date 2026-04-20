@@ -50,7 +50,7 @@ Pricing: $3/M input tokens, $15/M output tokens
 | Tier | Signal Briefs/mo | Digests/mo | AI Cost/mo |
 |------|-----------------|------------|------------|
 | **Free** (1 asset, 4h) | ~3 | 30 | **$0.50** |
-| **Standard** (3 assets, 2h) | ~12 | 30 | **$0.66** |
+| **Standard** (8 assets, 2h) | ~12 | 30 | **$0.66** |
 | **Premium** (5+ assets, 1h) | ~25 | 30 | **$0.88** |
 
 ### Privy Wallet Signatures

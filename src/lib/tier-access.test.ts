@@ -3,9 +3,16 @@
  *
  * Verifies that:
  * - Free tier sees only the first asset (BTC)
- * - Standard tier sees the first 3 assets (BTC, ETH, HYPE)
- * - Premium tier sees all assets including SOL (unlimited)
+ * - Standard tier sees up to 8 assets (all of the 4 fixture assets)
+ * - Premium tier sees all assets (unlimited)
  * - Edge cases: empty lists, unknown assets, exact boundaries
+ *
+ * The describe blocks below that hardcode `max = 3` pre-date the 2026-04
+ * cap raise from 3 → 8 and stay as boundary-specific tests of the pure
+ * `canAccessAsset` / `partitionAssets` functions (behaviour at arbitrary
+ * caps), NOT the Standard tier itself. The "Standard boundary" invariant
+ * (all 4 fixtures accessible when cap = 8) is verified in the adversarial
+ * suite at tier-gating-adversarial.test.ts.
  */
 import { describe, it, expect } from 'vitest';
 import { getTierConfig, TIER_DEFINITIONS, COMPARISON_FEATURES } from './tier-definitions';
@@ -64,9 +71,9 @@ describe('Tier Definitions', () => {
     expect(free.max_assets).toBe(1);
   });
 
-  it('standard tier: max_assets = 5', () => {
+  it('standard tier: max_assets = 8', () => {
     const standard = getTierConfig('standard');
-    expect(standard.max_assets).toBe(5);
+    expect(standard.max_assets).toBe(8);
   });
 
   it('premium tier: max_assets = 0 (unlimited)', () => {
@@ -89,7 +96,7 @@ describe('Tier Definitions', () => {
   it('comparison features display numeric count for free/standard', () => {
     const assetsRow = COMPARISON_FEATURES.find(f => f.key === 'assets')!;
     expect(assetsRow.getValue(getTierConfig('free'))).toBe('1');
-    expect(assetsRow.getValue(getTierConfig('standard'))).toBe('5');
+    expect(assetsRow.getValue(getTierConfig('standard'))).toBe('8');
   });
 });
 
@@ -116,7 +123,7 @@ describe('canAccessAsset', () => {
     });
   });
 
-  describe('standard tier (max_assets=5)', () => {
+  describe('cap = 3 boundary (partial-access test, not tier-specific)', () => {
     const max = 3;
 
     it('can access BTC (index 0)', () => {
@@ -179,13 +186,22 @@ describe('partitionAssets', () => {
     });
   });
 
-  describe('standard tier (max_assets=5)', () => {
+  describe('cap = 3 (partial-access partition, not tier-specific)', () => {
     it('puts BTC, ETH, HYPE in accessible; SOL in locked', () => {
       const { accessible, locked } = partitionAssets(items, 3);
       expect(accessible).toHaveLength(3);
       expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'hype']);
       expect(locked).toHaveLength(1);
       expect(locked[0].asset.id).toBe('sol');
+    });
+  });
+
+  describe('standard tier (max_assets=8)', () => {
+    it('puts all 4 fixture assets in accessible, none locked', () => {
+      const { accessible, locked } = partitionAssets(items, 8);
+      expect(accessible).toHaveLength(4);
+      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'hype', 'sol']);
+      expect(locked).toHaveLength(0);
     });
   });
 
