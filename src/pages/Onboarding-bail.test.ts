@@ -82,9 +82,7 @@ describe('ONBOARD-SRC: selected tier persistence', () => {
   });
 
   it('restores the tier from sessionStorage on cancel return', () => {
-    expect(onboardingMain).toMatch(
-      /sessionStorage\.getItem\(['"]vela_pending_tier['"]\)/
-    );
+    expect(onboardingMain).toMatch(/sessionStorage\.getItem\(['"]vela_pending_tier['"]\)/);
   });
 
   it('clears the persisted tier on mount via a useEffect (consume-once)', () => {
@@ -178,9 +176,7 @@ describe('ONBOARD-ADV: adversarial invariants', () => {
 
   it('cancel-return query-param check uses strict equality to "cancelled"', () => {
     // Prevent a typo like ?checkout=cancel bringing up the bail sheet.
-    expect(onboardingMain).toMatch(
-      /get\(['"]checkout['"]\)\s*===\s*['"]cancelled['"]/
-    );
+    expect(onboardingMain).toMatch(/get\(['"]checkout['"]\)\s*===\s*['"]cancelled['"]/);
     // And specifically NOT the old singular "cancel" keyword.
     // Anchor the scan to the returnedFromCancel expression through the
     // next stable marker (the step useState declaration) so this can't

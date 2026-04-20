@@ -1269,9 +1269,7 @@ export default function Onboarding() {
   // State initializers are lazy (only fire on mount) — perfect for the
   // cancel-return restore, which must capture the tier before we consume it
   // in the mount effect below.
-  const [step, setStep] = useState<OnboardingStep>(() =>
-    returnedFromCancel ? 'plan' : 'splash'
-  );
+  const [step, setStep] = useState<OnboardingStep>(() => (returnedFromCancel ? 'plan' : 'splash'));
   const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(() =>
     returnedFromCancel
       ? (sessionStorage.getItem('vela_pending_tier') as 'standard' | 'premium' | null)

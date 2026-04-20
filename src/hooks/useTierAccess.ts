@@ -39,10 +39,16 @@ export interface TierAccess {
   isLoading: boolean;
   /** Whether wallet is unfunded (balance $0) and user is on a paid tier */
   needsFunding: (walletBalance: number | undefined) => boolean;
+  /**
+   * Force a subscription refresh. Wire this at mount after `?checkout=success`
+   * lands so the tier badge / gated UI flips paid as soon as the webhook writes,
+   * instead of waiting for the next app-level refresh.
+   */
+  refresh: () => Promise<void>;
 }
 
 export function useTierAccess(): TierAccess {
-  const { tier, isPaid, isLoading, startCheckout, openPortal } = useSubscription();
+  const { tier, isPaid, isLoading, startCheckout, openPortal, refresh } = useSubscription();
 
   const tierConfig = useMemo(() => getTierConfig(tier), [tier]);
 
@@ -106,5 +112,6 @@ export function useTierAccess(): TierAccess {
     openPortal,
     isLoading,
     needsFunding,
+    refresh,
   };
 }

@@ -15,6 +15,7 @@ import { useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { breakIntoParagraphs } from '../lib/helpers';
 import { getTierConfig } from '../lib/tier-definitions';
 
@@ -63,7 +64,15 @@ export default function Home() {
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
   const { positions, preferences, wallet, proposals, refresh } = useTrading();
-  const { tier, partitionAssets, upgradeLabel, startCheckout, needsFunding } = useTierAccess();
+  const {
+    tier,
+    partitionAssets,
+    upgradeLabel,
+    startCheckout,
+    needsFunding,
+    refresh: refreshSubscription,
+  } = useTierAccess();
+  const { completeOnboarding: markOnboarded } = useOnboarding();
   const [digestExpanded, setDigestExpanded] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
   const [showDepositSheet, setShowDepositSheet] = useState(false);
@@ -94,6 +103,45 @@ export default function Home() {
     if (safeGetItem('vela_post_checkout_shown')) return false;
     return true;
   });
+
+  // Mark onboarding complete immediately on successful-checkout arrival.
+  // Stripe only redirects to the success_url after a completed session, so
+  // if this effect fires the user has paid. We do NOT wait for subscription
+  // poll confirmation — a slow webhook would otherwise leave a paid user
+  // stuck as non-onboarded on subsequent navigations.
+  //
+  // Trust model: the ?checkout=success param is trusted because the Privy
+  // auth gate runs before Home mounts. Worst-case URL-share abuse flips a
+  // friend's onboarded flag without granting paid tier — harmless UX delta.
+  // Payment authorisation still depends on the Stripe webhook updating the
+  // subscriptions table. Never gate a paid feature on the onboarded flag.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') !== 'success') return;
+    (async () => {
+      try {
+        await markOnboarded();
+      } catch (err) {
+        console.warn('[Home] markOnboarded failed after checkout success:', err);
+      }
+    })();
+    // Clear the persisted tier preference set during the checkout redirect
+    // (see Onboarding.tsx handlePlanCheckout) so it doesn't leak into a
+    // future cancel-return restore on the same tab.
+    sessionStorage.removeItem('vela_pending_tier');
+
+    // Poll subscription for up to 30s so the tier badge / gated UI flips
+    // paid as soon as the Stripe webhook writes. Without this the header
+    // might show a stale "Free" badge until the next app-level refresh.
+    refreshSubscription();
+    const timer = setInterval(() => refreshSubscription(), 2000);
+    const timeout = setTimeout(() => clearInterval(timer), 30000);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(timeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const dismissInterstitial = (openDeposit: boolean) => {
     safeSetItem('vela_post_checkout_shown', 'true');

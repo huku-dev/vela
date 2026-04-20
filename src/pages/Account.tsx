@@ -5,7 +5,6 @@ import { useTrading } from '../hooks/useTrading';
 import { useAccountDelete } from '../hooks/useAccountDelete';
 import { useSubscription } from '../hooks/useSubscription';
 import { useTierAccess } from '../hooks/useTierAccess';
-import { useOnboarding } from '../hooks/useOnboarding';
 import VelaLogo from '../components/VelaLogo';
 import VelaToast from '../components/VelaToast';
 import TelegramConnectButton from '../components/TelegramConnectButton';
@@ -2392,10 +2391,8 @@ export default function Account() {
     startCheckout,
     openPortal,
     cancelAtPeriodEnd,
-    refresh: refreshSubscription,
   } = useSubscription();
   const { needsFunding } = useTierAccess();
-  const { completeOnboarding: markOnboarded } = useOnboarding();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showTierSheet, setShowTierSheet] = useState(false);
   const [showWithdrawSheet, setShowWithdrawSheet] = useState(false);
@@ -2444,74 +2441,19 @@ export default function Account() {
     return params.get('checkout') === 'success';
   });
 
-  // Handle redirect back from successful checkout.
-  //
-  // Mark onboarding complete immediately on arrival — Stripe only redirects
-  // to the success_url after a completed session, so if we're here the user
-  // has paid. We do NOT wait for the subscription tier poll to confirm before
-  // calling markOnboarded(), because a delayed webhook combined with the
-  // 30s poll timeout would otherwise leave a paid user stuck as non-onboarded
-  // on subsequent navigations.
-  //
-  // Trust model: we trust the `?checkout=success` URL param because the user
-  // is already authenticated (the Privy/Supabase session gate runs before
-  // this page mounts), and the worst-case abuse (sharing the URL to a
-  // friend) only flips the friend's onboarded flag without granting paid
-  // tier — harmless UX delta. Payment authorisation still depends on the
-  // Stripe webhook updating the `subscriptions` table. Do NOT gate any paid
-  // feature on the onboarded flag alone; always check `currentTier`.
+  // Post-checkout success now lands on Home (/) where the welcome
+  // interstitial + onboarded-completion fire. If a user navigates to
+  // /account with a stale ?checkout=success param (e.g. back-button from
+  // Home after arrival), just strip the params — the onboarded flag is
+  // already set by Home's mount effect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const result = params.get('checkout');
-    const tier = params.get('tier');
-    if (result !== 'success') return;
-
-    const label = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : 'new';
-    setCheckoutToast(`Welcome to ${label}! Your upgrade is now active.`);
-
-    let cancelled = false;
-
-    // Fire-and-await onboarding completion. Any error is non-fatal because
-    // localStorage is set synchronously inside markOnboarded; the DB write
-    // is best-effort. If the tab unmounts mid-write we still have localStorage.
-    (async () => {
-      try {
-        await markOnboarded();
-      } catch (err) {
-        console.warn('[Account] markOnboarded failed after checkout success:', err);
-      }
-    })();
-
-    // Clear the persisted tier preference set during the checkout redirect
-    // (see Onboarding.tsx handlePlanCheckout) so it doesn't leak into a
-    // future cancel-return restore on the same tab.
-    sessionStorage.removeItem('vela_pending_tier');
-
-    // Poll subscription every 2s for up to 30s so the UI updates once the
-    // webhook confirms the paid tier. Extended from 10s to handle slower
-    // webhook delivery; the onboarded state is already set above so a
-    // timeout here only affects the loading indicator, not the gate.
-    const timer = setInterval(() => {
-      if (!cancelled) refreshSubscription();
-    }, 2000);
-    const timeout = setTimeout(() => {
-      if (cancelled) return;
-      clearInterval(timer);
-      setCheckoutPending(false);
-    }, 30000);
-
-    // Clean up URL params so refreshes don't re-run this effect.
+    if (params.get('checkout') !== 'success') return;
     const clean = new URL(window.location.href);
     clean.searchParams.delete('checkout');
     clean.searchParams.delete('tier');
     window.history.replaceState({}, '', clean.toString());
-
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-      clearTimeout(timeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCheckoutPending(false);
   }, []);
 
   // Clear checkout pending gate as soon as subscription updates to a paid tier.

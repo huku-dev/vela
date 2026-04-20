@@ -44,25 +44,32 @@ describe('GATE-SRC: checkout-success bypass scoping', () => {
     expect(gateSrc).toMatch(/params\.get\(['"]checkout['"]\)\s*===\s*['"]success['"]/);
   });
 
-  it('ALSO checks pathname equals /account (narrow scope)', () => {
-    expect(gateSrc).toMatch(/location\.pathname === ['"]\/account['"]/);
+  it('ALSO checks pathname equals "/" (Home, narrow scope)', () => {
+    expect(gateSrc).toMatch(/location\.pathname === ['"]\/['"]/);
   });
 
   it('combines the two checks with AND, not OR (prevents broad bypass)', () => {
-    expect(gateSrc).toMatch(/pathname === ['"]\/account['"]\s*&&\s*params\.get/);
+    expect(gateSrc).toMatch(/pathname === ['"]\/['"]\s*&&\s*params\.get/);
   });
 
   it('bypass is used in the redirect guard', () => {
-    expect(gateSrc).toMatch(/!isCheckoutSuccessOnAccount/);
+    expect(gateSrc).toMatch(/!isCheckoutSuccessOnHome/);
+  });
+
+  it('no longer references an /account bypass (success now lands on Home)', () => {
+    expect(gateSrc).not.toMatch(/pathname === ['"]\/account['"]/);
+    expect(gateSrc).not.toContain('isCheckoutSuccessOnAccount');
   });
 });
 
 describe('GATE-ADV: adversarial bypass invariants', () => {
-  it('does not allow bypass on /trades?checkout=success', () => {
-    // The scoping check requires pathname to equal "/account" exactly.
+  it('does not allow bypass on /trades?checkout=success or /account?checkout=success', () => {
+    // The scoping check requires pathname to equal "/" exactly.
     // Any other path cannot match, so appending ?checkout=success elsewhere
     // does not bypass.
-    expect(gateSrc).not.toMatch(/pathname !== ['"]\/account['"]/);
+    expect(gateSrc).not.toMatch(/pathname === ['"]\/account['"]/);
+    expect(gateSrc).not.toMatch(/pathname === ['"]\/trades['"]/);
+    expect(gateSrc).not.toMatch(/pathname === ['"]\/brief['"]/);
   });
 
   it('does not allow bypass based on referrer or any other attacker-controlled input', () => {
