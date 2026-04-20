@@ -118,40 +118,51 @@ describe('ONBOARD-SRC: selected tier persistence', () => {
   });
 });
 
-describe('ONBOARD-SRC: popstate history management', () => {
-  it('dedupes pushState by checking current history state', () => {
-    // Without this guard, React StrictMode double-effects push duplicate
-    // entries and force users to hit Back multiple times.
-    expect(onboardingMain).toMatch(/window\.history\.state\?\.onboardingStep\s*!==\s*step/);
+describe('ONBOARD-SRC: simplified flow (Batch 2b, 2026-04-20)', () => {
+  it('OnboardingStep type has only splash and plan', () => {
+    // trading_mode step was removed; execution mode is derived from plan
+    // choice on Stripe success instead (Home.tsx post-checkout effect).
+    expect(onboardingSrc).toMatch(/type OnboardingStep = ['"]splash['"]\s*\|\s*['"]plan['"]/);
+    expect(onboardingSrc).not.toMatch(/['"]trading_mode['"]/);
   });
 
-  it('skips the initial pushState on cancel return so Back exits naturally', () => {
-    expect(onboardingMain).toContain('skipInitialHistoryPush');
-    expect(onboardingMain).toMatch(/skipInitialHistoryPush\.current\s*=\s*false/);
+  it('TradingModeSetup component is fully removed', () => {
+    expect(onboardingSrc).not.toMatch(/function TradingModeSetup/);
+    expect(onboardingSrc).not.toMatch(/<TradingModeSetup/);
+    expect(onboardingSrc).not.toMatch(/handleModeSelected/);
+    expect(onboardingSrc).not.toMatch(/MODE_OPTIONS/);
   });
 
-  it('cleans up popstate listener on unmount', () => {
-    expect(onboardingMain).toMatch(/removeEventListener\(['"]popstate['"]/);
-  });
-});
-
-describe('ONBOARD-SRC: free-path onboarding still sets the flag', () => {
-  it('view_only branch calls completeOnboarding', () => {
-    // Free users SHOULD be marked onboarded at the moment they choose Free;
-    // only the paid path defers to post-Stripe success.
-    const modeHandlerStart = onboardingMain.indexOf('const handleModeSelected');
-    const modeHandlerEnd = onboardingMain.indexOf('const handlePlanCheckout');
-    const modeHandler = onboardingMain.slice(modeHandlerStart, modeHandlerEnd);
-    expect(modeHandler).toContain('completeOnboarding()');
+  it('Onboarding no longer imports useTrading (wallet work moved to Home)', () => {
+    expect(onboardingSrc).not.toMatch(/import \{ useTrading \}/);
+    expect(onboardingMain).not.toContain('enableTrading');
+    expect(onboardingMain).not.toContain('updatePreferences');
   });
 
-  it('handleSkipToFree calls completeOnboarding', () => {
+  it('auth-advance effect goes splash \u2192 plan (not splash \u2192 trading_mode)', () => {
+    expect(onboardingMain).toMatch(/setStep\(['"]plan['"]\)/);
+    expect(onboardingMain).not.toMatch(/setStep\(['"]trading_mode['"]\)/);
+  });
+
+  it('handleGetStarted advances to plan for authenticated users', () => {
+    const handlerStart = onboardingMain.indexOf('const handleGetStarted');
+    const handler = onboardingMain.slice(handlerStart, handlerStart + 300);
+    expect(handler).toMatch(/setStep\(['"]plan['"]\)/);
+  });
+
+  it('handleSkipToFree still marks onboarded and navigates home', () => {
     const skipStart = onboardingMain.indexOf('const handleSkipToFree');
-    // Use a stable marker: end of the arrow function body (navigate('/'))
-    // directly followed by the closing brace.
     const skipHandler = onboardingMain.slice(skipStart, skipStart + 400);
     expect(skipHandler).toContain('completeOnboarding()');
     expect(skipHandler).toContain("navigate('/'");
+  });
+
+  it('no popstate / in-app back handling (flow has a single step after auth)', () => {
+    // With TradingModeSetup gone there is no in-app previous step to walk
+    // back to, so we rely on browser's default back behaviour.
+    expect(onboardingMain).not.toContain('popstate');
+    expect(onboardingMain).not.toContain('skipInitialHistoryPush');
+    expect(onboardingMain).not.toContain('onboardingStep');
   });
 });
 
