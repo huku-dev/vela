@@ -497,6 +497,7 @@ export default function Home() {
           </p>
           <button
             onClick={openDepositSheet}
+            disabled={provisioningWallet}
             style={{
               marginTop: 'var(--space-2)',
               padding: '6px 16px',
@@ -507,9 +508,26 @@ export default function Home() {
               color: 'var(--white)',
               border: 'none',
               borderRadius: '6px',
-              cursor: 'pointer',
+              cursor: provisioningWallet ? 'wait' : 'pointer',
+              opacity: provisioningWallet ? 0.8 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
+            {provisioningWallet && (
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 12,
+                  height: 12,
+                  border: '2px solid rgba(255, 255, 255, 0.4)',
+                  borderTopColor: 'var(--white)',
+                  borderRadius: '50%',
+                  animation: 'vela-spin 700ms linear infinite',
+                }}
+              />
+            )}
             Deposit now
           </button>
         </div>
@@ -1024,44 +1042,10 @@ export default function Home() {
         />
       )}
 
-      {/* Wallet provisioning overlay. Shown when a free/trial user clicks
-          Deposit before their wallet has been created (lazy-provisioning,
-          see openDepositSheet above). Typically <2s for Privy server wallet
-          creation; if it takes longer than expected, Sentry will pick up
-          the latency via the existing provision-wallet instrumentation. */}
-      {provisioningWallet && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1100,
-            backgroundColor: 'rgba(10, 10, 10, 0.55)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 'var(--space-3)',
-            color: 'var(--white)',
-          }}
-        >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              border: '3px solid rgba(255, 255, 255, 0.2)',
-              borderTopColor: 'var(--white)',
-              borderRadius: '50%',
-              animation: 'vela-spin 800ms linear infinite',
-            }}
-          />
-          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-            Setting up your wallet...
-          </div>
-          <style>{`@keyframes vela-spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
-      )}
+      {/* Keyframes for the inline deposit-button spinner used during lazy
+          wallet provisioning. Defined once at the component level so the
+          rule is always available even before the first provision click. */}
+      <style>{`@keyframes vela-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Deposit sheet (triggered from fund-wallet banner or interstitial) */}
       {showDepositSheet && wallet && (

@@ -132,9 +132,7 @@ describe('HOME-SRC: post-checkout wallet + mode (Batch 2b)', () => {
   it('destructures enableTrading from useTrading', () => {
     // Lazy wallet provisioning for free/trial users + post-checkout wallet
     // provisioning for paid users both need this.
-    expect(homeSrc).toMatch(
-      /const\s*\{[\s\S]*?enableTrading[\s\S]*?\}\s*=\s*useTrading\(\)/
-    );
+    expect(homeSrc).toMatch(/const\s*\{[\s\S]*?enableTrading[\s\S]*?\}\s*=\s*useTrading\(\)/);
   });
 
   it('captures the purchased tier on mount (URL ?tier=X)', () => {
@@ -165,13 +163,13 @@ describe('HOME-SRC: post-checkout wallet + mode (Batch 2b)', () => {
   });
 
   it('tier-watch effect depends on purchasedTier, tier, enableTrading', () => {
-    expect(homeSrc).toMatch(
-      /\}, \[purchasedTier, tier, enableTrading\]\)/
-    );
+    expect(homeSrc).toMatch(/\}, \[purchasedTier, tier, enableTrading\]\)/);
   });
 
   it('maps premium → full_auto and standard → semi_auto', () => {
-    expect(homeSrc).toMatch(/purchasedTier === ['"]premium['"]\s*\?\s*['"]full_auto['"]\s*:\s*['"]semi_auto['"]/);
+    expect(homeSrc).toMatch(
+      /purchasedTier === ['"]premium['"]\s*\?\s*['"]full_auto['"]\s*:\s*['"]semi_auto['"]/
+    );
   });
 
   it('catches enableTrading failures without crashing', () => {
@@ -209,9 +207,15 @@ describe('HOME-SRC: lazy wallet provisioning on deposit (Batch 2b)', () => {
     expect(body).toMatch(/setShowDepositSheet\(true\)/);
   });
 
-  it('surfaces a "Setting up your wallet" loader during provisioning', () => {
-    expect(homeSrc).toMatch(/Setting up your wallet/);
+  it('surfaces an inline spinner on the Deposit button during provisioning', () => {
+    // Inline spinner instead of a full-screen "Setting up your wallet..."
+    // overlay: the user's mental model for Deposit is "I'm about to add
+    // funds," not "my wallet needs to be set up." Sub-2s Privy provisioning
+    // fits comfortably inside a button-level spinner without a modal.
     expect(homeSrc).toMatch(/provisioningWallet/);
+    expect(homeSrc).toMatch(/disabled=\{provisioningWallet\}/);
+    expect(homeSrc).toMatch(/animation:\s*['"]vela-spin/);
+    expect(homeSrc).not.toMatch(/Setting up your wallet/);
   });
 
   it('no setShowDepositSheet(true) exists outside openDepositSheet', () => {
@@ -244,9 +248,7 @@ describe('HOME-ADV: Batch 2b adversarial invariants', () => {
     // The mount effect handles markOnboarded + poll + sessionStorage cleanup.
     // enableTrading lives in a separate tier-watch effect that waits for
     // webhook confirmation. This prevents the DB trigger rejection race.
-    const mountEffectStart = homeSrc.indexOf(
-      "if (params.get('checkout') !== 'success') return;"
-    );
+    const mountEffectStart = homeSrc.indexOf("if (params.get('checkout') !== 'success') return;");
     // Find the end of the mount effect (its dependency array '[])').
     const mountEffectEnd = homeSrc.indexOf('  }, []);', mountEffectStart);
     expect(mountEffectStart).toBeGreaterThan(-1);
