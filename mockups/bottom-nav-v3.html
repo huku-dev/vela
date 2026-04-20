@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bottom nav wireframe v3 explorations</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-signal-green: #0fe68c;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #0f172a;
+
+    --amber-primary: #f59e0b;
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { max-width: 1200px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 28px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) { .comparison { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 740px)  { .comparison { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+  }
+  .variant h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .variant .label-row {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .variant .caption {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  .phone {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    height: 300px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-body {
+    padding: 14px 12px 80px;
+    opacity: 0.35;
+  }
+  .phone-body .p-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .phone-body .p-line { height: 10px; background: var(--gray-200); border-radius: 4px; margin-bottom: 6px; }
+  .phone-body .p-line.short { width: 60%; }
+  .phone-body .p-card {
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  /* Nav bar */
+  .nav {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--color-bg-surface);
+    border-top: var(--border-medium) solid var(--color-border-default);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-evenly;
+  }
+  .nav .tab {
+    flex: 1;
+    max-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-800);
+    font-family: 'Inter', system-ui, sans-serif;
+    position: relative;
+  }
+  .nav .tab.active { color: var(--vela-ink); }
+  .nav .tab .label {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .nav .tab.active .label { font-weight: 700; }
+
+  .icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-wrap { position: relative; display: inline-flex; }
+  .badge-count {
+    position: absolute;
+    top: -5px; right: -9px;
+    min-width: 16px; height: 16px;
+    border-radius: 8px;
+    background: #ef4444;
+    color: var(--white);
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+    border: 1.5px solid var(--vela-ink);
+  }
+  .badge-dot {
+    position: absolute;
+    top: -2px; right: -4px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 1.5px solid var(--white);
+  }
+
+  /* Option-specific active indicators */
+  .nav.opt-a .tab.active { /* weight carries alone */ }
+
+  .nav.opt-b .tab.active::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 14%;
+    right: 14%;
+    height: 3px;
+    background: var(--vela-ink);
+    border-radius: 0 0 3px 3px;
+  }
+
+  .nav.opt-c .tab.active::after {
+    content: '';
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--vela-signal-green);
+    border-radius: var(--radius-full);
+    margin-top: 3px;
+  }
+
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="section-label">Bottom nav v3. Tappability-first baseline</div>
+
+  <div class="note">
+    <strong>What's different in v3.</strong> Shifted the baseline to treat all three tabs as equally pressable, with state delta carried by weight and a small orientation graphic. <strong>Inactive tabs now use gray-800 (near-ink) with weight 500</strong> instead of gray-700; <strong>icon strokes bumped to 2px</strong> across all tabs so they read as substantial, object-like elements. The "disabled" read Sarah experienced should be gone even before any active-state indicator is considered.
+  </div>
+
+  <div class="comparison">
+
+    <!-- Option A -->
+    <div class="variant">
+      <div class="label-row">Option A</div>
+      <h3>Weight only</h3>
+      <p class="caption">Pure type-forward. Inactive and active both sit at near-ink color. The only signal of "you are here" is the weight jump from 500 to 700.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-a">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div class="variant">
+      <div class="label-row">Option B</div>
+      <h3>Top accent bar</h3>
+      <p class="caption">A 3px ink bar hangs from the top border above the active tab. Adds an unmistakable "you are here" signal without changing tappability of other tabs.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-b">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Option C -->
+    <div class="variant">
+      <div class="label-row">Option C</div>
+      <h3>Signal-green underline</h3>
+      <p class="caption">18px signal-green line beneath the active label. Quietest orientation cue; uses brand color in the smallest possible footprint.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-c">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="2" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="2" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Why tappability first</div>
+
+  <div class="annotation">
+    <strong>Reframe.</strong> Sarah's real complaint was that the other tabs looked uninteractive. In v1 and v2 the fix was inactive gray-700 plus an active indicator. v3 goes further: every tab reads as equally pressable (near-ink, 2px stroke, solid weight). The active state is a small delta layered on top, not a hierarchy shift.
+  </div>
+
+  <div class="annotation">
+    <strong>2px icon strokes.</strong> Raised from 1.5px. Thin-line icons read as decorative or ghosted; 2px reads as solid objects. Applied to all nav icons consistently so no tab looks "lighter" than another.
+  </div>
+
+  <div class="annotation">
+    <strong>Equal weight across tabs.</strong> Inactive and active both sit at near-ink color. Weight 500 vs 700 is the only type-level delta. Plus, option B or C add an orientation graphic. Every tab looks like the same kind of object; only one is currently on.
+  </div>
+
+  <div class="section-label">My read, updated</div>
+
+  <div class="annotation">
+    <strong>Option B remains the safest strong choice.</strong> The top bar gives strong orientation without touching the equal-weight baseline. Weight handles tappability. Bar handles orientation. Clean separation.
+  </div>
+
+  <div class="annotation">
+    <strong>Option A is now viable.</strong> With all tabs at near-ink, the weight-only signal feels more intentional. Minimal, type-forward. Some users may still struggle to instantly read which tab is active, but the tappability problem is fully solved.
+  </div>
+
+  <div class="annotation">
+    <strong>Option C keeps its brand ownership role.</strong> Signal-green underline works if you want the active state to feel distinctly Vela. At near-ink baseline the green pops more than in v2, which is good.
+  </div>
+
+</div>
+
+</body>
+</html>

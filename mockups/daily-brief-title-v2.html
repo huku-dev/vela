@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily brief title/date wireframe v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --lavender-50: #f5f3ff;
+    --lavender-100: #ede9fe;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --amber-primary: #f59e0b;
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --border-medium: 2px;
+    --shadow-sm: 3px 3px 0 var(--black);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { max-width: 1000px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 28px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .comparison { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+  }
+  .variant h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .variant .label-row {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .variant .caption {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  .brief-card {
+    background: var(--lavender-50);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Stacked (v1 proposed) */
+  .stacked .title {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+  }
+  .stacked .date {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* Inline — same row */
+  .inline-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .inline-row .title {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+  }
+  .inline-row .sep {
+    color: var(--gray-400);
+    font-size: 13px;
+    line-height: 1;
+  }
+  .inline-row .date {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  .brief-body {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Full brief page header */
+  .full-brief {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-top: 8px;
+  }
+  .full-brief h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+    margin-bottom: 4px;
+  }
+  .full-brief .sub-date {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 20px;
+  }
+  .full-brief .stub-line {
+    height: 10px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .full-brief .stub-line.short { width: 65%; }
+
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+
+  /* Naming table */
+  .surface-table {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .surface-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .surface-row:last-child { border-bottom: none; }
+  .surface-row.header {
+    background: var(--warm-cream);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+  }
+  code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    background: var(--warm-cream);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="section-label">Home brief card. Stacked vs inline</div>
+
+  <div class="note">
+    <strong>Both variants lead with the title</strong> so the card is immediately identifiable as a daily brief. Stacked is more newspaper-masthead; inline mirrors the email subject pattern and saves a row. Pick one and we lock.
+  </div>
+
+  <div class="comparison">
+
+    <div class="variant">
+      <div class="label-row">Option 1</div>
+      <h3>Stacked</h3>
+      <p class="caption">Title on its own line at 16px, date beneath at 12px muted. Report-style. Title gets full visual weight.</p>
+      <div class="brief-card stacked">
+        <div class="title">Daily brief</div>
+        <div class="date">Friday, April 18</div>
+        <div class="brief-body">Markets found solid ground this morning. Bitcoin held above $94k while equities opened mixed on Fed minutes...</div>
+      </div>
+    </div>
+
+    <div class="variant">
+      <div class="label-row">Option 2</div>
+      <h3>Inline</h3>
+      <p class="caption">Title and date on same line, separator in muted gray. Newsletter-style. Matches email subject pattern. Date uses short format to prevent wrapping.</p>
+      <div class="brief-card">
+        <div class="inline-row">
+          <span class="title">Daily brief</span>
+          <span class="sep">·</span>
+          <span class="date">Fri, Apr 18</span>
+        </div>
+        <div class="brief-body">Markets found solid ground this morning. Bitcoin held above $94k while equities opened mixed on Fed minutes...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Full brief page</div>
+
+  <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px;">
+    Always stacked (room to breathe). Full date format since it's the standalone view.
+  </p>
+
+  <div class="full-brief">
+    <h1>Daily brief</h1>
+    <div class="sub-date">Friday, April 18</div>
+    <div class="stub-line"></div>
+    <div class="stub-line"></div>
+    <div class="stub-line short"></div>
+  </div>
+
+  <div class="section-label">My read</div>
+
+  <div class="annotation">
+    <strong>Inline (Option 2) wins for the home card.</strong> It matches the email pattern you already ship (consistent mental model across surfaces), saves a row of vertical space on a busy home feed, and still leads with the title. The short date ("Fri, Apr 18") is enough context; full date lives on the full brief page where users land when they want detail.
+  </div>
+
+  <div class="annotation">
+    <strong>Full brief page stays stacked.</strong> Standalone view has space. Large title + date beneath reads as the canonical "this is today's brief" header.
+  </div>
+
+  <div class="section-label">"Daily brief" vs "The Daily brief"</div>
+
+  <div class="annotation">
+    <strong>Recommend "Daily brief".</strong> Scales better across 5+ surfaces (home card, full page, email subject, Telegram push, notification). "The Daily brief" would only make sense if we wanted an editorial masthead identity, which adds character but costs characters everywhere it appears. If you want the editorial feel later, we can upgrade to "The Daily brief" as a full-page masthead while keeping "Daily brief" everywhere else. Not worth doing now.
+  </div>
+
+  <div class="section-label">Naming rollout ("brief" over "digest")</div>
+
+  <div class="surface-table">
+    <div class="surface-row header">
+      <div>Surface</div>
+      <div>Current</div>
+      <div>Proposed</div>
+    </div>
+    <div class="surface-row">
+      <div>Home card</div>
+      <div>"Daily digest" label</div>
+      <div>"Daily brief" title</div>
+    </div>
+    <div class="surface-row">
+      <div>Full brief page</div>
+      <div>"Daily Brief" (title case)</div>
+      <div>"Daily brief" (sentence case)</div>
+    </div>
+    <div class="surface-row">
+      <div>Email subject</div>
+      <div>Needs check / may say digest</div>
+      <div>"Your daily brief, Fri Apr 18"</div>
+    </div>
+    <div class="surface-row">
+      <div>Telegram push</div>
+      <div>Needs check / may say digest</div>
+      <div>"Daily brief · Fri Apr 18"</div>
+    </div>
+    <div class="surface-row">
+      <div>In-app notification</div>
+      <div>Needs check</div>
+      <div>"Daily brief ready"</div>
+    </div>
+    <div class="surface-row">
+      <div>Database / logs</div>
+      <div><code>digest_*</code> tables/fields</div>
+      <div>Leave as-is (internal)</div>
+    </div>
+  </div>
+
+  <div class="annotation">
+    <strong>Scope of the naming change.</strong> User-facing copy only. Internal code, DB tables, log fields staying as <code>digest</code> to avoid a rewrite. We rename only what the user sees.
+  </div>
+
+  <div class="annotation">
+    <strong>Implementation grep list.</strong> I'll sweep the frontend for user-facing strings containing "Daily digest", "Daily Digest", "digest" on notification/email templates, and replace with "Daily brief" variants. Same commit that lands the title/date swap.
+  </div>
+
+</div>
+
+</body>
+</html>

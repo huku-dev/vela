@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing page wireframe v4</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<style>
+  /* Vela design tokens */
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-signal-green: #0fe68c;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-500: #6b7280;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --green-primary: #10b981;
+    --green-dark: #059669;
+    --green-bg: #ecfdf5;
+    --green-tint: #f0fdf6;
+
+    --amber-primary: #f59e0b;
+    --amber-light: #fde68a;
+
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+    --space-5: 1.25rem; --space-6: 1.5rem;
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --shadow-sm: 3px 3px 0 var(--black);
+    --shadow-md: 4px 4px 0 var(--black);
+    --shadow-lg: 6px 6px 0 var(--black);
+
+    --border-thick: 3px;
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .screen { max-width: 440px; width: 100%; margin: 0 auto; }
+  .screen-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .screen-label strong { color: var(--color-text-primary); }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 36px 0 10px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .sub {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  /* ── Toggle ───────────────────────────── */
+  .toggle-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .toggle-option {
+    padding: 12px 10px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .toggle-option.active { background: var(--vela-ink); color: var(--white); }
+  .save-pill {
+    background: var(--amber-light);
+    color: #7a4f00;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* ── Plan cards ──────────────────────── */
+  .plan-card {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .plan-card.premium {
+    background: var(--green-tint);
+    box-shadow: var(--shadow-lg);
+    border-width: var(--border-thick);
+    margin-top: 24px;
+  }
+  .plan-badge {
+    position: absolute;
+    top: -12px;
+    left: 18px;
+    background: var(--vela-signal-green);
+    color: var(--vela-ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border: 2px solid var(--color-border-default);
+  }
+  .plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .plan-name {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .plan-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .plan-price {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .plan-price-unit {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+  .plan-billing-note {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+  }
+
+  .features-heading {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    padding-top: 4px;
+  }
+  .plan-features {
+    list-style: none;
+    margin: 0 0 18px 0;
+    padding: 0;
+  }
+  .plan-features li {
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 9px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .plan-features li:last-child { border-bottom: none; }
+  .plan-features .check {
+    color: var(--green-dark);
+    font-weight: 800;
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 14px;
+  }
+  .plan-features .feature-key { font-weight: 600; color: var(--color-text-primary); }
+  .plan-features .feature-detail {
+    color: var(--color-text-muted);
+    font-weight: 400;
+    display: block;
+    font-size: 12.5px;
+    margin-top: 2px;
+  }
+  .plan-features .delta {
+    color: var(--green-dark);
+    font-weight: 600;
+    font-size: 11.5px;
+    background: var(--green-bg);
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  .plan-cta {
+    width: 100%;
+    padding: 13px;
+    border: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .plan-cta.outline { background: var(--color-bg-surface); color: var(--color-text-primary); }
+  .plan-cta:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+
+  /* ── Subtle hidden-trial link ────────── */
+  .hidden-trial {
+    display: block;
+    text-align: center;
+    margin: 18px auto 0;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 8px;
+  }
+
+  /* ── Trial offer screen (condensed) ────── */
+  .back-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  .trial-hero {
+    background: var(--green-bg);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 22px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .trial-hero .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--green-dark);
+    margin-bottom: 8px;
+  }
+  .trial-hero h2 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .trial-hero p {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
+
+  /* Compact timeline */
+  .timeline-card {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .timeline-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+    position: relative;
+  }
+  .timeline-row:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 38px;
+    bottom: -8px;
+    width: 2px;
+    background: var(--color-border-muted);
+  }
+  .timeline-dot {
+    width: 64px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--color-text-primary);
+    background: var(--amber-light);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-full);
+    padding: 4px 0;
+    text-align: center;
+    z-index: 1;
+  }
+  .timeline-dot.charge { background: var(--vela-ink); color: var(--white); }
+  .timeline-text {
+    font-size: 13px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .timeline-text strong { font-weight: 700; }
+
+  .fine-print {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    text-align: center;
+    margin: 0 0 16px;
+    line-height: 1.5;
+  }
+  .fine-print strong { color: var(--color-text-primary); font-weight: 600; }
+
+  .trial-cta {
+    width: 100%;
+    padding: 14px;
+    border: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .trial-cta:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+  .trial-subcta {
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* ── Annotations ──────────────────────── */
+  .annotations-section { max-width: 1000px; margin: 40px auto 0; }
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ╔═══ SCREEN 1. Pricing (trial hidden) ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 1. <strong>Pricing page</strong>. Trial is hidden by default.</div>
+
+    <h1>Choose your plan</h1>
+    <p class="sub">Cancel anytime from your account settings.</p>
+
+    <div class="toggle-label">Billing cycle</div>
+    <div class="toggle">
+      <button class="toggle-option active">Monthly</button>
+      <button class="toggle-option">Annual <span class="save-pill">Save 17%</span></button>
+    </div>
+
+    <!-- Standard -->
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-name">Standard</div>
+      </div>
+      <div class="plan-price-row">
+        <div class="plan-price">$9</div>
+        <div class="plan-price-unit">/ month</div>
+      </div>
+      <div class="plan-billing-note">Billed monthly</div>
+      <ul class="plan-features">
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">Up to 8 tracked assets</span>
+            <span class="feature-detail">Crypto, equities, and commodities.</span>
+          </span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">Manual trade approval</span>
+            <span class="feature-detail">Vela proposes, you approve each trade.</span>
+          </span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">No trade fees</span>
+          </span>
+        </li>
+      </ul>
+      <button class="plan-cta outline">Subscribe to Standard</button>
+    </div>
+
+    <!-- Premium -->
+    <div class="plan-card premium">
+      <span class="plan-badge">Recommended</span>
+      <div class="plan-header">
+        <div class="plan-name">Premium</div>
+      </div>
+      <div class="plan-price-row">
+        <div class="plan-price">$19</div>
+        <div class="plan-price-unit">/ month</div>
+      </div>
+      <div class="plan-billing-note">Billed monthly</div>
+      <div class="features-heading">Everything in Standard, plus:</div>
+      <ul class="plan-features">
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">Unlimited tracked assets</span>
+            <span class="delta">up from 8</span>
+            <span class="feature-detail">Every asset Vela covers, no cap.</span>
+          </span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">Auto-execute trades</span>
+            <span class="delta">hands-off</span>
+            <span class="feature-detail">Vela trades for you the moment a signal fires.</span>
+          </span>
+        </li>
+        <li>
+          <span class="check">✓</span>
+          <span>
+            <span class="feature-key">Priority support</span>
+          </span>
+        </li>
+      </ul>
+      <button class="plan-cta">Subscribe to Premium</button>
+    </div>
+
+    <button class="hidden-trial">I'm not ready to subscribe yet</button>
+  </div>
+
+  <!-- ╔═══ SCREEN 2. Trial offer (condensed) ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 2. <strong>Trial offer</strong>. Revealed only when Screen 1's subtle link is tapped.</div>
+
+    <div class="back-row">← Back to plans</div>
+
+    <div class="trial-hero">
+      <div class="eyebrow">7-day free trial</div>
+      <h2>Try Premium. No charge for 7 days.</h2>
+      <p>Full access to every Premium feature. Cancel in one click if it's not for you.</p>
+    </div>
+
+    <div class="timeline-card">
+      <div class="timeline-row">
+        <div class="timeline-dot">Today</div>
+        <div class="timeline-text">
+          <strong>Add a card.</strong> Nothing charged. Full access immediately.
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-dot">Day 5</div>
+        <div class="timeline-text">
+          <strong>Reminder email</strong> 2 days before billing starts.
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-dot charge">Day 8</div>
+        <div class="timeline-text">
+          <strong>$19 charged</strong> unless you cancel before.
+        </div>
+      </div>
+    </div>
+
+    <p class="fine-print"><strong>Cancel anytime in one click.</strong> Payment handled by Stripe.</p>
+
+    <button class="trial-cta">Start 7-day trial</button>
+    <button class="trial-subcta">Not now, maybe later</button>
+  </div>
+
+</div>
+
+<!-- ── Annotations ──────────────────────── -->
+<div class="annotations-section">
+  <div class="section-label">What changed in v4</div>
+
+  <div class="note">
+    <strong>v4 responds to three things:</strong> (1) hide the trial so it doesn't cannibalise direct conversion, (2) differentiate Premium visually so the upsell is obvious, (3) tighten Screen 2 so users actually read it. Detailed trust scaffolding moves to the trial-start email.
+  </div>
+
+  <div class="annotation">
+    <strong>Trial is now gated.</strong> Screen 1 no longer announces the trial. The only path is a small underlined link reading "I'm not ready to subscribe yet" below the plans. High-intent users don't see trial messaging and subscribe directly. Hesitant users self-select into the trial path by tapping the link.
+  </div>
+
+  <div class="annotation">
+    <strong>Standard trimmed.</strong> Dropped leverage (not a differentiator Sarah read) and "full daily brief" (available to everyone). Now three features: asset count, manual approval, no fees. Every item is something a prospect is actually deciding about.
+  </div>
+
+  <div class="annotation">
+    <strong>Premium differentiated visually.</strong> Deeper shadow (6px vs none on Standard), 3px border vs 2px, signal-green tint background, signal-green "Recommended" badge with ink border. It reads as a noticeably different and stronger object, not a second version of Standard.
+  </div>
+
+  <div class="annotation">
+    <strong>Premium content differentiated.</strong> "Everything in Standard, plus:" header makes the upgrade relationship explicit. Delta chips ("up from 8", "hands-off") make the upgrade's value scannable without reading the description. Every Premium feature is a visible gain relative to Standard.
+  </div>
+
+  <div class="annotation">
+    <strong>Screen 2 condensed.</strong> Removed the full "What you get" block (hero + timeline already convey the value) and the three-row "You're in control" block (moved to the trial-start email, where there's space to do it justice). The page now fits on one screen with the CTA visible. Timeline is the one thing we keep because it directly disarms the "I'll get silently charged" fear.
+  </div>
+
+  <div class="annotation">
+    <strong>Fine print line.</strong> One line, centered, above the CTA. "Cancel anytime in one click. Payment handled by Stripe." Covers the two highest-priority trust questions without a full card block. Hyperlinkable to a details page if needed.
+  </div>
+
+  <div class="annotation">
+    <strong>Secondary CTA renamed.</strong> "Just let me preview the brief" dropped. New copy is "Not now, maybe later" which matches what we actually know about the user: they are not committing to anything right now. Routes to the existing Free home (BTC only, rest gated) per your call.
+  </div>
+
+  <div class="section-label">Confirmed decisions (from Q&A)</div>
+  <div class="annotation">
+    Day 8 default plan is Premium. Day-5 email can mention a Standard switch, not prominent, with the tradeoff spelled out (fewer tracked assets, manual approval). Trial is 7 days. One trial per email. Fallthrough routes to the existing Free home page, not a new preview surface.
+  </div>
+</div>
+
+</body>
+</html>

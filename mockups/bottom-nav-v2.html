@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bottom nav wireframe v2 explorations</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-signal-green: #0fe68c;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-500: #6b7280;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --amber-primary: #f59e0b;
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { max-width: 1200px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 28px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) { .comparison { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 740px)  { .comparison { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+  }
+  .variant h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .variant .label-row {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .variant .caption {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  .phone {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    height: 300px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-body {
+    padding: 14px 12px 80px;
+    opacity: 0.35;
+  }
+  .phone-body .p-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .phone-body .p-line { height: 10px; background: var(--gray-200); border-radius: 4px; margin-bottom: 6px; }
+  .phone-body .p-line.short { width: 60%; }
+  .phone-body .p-card {
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  /* Nav bar (shared dimensions) */
+  .nav {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--color-bg-surface);
+    border-top: var(--border-medium) solid var(--color-border-default);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-evenly;
+  }
+  .nav .tab {
+    flex: 1;
+    max-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-700);
+    font-family: 'Inter', system-ui, sans-serif;
+    position: relative;
+  }
+  .nav .tab.active { color: var(--vela-ink); }
+  .nav .tab .label {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .nav .tab.active .label { font-weight: 700; }
+
+  .icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-wrap { position: relative; display: inline-flex; }
+  .badge-count {
+    position: absolute;
+    top: -5px; right: -9px;
+    min-width: 16px; height: 16px;
+    border-radius: 8px;
+    background: #ef4444;
+    color: var(--white);
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+    border: 1.5px solid var(--vela-ink);
+  }
+  .badge-dot {
+    position: absolute;
+    top: -2px; right: -4px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 1.5px solid var(--white);
+  }
+
+  /* ── Option A — Pure contrast, no indicator ─── */
+  .nav.opt-a .tab.active { /* no extras */ }
+
+  /* ── Option B — Top accent bar (full tab width) ─── */
+  .nav.opt-b .tab.active::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 14%;
+    right: 14%;
+    height: 3px;
+    background: var(--vela-ink);
+    border-radius: 0 0 3px 3px;
+  }
+
+  /* ── Option C — Below-label accent line (short) ─── */
+  .nav.opt-c .tab.active::after {
+    content: '';
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: var(--vela-signal-green);
+    border-radius: var(--radius-full);
+    margin-top: 3px;
+  }
+
+  /* Spec table */
+  .token-table {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    font-size: 12px;
+    overflow: hidden;
+    margin-top: 14px;
+  }
+  .token-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 1fr 1fr;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .token-row:last-child { border-bottom: none; }
+  .token-row.header {
+    background: var(--warm-cream);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+  }
+
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="section-label">Bottom nav. Three quieter active-state explorations</div>
+
+  <div class="note">
+    <strong>Shared across all three.</strong> Inactive text moves to <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;">gray-700</code> (up from <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;">gray-400</code>) and weight drops 600 to 500. Top border becomes 2px ink. Bar height 64px. These three changes alone remove the "disabled" read. The options below are different ways to indicate which tab is active.
+  </div>
+
+  <div class="comparison">
+
+    <!-- Option A — Pure contrast -->
+    <div class="variant">
+      <div class="label-row">Option A</div>
+      <h3>Pure contrast</h3>
+      <p class="caption">No indicator graphic. Active tab is full ink + bold; inactive is gray-700 + medium. Minimal, type-forward.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-a">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Option B — Top accent bar -->
+    <div class="variant">
+      <div class="label-row">Option B</div>
+      <h3>Top accent bar</h3>
+      <p class="caption">A 3px ink bar drops down from the top border above the active tab. Convention-friendly (Material, Figma, YouTube), unmistakable at a glance.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-b">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Option C — Below-label signal-green underline -->
+    <div class="variant">
+      <div class="label-row">Option C</div>
+      <h3>Signal-green underline</h3>
+      <p class="caption">18px signal-green accent beneath the active label. Uses brand color in the smallest possible footprint. Quiet, ownable.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card"><div class="p-line"></div><div class="p-line short"></div></div>
+        </div>
+        <nav class="nav opt-c">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-label">How they compare</div>
+
+  <div class="token-table">
+    <div class="token-row header">
+      <div>Criterion</div>
+      <div>A. Pure contrast</div>
+      <div>B. Top bar</div>
+      <div>C. Green underline</div>
+    </div>
+    <div class="token-row">
+      <div>Glance recognition</div>
+      <div>Medium</div>
+      <div>High (strongest)</div>
+      <div>Medium-high</div>
+    </div>
+    <div class="token-row">
+      <div>Visual weight added</div>
+      <div>None</div>
+      <div>Small (3px bar)</div>
+      <div>Tiny (18&times;2px line)</div>
+    </div>
+    <div class="token-row">
+      <div>Brand expression</div>
+      <div>Neutral</div>
+      <div>Ink-heavy, matches neobrutalist</div>
+      <div>Signal-green accent, ownable</div>
+    </div>
+    <div class="token-row">
+      <div>Accessibility</div>
+      <div>Relies on color + weight only</div>
+      <div>Color + weight + graphic indicator</div>
+      <div>Color + weight + graphic indicator</div>
+    </div>
+    <div class="token-row">
+      <div>Risk</div>
+      <div>Could read as "no state" for users who don't register weight changes</div>
+      <div>Can compete with 2px top border visually</div>
+      <div>18px line is small on larger phones; may feel timid</div>
+    </div>
+  </div>
+
+  <div class="section-label">My read</div>
+
+  <div class="annotation">
+    <strong>Option B is the safest strong choice.</strong> The top-drop accent is the cleanest "you are here" signal at nav scale. It integrates with the 2px ink top border rather than competing. Keeps the bar type-forward and doesn't add a colored surface. Matches Vela's brutalist geometry.
+  </div>
+
+  <div class="annotation">
+    <strong>Option C if you want brand ownership.</strong> The signal-green accent makes the active state distinctly Vela. Risk is it reads as small or decorative on larger phones. Usually fine on 375–430px widths though.
+  </div>
+
+  <div class="annotation">
+    <strong>Option A if you want the absolute minimum.</strong> Confident, type-forward. But there is no graphic indicator at all, which means users who don't subconsciously register weight/contrast deltas may still feel ambiguity. Least safe for a broad audience.
+  </div>
+
+  <div class="section-label">Notes if we pick B or C</div>
+  <div class="annotation">
+    <strong>B specifics.</strong> 3px ink bar, 72% tab width (14% inset each side), seated 2px below the top border so it appears to "hang" from it. Rounded bottom corners (3px radius) so it matches the design language.
+  </div>
+  <div class="annotation">
+    <strong>C specifics.</strong> 18px wide, 2px tall signal-green line, fully rounded, 3px below the label. Size calibrated so it visually balances a label of 6-11 characters.
+  </div>
+
+</div>
+
+</body>
+</html>

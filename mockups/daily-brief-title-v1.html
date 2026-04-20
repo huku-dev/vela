@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily brief title/date wireframe v1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --lavender-50: #f5f3ff;
+    --lavender-100: #ede9fe;
+
+    --gray-200: #e5e7eb;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #0f172a;
+
+    --amber-primary: #f59e0b;
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --border-medium: 2px;
+    --shadow-sm: 3px 3px 0 var(--black);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .layout { max-width: 1000px; margin: 0 auto; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 28px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .comparison { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+  }
+  .variant h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .variant .label-row {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .variant .caption {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+  }
+
+  /* Brief card (home page) — using lavender card variant */
+  .brief-card {
+    background: var(--lavender-50);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* BEFORE */
+  .before .date-primary {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 13.1px;
+    color: var(--color-text-primary);
+    margin-bottom: 4px;
+  }
+  .before .label-secondary {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+  .before .body {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* AFTER */
+  .after .title-primary {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+  }
+  .after .date-secondary {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+  .after .body {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  /* Full brief page header */
+  .full-brief {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-top: 8px;
+  }
+  .full-brief h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
+    margin-bottom: 4px;
+  }
+  .full-brief .sub-date {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-bottom: 20px;
+  }
+  .full-brief .stub-line {
+    height: 10px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .full-brief .stub-line.short { width: 65%; }
+
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="section-label">Home brief card. Before and after</div>
+
+  <div class="note">
+    <strong>Sarah's issue.</strong> Date reads as the primary element so she didn't realise the card was a daily brief. "Just say Friday and start talking to me." The fix is to lead with the title and demote the date to the sub-line. The full brief page already has title-first ordering and only needs a size tweak for consistency.
+  </div>
+
+  <div class="comparison">
+
+    <!-- BEFORE -->
+    <div class="variant">
+      <div class="label-row">Current</div>
+      <h3>Home card</h3>
+      <p class="caption">Date leads at 13.1px weight 800. "Daily digest" label below in uppercase small. Date reads as the heading.</p>
+      <div class="brief-card before">
+        <div class="date-primary">Friday, April 18, 2026</div>
+        <div class="label-secondary">Daily digest</div>
+        <div class="body">Markets found solid ground this morning. Bitcoin held above $94k while equities opened mixed on Fed minutes...</div>
+      </div>
+    </div>
+
+    <!-- AFTER -->
+    <div class="variant">
+      <div class="label-row">Proposed</div>
+      <h3>Home card</h3>
+      <p class="caption">Title leads at 16px Space Grotesk 700. Date drops to 12px muted sub-line. The card instantly reads as a daily brief, date providing context.</p>
+      <div class="brief-card after">
+        <div class="title-primary">Daily brief</div>
+        <div class="date-secondary">Friday, April 18, 2026</div>
+        <div class="body">Markets found solid ground this morning. Bitcoin held above $94k while equities opened mixed on Fed minutes...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Full brief page</div>
+
+  <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:8px;">
+    Already title-first. Only change: promote title size and tidy date styling to match the home card treatment.
+  </p>
+
+  <div class="full-brief">
+    <h1>Daily brief</h1>
+    <div class="sub-date">Friday, April 18, 2026</div>
+    <div class="stub-line"></div>
+    <div class="stub-line"></div>
+    <div class="stub-line short"></div>
+  </div>
+
+  <div class="section-label">Design notes</div>
+
+  <div class="annotation">
+    <strong>Title treatment.</strong> Space Grotesk 700 on both surfaces, matching the broader Vela type system. Home card uses 16px (fits within a card); full-page header uses 24px. Title is sentence case ("Daily brief"), not title case ("Daily Brief").
+  </div>
+
+  <div class="annotation">
+    <strong>Date treatment.</strong> Inter 500 muted gray, 12–13px. Secondary information. Full weekday + month + day format ("Friday, April 18, 2026") so users have clear context without scrolling.
+  </div>
+
+  <div class="annotation">
+    <strong>Sentence vs title case.</strong> Vela's broader voice leans toward sentence case. "Daily brief" not "Daily Brief". Recommend applying this change consistently across both surfaces.
+  </div>
+
+  <div class="section-label">Naming inconsistency flagged (separate decision)</div>
+
+  <div class="annotation">
+    <strong>"Digest" vs "Brief".</strong> The home card currently labels the content "Daily digest"; the full page title is "Daily Brief". Sarah called this out on the call ("if you say digest there, then it should be a digest here and not a brief here"). You told me not to change copy for now, so v1 keeps "Daily brief" everywhere in the wireframe on the assumption we standardise to that. <strong>Flag this when we implement so the labels land consistent across home, full page, and notifications.</strong> Let me know if you'd rather keep "digest" on home.
+  </div>
+
+  <div class="annotation">
+    <strong>Consistency surface check.</strong> The same naming also appears in email subject lines, Telegram pushes, and any notification copy. If we standardise, those need to align in the same commit.
+  </div>
+
+</div>
+
+</body>
+</html>

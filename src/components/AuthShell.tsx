@@ -29,8 +29,18 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   // Don't redirect while checking — avoids flash
   if (isChecking) return <PageLoader />;
 
+  // Returning from a successful Stripe checkout lands on /account?checkout=success.
+  // The onboarding flag hasn't been set yet (Account.tsx sets it synchronously on
+  // arrival). Let this SPECIFIC landing through so Account can finish the
+  // onboarding transition itself; otherwise the user bounces to /welcome.
+  // Scoped narrowly to /account so any other route with ?checkout=success does
+  // not accidentally get past the gate.
+  const params = new URLSearchParams(location.search);
+  const isCheckoutSuccessOnAccount =
+    location.pathname === '/account' && params.get('checkout') === 'success';
+
   // New user on any app route → send to onboarding
-  if (!isOnboarded && location.pathname !== '/welcome') {
+  if (!isOnboarded && !isCheckoutSuccessOnAccount && location.pathname !== '/welcome') {
     return <Navigate to="/welcome" replace />;
   }
 

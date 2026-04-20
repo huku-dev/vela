@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing page wireframe v3 (trial as recovery)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<style>
+  /* Vela design tokens (mirroring src/styles/vela-design-system.css) */
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-cream: #fffbf5;
+    --vela-signal-green: #0fe68c;
+
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #94a3b8;
+    --gray-500: #6b7280;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --green-primary: #10b981;
+    --green-dark: #059669;
+    --green-light: #d1fae5;
+    --green-bg: #ecfdf5;
+
+    --amber-primary: #f59e0b;
+    --amber-light: #fde68a;
+    --amber-bg: #fffbeb;
+
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+    --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem;
+    --space-7: 1.75rem; --space-8: 2rem; --space-10: 2.5rem;
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --shadow-sm: 3px 3px 0 var(--black);
+    --shadow-md: 4px 4px 0 var(--black);
+
+    --border-thick: 3px;
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .screen { max-width: 440px; width: 100%; margin: 0 auto; }
+  .screen-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .screen-label strong { color: var(--color-text-primary); }
+
+  .section-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 36px 0 10px;
+  }
+
+  /* ── Page header ────────────────────────── */
+  h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+    color: var(--color-text-primary);
+  }
+  .sub {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+  }
+
+  /* ── Toggle ─────────────────────────────── */
+  .toggle-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 4px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .toggle-option {
+    padding: 12px 10px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 120ms;
+  }
+  .toggle-option.active {
+    background: var(--vela-ink);
+    color: var(--white);
+  }
+  .save-pill {
+    background: var(--amber-light);
+    color: #7a4f00;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+
+  /* ── Plan cards ─────────────────────────── */
+  .plan-card {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .plan-card.recommended {
+    box-shadow: var(--shadow-md);
+  }
+  .plan-badge {
+    position: absolute;
+    top: -10px;
+    left: 18px;
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .plan-name {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .plan-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .plan-price {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--color-text-primary);
+    letter-spacing: -0.01em;
+  }
+  .plan-price-unit {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+  .plan-billing-note {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 16px;
+    min-height: 14px;
+  }
+  .plan-features {
+    list-style: none;
+    margin: 0 0 18px 0;
+    padding: 0;
+  }
+  .plan-features li {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 8px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid var(--color-border-muted);
+    color: var(--color-text-primary);
+  }
+  .plan-features li:last-child { border-bottom: none; }
+  .plan-features .check {
+    color: var(--green-dark);
+    font-weight: 800;
+    flex-shrink: 0;
+    width: 14px;
+    font-size: 14px;
+  }
+  .plan-features .feature-key { font-weight: 600; }
+  .plan-features .feature-detail {
+    color: var(--color-text-muted);
+    margin-left: 4px;
+    font-weight: 400;
+  }
+  .plan-cta {
+    width: 100%;
+    padding: 13px;
+    border: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .plan-cta.outline { background: var(--color-bg-surface); color: var(--color-text-primary); }
+  .plan-cta:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+
+  /* ── Preview offer (trial entry) ────────── */
+  .preview-offer {
+    margin-top: 24px;
+    padding: 16px 18px;
+    border: 2px dashed var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--warm-cream);
+    text-align: center;
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .preview-offer:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-sm);
+  }
+  .preview-offer .label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .preview-offer .title {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    line-height: 1.3;
+  }
+  .preview-offer .arrow { display: inline-block; margin-left: 4px; }
+
+  /* ── Trial offer screen ─────────────────── */
+  .back-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 500;
+  }
+
+  .trial-hero {
+    background: var(--green-bg);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .trial-hero .eyebrow {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--green-dark);
+    margin-bottom: 8px;
+  }
+  .trial-hero h2 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    color: var(--color-text-primary);
+  }
+  .trial-hero p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+  }
+
+  .card-block {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .card-block h3 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+
+  .trial-includes ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .trial-includes li {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    padding: 8px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid var(--color-border-muted);
+    color: var(--color-text-primary);
+    font-weight: 600;
+  }
+  .trial-includes li:last-child { border-bottom: none; }
+  .trial-includes .check {
+    color: var(--green-dark);
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  /* Timeline */
+  .timeline-row {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 12px;
+    padding-bottom: 14px;
+    position: relative;
+  }
+  .timeline-row:last-child { padding-bottom: 0; }
+  .timeline-row:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 24px;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-border-muted);
+  }
+  .timeline-dot {
+    width: 64px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--color-text-primary);
+    background: var(--amber-light);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-full);
+    padding: 4px 0;
+    text-align: center;
+    align-self: flex-start;
+    z-index: 1;
+  }
+  .timeline-dot.charge {
+    background: var(--vela-ink);
+    color: var(--white);
+  }
+  .timeline-text {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    padding-top: 3px;
+  }
+  .timeline-text strong {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .timeline-text span {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  /* Trust */
+  .trust-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .trust-item:last-child { border-bottom: none; }
+  .trust-item:first-child { padding-top: 0; }
+  .trust-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+    background: var(--green-bg);
+    color: var(--green-dark);
+    border: 1.5px solid var(--color-border-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .trust-text {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .trust-text strong {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+  .trust-text span {
+    color: var(--color-text-muted);
+    font-size: 12px;
+  }
+
+  .trial-cta {
+    width: 100%;
+    padding: 14px;
+    border: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .trial-cta:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+  .trial-subcta {
+    width: 100%;
+    text-align: center;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* ── Annotations ────────────────────────── */
+  .annotations-section {
+    max-width: 1000px;
+    margin: 40px auto 0;
+  }
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .note strong { color: var(--color-text-primary); }
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ╔═══ SCREEN 1. Pricing page (paid by default) ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 1. <strong>Pricing page</strong>. Primary choice surface.</div>
+
+    <h1>Choose your plan</h1>
+    <p class="sub">Cancel anytime from your account settings.</p>
+
+    <div class="toggle-label">Billing cycle</div>
+    <div class="toggle">
+      <button class="toggle-option active">Monthly</button>
+      <button class="toggle-option">Annual <span class="save-pill">Save 17%</span></button>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-name">Standard</div>
+      </div>
+      <div class="plan-price-row">
+        <div class="plan-price">$9</div>
+        <div class="plan-price-unit">/ month</div>
+      </div>
+      <div class="plan-billing-note">Billed monthly</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span><span><span class="feature-key">Up to 8 tracked assets.</span><span class="feature-detail">Crypto, equities, commodities.</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">Manual trade approval.</span><span class="feature-detail">You approve every trade.</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">3× leverage</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">No trade fees</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">Full daily brief</span></span></li>
+      </ul>
+      <button class="plan-cta outline">Subscribe to Standard</button>
+    </div>
+
+    <div class="plan-card recommended">
+      <span class="plan-badge">Recommended</span>
+      <div class="plan-header">
+        <div class="plan-name">Premium</div>
+      </div>
+      <div class="plan-price-row">
+        <div class="plan-price">$19</div>
+        <div class="plan-price-unit">/ month</div>
+      </div>
+      <div class="plan-billing-note">Billed monthly</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span><span><span class="feature-key">Unlimited tracked assets</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">Auto-execute trades.</span><span class="feature-detail">Vela trades for you.</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">5× leverage</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">No trade fees</span></span></li>
+        <li><span class="check">✓</span><span><span class="feature-key">Priority support</span></span></li>
+      </ul>
+      <button class="plan-cta">Subscribe to Premium</button>
+    </div>
+
+    <a href="#" class="preview-offer">
+      <div class="label">Not ready to subscribe?</div>
+      <div class="title">Preview Vela free for 7 days <span class="arrow">→</span></div>
+    </a>
+  </div>
+
+  <!-- ╔═══ SCREEN 2. Trial recovery offer ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 2. <strong>Trial offer</strong>. Shown after "Preview Vela free" is tapped.</div>
+
+    <div class="back-row">← Back to plans</div>
+
+    <div class="trial-hero">
+      <div class="eyebrow">7-day free trial</div>
+      <h2>Try Premium free. No charge for 7 days.</h2>
+      <p>Full access to every feature. Cancel in one click if it's not for you.</p>
+    </div>
+
+    <div class="card-block trial-includes">
+      <h3>What you get</h3>
+      <ul>
+        <li><span class="check">✓</span>Unlimited tracked assets</li>
+        <li><span class="check">✓</span>Auto-execute trades</li>
+        <li><span class="check">✓</span>5× leverage</li>
+        <li><span class="check">✓</span>Full daily brief and alerts</li>
+      </ul>
+    </div>
+
+    <div class="card-block">
+      <h3>How it works</h3>
+      <div class="timeline-row">
+        <div class="timeline-dot">Today</div>
+        <div class="timeline-text">
+          <strong>Add a card to start</strong>
+          <span>Nothing charged. Full Premium access immediately.</span>
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-dot">Day 5</div>
+        <div class="timeline-text">
+          <strong>Reminder email</strong>
+          <span>We remind you 2 days before billing, so nothing catches you off guard.</span>
+        </div>
+      </div>
+      <div class="timeline-row">
+        <div class="timeline-dot charge">Day 8</div>
+        <div class="timeline-text">
+          <strong>Trial ends</strong>
+          <span>If you don't cancel, your card is charged $19 for Premium. Cancel anytime before.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-block">
+      <h3>You're in control</h3>
+      <div class="trust-item">
+        <div class="trust-icon">1</div>
+        <div class="trust-text">
+          <strong>Cancel in one click</strong>
+          <span>From the Account screen. No forms, no calls.</span>
+        </div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-icon">🔒</div>
+        <div class="trust-text">
+          <strong>Card handled by Stripe</strong>
+          <span>Vela never sees or stores your card number.</span>
+        </div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-icon">↺</div>
+        <div class="trust-text">
+          <strong>Downgrade anytime</strong>
+          <span>Switch to Standard from the same screen if Premium is more than you need.</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="trial-cta">Start 7-day trial</button>
+    <button class="trial-subcta">Just let me preview the brief</button>
+  </div>
+
+</div>
+
+<!-- ── Annotations ──────────────────────── -->
+<div class="annotations-section">
+  <div class="section-label">Design notes</div>
+
+  <div class="note">
+    <strong>Design system alignment.</strong> Uses Vela tokens directly (cream page, Space Grotesk headings, Inter body, JetBrains Mono prices, neobrutalist shadows, 2px ink borders, 8 and 12px radii). Copy follows voice rules. No em dashes.
+  </div>
+
+  <div class="annotation">
+    <strong>Flow.</strong> Plan page is paid-only by default. High-intent users subscribe to Standard or Premium outright. Hesitant users tap "Preview Vela free for 7 days" and land on Screen 2 where the trial is framed with trust scaffolding. A final fallthrough link on Screen 2 routes the still-undecided to brief-only preview mode.
+  </div>
+
+  <div class="annotation">
+    <strong>Toggle.</strong> Full-width segmented control with 2px ink border and neobrutalist shadow. "Save 17%" pill lives inside the Annual tab so the incentive is visible without requiring a click. Default: Monthly.
+  </div>
+
+  <div class="annotation">
+    <strong>Plan cards.</strong> Replaces the dash-separated one-liner with a checked list. Bold feature key, muted detail. Asset count is first on Standard with the concrete breadth so users understand equities and commodities are included (addresses Sarah not knowing).
+  </div>
+
+  <div class="annotation">
+    <strong>"Not ready?" card.</strong> Dashed border on warm cream. Reads as a distinct offramp, not a third plan. The word "free" pulls hesitant users without competing with the paid CTAs above.
+  </div>
+
+  <div class="annotation">
+    <strong>Trial hero (Screen 2).</strong> Signal-green tint reinforces trust and low risk. Headline states the full promise in plain language.
+  </div>
+
+  <div class="annotation">
+    <strong>Timeline block.</strong> The biggest trust builder. Users' main worry with card-up-front trials is forgetting and getting charged. Making the Day-5 reminder and Day-8 charge date visible removes that fear.
+  </div>
+
+  <div class="annotation">
+    <strong>"You're in control" block.</strong> Addresses each common hesitation. "Cancel in one click" must actually be true in the product.
+  </div>
+
+  <div class="annotation">
+    <strong>Two CTAs on Screen 2.</strong> Primary is "Start 7-day trial". Secondary is a small underlined link routing to brief-only preview. Only this secondary path leads to preview mode, so the plan page itself stays commit-focused.
+  </div>
+
+  <div class="section-label">Open questions</div>
+
+  <div class="annotation">
+    1. On day 8 default plan: Premium (what they tried) or Standard (lower friction). My lean is Premium, with a "Switch to Standard" option surfaced in the Day-5 reminder email.<br><br>
+    2. Trial duration. 7 days aligns with the weekly signal cadence so they get one full cycle. Keeping 7?<br><br>
+    3. Eligibility. One trial per user, or one per email. Prevents abuse via repeat signups.<br><br>
+    4. Brief-only preview (Screen 2 fallthrough). Needs its own wireframe. Dedicated screen or an in-app preview mode with persistent upgrade bar?
+  </div>
+</div>
+
+</body>
+</html>

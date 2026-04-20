@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stripe bail prompt wireframe v1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-signal-green: #0fe68c;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-500: #6b7280;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --green-dark: #059669;
+    --green-bg: #ecfdf5;
+    --green-tint: #f0fdf6;
+
+    --amber-primary: #f59e0b;
+    --amber-light: #fde68a;
+    --amber-bg: #fffbeb;
+
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+    --radius-full: 9999px;
+
+    --shadow-sm: 3px 3px 0 var(--black);
+    --shadow-md: 4px 4px 0 var(--black);
+    --shadow-lg: 6px 6px 0 var(--black);
+
+    --border-thick: 3px;
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1000px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .screen { max-width: 440px; width: 100%; margin: 0 auto; }
+  .screen-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .screen-label strong { color: var(--color-text-primary); }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 36px 0 10px;
+  }
+
+  /* ── Phone-frame container (to visualise the sheet in context) ── */
+  .phone {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-xl);
+    padding: 14px 14px 0;
+    overflow: hidden;
+    position: relative;
+    height: 680px;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* Faded pricing page underneath the sheet */
+  .underlay {
+    padding: 6px 4px 120px;
+    opacity: 0.55;
+    filter: saturate(0.9);
+    pointer-events: none;
+  }
+  .u-h1 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .u-sub {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+  }
+  .u-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    margin-bottom: 12px;
+  }
+  .u-toggle button {
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    border-radius: 5px;
+  }
+  .u-toggle button.active { background: var(--vela-ink); color: var(--white); }
+  .u-plan {
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .u-plan-name { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 14px; font-weight: 700; }
+  .u-plan-price { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; }
+  .u-plan-lines {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* ── Backdrop + sheet ─────────────────── */
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.42);
+    border-radius: var(--radius-xl);
+    display: flex;
+    align-items: flex-end;
+  }
+  .sheet {
+    width: 100%;
+    background: var(--color-bg-page);
+    border-top: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding: 18px 20px 24px;
+    position: relative;
+    box-shadow: 0 -4px 0 var(--black);
+  }
+  .sheet-handle {
+    width: 44px;
+    height: 4px;
+    background: var(--gray-400);
+    border-radius: var(--radius-full);
+    margin: 0 auto 14px;
+  }
+  .sheet-eyebrow {
+    display: inline-block;
+    background: var(--amber-light);
+    color: #7a4f00;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    margin-bottom: 10px;
+    border: 1.5px solid var(--color-border-default);
+  }
+  .sheet h2 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .sheet p {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    margin-bottom: 16px;
+  }
+
+  .sheet-cta-primary {
+    width: 100%;
+    padding: 13px;
+    border: var(--border-thick) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--vela-ink);
+    color: var(--white);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: transform 120ms, box-shadow 120ms;
+  }
+  .sheet-cta-primary:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow-sm); }
+  .sheet-cta-secondary {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* Reassurance line */
+  .reassure {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .reassure strong { color: var(--green-dark); font-weight: 700; }
+
+  /* ── Annotations ──────────────────────── */
+  .annotations-section { max-width: 1000px; margin: 40px auto 0; }
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+
+  /* Flow diagram */
+  .flow {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 10px;
+    align-items: center;
+    font-size: 11.5px;
+    margin: 14px 0;
+  }
+  .flow-step {
+    background: var(--green-bg);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    text-align: center;
+    font-weight: 600;
+  }
+  .flow-step.fail { background: var(--amber-bg); }
+  .flow-step.end { background: var(--color-bg-page); }
+  .flow-arrow { font-weight: 800; color: var(--color-text-muted); }
+  .flow-note {
+    font-size: 10.5px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ╔═══ SCREEN 1. Bail prompt (bottom sheet) ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 1. <strong>Bail-prompt sheet</strong>. Appears on return from Stripe cancel.</div>
+
+    <div class="phone">
+      <!-- Faded pricing page underneath -->
+      <div class="underlay">
+        <div class="u-h1">Choose your plan</div>
+        <div class="u-sub">Cancel anytime from your account settings.</div>
+        <div class="u-toggle">
+          <button class="active">Monthly</button>
+          <button>Annual</button>
+        </div>
+        <div class="u-plan">
+          <div class="u-plan-name">Standard</div>
+          <div class="u-plan-price">$9 <span style="font-size:11px;color:var(--color-text-muted);font-weight:500;">/ month</span></div>
+          <div class="u-plan-lines">Buy, sell &amp; wait signals on 8 assets</div>
+        </div>
+        <div class="u-plan" style="background:var(--green-tint);border-width:2px;">
+          <div class="u-plan-name">Premium</div>
+          <div class="u-plan-price">$19 <span style="font-size:11px;color:var(--color-text-muted);font-weight:500;">/ month</span></div>
+          <div class="u-plan-lines">Every asset, 24/7 coverage</div>
+        </div>
+      </div>
+
+      <!-- Backdrop + sheet -->
+      <div class="backdrop">
+        <div class="sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-eyebrow">Subscription not started</div>
+          <h2>No worries. Nothing was charged.</h2>
+          <p>Pick up where you left off, or try Vela free for 7 days and decide later.</p>
+          <div class="reassure"><strong>✓ No card was saved.</strong> No payment went through.</div>
+          <button class="sheet-cta-primary">Choose a plan</button>
+          <button class="sheet-cta-secondary">Try free for 7 days instead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔═══ SCREEN 2. Flow diagram ═══╗ -->
+  <div class="screen">
+    <div class="screen-label">Screen 2. <strong>State flow</strong>. Where this sheet fits in the checkout lifecycle.</div>
+
+    <div class="flow">
+      <div class="flow-step">User selects plan</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step fail">Stripe checkout</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step">Returns to app</div>
+    </div>
+
+    <div style="font-size:11px;color:var(--color-text-muted);text-align:center;margin-bottom:18px;">
+      Stripe return lands on <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">/welcome/plan?checkout=cancelled</code>
+    </div>
+
+    <div class="flow">
+      <div class="flow-step">Detect cancel param</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step" style="background:var(--amber-bg);">Render bail sheet</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step end">Action</div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-text-muted);margin-bottom:8px;">Action outcomes</div>
+      <div style="background:var(--color-bg-surface);border:2px solid var(--color-border-default);border-radius:var(--radius-md);padding:14px;font-size:12px;line-height:1.6;">
+        <div style="margin-bottom:8px;"><strong>Choose a plan</strong> &nbsp;→ &nbsp;Dismiss sheet. User sees plans again. <span style="color:var(--color-text-muted);">Most common path.</span></div>
+        <div style="margin-bottom:8px;"><strong>Try free for 7 days instead</strong> &nbsp;→ &nbsp;Route to trial offer screen. Free home is only reachable from there via "Not now, maybe later".</div>
+        <div><strong>Backdrop tap</strong> &nbsp;→ &nbsp;Same as "Choose a plan". Sheet dismisses, user stays on plans.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--color-text-muted);margin-bottom:8px;">Code changes required</div>
+      <div style="background:var(--color-bg-surface);border:2px solid var(--color-border-default);border-radius:var(--radius-md);padding:14px;font-size:12px;line-height:1.55;">
+        <div style="margin-bottom:6px;">1. Move <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">completeOnboarding()</code> from Onboarding.tsx:1333 to post-checkout success only.</div>
+        <div style="margin-bottom:6px;">2. Stripe cancel URL parameter: detect <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">?checkout=cancelled</code> on <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">/welcome/plan</code> and render the sheet.</div>
+        <div>3. On "Skip for now", call <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">completeOnboarding()</code> explicitly, then route to <code style="background:var(--warm-cream);padding:1px 5px;border-radius:4px;font-size:10.5px;">/</code>.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Annotations -->
+<div class="annotations-section">
+  <div class="section-label">Design notes</div>
+
+  <div class="note">
+    <strong>Purpose.</strong> Catches users who abandoned Stripe checkout and would otherwise fall silently into the Free tier (current bug). Gives them a single clear choice between subscribing or explicitly skipping, while reassuring that nothing was charged.
+  </div>
+
+  <div class="annotation">
+    <strong>Bottom sheet over pricing page.</strong> The pricing page is already in the user's short-term memory. Rather than routing to a new interstitial, we show the sheet on top so they can see plans faintly behind and feel the connection. Dismissing the sheet drops them straight back onto the plans, no extra nav required.
+  </div>
+
+  <div class="annotation">
+    <strong>Tone and language.</strong> Avoids "checkout" wording since it reads as e-commerce and is out of sync with Vela's voice. Eyebrow is "Subscription not started" which is factual about the user's state. Title "No worries. Nothing was charged." leads with reassurance before action. No "failed" or "something went wrong" framing.
+  </div>
+
+  <div class="annotation">
+    <strong>Primary CTA: "Choose a plan".</strong> Sends them back to the plans directly above. Styled as the committed action, in ink. Most bailers came close to converting and need the lowest-friction path back.
+  </div>
+
+  <div class="annotation">
+    <strong>Secondary CTA: "Try free for 7 days instead".</strong> Replaces a "Skip for now" that would have dropped users into the mostly-gated Free home (which was Sarah's exact pain). Instead, we offer the trial as the step-down from subscribing. The only path to Free home is now via the trial offer screen's own "Not now, maybe later" link. To reach Free home, a user has to reject both subscribing and trialing.
+  </div>
+
+  <div class="annotation">
+    <strong>Reassurance line.</strong> "No card was saved. No payment went through." One line under the copy, green check. Addresses the top anxiety after a Stripe bail (did I accidentally pay? did they keep my card?) without requiring a full trust card.
+  </div>
+
+  <div class="annotation">
+    <strong>No "Resume checkout".</strong> Per your call. Stripe sessions that have been cancelled cannot be resumed; a failed-looking button would just compound the abandonment.
+  </div>
+
+  <div class="annotation">
+    <strong>Does NOT appear if they bail before Stripe.</strong> This sheet is only rendered when Stripe redirects to the cancel URL. If the user taps the browser back button while Stripe is still loading, the current browser-history fix (separate item) handles that. These two fixes together close the bail hole.
+  </div>
+
+  <div class="section-label">Open questions</div>
+
+  <div class="annotation">
+    1. <strong>One-shot or always-on.</strong> If the user dismisses via "Skip for now" and later returns to <code style="background:var(--warm-cream);padding:1px 4px;border-radius:3px;font-size:10.5px;">/welcome/plan</code> without <code style="background:var(--warm-cream);padding:1px 4px;border-radius:3px;font-size:10.5px;">?checkout=cancelled</code>, do we still show the sheet? My lean: no, the sheet only fires from the cancel redirect. If they return without the param, they see a normal pricing page.<br><br>
+    2. <strong>Stripe cancel URL.</strong> Requires Stripe session config update to set <code style="background:var(--warm-cream);padding:1px 4px;border-radius:3px;font-size:10.5px;">cancel_url</code> to <code style="background:var(--warm-cream);padding:1px 4px;border-radius:3px;font-size:10.5px;">/welcome/plan?checkout=cancelled</code>. Edge function <code style="background:var(--warm-cream);padding:1px 4px;border-radius:3px;font-size:10.5px;">create-checkout-session</code> needs this plumbed through.
+  </div>
+</div>
+
+</body>
+</html>

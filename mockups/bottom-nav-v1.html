@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bottom nav wireframe v1</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --white: #ffffff;
+    --black: #000000;
+    --cream-base: #f5f1e8;
+    --vela-ink: #0a0a0a;
+    --vela-signal-green: #0fe68c;
+    --vela-cream: #fffbf5;
+
+    --gray-200: #e5e7eb;
+    --gray-400: #94a3b8;
+    --gray-500: #6b7280;
+    --gray-600: #475569;
+    --gray-700: #374151;
+    --gray-900: #0f172a;
+
+    --green-dark: #059669;
+    --amber-light: #fde68a;
+    --amber-primary: #f59e0b;
+
+    --warm-cream: #fff8e7;
+    --warm-cream-border: #f5e6c8;
+
+    --color-text-primary: var(--gray-900);
+    --color-text-secondary: var(--gray-700);
+    --color-text-muted: var(--gray-600);
+    --color-bg-page: var(--cream-base);
+    --color-bg-surface: var(--white);
+    --color-border-default: var(--black);
+    --color-border-muted: var(--gray-200);
+
+    --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    --shadow-sm: 3px 3px 0 var(--black);
+    --border-thick: 3px;
+    --border-medium: 2px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    padding: 24px 20px 60px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .layout {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--color-text-muted);
+    margin: 28px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 900px) { .comparison { grid-template-columns: 1fr; } }
+
+  .variant {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .variant h3 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin-bottom: 4px;
+  }
+  .variant .caption {
+    font-size: 11.5px;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  /* Phone frame */
+  .phone {
+    background: var(--color-bg-page);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-lg);
+    height: 420px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-body {
+    padding: 18px 16px 80px;
+    height: 100%;
+    opacity: 0.35;
+  }
+  .phone-body .p-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .phone-body .p-line {
+    height: 12px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    margin-bottom: 8px;
+  }
+  .phone-body .p-line.short { width: 60%; }
+  .phone-body .p-card {
+    background: var(--color-bg-surface);
+    border: 1.5px solid var(--color-border-default);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    margin-top: 14px;
+  }
+
+  /* ── Nav bar (shared dimensions) ──────── */
+  .nav {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 64px;
+    background: var(--color-bg-surface);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-evenly;
+  }
+
+  /* Current (problem) state */
+  .nav.current {
+    border-top: 1.5px solid var(--gray-200);
+  }
+  .nav.current .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-400);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .nav.current .tab.active { color: var(--color-text-primary); }
+  .nav.current .tab .label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .nav.current .tab.active .label { font-weight: 700; }
+
+  /* Proposed state */
+  .nav.proposed {
+    border-top: var(--border-medium) solid var(--color-border-default);
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .nav.proposed .tab {
+    flex: 1;
+    max-width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-700);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 6px 10px;
+    border-radius: var(--radius-md);
+    transition: all 120ms;
+  }
+  .nav.proposed .tab.active {
+    background: var(--vela-signal-green);
+    color: var(--vela-ink);
+    border: 1.5px solid var(--color-border-default);
+  }
+  .nav.proposed .tab .label {
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .nav.proposed .tab.active .label { font-weight: 700; }
+
+  /* Icon placeholders (match the real icons at 20px) */
+  .icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon svg { display: block; }
+
+  /* Badges (pending trades on Signals, account dot) */
+  .icon-wrap { position: relative; display: inline-flex; }
+  .badge-count {
+    position: absolute;
+    top: -5px; right: -9px;
+    min-width: 16px; height: 16px;
+    border-radius: 8px;
+    background: #ef4444;
+    color: var(--white);
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    line-height: 1;
+    border: 1.5px solid var(--vela-ink);
+  }
+  .badge-dot {
+    position: absolute;
+    top: -2px; right: -4px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 1.5px solid var(--white);
+  }
+
+  /* ── Annotations ──────────────────────── */
+  .note {
+    background: var(--warm-cream);
+    border: var(--border-medium) solid var(--warm-cream-border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--color-text-primary); }
+  .annotation {
+    background: var(--warm-cream);
+    border-left: 3px solid var(--amber-primary);
+    padding: 10px 12px;
+    font-size: 11.5px;
+    color: var(--color-text-secondary);
+    line-height: 1.55;
+    margin: 10px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .annotation strong { color: var(--color-text-primary); }
+
+  .token-table {
+    background: var(--color-bg-surface);
+    border: var(--border-medium) solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    padding: 0;
+    font-size: 12px;
+    margin-top: 14px;
+    overflow: hidden;
+  }
+  .token-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border-muted);
+  }
+  .token-row:last-child { border-bottom: none; }
+  .token-row.header {
+    background: var(--warm-cream);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-muted);
+  }
+  .token-row code {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 11px;
+    background: var(--warm-cream);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <div class="section-label">Bottom nav. Before and after.</div>
+
+  <div class="note">
+    <strong>Problem.</strong> Sarah's read was that inactive nav items looked disabled, not clickable. The code has no disabled state. The issue is pure contrast: inactive tabs use <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;">var(--gray-400)</code> (#94a3b8) which reads as low-emphasis at a glance.
+  </div>
+
+  <div class="comparison">
+
+    <!-- CURRENT -->
+    <div class="variant">
+      <h3>Current</h3>
+      <p class="caption">Active tab has full ink text. Inactive tabs sit at gray-400 which looks disabled. Only a 1.5px gray-200 hairline separates the bar from content.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card">
+            <div class="p-line"></div>
+            <div class="p-line short"></div>
+          </div>
+          <div class="p-card">
+            <div class="p-line"></div>
+            <div class="p-line short"></div>
+          </div>
+        </div>
+        <nav class="nav current">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count" style="border-color:var(--color-text-primary);">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot" style="border-color:var(--gray-400);"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- PROPOSED -->
+    <div class="variant">
+      <h3>Proposed</h3>
+      <p class="caption">Inactive tabs move to gray-700 (fully legible, unmistakably tappable). Active tab gets a signal-green pill with ink content: instant "you are here" signal, uses brand accent, reads at a glance.</p>
+      <div class="phone">
+        <div class="phone-body">
+          <div class="p-title">Signals</div>
+          <div class="p-line"></div>
+          <div class="p-line short"></div>
+          <div class="p-card">
+            <div class="p-line"></div>
+            <div class="p-line short"></div>
+          </div>
+          <div class="p-card">
+            <div class="p-line"></div>
+            <div class="p-line short"></div>
+          </div>
+        </div>
+        <nav class="nav proposed">
+          <button class="tab active">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><polyline points="2,14 6,6 10,10 14,4 18,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg></span>
+              <span class="badge-count">2</span>
+            </span>
+            <span class="label">Signals</span>
+          </button>
+          <button class="tab">
+            <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="8" y="6" width="4" height="12" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="14" y="2" width="4" height="16" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/></svg></span>
+            <span class="label">Your Trades</span>
+          </button>
+          <button class="tab">
+            <span class="icon-wrap">
+              <span class="icon"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></span>
+              <span class="badge-dot"></span>
+            </span>
+            <span class="label">Account</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Spec table -->
+  <div class="section-label">Token changes</div>
+  <div class="token-table">
+    <div class="token-row header">
+      <div>Property</div>
+      <div>Current</div>
+      <div>Proposed</div>
+    </div>
+    <div class="token-row">
+      <div>Bar height</div>
+      <div>56px</div>
+      <div>64px</div>
+    </div>
+    <div class="token-row">
+      <div>Top border</div>
+      <div><code>1.5px var(--gray-200)</code></div>
+      <div><code>2px var(--black)</code></div>
+    </div>
+    <div class="token-row">
+      <div>Inactive color</div>
+      <div><code>var(--gray-400)</code> <span style="color:#ef4444;font-weight:600;">(low contrast)</span></div>
+      <div><code>var(--gray-700)</code></div>
+    </div>
+    <div class="token-row">
+      <div>Inactive weight</div>
+      <div>600</div>
+      <div>500</div>
+    </div>
+    <div class="token-row">
+      <div>Active background</div>
+      <div>(none)</div>
+      <div><code>var(--vela-signal-green)</code></div>
+    </div>
+    <div class="token-row">
+      <div>Active color</div>
+      <div><code>var(--color-text-primary)</code></div>
+      <div><code>var(--vela-ink)</code></div>
+    </div>
+    <div class="token-row">
+      <div>Active weight</div>
+      <div>700</div>
+      <div>700</div>
+    </div>
+    <div class="token-row">
+      <div>Active pill</div>
+      <div>(none)</div>
+      <div>Padding 6&times;10, radius <code>var(--radius-md)</code>, 1.5px ink border</div>
+    </div>
+    <div class="token-row">
+      <div>Tab max-width</div>
+      <div>168px</div>
+      <div>140px</div>
+    </div>
+  </div>
+
+  <div class="section-label">Design notes</div>
+
+  <div class="annotation">
+    <strong>Inactive contrast.</strong> Moving to gray-700 (a WCAG-AA compliant contrast ratio on white) removes the "disabled" read entirely. Weight also drops from 600 to 500 to let the active state carry more visual emphasis on its own.
+  </div>
+
+  <div class="annotation">
+    <strong>Active pill.</strong> Signal-green is Vela's brand accent, not used elsewhere in the core nav. Using it here unambiguously signals "current screen" and reinforces brand recognition. The 1.5px ink border around the pill matches the neobrutalist system.
+  </div>
+
+  <div class="annotation">
+    <strong>Bar height 64px.</strong> Up from 56px. Gives the pill room to breathe without crowding icon and label, and improves tap targets (56px was slightly below iOS 44pt guideline for the inner content once labels and padding were accounted for).
+  </div>
+
+  <div class="annotation">
+    <strong>Top border.</strong> 2px ink (up from 1.5px gray-200) aligns the nav with the rest of Vela's framed surfaces (plan cards, buttons, toggle). The nav no longer looks grafted onto the page.
+  </div>
+
+  <div class="annotation">
+    <strong>Badges preserved.</strong> Pending-trade count on Signals and Account attention dot both continue to work. Count badge border changes to ink (or to the pill's background when active) so it remains legible on either background.
+  </div>
+
+  <div class="annotation">
+    <strong>Accessibility.</strong> Pill background change is reinforced by weight change (500 → 700), so users who can't distinguish the green fill still get a clear active signal. WCAG contrast ratios check out: gray-700 on white, ink on signal-green both exceed 4.5:1.
+  </div>
+
+  <div class="section-label">Alternative considered</div>
+  <div class="annotation">
+    Tried a top-edge 3px signal-green indicator bar (browser-tab style) instead of a pill. Cleaner visually but failed the "instant recognition" test at small sizes, and conflicted with the ink top border. Pill won.
+  </div>
+
+  <div class="section-label">Implementation</div>
+  <div class="annotation">
+    Change lives in <code style="font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;">src/components/Layout.tsx</code> lines 219 to 329. No new dependencies, no token additions required. Existing design system tokens cover all colors and spacing.
+  </div>
+
+</div>
+
+</body>
+</html>
