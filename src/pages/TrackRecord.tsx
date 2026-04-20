@@ -459,7 +459,9 @@ export default function TrackRecord() {
                       upgradeLabel={canTrade ? undefined : upgradeLabel('start trading')}
                       onUpgradeClick={canTrade ? undefined : () => setShowTierSheet(true)}
                       currentPrice={livePrice ?? undefined}
-                      iconUrl={asset?.icon_url ?? (coingeckoId ? getCoinIcon(coingeckoId) : undefined)}
+                      iconUrl={
+                        asset?.icon_url ?? (coingeckoId ? getCoinIcon(coingeckoId) : undefined)
+                      }
                       positionEntryPrice={assetPosition?.entry_price}
                       positionSizeUsd={assetPosition?.size_usd}
                     />

@@ -64,6 +64,12 @@
   --blue-primary: #2563eb;
   --blue-hover: #1d4ed8;
   --blue-light: #dbeafe;
+  --blue-bg: #eff6ff;
+  --blue-accent: #3b82f6;
+
+  /* Onboarding / first-trade UI */
+  --warm-cream: #fff8e7;
+  --warm-cream-border: #f5e6c8;
 
   /* Status colors - Trading signals */
   --green-primary: #10b981;
@@ -889,4 +895,16 @@ body {
 
 .vela-signal-pulse--active::after {
   animation-delay: 0.5s;
+}
+
+/* ── Post-checkout interstitial emoji animation ── */
+.vela-interstitial-emoji {
+  display: inline-block;
+  animation: vela-celebrate 0.6s ease-in-out;
+}
+@keyframes vela-celebrate {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.15) rotate(-5deg); }
+  50% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(1.05) rotate(-3deg); }
 }

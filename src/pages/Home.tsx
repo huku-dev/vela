@@ -10,6 +10,7 @@ import PendingProposalsBanner from '../components/PendingProposalsBanner';
 import UpgradeNudgeBanner from '../components/UpgradeNudgeBanner';
 import TelegramConnectButton from '../components/TelegramConnectButton';
 import TierComparisonSheet from '../components/TierComparisonSheet';
+import DepositSheet from '../components/DepositSheet';
 import { useDashboard } from '../hooks/useData';
 import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -31,18 +32,41 @@ function telegramIcon(size: number) {
   );
 }
 
-const DIGEST_COLLAPSED_HEIGHT = 96; // ~4 lines at 0.85rem with 1.7 line-height
+function safeGetItem(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* noop */
+  }
+}
+
+const DIGEST_COLLAPSED_HEIGHT = 96;
 const TG_NUDGE_DISMISSED_KEY = 'vela_telegram_nudge_dismissed';
-const TG_CHECKOUT_PROMPT_KEY = 'vela_show_telegram_prompt';
+
+type BannerPriority = 'fund-wallet' | 'pending-proposals' | 'connect-telegram' | 'upgrade' | null;
+type FirstTradeMoment =
+  | { type: 'first-trade'; assetId: string; side: string; price: number }
+  | { type: 'first-decline' }
+  | { type: 'first-expiry' }
+  | null;
 
 export default function Home() {
   const navigate = useNavigate();
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
-  const { positions, preferences } = useTrading();
-  const { tier, partitionAssets, upgradeLabel, startCheckout } = useTierAccess();
+  const { positions, preferences, wallet, proposals, refresh } = useTrading();
+  const { tier, partitionAssets, upgradeLabel, startCheckout, needsFunding } = useTierAccess();
   const [digestExpanded, setDigestExpanded] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [showDepositSheet, setShowDepositSheet] = useState(false);
   const [selectedClass, setSelectedClass] = useState<'all' | AssetClass>(() => {
     try {
       const stored = localStorage.getItem('vela_signal_tab');
@@ -59,28 +83,100 @@ export default function Home() {
     }
     return 'all';
   });
-  const [tgNudgeDismissed, setTgNudgeDismissed] = useState(() => {
-    try {
-      return localStorage.getItem(TG_NUDGE_DISMISSED_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [showCheckoutPrompt, setShowCheckoutPrompt] = useState(() => {
-    try {
-      return localStorage.getItem(TG_CHECKOUT_PROMPT_KEY) === 'true';
-    } catch {
-      return false;
-    }
+  const [tgNudgeDismissed, setTgNudgeDismissed] = useState(() =>
+    safeGetItem(TG_NUDGE_DISMISSED_KEY)
+  );
+
+  // ── Post-checkout interstitial (one-time after first Stripe checkout) ──
+  const [showInterstitial, setShowInterstitial] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') !== 'success') return false;
+    if (safeGetItem('vela_post_checkout_shown')) return false;
+    return true;
   });
 
-  // Persist selected asset class tab
+  const dismissInterstitial = (openDeposit: boolean) => {
+    safeSetItem('vela_post_checkout_shown', 'true');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    url.searchParams.delete('tier');
+    window.history.replaceState({}, '', url.toString());
+    setShowInterstitial(false);
+    if (openDeposit) setShowDepositSheet(true);
+  };
+
+  // ── First-trade moment cards (one-time celebrations/nudges) ──
+  const [momentDismissed, setMomentDismissed] = useState(false);
+
+  const firstTradeMoment: FirstTradeMoment = useMemo(() => {
+    if (!isAuthenticated || tier === 'free') return null;
+
+    // First successfully executed trade (must be status=executed, not just auto-approved).
+    // Only trigger if exactly 1 executed proposal exists — prevents showing to existing users
+    // who had trades before this feature shipped (they lack the localStorage key but have many trades).
+    const executedProposals = proposals.filter(p => p.status === 'executed');
+    if (executedProposals.length === 1 && !safeGetItem('vela_first_trade_celebrated')) {
+      const executedProposal = executedProposals[0];
+      return {
+        type: 'first-trade',
+        assetId: executedProposal.asset_id,
+        side: executedProposal.side,
+        price: executedProposal.entry_price_at_proposal,
+      };
+    }
+
+    // First decline
+    if (proposals.some(p => p.status === 'declined') && !safeGetItem('vela_first_decline_shown')) {
+      return { type: 'first-decline' };
+    }
+
+    // First expiry
+    if (proposals.some(p => p.status === 'expired') && !safeGetItem('vela_first_expiry_shown')) {
+      return { type: 'first-expiry' };
+    }
+
+    return null;
+  }, [isAuthenticated, tier, proposals]);
+
+  // Auto-dismiss after 24h
   useEffect(() => {
+    if (!firstTradeMoment || momentDismissed) return;
+    const tsKey = `vela_first_${firstTradeMoment.type}_shown_at`;
+    let existing: string | null = null;
     try {
-      localStorage.setItem('vela_signal_tab', selectedClass);
+      existing = localStorage.getItem(tsKey);
     } catch {
       /* noop */
     }
+    if (!existing) {
+      safeSetItem(tsKey, Date.now().toString());
+    } else if (Date.now() - Number(existing) > 24 * 60 * 60 * 1000) {
+      const dismissKey =
+        firstTradeMoment.type === 'first-trade'
+          ? 'vela_first_trade_celebrated'
+          : firstTradeMoment.type === 'first-decline'
+            ? 'vela_first_decline_shown'
+            : 'vela_first_expiry_shown';
+      safeSetItem(dismissKey, 'true');
+      setMomentDismissed(true);
+    }
+  }, [firstTradeMoment, momentDismissed]);
+
+  const dismissMoment = () => {
+    if (!firstTradeMoment) return;
+    const key =
+      firstTradeMoment.type === 'first-trade'
+        ? 'vela_first_trade_celebrated'
+        : firstTradeMoment.type === 'first-decline'
+          ? 'vela_first_decline_shown'
+          : 'vela_first_expiry_shown';
+    safeSetItem(key, 'true');
+    setMomentDismissed(true);
+  };
+
+  // Persist selected asset class tab
+  useEffect(() => {
+    safeSetItem('vela_signal_tab', selectedClass);
   }, [selectedClass]);
 
   // Asset class filtering
@@ -118,50 +214,49 @@ export default function Home() {
     indices: 'Indices',
   };
 
-  // Set post-checkout prompt flag when returning from successful checkout
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('checkout') !== 'success') return;
-    // Wait for tier to settle, then check if new tier has telegram_alerts
-    const tierConfig = getTierConfig(tier);
-    if (tierConfig.features.telegram_alerts && !preferences?.telegram_chat_id) {
-      try {
-        localStorage.setItem(TG_CHECKOUT_PROMPT_KEY, 'true');
-      } catch {
-        /* noop */
-      }
-      setShowCheckoutPrompt(true);
-    }
-  }, [tier, preferences?.telegram_chat_id]);
-
   const dismissTgNudge = () => {
     setTgNudgeDismissed(true);
-    try {
-      localStorage.setItem(TG_NUDGE_DISMISSED_KEY, 'true');
-    } catch {
-      /* noop */
-    }
+    safeSetItem(TG_NUDGE_DISMISSED_KEY, 'true');
   };
 
-  const dismissCheckoutPrompt = () => {
-    setShowCheckoutPrompt(false);
-    try {
-      localStorage.removeItem(TG_CHECKOUT_PROMPT_KEY);
-    } catch {
-      /* noop */
-    }
-  };
-
-  // Show Telegram nudge only for paid users who haven't connected and haven't dismissed.
-  // Wait for preferences to load (not null) to prevent flash.
+  // ── Banner priority system ──
   const tierConfig = getTierConfig(tier);
-  const showTgNudge =
-    isAuthenticated &&
-    tierConfig.features.telegram_alerts &&
-    preferences !== null &&
-    !preferences.telegram_chat_id &&
-    !tgNudgeDismissed &&
-    !showCheckoutPrompt; // Don't show both nudge and checkout prompt
+  const hasPendingProposals = proposals.some(p => p.status === 'pending');
+
+  const activeBanner: BannerPriority = useMemo(() => {
+    if (
+      isAuthenticated &&
+      tier !== 'free' &&
+      wallet &&
+      needsFunding(wallet.balance_usdc) &&
+      positions.filter(p => p.status === 'open').length === 0
+    )
+      return 'fund-wallet';
+    if (hasPendingProposals) return 'pending-proposals';
+    if (
+      isAuthenticated &&
+      tierConfig.features.telegram_alerts &&
+      preferences !== null &&
+      !preferences.telegram_chat_id &&
+      !tgNudgeDismissed
+    )
+      return 'connect-telegram';
+    if (isAuthenticated && tier === 'free') return 'upgrade';
+    return null;
+  }, [
+    isAuthenticated,
+    tier,
+    wallet,
+    needsFunding,
+    positions,
+    hasPendingProposals,
+    tierConfig.features.telegram_alerts,
+    preferences,
+    tgNudgeDismissed,
+  ]);
+
+  // Note: interstitial renders as a fixed overlay inside the main return, not an early return.
+  // This keeps hooks stable and covers the bottom nav.
 
   if (loading) {
     return (
@@ -191,6 +286,13 @@ export default function Home() {
 
   const digestText = digest?.summary || digest?.context || '';
   const digestParagraphs = breakIntoParagraphs(digestText, 2);
+
+  // Look up asset symbol for first-trade celebration card
+  const firstTradeAssetSymbol =
+    firstTradeMoment?.type === 'first-trade'
+      ? (data.find(d => d.asset.id === firstTradeMoment.assetId)?.asset.symbol ??
+        firstTradeMoment.assetId.toUpperCase())
+      : null;
 
   return (
     <div
@@ -250,75 +352,53 @@ export default function Home() {
         )}
       </div>
 
-      {/* Upgrade nudge for free-tier users */}
-      {isAuthenticated && tier === 'free' && (
-        <UpgradeNudgeBanner onUpgrade={() => setShowTierSheet(true)} />
-      )}
-
-      {/* Pending trade proposals banner */}
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        <PendingProposalsBanner />
-      </div>
-
-      {/* Post-checkout Telegram prompt (one-time, after upgrade) */}
-      {showCheckoutPrompt && (
+      {/* ── Single banner slot (priority system) ── */}
+      {activeBanner === 'fund-wallet' && (
         <div
           style={{
-            position: 'relative',
             padding: 'var(--space-3) var(--space-4)',
             marginBottom: 'var(--space-4)',
-            border: '1px solid var(--green-primary)',
-            background: 'var(--color-status-buy-bg)',
+            background: 'var(--blue-bg)',
+            border: '2px solid var(--blue-accent)',
             borderRadius: 'var(--radius-md)',
+            boxShadow: '2px 2px 0 var(--black)',
           }}
         >
-          <p
-            style={{
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              margin: 0,
-              paddingRight: 'var(--space-6)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-            }}
-          >
-            {telegramIcon(16)}
-            Get Telegram alerts
+          <p style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>
+            Fund your wallet to start trading
           </p>
           <p className="vela-body-sm vela-text-muted" style={{ margin: 'var(--space-1) 0 0' }}>
-            Signals and account updates sent to your phone in real time.
+            {hasPendingProposals
+              ? 'You have a trade proposal waiting. Fund your wallet to act on it.'
+              : 'Vela is ready to trade for you. Add funds so we can execute when an opportunity appears.'}
           </p>
-          <div style={{ marginTop: 'var(--space-2)' }}>
-            <TelegramConnectButton
-              chatId={preferences?.telegram_chat_id ?? null}
-              onStatusChange={dismissCheckoutPrompt}
-              compact
-            />
-          </div>
           <button
-            onClick={dismissCheckoutPrompt}
-            aria-label="Dismiss"
+            onClick={() => setShowDepositSheet(true)}
             style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              background: 'none',
+              marginTop: 'var(--space-2)',
+              padding: '6px 16px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              fontFamily: 'var(--type-heading-base-font)',
+              backgroundColor: 'var(--blue-accent)',
+              color: 'var(--white)',
               border: 'none',
+              borderRadius: '6px',
               cursor: 'pointer',
-              color: 'var(--color-text-muted)',
-              fontSize: '1.1rem',
-              lineHeight: 1,
-              padding: '4px',
             }}
           >
-            ✕
+            Deposit now
           </button>
         </div>
       )}
 
-      {/* Telegram nudge for paid users without Telegram connected */}
-      {showTgNudge && (
+      {activeBanner === 'pending-proposals' && (
+        <div style={{ marginBottom: 'var(--space-4)' }}>
+          <PendingProposalsBanner />
+        </div>
+      )}
+
+      {activeBanner === 'connect-telegram' && (
         <div
           style={{
             position: 'relative',
@@ -370,14 +450,199 @@ export default function Home() {
         </div>
       )}
 
-      {/* Daily Digest — at top, with paragraph breaks */}
+      {activeBanner === 'upgrade' && (
+        <UpgradeNudgeBanner onUpgrade={() => setShowTierSheet(true)} />
+      )}
+
+      {/* ── First-trade moment cards (between banner and digest) ── */}
+      {firstTradeMoment && !momentDismissed && firstTradeMoment.type === 'first-trade' && (
+        <div
+          style={{
+            position: 'relative',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            background: 'var(--color-status-buy-bg)',
+            border: '2px solid var(--green-primary)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: '2px 2px 0 var(--black)',
+          }}
+        >
+          <button
+            onClick={dismissMoment}
+            aria-label="Dismiss"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--green-dark)',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '4px',
+            }}
+          >
+            ✕
+          </button>
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              margin: 0,
+              paddingRight: 'var(--space-6)',
+            }}
+          >
+            <span className="vela-interstitial-emoji">🎉</span> Congrats on your first Vela trade!
+          </p>
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--gray-600)',
+              margin: 'var(--space-2) 0 0',
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-6)',
+            }}
+          >
+            Vela spotted an opportunity for {firstTradeAssetSymbol} and executed a{' '}
+            {firstTradeMoment.side} at ${firstTradeMoment.price.toLocaleString()}. Based on your
+            settings, we set targets to maximize upside and limit any downside.
+          </p>
+          <button
+            onClick={() => navigate(`/asset/${firstTradeMoment.assetId}`)}
+            style={{
+              marginTop: 'var(--space-2)',
+              background: 'none',
+              border: 'none',
+              color: 'var(--green-dark)',
+              fontWeight: 600,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              padding: 0,
+              fontFamily: 'Inter, system-ui, sans-serif',
+            }}
+          >
+            View trade details &rarr;
+          </button>
+        </div>
+      )}
+
+      {firstTradeMoment && !momentDismissed && firstTradeMoment.type === 'first-decline' && (
+        <div
+          style={{
+            position: 'relative',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--gray-200)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <button
+            onClick={dismissMoment}
+            aria-label="Dismiss"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-muted)',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '4px',
+            }}
+          >
+            ✕
+          </button>
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--gray-600)',
+              margin: 0,
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-8, 32px)',
+            }}
+          >
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              You passed on your first proposal.
+            </span>{' '}
+            No worries, Vela will keep watching and send another when conditions are right.
+          </p>
+          <button
+            onClick={() => navigate('/account')}
+            style={{
+              marginTop: 'var(--space-2)',
+              padding: '5px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              backgroundColor: 'var(--color-bg-surface)',
+              color: 'var(--color-text-primary)',
+              border: '1px solid var(--gray-300)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Give feedback
+          </button>
+        </div>
+      )}
+
+      {firstTradeMoment && !momentDismissed && firstTradeMoment.type === 'first-expiry' && (
+        <div
+          style={{
+            position: 'relative',
+            padding: 'var(--space-4)',
+            marginBottom: 'var(--space-4)',
+            background: 'var(--color-bg-surface)',
+            border: '2px solid var(--color-status-yellow, #f59e0b)',
+            borderRadius: 'var(--radius-md)',
+          }}
+        >
+          <button
+            onClick={dismissMoment}
+            aria-label="Dismiss"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--color-text-muted)',
+              fontSize: '1.1rem',
+              lineHeight: 1,
+              padding: '4px',
+            }}
+          >
+            ✕
+          </button>
+          <p
+            className="vela-body-sm"
+            style={{
+              color: 'var(--gray-600)',
+              margin: 0,
+              lineHeight: 1.5,
+              paddingRight: 'var(--space-8, 32px)',
+            }}
+          >
+            <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
+              Your first trade proposal expired.
+            </span>{' '}
+            No worries, these come regularly. Next time, tap Approve or Decline to let Vela know.
+          </p>
+        </div>
+      )}
+
+      {/* Daily Digest */}
       {digest && (
         <Card
           variant="lavender"
           onClick={() => setDigestExpanded(!digestExpanded)}
           style={{ marginBottom: 'var(--space-5)', cursor: 'pointer' }}
         >
-          {/* Date as prominent header */}
           <p
             style={{
               fontFamily: 'var(--type-heading-base-font)',
@@ -404,7 +669,6 @@ export default function Home() {
             Daily digest
           </span>
 
-          {/* Paragraphed text — truncated with "View more" */}
           <div
             style={{
               position: 'relative',
@@ -635,6 +899,67 @@ export default function Home() {
           onClose={() => setShowTierSheet(false)}
           onStartCheckout={startCheckout}
         />
+      )}
+
+      {/* Deposit sheet (triggered from fund-wallet banner or interstitial) */}
+      {showDepositSheet && wallet && (
+        <DepositSheet
+          wallet={wallet}
+          onClose={() => setShowDepositSheet(false)}
+          onRefresh={() => refresh()}
+        />
+      )}
+
+      {/* Post-checkout interstitial modal (covers entire viewport including nav) */}
+      {showInterstitial && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'var(--color-bg-page)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 'var(--space-6)',
+            textAlign: 'center',
+          }}
+        >
+          <span className="vela-interstitial-emoji" style={{ fontSize: 48, marginBottom: 16 }}>
+            🎉
+          </span>
+          <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
+            You&apos;re in!
+          </h2>
+          <p
+            className="vela-body-base vela-text-muted"
+            style={{ maxWidth: 340, lineHeight: 1.5, marginBottom: 'var(--space-6)' }}
+          >
+            Your account is all set up. Fund your wallet so Vela can start executing trades for you.
+          </p>
+          <button
+            className="vela-btn vela-btn-primary"
+            onClick={() => dismissInterstitial(true)}
+            style={{ width: '100%', maxWidth: 320, marginBottom: 'var(--space-3)' }}
+          >
+            Deposit now
+          </button>
+          <button
+            onClick={() => dismissInterstitial(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-muted)',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              padding: 'var(--space-2)',
+            }}
+          >
+            I&apos;ll do this later
+          </button>
+        </div>
       )}
     </div>
   );

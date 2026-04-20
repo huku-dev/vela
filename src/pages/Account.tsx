@@ -677,6 +677,7 @@ function RecentActivity() {
           .from('funding_events')
           .select('*')
           .neq('status', 'failed')
+          .in('event_type', ['deposit', 'withdrawal'])
           .order('created_at', { ascending: false })
           .limit(20),
         supabaseClient
@@ -1023,11 +1024,11 @@ function SupportPanel() {
               },
               {
                 q: 'Is Vela a trading bot?',
-                a: 'Not in the traditional sense. Trading bots blindly execute rules. Vela uses AI to analyze market conditions and generate signals with clear reasoning. On free and standard plans, you approve every trade before it executes. On premium, you can enable full automation, but you can always override.',
+                a: 'Not in the traditional sense. Trading bots blindly execute rules. Vela uses AI to analyze market conditions and generate signals with clear reasoning. On free and standard plans, you approve every trade before it executes. On premium, you can enable automated execution, but you can always override.',
               },
               {
-                q: "What's the difference between semi-auto and full auto?",
-                a: 'Semi-auto (Standard): Vela sends you a signal with a trade proposal. You review it and approve or decline with one tap.\n\nFull auto (Premium): Vela executes trades automatically within your configured parameters. You can still override or pause at any time.',
+                q: "What's the difference between manual approval and auto-execute?",
+                a: 'Manual approval (Standard): Vela sends you a signal with a trade proposal. You review it and approve or decline with one tap.\n\nAuto-execute (Premium): Vela executes trades automatically within your configured parameters. You can still override or pause at any time.',
               },
               {
                 q: 'How does Vela decide when to trade?',
@@ -1117,8 +1118,8 @@ function SupportPanel() {
 
 const MODE_LABELS: Record<TradingMode, string> = {
   view_only: 'View only',
-  semi_auto: 'Semi-auto',
-  full_auto: 'Full auto',
+  semi_auto: 'Manual approval',
+  full_auto: 'Auto-execute',
 };
 
 const MODE_DESCRIPTIONS: Record<TradingMode, string> = {

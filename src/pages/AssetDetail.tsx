@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Alert } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
@@ -133,6 +133,25 @@ export default function AssetDetail() {
   const { tier, canAccessAsset, canTrade, upgradeLabel, startCheckout } = useTierAccess();
   const { data: dashboardData } = useDashboard();
   const [showTierSheet, setShowTierSheet] = useState(false);
+  const [firstProposalShown, setFirstProposalShown] = useState(() => {
+    try {
+      return localStorage.getItem('vela_first_proposal_shown') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [headerStuck, setHeaderStuck] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setHeaderStuck(!entry.isIntersecting), {
+      threshold: 0,
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Check tier access — use dashboard data for ordered asset list
   const allAssets = dashboardData.map(d => d.asset);
@@ -443,14 +462,30 @@ export default function AssetDetail() {
         margin: '0 auto',
       }}
     >
-      {/* Header */}
+      {/* Scroll sentinel for sticky header border */}
+      <div ref={sentinelRef} style={{ height: 0 }} />
+
+      {/* Header (sticky) */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 'var(--space-3)',
-          marginBottom: 'var(--space-6)',
-          marginTop: 'var(--space-2)',
+          paddingBottom: 'var(--space-3)',
+          paddingTop: 'var(--space-2)',
+          paddingLeft: 'var(--space-4)',
+          paddingRight: 'var(--space-4)',
+          marginLeft: 'calc(-1 * var(--space-4))',
+          marginRight: 'calc(-1 * var(--space-4))',
+          position: 'sticky',
+          top: 0,
+          zIndex: 200,
+          backgroundColor: 'var(--color-bg-page)',
+          borderBottom: headerStuck
+            ? '1px solid var(--color-border-default)'
+            : '1px solid transparent',
+          transition: 'border-color 150ms ease',
+          marginBottom: 'var(--space-3)',
         }}
       >
         <button
@@ -605,7 +640,7 @@ export default function AssetDetail() {
       )}
 
       {/* Trade proposals — pending (actionable) + in-flight (status feedback) */}
-      {pendingProposals.map(proposal => (
+      {pendingProposals.map((proposal, idx) => (
         <div key={proposal.id} style={{ marginBottom: 'var(--space-4)' }}>
           <TradeProposalCard
             proposal={proposal}
@@ -621,6 +656,15 @@ export default function AssetDetail() {
             iconUrl={iconUrl ?? undefined}
             positionEntryPrice={assetPosition?.entry_price}
             positionSizeUsd={assetPosition?.size_usd}
+            showFirstProposalIntro={!firstProposalShown && idx === 0}
+            onFirstProposalIntroShown={() => {
+              try {
+                localStorage.setItem('vela_first_proposal_shown', 'true');
+              } catch {
+                /* noop */
+              }
+              setFirstProposalShown(true);
+            }}
           />
         </div>
       ))}
@@ -956,7 +1000,7 @@ export default function AssetDetail() {
           indicators={detail.indicators}
           price={price}
           detail={detail}
-          symbol={asset.symbol}
+          symbol={asset.hl_symbol ?? asset.symbol}
           change24h={change24h}
         />
       )}
@@ -971,7 +1015,13 @@ export default function AssetDetail() {
 
       {/* Tier 5: Why we think this — collapsible technical details */}
       {detail && (
-        <WhyWeThinkThis detail={detail} brief={brief} recentBriefs={recentBriefs} price={price} />
+        <WhyWeThinkThis
+          detail={detail}
+          brief={brief}
+          recentBriefs={recentBriefs}
+          price={price}
+          assetClass={asset.asset_class}
+        />
       )}
 
       {/* Engagement — rating + share */}
@@ -1110,6 +1160,7 @@ function WhyWeThinkThis({
   brief,
   recentBriefs,
   price,
+  assetClass,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   detail: any;
@@ -1118,6 +1169,7 @@ function WhyWeThinkThis({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recentBriefs: any[];
   price: number | undefined | null;
+  assetClass?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const indicators = detail?.indicators;
@@ -1180,13 +1232,43 @@ function WhyWeThinkThis({
       {/* Collapsible content */}
       {expanded && (
         <div style={{ padding: '0 var(--space-5) var(--space-5)' }}>
-          {/* Signal Breakdown — always shown; uses AI data or indicator-generated fallback */}
-          {Object.keys(signalBreakdown).length > 0 && (
+          {/* Momentum Indicators — shown first for context */}
+          {indicators && (
             <>
+              <IndicatorsSection
+                indicators={indicators}
+                price={price}
+                brief={brief}
+                recentBriefs={recentBriefs}
+              />
+              <Divider />
+            </>
+          )}
+
+          {/* Technical Analysis — signal breakdown + relevant market context merged.
+              Fear & Greed filtered out (already shown in Market Mood widget above). */}
+          {(() => {
+            const isCrypto = !assetClass || assetClass === 'crypto';
+            const contextEntries = Object.entries(marketContext)
+              .filter(([key, value]) => {
+                if (key === 'fear_greed') return false; // shown in Market Mood widget
+                if (!isCrypto && /dominance|btc/i.test(key)) return false; // crypto-only key
+                if (!isCrypto && /bitcoin dominance|btc dominance|altcoin/i.test(value as string))
+                  return false; // crypto-only content
+                return true;
+              })
+              .map(([key, value]) => ({ key: `ctx_${key}`, value: value as string }));
+            const breakdownEntries = Object.entries(signalBreakdown).map(([key, value]) => ({
+              key: `sig_${key}`,
+              value: value as string,
+            }));
+            const allEntries = [...breakdownEntries, ...contextEntries];
+
+            return allEntries.length > 0 ? (
               <div style={{ marginBottom: 'var(--space-4)' }}>
                 <SubLabel>Technical analysis</SubLabel>
                 <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                  {Object.entries(signalBreakdown).map(([key, value]) => (
+                  {allEntries.map(({ key, value }) => (
                     <li
                       key={key}
                       className="vela-body-sm"
@@ -1197,63 +1279,15 @@ function WhyWeThinkThis({
                       }}
                     >
                       {(() => {
-                        const t = plainEnglish(value as string);
+                        const t = plainEnglish(value);
                         return t.charAt(0).toUpperCase() + t.slice(1);
                       })()}
                     </li>
                   ))}
                 </ul>
               </div>
-              <Divider />
-            </>
-          )}
-
-          {/* Market Context — bullets only (Fear & Greed gauge moved to top-level MarketMoodInline) */}
-          {Object.keys(marketContext).length > 0 && (
-            <>
-              <div style={{ marginBottom: 'var(--space-4)' }}>
-                <SubLabel>Market context</SubLabel>
-                <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-                  {Object.entries(marketContext)
-                    .sort(([keyA], [keyB]) => {
-                      // Push dominance-related keys to end of list
-                      const isDomA = /dominance/i.test(keyA);
-                      const isDomB = /dominance/i.test(keyB);
-                      if (isDomA && !isDomB) return 1;
-                      if (!isDomA && isDomB) return -1;
-                      return 0;
-                    })
-                    .map(([key, value]) => (
-                      <li
-                        key={key}
-                        className="vela-body-sm"
-                        style={{
-                          color: 'var(--color-text-secondary)',
-                          marginBottom: 'var(--space-1)',
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {(() => {
-                          const t = plainEnglish(value as string);
-                          return t.charAt(0).toUpperCase() + t.slice(1);
-                        })()}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-              <Divider />
-            </>
-          )}
-
-          {/* Indicators — Plain English (price levels moved to top-level PriceLevelsCard) */}
-          {indicators && (
-            <IndicatorsSection
-              indicators={indicators}
-              price={price}
-              brief={brief}
-              recentBriefs={recentBriefs}
-            />
-          )}
+            ) : null;
+          })()}
         </div>
       )}
     </div>
@@ -1512,12 +1546,14 @@ function WherePriceStands({
   useEffect(() => {
     fetch7dRange(symbol).then(r => {
       if (r) {
-        setRange7d(r);
-        // Approximate 7d change from range: (current - 7d-ago open) / 7d-ago open
-        // More accurate: use first candle's open as the 7d-ago price
+        // Sanity guard: if range is wildly different from current price, discard (bad data)
+        const midRange = (r.high + r.low) / 2;
+        if (price > 0 && midRange > 0 && Math.abs(price - midRange) / price < 5) {
+          setRange7d(r);
+        }
       }
     });
-  }, [symbol]);
+  }, [symbol, price]);
 
   // Fetch 7d change from candles (first candle open vs current price)
   useEffect(() => {
@@ -1538,7 +1574,9 @@ function WherePriceStands({
         if (Array.isArray(candles) && candles.length > 0) {
           const openPrice = parseFloat(candles[0].o);
           if (openPrice > 0) {
-            setChange7d(((price - openPrice) / openPrice) * 100);
+            const pct = ((price - openPrice) / openPrice) * 100;
+            // Sanity guard: >1000% change in 7 days is almost certainly bad data
+            if (Math.abs(pct) < 1000) setChange7d(pct);
           }
         }
       } catch {

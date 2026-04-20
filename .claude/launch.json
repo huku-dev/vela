@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "/Users/henry/vela-marketing"],
       "port": 4321
+    },
+    {
+      "name": "wireframes",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["-y", "serve", "/Users/henry/crypto-agent-frontend/wireframes", "-p", "8787"],
+      "port": 8787
     }
   ]
 }
