@@ -36,8 +36,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   // Scoped narrowly to the Home path so any other route with
   // ?checkout=success does not accidentally get past the gate.
   const params = new URLSearchParams(location.search);
-  const isCheckoutSuccessOnHome =
-    location.pathname === '/' && params.get('checkout') === 'success';
+  const isCheckoutSuccessOnHome = location.pathname === '/' && params.get('checkout') === 'success';
 
   // New user on any app route → send to onboarding
   if (!isOnboarded && !isCheckoutSuccessOnHome && location.pathname !== '/welcome') {

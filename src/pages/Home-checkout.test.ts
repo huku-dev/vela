@@ -67,7 +67,9 @@ describe('HOME-SRC: checkout-success effect', () => {
     // 30000ms timers elsewhere in Home.
     expect(homeSrc).toMatch(/refreshSubscription\(\)/);
     expect(homeSrc).toMatch(/setInterval\([\s\S]{0,120}refreshSubscription\(\)[\s\S]{0,40}2000/);
-    expect(homeSrc).toMatch(/setTimeout\([\s\S]{0,80}clearInterval\(timer\)[\s\S]{0,20},\s*30000\)/);
+    expect(homeSrc).toMatch(
+      /setTimeout\([\s\S]{0,80}clearInterval\(timer\)[\s\S]{0,20},\s*30000\)/
+    );
   });
 
   it('polling timer is cleared on unmount to avoid leaks', () => {
