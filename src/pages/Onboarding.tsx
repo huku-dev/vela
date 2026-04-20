@@ -6,6 +6,7 @@ import { useOnboarding } from '../hooks/useOnboarding';
 import { useSubscription } from '../hooks/useSubscription';
 import { track, AnalyticsEvent } from '../lib/analytics';
 import VelaLogo from '../components/VelaLogo';
+import { BailSheet } from '../components/BailSheet';
 import type { TradingMode } from '../types';
 import { TIER_DEFINITIONS } from '../lib/tier-definitions';
 
@@ -1248,27 +1249,52 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthContext();
   const { updatePreferences, enableTrading } = useTrading();
-  const { isOnboarded, isChecking, completeOnboarding, resetOnboarding } = useOnboarding();
+  const { isOnboarded, isChecking, completeOnboarding } = useOnboarding();
   const { startCheckout } = useSubscription();
 
-  // Track whether we're in the middle of a Stripe checkout redirect.
-  // Without this guard, completeOnboarding() sets isOnboarded=true which
-  // triggers the useEffect below to navigate('/') — preempting the
-  // Stripe redirect and sending the user to the dashboard instead.
-  const checkoutInProgressRef = useRef(false);
-
-  // If already onboarded (e.g. direct /welcome visit), redirect to dashboard
-  // — but NOT if a Stripe checkout redirect is in progress.
+  // If already onboarded (e.g. direct /welcome visit), redirect to dashboard.
   useEffect(() => {
-    if (isOnboarded && !checkoutInProgressRef.current) {
+    if (isOnboarded) {
       navigate('/', { replace: true });
     }
   }, [isOnboarded, navigate]);
 
-  // Determine starting step based on auth state
-  const [step, setStep] = useState<OnboardingStep>('splash');
-  const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(null);
+  // Detect Stripe cancel return. If present, skip straight to plan step and
+  // open the bail sheet so users can retry or bail cleanly. Guarded against
+  // already-onboarded users (who will be redirected by the effect above) so
+  // the sheet does not briefly flash before the redirect fires.
+  const returnedFromCancel =
+    new URLSearchParams(window.location.search).get('checkout') === 'cancelled' && !isOnboarded;
+
+  // State initializers are lazy (only fire on mount) — perfect for the
+  // cancel-return restore, which must capture the tier before we consume it
+  // in the mount effect below.
+  const [step, setStep] = useState<OnboardingStep>(() => (returnedFromCancel ? 'plan' : 'splash'));
+  const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(() =>
+    returnedFromCancel
+      ? (sessionStorage.getItem('vela_pending_tier') as 'standard' | 'premium' | null)
+      : null
+  );
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [showBailSheet, setShowBailSheet] = useState(returnedFromCancel);
+
+  // Consume-once: clear the persisted tier after the state initializers have
+  // read it, so sessionStorage doesn't leak across users on the same tab or
+  // resurface during a future unrelated cancel flow. Runs in an effect (not
+  // the render body) to avoid the impure-render React anti-pattern.
+  useEffect(() => {
+    if (returnedFromCancel) {
+      sessionStorage.removeItem('vela_pending_tier');
+    }
+    // Mount-only: returnedFromCancel is captured at first render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // If we opened directly onto the plan step because of a cancel return,
+  // skip the first history-push in the popstate effect so the browser's
+  // Back button exits the onboarding naturally instead of walking the user
+  // backwards to the trading-mode step (which would re-run enableTrading).
+  const skipInitialHistoryPush = useRef(returnedFromCancel);
 
   // When user authenticates (after Privy login), advance to next step —
   // but only after the onboarding check completes. A returning user who is
@@ -1280,6 +1306,33 @@ export default function Onboarding() {
       setStep('trading_mode');
     }
   }, [isAuthenticated, isChecking, isOnboarded, step]);
+
+  // In-app back navigation: push a history entry each time we advance a
+  // step, then pop back to the previous step when the browser/OS back
+  // button fires. Without this, back from the plan step exits the
+  // onboarding flow entirely and returns users to the Privy sign-in page.
+  //
+  // Dedupe pushes by checking current history state — prevents duplicate
+  // entries in React StrictMode (double-invoked effects) which would
+  // otherwise force the user to hit Back multiple times to leave.
+  //
+  // skipInitialHistoryPush is true only on the first render after a Stripe
+  // cancel return; we intentionally do not push a back-target for the
+  // landing step there, so Back exits the onboarding rather than walking
+  // back through steps the user did not visit this session.
+  useEffect(() => {
+    if (step === 'splash') return;
+    if (skipInitialHistoryPush.current) {
+      skipInitialHistoryPush.current = false;
+    } else if (window.history.state?.onboardingStep !== step) {
+      window.history.pushState({ onboardingStep: step }, '');
+    }
+    const handlePop = () => {
+      setStep(prev => (prev === 'plan' ? 'trading_mode' : 'splash'));
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [step]);
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
@@ -1324,22 +1377,21 @@ export default function Onboarding() {
     tier: 'standard' | 'premium',
     billingCycle: 'monthly' | 'annual'
   ) => {
-    // Mark as onboarded BEFORE the Stripe redirect so the user
-    // can return to /account after checkout (OnboardingGate would block
-    // them otherwise). If checkout fails, we roll back.
-    checkoutInProgressRef.current = true;
+    // Do NOT call completeOnboarding() here. Onboarded status is set on
+    // confirmed Stripe success in Account.tsx once the paid tier lands.
+    // Setting it optimistically caused users who abandoned Stripe to fall
+    // silently into the Free tier. Stripe cancel returns to
+    // /welcome?checkout=cancelled, which triggers the bail sheet.
     setCheckoutError(null);
 
-    await completeOnboarding();
+    // Persist the selected tier so a cancel return can restore the user's
+    // recommendation instead of silently reverting to the Standard default.
+    sessionStorage.setItem('vela_pending_tier', tier);
 
     try {
       await startCheckout(tier, billingCycle);
       // startCheckout sets window.location.href → hard redirect to Stripe
     } catch (err) {
-      // Checkout failed — roll back onboarding so the user stays in the
-      // flow instead of landing on the dashboard in a limbo state.
-      resetOnboarding();
-      checkoutInProgressRef.current = false;
       const msg = err instanceof Error ? err.message : 'Checkout failed';
       console.error('[Onboarding] Checkout redirect failed:', msg);
       setCheckoutError(
@@ -1351,6 +1403,7 @@ export default function Onboarding() {
   const handleSkipToFree = async () => {
     // User decided to skip paid plan — continue on free tier
     setPendingCheckout(null);
+    sessionStorage.removeItem('vela_pending_tier');
     await completeOnboarding();
     navigate('/', { replace: true });
   };
@@ -1363,12 +1416,27 @@ export default function Onboarding() {
     return <TradingModeSetup onContinue={handleModeSelected} />;
   }
 
+  const handleBailSheetDismiss = () => {
+    setShowBailSheet(false);
+    // Strip the ?checkout=cancelled query param so refreshes don't reopen
+    // the sheet and the URL reads cleanly.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    window.history.replaceState({}, '', url.pathname + (url.search || ''));
+    // Belt-and-suspenders cleanup in case the cancel-return initializer
+    // didn't run (e.g. the sheet surfaced via some other path in the future).
+    sessionStorage.removeItem('vela_pending_tier');
+  };
+
   return (
-    <OnboardingPlanSelection
-      recommendedTier={pendingCheckout ?? 'standard'}
-      onCheckout={handlePlanCheckout}
-      onSkipToFree={handleSkipToFree}
-      checkoutError={checkoutError}
-    />
+    <>
+      <OnboardingPlanSelection
+        recommendedTier={pendingCheckout ?? 'standard'}
+        onCheckout={handlePlanCheckout}
+        onSkipToFree={handleSkipToFree}
+        checkoutError={checkoutError}
+      />
+      {showBailSheet && <BailSheet onChoosePlan={handleBailSheetDismiss} />}
+    </>
   );
 }

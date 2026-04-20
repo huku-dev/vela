@@ -66,25 +66,21 @@ export function useOnboarding() {
     localStorage.setItem(STORAGE_KEY, 'true');
     setIsOnboarded(true);
 
-    // Best-effort: update Supabase profile
+    // Best-effort: update Supabase profile. Failure means a fresh-browser
+    // login will re-route through /welcome. We log instead of swallowing so
+    // the failure shows up in the console (and Sentry breadcrumbs when the
+    // console integration is wired), rather than disappearing silently.
     if (supabaseClient) {
       try {
         await supabaseClient
           .from('profiles')
           .update({ onboarding_completed: true })
           .eq('id', (await supabaseClient.auth.getUser()).data.user?.id);
-      } catch {
-        // Non-blocking — localStorage is the primary flag
+      } catch (err) {
+        console.warn('[useOnboarding] profile update failed:', err);
       }
     }
   }, [supabaseClient]);
 
-  /** Roll back onboarding completion (e.g. when Stripe checkout fails mid-flow).
-   *  Clears localStorage + state so the user stays in the onboarding flow. */
-  const resetOnboarding = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setIsOnboarded(false);
-  }, []);
-
-  return { isOnboarded, isChecking, completeOnboarding, resetOnboarding };
+  return { isOnboarded, isChecking, completeOnboarding };
 }

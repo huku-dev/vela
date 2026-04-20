@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pricing page — wireframe v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #F5F0E8;
+    --ink: #1A1A1A;
+    --muted: #6B6B6B;
+    --border: #E3DDD3;
+    --surface: #FFFFFF;
+    --green: #E8F4E4;
+    --green-ink: #1F5A2C;
+    --amber: #FFE8B8;
+    --amber-ink: #7A4F00;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 24px 20px 40px;
+    max-width: 440px;
+    margin: 0 auto;
+    -webkit-font-smoothing: antialiased;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin: 40px 0 10px;
+  }
+  .section-label:first-child { margin-top: 0; }
+  .note {
+    background: #FFF8E7;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+  .note strong { color: var(--ink); }
+
+  /* ── Page header ─────────────────────── */
+  h1 {
+    font-family: 'Instrument Sans', Georgia, serif;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  /* ── Trial banner ─────────────────────── */
+  .trial-banner {
+    background: var(--green);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .trial-banner .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .trial-banner .text {
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--green-ink);
+    font-weight: 600;
+  }
+  .trial-banner .text strong { color: var(--ink); }
+
+  /* ── Toggle (NEW — big & unmissable) ───── */
+  .toggle-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    background: var(--surface);
+    border: 2px solid var(--ink);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .toggle-option {
+    padding: 12px 10px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 120ms;
+  }
+  .toggle-option.active {
+    background: var(--ink);
+    color: #fff;
+  }
+  .toggle-option .save-pill {
+    background: var(--amber);
+    color: var(--amber-ink);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .toggle-option.active .save-pill {
+    background: var(--amber);
+    color: var(--amber-ink);
+  }
+
+  /* ── Plan cards ─────────────────────── */
+  .plan-card {
+    background: var(--surface);
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .plan-card.recommended {
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .plan-badge {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .plan-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .plan-name {
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .plan-trial-chip {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--green-ink);
+    background: var(--green);
+    padding: 3px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .plan-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+  .plan-price {
+    font-family: 'Instrument Sans', Georgia, serif;
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .plan-price-unit {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .plan-billing-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    min-height: 14px;
+  }
+  .plan-features {
+    list-style: none;
+    margin: 0 0 16px 0;
+    padding: 0;
+  }
+  .plan-features li {
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 6px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .plan-features li:last-child { border-bottom: none; }
+  .plan-features .check {
+    color: var(--green-ink);
+    font-weight: 800;
+    flex-shrink: 0;
+    width: 14px;
+  }
+  .plan-features .feature-key {
+    font-weight: 700;
+  }
+  .plan-features .feature-detail {
+    color: var(--muted);
+    margin-left: 4px;
+  }
+  .plan-cta {
+    width: 100%;
+    padding: 13px;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    background: var(--ink);
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .plan-cta.outline {
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  /* ── Skip link ─────────────────────── */
+  .skip {
+    text-align: center;
+    margin-top: 22px;
+  }
+  .skip a {
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: underline;
+  }
+
+  /* ── Annotation boxes ─────────────────── */
+  .annotation {
+    background: #FFFBEA;
+    border-left: 3px solid #E8B20C;
+    padding: 10px 12px;
+    font-size: 11px;
+    color: #5C4A10;
+    line-height: 1.5;
+    margin: 12px 0 4px;
+    border-radius: 0 6px 6px 0;
+  }
+  .annotation strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="section-label">Wireframe · Pricing page v2 · Mobile 440px</div>
+
+<div class="note">
+  <strong>Goal:</strong> default to monthly, make the billing toggle unmissable, give each plan a scannable feature list (not a one-liner), introduce the 7-day trial. Kills the "Continue on free plan" path as part of the Free → Trial shift.
+</div>
+
+<!-- ── Page proper ──────────────────────── -->
+
+<h1>Choose your plan</h1>
+<p class="sub">Start with a 7-day free trial. Cancel anytime from account settings.</p>
+
+<div class="trial-banner">
+  <div class="icon">✓</div>
+  <div class="text">
+    <strong>7 days free</strong> on any plan. Nothing charged until day 8.
+  </div>
+</div>
+
+<div class="toggle-label">Billing cycle</div>
+<div class="toggle">
+  <button class="toggle-option active">Monthly</button>
+  <button class="toggle-option">Annual <span class="save-pill">Save 17%</span></button>
+</div>
+
+<div class="plan-card">
+  <div class="plan-header">
+    <div class="plan-name">Standard</div>
+    <div class="plan-trial-chip">7-day trial</div>
+  </div>
+  <div class="plan-price-row">
+    <div class="plan-price">$9</div>
+    <div class="plan-price-unit">/ month</div>
+  </div>
+  <div class="plan-billing-note">Billed monthly after trial</div>
+  <ul class="plan-features">
+    <li><span class="check">✓</span><span><span class="feature-key">Up to 8 tracked assets</span><span class="feature-detail">— crypto, equities, commodities</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">Manual trade approval</span><span class="feature-detail">— you approve every trade</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">3× leverage</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">No trade fees</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">Full daily brief</span></span></li>
+  </ul>
+  <button class="plan-cta outline">Start 7-day trial</button>
+</div>
+
+<div class="plan-card recommended">
+  <span class="plan-badge">Recommended</span>
+  <div class="plan-header">
+    <div class="plan-name">Premium</div>
+    <div class="plan-trial-chip">7-day trial</div>
+  </div>
+  <div class="plan-price-row">
+    <div class="plan-price">$19</div>
+    <div class="plan-price-unit">/ month</div>
+  </div>
+  <div class="plan-billing-note">Billed monthly after trial</div>
+  <ul class="plan-features">
+    <li><span class="check">✓</span><span><span class="feature-key">Unlimited tracked assets</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">Auto-execute trades</span><span class="feature-detail">— Vela trades for you</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">5× leverage</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">No trade fees</span></span></li>
+    <li><span class="check">✓</span><span><span class="feature-key">Priority support</span></span></li>
+  </ul>
+  <button class="plan-cta">Start 7-day trial</button>
+</div>
+
+<div class="skip"><a href="#">Not ready? Skip for now</a></div>
+
+<!-- ── Annotations ──────────────────────── -->
+
+<div class="section-label">Design notes</div>
+
+<div class="annotation">
+  <strong>Toggle:</strong> full-width segmented control with 2px black border. Matches plan cards visually so it reads as a peer control, not an afterthought. "Save 17%" amber pill is attached to the Annual tab so the incentive is visible without selecting it.
+</div>
+
+<div class="annotation">
+  <strong>Default:</strong> Monthly. Aligns with "default to monthly" direction and eliminates the price-jump surprise Sarah hit.
+</div>
+
+<div class="annotation">
+  <strong>Trial banner:</strong> sits above the toggle so the trial framing is absorbed before the user compares prices. Second reinforcement via "7-day trial" chip inside each plan card.
+</div>
+
+<div class="annotation">
+  <strong>Feature list:</strong> replaces the dash-separated one-liner (<code>3 assets · Manual · 3x · No fee</code>) with a checked list. Each row has a bold key + muted detail, which Sarah's "tell me what I'm buying" read needs.
+</div>
+
+<div class="annotation">
+  <strong>Asset count:</strong> first feature row, bold, with a concrete examples ("crypto, equities, commodities"). Directly addresses Sarah not realising equities existed and not knowing Standard was capped.
+</div>
+
+<div class="annotation">
+  <strong>Skip link:</strong> small, single-line ghost link. With Free killed, this routes to a brief-only preview mode (not a "Free plan"). Needs routing decision — see open questions.
+</div>
+
+<div class="annotation">
+  <strong>CTA copy:</strong> "Start 7-day trial" (not "Subscribe to Standard"). Confirms trial framing and lowers commitment feel at the click moment.
+</div>
+
+<div class="section-label">Open questions for this wireframe</div>
+<div class="annotation">
+  1. Trial entitlement: does the trial mirror <em>that specific plan</em> (Standard trial = 8 assets, manual approval) or does every trial give Premium entitlements with downgrade on day 8?<br><br>
+  2. Payment collection: take card details up-front for the trial, or no card required? Up-front = better conversion to paid, worse signup conversion. No card = opposite.<br><br>
+  3. "Skip for now" destination: brief-only preview of the app, or marketing site? If preview, needs a clear upgrade banner at the top at all times.<br><br>
+  4. Trial banner wording: "Nothing charged until day 8" assumes card-up-front. If no card, change to "Add card anytime during trial."
+</div>
+
+</body>
+</html>

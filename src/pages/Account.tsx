@@ -2391,7 +2391,6 @@ export default function Account() {
     startCheckout,
     openPortal,
     cancelAtPeriodEnd,
-    refresh: refreshSubscription,
   } = useSubscription();
   const { needsFunding } = useTierAccess();
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -2442,34 +2441,22 @@ export default function Account() {
     return params.get('checkout') === 'success';
   });
 
-  // Handle redirect back from checkout / portal
+  // Post-checkout success now lands on Home (/) where the welcome
+  // interstitial + onboarded-completion fire. If a user navigates to
+  // /account with a stale ?checkout=success param (e.g. back-button from
+  // Home after arrival), just strip the params — the onboarded flag is
+  // already set by Home's mount effect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const result = params.get('checkout');
-    const tier = params.get('tier');
-    if (result === 'success') {
-      const label = tier ? tier.charAt(0).toUpperCase() + tier.slice(1) : 'new';
-      setCheckoutToast(`Welcome to ${label}! Your upgrade is now active.`);
-      // Poll until webhook has updated the subscription
-      const timer = setInterval(() => refreshSubscription(), 2000);
-      setTimeout(() => {
-        clearInterval(timer);
-        setCheckoutPending(false);
-      }, 10000);
-      // Clean up URL params
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete('checkout');
-      clean.searchParams.delete('tier');
-      window.history.replaceState({}, '', clean.toString());
-    } else if (result === 'cancel') {
-      const clean = new URL(window.location.href);
-      clean.searchParams.delete('checkout');
-      window.history.replaceState({}, '', clean.toString());
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (params.get('checkout') !== 'success') return;
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete('checkout');
+    clean.searchParams.delete('tier');
+    window.history.replaceState({}, '', clean.toString());
+    setCheckoutPending(false);
   }, []);
 
-  // Clear checkout pending gate once subscription updates to a paid tier
+  // Clear checkout pending gate as soon as subscription updates to a paid tier.
   useEffect(() => {
     if (checkoutPending && currentTier !== 'free') {
       setCheckoutPending(false);
