@@ -81,10 +81,6 @@ describe('ONBOARD-SRC: selected tier persistence', () => {
     );
   });
 
-  it('restores the tier from sessionStorage on cancel return', () => {
-    expect(onboardingMain).toMatch(/sessionStorage\.getItem\(['"]vela_pending_tier['"]\)/);
-  });
-
   it('clears the persisted tier on mount via a useEffect (consume-once)', () => {
     // Prevents the stored tier from leaking across users on the same tab
     // (sessionStorage survives login changes) or from resurfacing during a
@@ -96,12 +92,12 @@ describe('ONBOARD-SRC: selected tier persistence', () => {
     );
   });
 
-  it('pendingCheckout is initialized lazily from sessionStorage on cancel-return', () => {
-    // Lazy initializer (function form) ensures the read happens exactly
-    // once, on mount, capturing the value before the cleanup effect fires.
-    expect(onboardingMain).toMatch(
-      /useState<['"]standard['"] \| ['"]premium['"] \| null>\(\(\) =>[\s\S]{0,200}sessionStorage\.getItem\(['"]vela_pending_tier['"]\)/
-    );
+  it('plan-page UI does NOT re-read the persisted tier (Batch 2c)', () => {
+    // v5 pricing page has no runtime "recommended" highlight — Premium is
+    // always visually recommended via the card treatment. The persisted
+    // tier is still written pre-Stripe so Batch 2e trial screen (future)
+    // can pick it up, but no read path surfaces it in the plan UI today.
+    expect(onboardingMain).not.toMatch(/sessionStorage\.getItem\(['"]vela_pending_tier['"]\)/);
   });
 
   it('clears the persisted tier on skip-to-free', () => {
@@ -115,6 +111,74 @@ describe('ONBOARD-SRC: selected tier persistence', () => {
     expect(dismissStart).toBeGreaterThan(-1);
     const dismissHandler = onboardingMain.slice(dismissStart, dismissStart + 800);
     expect(dismissHandler).toMatch(/sessionStorage\.removeItem\(['"]vela_pending_tier['"]\)/);
+  });
+});
+
+describe('ONBOARD-SRC: pricing v5 redesign (Batch 2c, 2026-04-21)', () => {
+  it('billing cycle defaults to monthly', () => {
+    // Sarah and two other users missed the annual/monthly toggle while it
+    // defaulted to annual, getting sticker-shock on the price-jump.
+    expect(onboardingSrc).toMatch(
+      /useState<['"]monthly['"] \| ['"]annual['"]>\(['"]monthly['"]\)/
+    );
+  });
+
+  it('PlanCard receives a "Recommended" badge only on Premium', () => {
+    // Source-level: exactly one place in the file emits "Recommended" and
+    // it is conditional on variant=premium.
+    expect(onboardingSrc).toMatch(/variant\s*===\s*['"]premium['"]/);
+    expect(onboardingSrc).toMatch(/Recommended/);
+  });
+
+  it('Standard features list leads with signals, not a dash-separated one-liner', () => {
+    expect(onboardingSrc).toMatch(/Buy, sell & wait signals on 8 assets/);
+    expect(onboardingSrc).toMatch(/Manual trade approval/);
+    expect(onboardingSrc).toMatch(/No trade fees/);
+    // The pre-v5 single-line features (3 assets · Manual approval · 2x leverage ...) are gone.
+    expect(onboardingSrc).not.toMatch(/max_leverage.*leverage/);
+    expect(onboardingSrc).not.toMatch(/trade_fee_pct === 0 \? 'No trade fee'/);
+  });
+
+  it('Premium card uses an "Everything in Standard, plus:" header', () => {
+    expect(onboardingSrc).toMatch(/Everything in Standard, plus:/);
+    expect(onboardingSrc).toMatch(/Every asset, 24\/7 coverage/);
+    expect(onboardingSrc).toMatch(/Auto-execute trades/);
+  });
+
+  it('toggle renders a "Save 17%" pill on the Annual option only', () => {
+    // Amber pill styling attached to the Annual tab, per the wireframe.
+    expect(onboardingSrc).toMatch(/Save 17%/);
+    expect(onboardingSrc).toMatch(/cycle === ['"]annual['"]/);
+  });
+
+  it('does NOT render a "Continue on free plan" button (removed in v5)', () => {
+    expect(onboardingSrc).not.toMatch(/Continue on free plan/);
+  });
+
+  it('keeps onSkipToFree wired via a hidden placeholder for Batch 2e', () => {
+    // Batch 2e will surface the "I'm not ready to subscribe yet" link and
+    // the trial offer screen. Until then, the button is rendered but
+    // display:none so the prop stays consumed and the handler reachable.
+    expect(onboardingSrc).toMatch(/data-testid=['"]hidden-skip-to-free['"]/);
+    expect(onboardingSrc).toMatch(/display:\s*['"]none['"]/);
+  });
+
+  it('CTA reads "Subscribe to X" (no trial wording yet — Batch 2e)', () => {
+    expect(onboardingSrc).toMatch(/`Subscribe to \$\{standardTier\.display_name\}`/);
+    expect(onboardingSrc).toMatch(/`Subscribe to \$\{premiumTier\.display_name\}`/);
+    expect(onboardingSrc).not.toMatch(/Start 7-day trial/);
+    expect(onboardingSrc).not.toMatch(/7-day free trial/);
+  });
+
+  it('recommendedTier prop was removed (static Premium recommendation now)', () => {
+    // Prior UI passed a dynamic recommendedTier. v5 uses a static
+    // neobrutalist treatment on Premium, so the prop is gone. Strip
+    // single-line comments so the explanatory "recommendedTier prop was
+    // removed" header comment does not trip this assertion.
+    const codeOnly = onboardingSrc
+      .replace(/\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(codeOnly).not.toMatch(/recommendedTier/);
   });
 });
 

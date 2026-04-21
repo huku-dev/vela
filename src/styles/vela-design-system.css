@@ -76,6 +76,9 @@
   --green-dark: #059669;
   --green-light: #d1fae5;
   --green-bg: #ecfdf5;
+  /* Very light green tint for surfaces that want a brand-adjacent fill
+     without reading as a status/signal. Used for the Premium plan card. */
+  --green-tint: #f0fdf6;
 
   --red-primary: #ef4444;
   --red-dark: #dc2626;
