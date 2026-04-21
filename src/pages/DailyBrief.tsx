@@ -120,7 +120,7 @@ function InfoIcon({ tooltip }: { tooltip: string }) {
             bottom: 'calc(100% + 6px)',
             left: '50%',
             transform: 'translateX(-50%)',
-            background: 'var(--ink)',
+            background: 'var(--color-border-default)',
             color: 'var(--white)',
             padding: '8px 12px',
             borderRadius: 'var(--radius-md)',
@@ -244,7 +244,7 @@ export default function DailyBrief() {
           <div
             style={{
               padding: 'var(--space-3) var(--space-4)',
-              borderBottom: '2px solid var(--ink)',
+              borderBottom: '2px solid var(--color-border-default)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -358,9 +358,9 @@ export default function DailyBrief() {
                   justifyContent: 'space-between',
                   padding: '10px 14px',
                   background: 'var(--white)',
-                  border: '2px solid var(--ink)',
+                  border: '2px solid var(--color-border-default)',
                   borderRadius: 'var(--radius-md)',
-                  boxShadow: '2px 2px 0 var(--ink)',
+                  boxShadow: '2px 2px 0 var(--color-border-default)',
                   cursor: 'pointer',
                 }}
               >

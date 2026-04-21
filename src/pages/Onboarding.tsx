@@ -624,7 +624,8 @@ function WelcomeSplash({
     setActiveIndex(idx);
   }, []);
 
-  // Auto-cycle: advance every 2s, one full pass, stop on user interaction
+  // Auto-cycle: advance every 5s (Batch 7 — Sarah flagged 3s didn't give
+  // enough time to read each panel), one full pass, stop on user interaction.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

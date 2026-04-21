@@ -15,17 +15,24 @@
  * suite at tier-gating-adversarial.test.ts.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { getTierConfig, TIER_DEFINITIONS, COMPARISON_FEATURES } from './tier-definitions';
 import type { Asset } from '../types';
 
 // ── Test fixtures ──────────────────────────────────────
 
-/** Ordered by DB id (alphabetical), matching `assets.order('id')` */
+/**
+ * Ordered by ASSET_DISPLAY_ORDER priority (useData.ts) — not DB/alphabetical.
+ * Batch 5 (commit adffa4f) moved the sort client-side so Free sees BTC first
+ * and Standard gets a balanced crypto + equity + macro mix. Tests below
+ * assume this priority order.
+ */
 const ALL_ASSETS: Asset[] = [
   { id: 'btc', symbol: 'BTC', name: 'Bitcoin', coingecko_id: 'bitcoin', enabled: true },
   { id: 'eth', symbol: 'ETH', name: 'Ethereum', coingecko_id: 'ethereum', enabled: true },
-  { id: 'hype', symbol: 'HYPE', name: 'Hyperliquid', coingecko_id: 'hyperliquid', enabled: true },
   { id: 'sol', symbol: 'SOL', name: 'Solana', coingecko_id: 'solana', enabled: true },
+  { id: 'hype', symbol: 'HYPE', name: 'Hyperliquid', coingecko_id: 'hyperliquid', enabled: true },
 ];
 
 /** Wraps assets in the shape Home.tsx uses for partitionAssets */
@@ -114,12 +121,12 @@ describe('canAccessAsset', () => {
       expect(canAccessAsset('eth', ALL_ASSETS, max)).toBe(false);
     });
 
-    it('cannot access HYPE (index 2)', () => {
-      expect(canAccessAsset('hype', ALL_ASSETS, max)).toBe(false);
+    it('cannot access SOL (index 2)', () => {
+      expect(canAccessAsset('sol', ALL_ASSETS, max)).toBe(false);
     });
 
-    it('cannot access SOL (index 3)', () => {
-      expect(canAccessAsset('sol', ALL_ASSETS, max)).toBe(false);
+    it('cannot access HYPE (index 3)', () => {
+      expect(canAccessAsset('hype', ALL_ASSETS, max)).toBe(false);
     });
   });
 
@@ -134,12 +141,12 @@ describe('canAccessAsset', () => {
       expect(canAccessAsset('eth', ALL_ASSETS, max)).toBe(true);
     });
 
-    it('can access HYPE (index 2)', () => {
-      expect(canAccessAsset('hype', ALL_ASSETS, max)).toBe(true);
+    it('can access SOL (index 2)', () => {
+      expect(canAccessAsset('sol', ALL_ASSETS, max)).toBe(true);
     });
 
-    it('cannot access SOL (index 3) — boundary test', () => {
-      expect(canAccessAsset('sol', ALL_ASSETS, max)).toBe(false);
+    it('cannot access HYPE (index 3) — boundary test', () => {
+      expect(canAccessAsset('hype', ALL_ASSETS, max)).toBe(false);
     });
   });
 
@@ -182,17 +189,19 @@ describe('partitionAssets', () => {
       expect(accessible).toHaveLength(1);
       expect(accessible[0].asset.id).toBe('btc');
       expect(locked).toHaveLength(3);
-      expect(locked.map(l => l.asset.id)).toEqual(['eth', 'hype', 'sol']);
+      // Locked reflects the ASSET_DISPLAY_ORDER priority (useData.ts):
+      // eth=2, sol=3, hype=10. HYPE trails as the lowest-priority crypto.
+      expect(locked.map(l => l.asset.id)).toEqual(['eth', 'sol', 'hype']);
     });
   });
 
   describe('cap = 3 (partial-access partition, not tier-specific)', () => {
-    it('puts BTC, ETH, HYPE in accessible; SOL in locked', () => {
+    it('puts BTC, ETH, SOL in accessible; HYPE in locked', () => {
       const { accessible, locked } = partitionAssets(items, 3);
       expect(accessible).toHaveLength(3);
-      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'hype']);
+      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'sol']);
       expect(locked).toHaveLength(1);
-      expect(locked[0].asset.id).toBe('sol');
+      expect(locked[0].asset.id).toBe('hype');
     });
   });
 
@@ -200,7 +209,7 @@ describe('partitionAssets', () => {
     it('puts all 4 fixture assets in accessible, none locked', () => {
       const { accessible, locked } = partitionAssets(items, 8);
       expect(accessible).toHaveLength(4);
-      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'hype', 'sol']);
+      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'sol', 'hype']);
       expect(locked).toHaveLength(0);
     });
   });
@@ -209,7 +218,7 @@ describe('partitionAssets', () => {
     it('puts ALL assets in accessible, none locked', () => {
       const { accessible, locked } = partitionAssets(items, 0);
       expect(accessible).toHaveLength(4);
-      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'hype', 'sol']);
+      expect(accessible.map(a => a.asset.id)).toEqual(['btc', 'eth', 'sol', 'hype']);
       expect(locked).toHaveLength(0);
     });
   });
@@ -232,18 +241,99 @@ describe('partitionAssets', () => {
 // ── Asset ordering ─────────────────────────────────────
 
 describe('Asset ordering matters for tier gating', () => {
-  it('assets are ordered alphabetically by id (matching DB order)', () => {
-    const ids = ALL_ASSETS.map(a => a.id);
-    const sorted = [...ids].sort();
-    expect(ids).toEqual(sorted);
+  it('assets are ordered by ASSET_DISPLAY_ORDER priority (useData.ts)', () => {
+    // Post-Batch-5 the dashboard feed sorts by a hardcoded priority map,
+    // not alphabetical. Fixture order should match:
+    //   btc(1), eth(2), sol(3), hype(10)
+    expect(ALL_ASSETS.map(a => a.id)).toEqual(['btc', 'eth', 'sol', 'hype']);
   });
 
-  it('BTC is always first (free tier always gets BTC)', () => {
+  it('BTC is first (Free tier always gets BTC)', () => {
     expect(ALL_ASSETS[0].id).toBe('btc');
   });
 
-  it('SOL is last (only Premium gets SOL with 4 assets)', () => {
-    expect(ALL_ASSETS[ALL_ASSETS.length - 1].id).toBe('sol');
+  it('HYPE is last (lowest-priority crypto in the display-order map)', () => {
+    expect(ALL_ASSETS[ALL_ASSETS.length - 1].id).toBe('hype');
+  });
+});
+
+// ── ASSET_DISPLAY_ORDER source-verify (Batch 5) ────────
+//
+// useData.ts bakes the priority map directly. Rather than import it (which
+// would need React/Vite setup), grep the source for the expected ordering
+// so future edits to the map don't silently regress Free/Standard visibility.
+
+describe('ASSET-ORDER-SRC: ASSET_DISPLAY_ORDER priority map (Batch 5)', () => {
+  const useDataSrc = readFileSync(
+    resolve(__dirname, '../hooks/useData.ts'),
+    'utf-8'
+  );
+
+  it('defines ASSET_DISPLAY_ORDER with expected prod-10 asset priorities', () => {
+    // These are the canonical priorities locked in at Batch 5. Changes here
+    // directly affect what Free and Standard users see — treat as a product
+    // decision, not a code tweak.
+    const expected: Array<[string, number]> = [
+      ['btc', 1],
+      ['eth', 2],
+      ['sol', 3],
+      ['spx', 4],
+      ['aapl', 5],
+      ['nvda', 6],
+      ['amzn', 7],
+      ['gold', 8],
+      ['oil', 9],
+      ['hype', 10],
+    ];
+    for (const [id, priority] of expected) {
+      const re = new RegExp(`\\b${id}:\\s*${priority}\\b`);
+      expect(useDataSrc).toMatch(re);
+    }
+  });
+
+  it('Free tier (1 slot) surfaces BTC; Standard (8 slots) excludes OIL + HYPE', () => {
+    // Simulate the sort applied in useData.ts against the prod asset list.
+    const prodAssets = [
+      'aapl',
+      'amzn',
+      'btc',
+      'eth',
+      'gold',
+      'hype',
+      'nvda',
+      'oil',
+      'sol',
+      'spx',
+    ];
+    const priority: Record<string, number> = {
+      btc: 1,
+      eth: 2,
+      sol: 3,
+      spx: 4,
+      aapl: 5,
+      nvda: 6,
+      amzn: 7,
+      gold: 8,
+      oil: 9,
+      hype: 10,
+    };
+    const sorted = [...prodAssets].sort((a, b) => {
+      const ap = priority[a] ?? 99;
+      const bp = priority[b] ?? 99;
+      return ap !== bp ? ap - bp : a.localeCompare(b);
+    });
+    expect(sorted[0]).toBe('btc');
+    expect(sorted.slice(0, 8)).toEqual([
+      'btc',
+      'eth',
+      'sol',
+      'spx',
+      'aapl',
+      'nvda',
+      'amzn',
+      'gold',
+    ]);
+    expect(sorted.slice(8)).toEqual(['oil', 'hype']);
   });
 });
 

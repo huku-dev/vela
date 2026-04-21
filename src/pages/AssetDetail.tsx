@@ -299,7 +299,7 @@ export default function AssetDetail() {
           }}
         >
           <button
-            onClick={() => navigate('/')}
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
             aria-label="Go back"
             style={{
               display: 'inline-flex',
