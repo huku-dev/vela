@@ -65,7 +65,10 @@ describe('ONBOARD-SRC: cancel return path', () => {
   });
 
   it('renders BailSheet when showBailSheet is true', () => {
-    expect(onboardingMain).toContain('showBailSheet && <BailSheet');
+    // Match both single-line and multi-line JSX. Since Batch 2e added the
+    // optional onStartTrial prop, the BailSheet element is now rendered
+    // across multiple lines.
+    expect(onboardingMain).toMatch(/showBailSheet\s*&&\s*\(?\s*<BailSheet/);
   });
 
   it('clears the URL query param on sheet dismissal', () => {
@@ -118,9 +121,7 @@ describe('ONBOARD-SRC: pricing v5 redesign (Batch 2c, 2026-04-21)', () => {
   it('billing cycle defaults to monthly', () => {
     // Sarah and two other users missed the annual/monthly toggle while it
     // defaulted to annual, getting sticker-shock on the price-jump.
-    expect(onboardingSrc).toMatch(
-      /useState<['"]monthly['"] \| ['"]annual['"]>\(['"]monthly['"]\)/
-    );
+    expect(onboardingSrc).toMatch(/useState<['"]monthly['"] \| ['"]annual['"]>\(['"]monthly['"]\)/);
   });
 
   it('PlanCard receives a "Recommended" badge only on Premium', () => {
@@ -155,19 +156,19 @@ describe('ONBOARD-SRC: pricing v5 redesign (Batch 2c, 2026-04-21)', () => {
     expect(onboardingSrc).not.toMatch(/Continue on free plan/);
   });
 
-  it('keeps onSkipToFree wired via a hidden placeholder for Batch 2e', () => {
-    // Batch 2e will surface the "I'm not ready to subscribe yet" link and
-    // the trial offer screen. Until then, the button is rendered but
-    // display:none so the prop stays consumed and the handler reachable.
-    expect(onboardingSrc).toMatch(/data-testid=['"]hidden-skip-to-free['"]/);
-    expect(onboardingSrc).toMatch(/display:\s*['"]none['"]/);
+  it('surfaces a visible "I\'m not ready to subscribe yet" link that routes to the trial screen (Batch 2e)', () => {
+    // Batch 2e replaced the hidden placeholder with a visible link under
+    // the plan cards. The link triggers onSkipToFree, which the orchestrator
+    // wires to setStep('trial').
+    expect(onboardingSrc).toMatch(/data-testid=['"]skip-to-trial-offer['"]/);
+    expect(onboardingSrc).toMatch(/I(&apos;|')m not ready to subscribe yet/);
+    // Hidden placeholder is gone.
+    expect(onboardingSrc).not.toMatch(/data-testid=['"]hidden-skip-to-free['"]/);
   });
 
-  it('CTA reads "Subscribe to X" (no trial wording yet — Batch 2e)', () => {
+  it('plan CTAs read "Subscribe to X" (trial wording lives on the trial screen)', () => {
     expect(onboardingSrc).toMatch(/`Subscribe to \$\{standardTier\.display_name\}`/);
     expect(onboardingSrc).toMatch(/`Subscribe to \$\{premiumTier\.display_name\}`/);
-    expect(onboardingSrc).not.toMatch(/Start 7-day trial/);
-    expect(onboardingSrc).not.toMatch(/7-day free trial/);
   });
 
   it('recommendedTier prop was removed (static Premium recommendation now)', () => {
@@ -175,10 +176,56 @@ describe('ONBOARD-SRC: pricing v5 redesign (Batch 2c, 2026-04-21)', () => {
     // neobrutalist treatment on Premium, so the prop is gone. Strip
     // single-line comments so the explanatory "recommendedTier prop was
     // removed" header comment does not trip this assertion.
-    const codeOnly = onboardingSrc
-      .replace(/\/\/.*$/gm, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '');
+    const codeOnly = onboardingSrc.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     expect(codeOnly).not.toMatch(/recommendedTier/);
+  });
+});
+
+describe('ONBOARD-SRC: trial offer screen (Batch 2e)', () => {
+  it('adds a "trial" step to the OnboardingStep union', () => {
+    expect(onboardingSrc).toMatch(
+      /type OnboardingStep = ['"]splash['"]\s*\|\s*['"]plan['"]\s*\|\s*['"]trial['"]/
+    );
+  });
+
+  it('renders OnboardingTrialOffer when step === "trial"', () => {
+    expect(onboardingMain).toMatch(/step === ['"]trial['"]/);
+    expect(onboardingMain).toMatch(/<OnboardingTrialOffer\s/);
+  });
+
+  it('trial CTA calls startCheckout with trial:true, premium, monthly', () => {
+    const handlerStart = onboardingMain.indexOf('const handleStartTrial');
+    expect(handlerStart).toBeGreaterThan(-1);
+    const handler = onboardingMain.slice(handlerStart, handlerStart + 600);
+    expect(handler).toMatch(
+      /startCheckout\(\s*['"]premium['"]\s*,\s*['"]monthly['"]\s*,\s*\{\s*trial:\s*true/
+    );
+  });
+
+  it('trial screen offers a "Continue on Free" exit that calls handleSkipToFree', () => {
+    // The orchestrator must wire OnboardingTrialOffer's onContinueFree to
+    // handleSkipToFree, the same handler the plan screen would have called.
+    expect(onboardingMain).toMatch(/onContinueFree=\{handleSkipToFree\}/);
+  });
+
+  it('bail sheet receives an onStartTrial prop wired to a trial handler', () => {
+    expect(onboardingMain).toMatch(/onStartTrial=\{handleBailSheetStartTrial\}/);
+  });
+
+  it('bail-sheet trial handler dismisses the sheet AND triggers trial checkout', () => {
+    const handlerStart = onboardingMain.indexOf('const handleBailSheetStartTrial');
+    expect(handlerStart).toBeGreaterThan(-1);
+    const handler = onboardingMain.slice(handlerStart, handlerStart + 800);
+    expect(handler).toMatch(/setShowBailSheet\(false\)/);
+    expect(handler).toMatch(/handleStartTrial\(\)/);
+  });
+
+  it('trial-offer screen surfaces the 0.5% trade-fee promise (threat-report #5)', () => {
+    // If someone removes this copy, users won't know the trial carries a
+    // fee. Not a security issue (the fee is applied server-side regardless)
+    // but a trust issue — the pricing page must not read as "0% Premium
+    // for 7 days."
+    expect(onboardingSrc).toMatch(/0\.5%\s+trade\s+fee/);
   });
 });
 

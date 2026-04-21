@@ -824,7 +824,6 @@ function WelcomeSplash({
   );
 }
 
-
 // ── Plan selection (step 4 — after mode selection, before Stripe) ──
 
 // Standard plan features, shown as the full checklist.
@@ -1041,19 +1040,197 @@ function OnboardingPlanSelection({
         )}
       </div>
 
-      {/* The "I'm not ready to subscribe yet" link lives here in Batch 2e
-          and reveals the trial-offer detour. Kept wired to onSkipToFree so
-          the prop remains consumed; rendered display:none until 2e. */}
-      <button
-        type="button"
-        onClick={onSkipToFree}
-        style={{ display: 'none' }}
-        aria-hidden="true"
-        tabIndex={-1}
-        data-testid="hidden-skip-to-free"
-      >
-        I&apos;m not ready to subscribe yet
-      </button>
+      {/* Trial-offer detour (Batch 2e). Clicking this does NOT drop the user
+          onto Free — it routes to the trial-offer screen first, which is where
+          the "Continue on Free" exit lives. Prop name kept as onSkipToFree
+          because the trial screen still ultimately calls it. */}
+      <div style={{ textAlign: 'center', marginTop: 'var(--space-5)' }}>
+        <button
+          type="button"
+          onClick={onSkipToFree}
+          data-testid="skip-to-trial-offer"
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSize: 13,
+            color: 'var(--color-text-muted)',
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+            cursor: 'pointer',
+          }}
+        >
+          I&apos;m not ready to subscribe yet
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Trial offer (step 5 — reached from plan's "not ready" link) ──
+//
+// One decision screen. Premium trial or Free — no detours, no billing-cycle
+// toggle (7-day trial is always Premium monthly, auto-charges on day 8 at
+// $20/mo). See docs/threat-reports/trial-system.md Invariant #6 for the
+// fee-calc contract during trial; this screen only carries the UX promise.
+function OnboardingTrialOffer({
+  onStartTrial,
+  onContinueFree,
+  busy,
+  errorMessage,
+}: {
+  onStartTrial: () => Promise<void>;
+  onContinueFree: () => Promise<void>;
+  busy: boolean;
+  errorMessage: string | null;
+}) {
+  const bullets = [
+    'Signals on every market Vela watches',
+    'Auto-execute trades the moment they fire',
+    '0.5% trade fee during your trial',
+    'No charge until day 8. Cancel anytime.',
+  ];
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100dvh',
+        backgroundColor: 'var(--color-bg-page)',
+        padding: 'var(--space-6) var(--space-4) var(--space-6)',
+      }}
+    >
+      <div style={{ marginBottom: 'var(--space-6)' }}>
+        <VelaLogo size={40} />
+      </div>
+      <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
+        <div
+          style={{
+            display: 'inline-block',
+            background: 'var(--vela-signal-green, #0fe68c)',
+            color: 'var(--vela-ink)',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '4px 12px',
+            borderRadius: 'var(--radius-full, 999px)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.6px',
+            border: '2px solid var(--color-border-default)',
+            marginBottom: 'var(--space-3)',
+          }}
+        >
+          7 days free
+        </div>
+        <h2
+          className="vela-heading-lg"
+          style={{ marginBottom: 'var(--space-2)', fontSize: '1.75rem', letterSpacing: '-0.01em' }}
+        >
+          Try Premium free for 7 days
+        </h2>
+        <p
+          className="vela-body-sm vela-text-secondary"
+          style={{ marginBottom: 'var(--space-5)', fontSize: 14 }}
+        >
+          Full Premium features. No charge until day 8. Cancel anytime from your account.
+        </p>
+
+        <div
+          style={{
+            background: 'var(--green-tint, #f0fdf6)',
+            border: '3px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-5)',
+            boxShadow: '6px 6px 0 var(--color-border-default)',
+            marginBottom: 'var(--space-4)',
+          }}
+        >
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+            {bullets.map(text => (
+              <li
+                key={text}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  fontSize: 14,
+                  lineHeight: 1.4,
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    marginTop: 2,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: 700,
+                    color: 'var(--green-dark)',
+                  }}
+                >
+                  ✓
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {errorMessage && (
+          <div
+            style={{
+              marginBottom: 'var(--space-3)',
+              padding: 'var(--space-3)',
+              backgroundColor: 'var(--red-light, #FFF0F0)',
+              border: '2px solid var(--red-primary)',
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
+            <p className="vela-body-sm" style={{ margin: 0, color: 'var(--red-primary)' }}>
+              {errorMessage}
+            </p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onStartTrial}
+          disabled={busy}
+          className="vela-btn vela-btn-primary"
+          style={{
+            width: '100%',
+            padding: 'var(--space-3)',
+            fontSize: 'var(--text-sm)',
+            marginBottom: 'var(--space-3)',
+          }}
+        >
+          {busy ? 'Starting...' : 'Start 7-day free trial'}
+        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={onContinueFree}
+            disabled={busy}
+            data-testid="continue-on-free"
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              fontFamily: 'Inter, system-ui, sans-serif',
+              fontSize: 13,
+              color: 'var(--color-text-muted)',
+              textDecoration: 'underline',
+              textUnderlineOffset: 3,
+              cursor: busy ? 'default' : 'pointer',
+              opacity: busy ? 0.5 : 1,
+            }}
+          >
+            Continue on Free
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1260,7 +1437,7 @@ function PlanCard({
 
 // ── Main onboarding orchestrator ───────────────────────────
 
-type OnboardingStep = 'splash' | 'plan';
+type OnboardingStep = 'splash' | 'plan' | 'trial';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -1288,6 +1465,8 @@ export default function Onboarding() {
   const [step, setStep] = useState<OnboardingStep>(() => (returnedFromCancel ? 'plan' : 'splash'));
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showBailSheet, setShowBailSheet] = useState(returnedFromCancel);
+  const [trialBusy, setTrialBusy] = useState(false);
+  const [trialError, setTrialError] = useState<string | null>(null);
 
   // Consume-once: clear the persisted tier after the state initializers have
   // read it, so sessionStorage doesn't leak across users on the same tab or
@@ -1360,8 +1539,44 @@ export default function Onboarding() {
     navigate('/', { replace: true });
   };
 
+  // "I'm not ready to subscribe yet" routes to the trial-offer detour,
+  // not straight to Free. Free stays reachable from the trial screen.
+  const handleShowTrialOffer = () => {
+    setTrialError(null);
+    setStep('trial');
+    track(AnalyticsEvent.ONBOARDING_STEP_VIEWED, { step: 'trial' });
+  };
+
+  const handleStartTrial = async () => {
+    setTrialBusy(true);
+    setTrialError(null);
+    try {
+      // Trial is Premium-only per threat-report Open Q1. Monthly billing
+      // is a product simplification: if the user ultimately converts, they
+      // can switch to annual from the customer portal.
+      await startCheckout('premium', 'monthly', { trial: true });
+      // startCheckout hard-redirects to Stripe; code below only runs on
+      // throw (network error or 409 "Trial already used").
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not start trial';
+      setTrialError(msg);
+      setTrialBusy(false);
+    }
+  };
+
   if (step === 'splash') {
     return <WelcomeSplash onGetStarted={handleGetStarted} onLogin={login} />;
+  }
+
+  if (step === 'trial') {
+    return (
+      <OnboardingTrialOffer
+        onStartTrial={handleStartTrial}
+        onContinueFree={handleSkipToFree}
+        busy={trialBusy}
+        errorMessage={trialError}
+      />
+    );
   }
 
   const handleBailSheetDismiss = () => {
@@ -1376,14 +1591,35 @@ export default function Onboarding() {
     sessionStorage.removeItem('vela_pending_tier');
   };
 
+  const handleBailSheetStartTrial = async () => {
+    setShowBailSheet(false);
+    // Strip the ?checkout=cancelled param so a failed trial attempt doesn't
+    // re-open the bail sheet on refresh.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('checkout');
+    window.history.replaceState({}, '', url.pathname + (url.search || ''));
+    sessionStorage.removeItem('vela_pending_tier');
+    setStep('trial');
+    track(AnalyticsEvent.ONBOARDING_STEP_VIEWED, { step: 'trial' });
+    // Immediately kick off the trial checkout — the user already saw the
+    // plan page and bailed; the trial screen itself will show if anything
+    // throws (e.g. 409 "Trial already used.").
+    await handleStartTrial();
+  };
+
   return (
     <>
       <OnboardingPlanSelection
         onCheckout={handlePlanCheckout}
-        onSkipToFree={handleSkipToFree}
+        onSkipToFree={handleShowTrialOffer}
         checkoutError={checkoutError}
       />
-      {showBailSheet && <BailSheet onChoosePlan={handleBailSheetDismiss} />}
+      {showBailSheet && (
+        <BailSheet
+          onChoosePlan={handleBailSheetDismiss}
+          onStartTrial={handleBailSheetStartTrial}
+        />
+      )}
     </>
   );
 }

@@ -2,6 +2,14 @@ import { useEffect } from 'react';
 
 interface BailSheetProps {
   onChoosePlan: () => void;
+  /**
+   * Optional secondary path: try Premium free for 7 days. When present, a
+   * secondary CTA renders above "Choose a plan". Omitted (or no-op) when
+   * the user has already used their trial — eligibility is enforced
+   * server-side by create-checkout-session, so the CTA is safe to show
+   * unconditionally and will surface a 409 on click if misused.
+   */
+  onStartTrial?: () => void;
 }
 
 /**
@@ -18,7 +26,7 @@ interface BailSheetProps {
  * focusable element, so Tab lands on it naturally, and screen readers
  * announce the sheet via aria-modal + aria-labelledby.
  */
-export function BailSheet({ onChoosePlan }: BailSheetProps) {
+export function BailSheet({ onChoosePlan, onStartTrial }: BailSheetProps) {
   useEffect(() => {
     // Lock body scroll while the sheet is open.
     const previousOverflow = document.body.style.overflow;
@@ -149,6 +157,21 @@ export function BailSheet({ onChoosePlan }: BailSheetProps) {
           No payment went through.
         </div>
 
+        {onStartTrial && (
+          <button
+            onClick={onStartTrial}
+            className="vela-btn vela-btn-secondary"
+            data-testid="bail-sheet-start-trial"
+            style={{
+              width: '100%',
+              padding: 'var(--space-3)',
+              fontSize: 'var(--text-sm)',
+              marginBottom: 'var(--space-2)',
+            }}
+          >
+            Try Premium free for 7 days
+          </button>
+        )}
         <button
           onClick={onChoosePlan}
           className="vela-btn vela-btn-primary"

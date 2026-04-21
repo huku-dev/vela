@@ -148,9 +148,33 @@ describe('BAIL-SRC: BailSheet contract', () => {
     expect(bailSheetSrc).not.toContain('primaryButtonRef');
   });
 
-  it('does NOT render a "Try free" secondary CTA (Batch 1 scope)', () => {
-    expect(bailSheetSrc).not.toMatch(/try free/i);
-    expect(bailSheetSrc).not.toMatch(/7-day/i);
+  it('secondary "Try Premium free for 7 days" CTA is gated on the onStartTrial prop (Batch 2e)', () => {
+    // The CTA must only render when the parent passes onStartTrial — we do
+    // not want it on every BailSheet mount (e.g. future use in cancel flows
+    // where the user has already used their trial).
+    expect(bailSheetSrc).toMatch(/onStartTrial\s*&&[\s\S]{0,800}Try Premium free for 7 days/);
+    expect(bailSheetSrc).toMatch(/data-testid=['"]bail-sheet-start-trial['"]/);
+  });
+});
+
+describe('BAIL: BailSheet trial CTA (Batch 2e)', () => {
+  it('renders the trial CTA when onStartTrial is provided', () => {
+    render(<BailSheet onChoosePlan={() => {}} onStartTrial={() => {}} />);
+    expect(screen.getByTestId('bail-sheet-start-trial')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try premium free for 7 days/i })).toBeInTheDocument();
+  });
+
+  it('omits the trial CTA when onStartTrial is NOT provided', () => {
+    render(<BailSheet onChoosePlan={() => {}} />);
+    expect(screen.queryByTestId('bail-sheet-start-trial')).not.toBeInTheDocument();
+  });
+
+  it('calls onStartTrial when the trial CTA is clicked', async () => {
+    const onStartTrial = vi.fn();
+    const user = userEvent.setup();
+    render(<BailSheet onChoosePlan={() => {}} onStartTrial={onStartTrial} />);
+    await user.click(screen.getByTestId('bail-sheet-start-trial'));
+    expect(onStartTrial).toHaveBeenCalledTimes(1);
   });
 });
 
