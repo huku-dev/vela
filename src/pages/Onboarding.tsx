@@ -1618,6 +1618,7 @@ export default function Onboarding() {
         <BailSheet
           onChoosePlan={handleBailSheetDismiss}
           onStartTrial={handleBailSheetStartTrial}
+          trialBusy={trialBusy}
         />
       )}
     </>

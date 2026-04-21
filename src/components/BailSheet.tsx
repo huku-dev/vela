@@ -10,6 +10,10 @@ interface BailSheetProps {
    * unconditionally and will surface a 409 on click if misused.
    */
   onStartTrial?: () => void;
+  /** Disables the trial CTA while a previous click is in-flight. Prevents
+   *  double-submit on slow devices where the animation-frame dismiss races
+   *  the click handler. */
+  trialBusy?: boolean;
 }
 
 /**
@@ -26,7 +30,7 @@ interface BailSheetProps {
  * focusable element, so Tab lands on it naturally, and screen readers
  * announce the sheet via aria-modal + aria-labelledby.
  */
-export function BailSheet({ onChoosePlan, onStartTrial }: BailSheetProps) {
+export function BailSheet({ onChoosePlan, onStartTrial, trialBusy = false }: BailSheetProps) {
   useEffect(() => {
     // Lock body scroll while the sheet is open.
     const previousOverflow = document.body.style.overflow;
@@ -160,6 +164,7 @@ export function BailSheet({ onChoosePlan, onStartTrial }: BailSheetProps) {
         {onStartTrial && (
           <button
             onClick={onStartTrial}
+            disabled={trialBusy}
             className="vela-btn vela-btn-secondary"
             data-testid="bail-sheet-start-trial"
             style={{
@@ -167,9 +172,10 @@ export function BailSheet({ onChoosePlan, onStartTrial }: BailSheetProps) {
               padding: 'var(--space-3)',
               fontSize: 'var(--text-sm)',
               marginBottom: 'var(--space-2)',
+              opacity: trialBusy ? 0.6 : 1,
             }}
           >
-            Try Premium free for 7 days
+            {trialBusy ? 'Starting...' : 'Try Premium free for 7 days'}
           </button>
         )}
         <button
