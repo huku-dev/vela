@@ -52,10 +52,17 @@ export interface SubscriptionState {
   isPaid: boolean;
   /** True when the subscription will cancel at period end */
   cancelAtPeriodEnd: boolean;
-  /** Redirect to the provider's hosted checkout for a tier upgrade */
+  /**
+   * Redirect to the provider's hosted checkout for a tier upgrade.
+   * Set `opts.trial = true` to request a 7-day Premium free trial;
+   * eligibility is enforced server-side by the create-checkout-session
+   * edge function (one trial per user lifetime). The server returns
+   * a 409 if the caller has already used their trial.
+   */
   startCheckout: (
     tier: 'standard' | 'premium',
-    billingCycle: 'monthly' | 'annual'
+    billingCycle: 'monthly' | 'annual',
+    opts?: { trial?: boolean }
   ) => Promise<void>;
   /** Redirect to the provider's customer portal for subscription management */
   openPortal: () => Promise<void>;
@@ -138,9 +145,20 @@ export function useSubscription(): SubscriptionState {
   }, [fetchSubscription]);
 
   const startCheckout = useCallback(
-    async (tier: 'standard' | 'premium', billingCycle: 'monthly' | 'annual') => {
-      track(AnalyticsEvent.CHECKOUT_STARTED, { tier, billing_cycle: billingCycle });
-      // Price map for Meta Pixel revenue tracking (USD)
+    async (
+      tier: 'standard' | 'premium',
+      billingCycle: 'monthly' | 'annual',
+      opts?: { trial?: boolean }
+    ) => {
+      const trial = opts?.trial === true;
+      track(AnalyticsEvent.CHECKOUT_STARTED, {
+        tier,
+        billing_cycle: billingCycle,
+        trial,
+      });
+      // Price map for Meta Pixel revenue tracking (USD). Trial checkouts
+      // collect the card up-front but charge on day 8, so the value is
+      // still the plan's monthly/annual price — report it the same way.
       const priceMap = {
         standard: { monthly: 10, annual: 96 },
         premium: { monthly: 20, annual: 192 },
@@ -161,7 +179,11 @@ export function useSubscription(): SubscriptionState {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tier, billing_cycle: billingCycle }),
+        body: JSON.stringify({
+          tier,
+          billing_cycle: billingCycle,
+          ...(trial ? { trial: true } : {}),
+        }),
       });
 
       if (!res.ok) {

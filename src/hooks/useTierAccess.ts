@@ -28,10 +28,11 @@ export interface TierAccess {
   partitionAssets: <T extends { asset: Asset }>(items: T[]) => { accessible: T[]; locked: T[] };
   /** Open the tier comparison sheet for a specific feature */
   upgradeLabel: (feature: string) => string;
-  /** Start Stripe checkout for a tier */
+  /** Start Stripe checkout for a tier. Set opts.trial = true to request a 7-day Premium free trial. */
   startCheckout: (
     tier: 'standard' | 'premium',
-    billingCycle: 'monthly' | 'annual'
+    billingCycle: 'monthly' | 'annual',
+    opts?: { trial?: boolean }
   ) => Promise<void>;
   /** Open Stripe customer portal */
   openPortal: () => Promise<void>;
