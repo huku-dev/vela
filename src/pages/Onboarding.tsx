@@ -827,18 +827,56 @@ function WelcomeSplash({
 
 // ── Plan selection (step 4 — after mode selection, before Stripe) ──
 
+// Standard plan features, shown as the full checklist.
+// Premium features are rendered additively beneath an "Everything in
+// Standard, plus:" header so the upsell is explicit.
+const STANDARD_FEATURES: Array<{ title: string; detail?: string }> = [
+  {
+    title: 'Buy, sell & wait signals on 8 assets',
+    detail: 'Across crypto, equities, and commodities.',
+  },
+  {
+    title: 'Manual trade approval',
+    detail: 'Vela proposes, you approve each trade.',
+  },
+  {
+    title: 'No trade fees',
+  },
+];
+
+const PREMIUM_ADDITIONS: Array<{ title: string; detail?: string }> = [
+  {
+    title: 'Every asset, 24/7 coverage',
+    detail: 'Signals on every market Vela watches, round the clock.',
+  },
+  {
+    title: 'Auto-execute trades',
+    detail: 'Vela trades the moment a signal fires.',
+  },
+  {
+    title: 'Priority support',
+  },
+];
+
+// Wireframe: mockups/pricing-page-v5.html
+//
+// The prior "recommendedTier" prop is removed in v5: Premium is always
+// the visually recommended plan via its neobrutalist treatment (green
+// tint, thicker border, shadow, "Recommended" badge), not a dynamic
+// runtime hint. If Batch 2e needs to remember an originally-chosen tier
+// across the trial detour, it should live in sessionStorage alongside
+// the existing vela_pending_tier key, not as a prop here.
 function OnboardingPlanSelection({
-  recommendedTier,
   onCheckout,
   onSkipToFree,
   checkoutError,
 }: {
-  recommendedTier: 'standard' | 'premium';
   onCheckout: (tier: 'standard' | 'premium', billingCycle: 'monthly' | 'annual') => Promise<void>;
+  /** Kept wired for Batch 2e (trial offer screen fallthrough). Not rendered in 2c. */
   onSkipToFree: () => void;
   checkoutError?: string | null;
 }) {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('annual');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [checkingOut, setCheckingOut] = useState(false);
 
   const handleCheckout = async (tier: 'standard' | 'premium') => {
@@ -850,20 +888,21 @@ function OnboardingPlanSelection({
     }
   };
 
-  const tiers = TIER_DEFINITIONS.filter(t => t.tier !== 'free');
+  const standardTier = TIER_DEFINITIONS.find(t => t.tier === 'standard')!;
+  const premiumTier = TIER_DEFINITIONS.find(t => t.tier === 'premium')!;
 
-  const getPrice = (tier: (typeof tiers)[number]): string => {
+  const getPrice = (tier: typeof standardTier): string => {
     if (billingCycle === 'annual') {
       return `$${Math.ceil(tier.annual_price_usd / 12)}`;
     }
     return `$${tier.monthly_price_usd}`;
   };
 
-  const getBillingNote = (tier: (typeof tiers)[number]): string => {
+  const getBillingNote = (tier: typeof standardTier): string => {
     if (billingCycle === 'annual') {
-      return `$${tier.annual_price_usd}/yr (save 17%)`;
+      return `Billed $${tier.annual_price_usd}/yr`;
     }
-    return '/mo';
+    return 'Billed monthly';
   };
 
   return (
@@ -883,155 +922,105 @@ function OnboardingPlanSelection({
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
         <h2
           className="vela-heading-lg"
-          style={{ marginBottom: 'var(--space-2)', fontSize: '1.4rem' }}
+          style={{ marginBottom: 'var(--space-2)', fontSize: '1.75rem', letterSpacing: '-0.01em' }}
         >
           Choose your plan
         </h2>
-        <p className="vela-body-sm vela-text-secondary" style={{ marginBottom: 'var(--space-5)' }}>
+        <p
+          className="vela-body-sm vela-text-secondary"
+          style={{ marginBottom: 'var(--space-5)', fontSize: 14 }}
+        >
           Cancel anytime from your account settings.
         </p>
 
-        {/* Billing cycle toggle */}
+        {/* Billing cycle toggle — segmented control, monthly default */}
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'center',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            background: 'var(--color-bg-surface)',
+            border: '2px solid var(--color-border-default)',
+            borderRadius: 'var(--radius-md)',
+            padding: 4,
             marginBottom: 'var(--space-5)',
+            boxShadow: '3px 3px 0 var(--color-border-default)',
           }}
         >
-          {(['monthly', 'annual'] as const).map(cycle => (
-            <button
-              key={cycle}
-              onClick={() => setBillingCycle(cycle)}
-              style={{
-                padding: 'var(--space-2) var(--space-4)',
-                fontSize: 12,
-                fontWeight: 600,
-                fontFamily: 'Inter, system-ui, sans-serif',
-                border: '1.5px solid var(--gray-200)',
-                borderLeft: cycle === 'annual' ? 'none' : undefined,
-                borderRadius:
-                  cycle === 'monthly'
-                    ? 'var(--radius-sm) 0 0 var(--radius-sm)'
-                    : '0 var(--radius-sm) var(--radius-sm) 0',
-                background: billingCycle === cycle ? 'var(--black)' : 'var(--color-bg-surface)',
-                color: billingCycle === cycle ? '#fff' : 'var(--color-text-muted)',
-                cursor: 'pointer',
-                transition: 'all 100ms',
-              }}
-            >
-              {cycle === 'monthly' ? 'Monthly' : 'Annual (save 17%)'}
-            </button>
-          ))}
+          {(['monthly', 'annual'] as const).map(cycle => {
+            const active = billingCycle === cycle;
+            return (
+              <button
+                key={cycle}
+                onClick={() => setBillingCycle(cycle)}
+                aria-pressed={active}
+                aria-label={`Bill ${cycle}`}
+                style={{
+                  padding: '12px 10px',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  background: active ? 'var(--vela-ink)' : 'transparent',
+                  color: active ? 'var(--white)' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  transition: 'all 120ms ease-out',
+                }}
+              >
+                {cycle === 'monthly' ? 'Monthly' : 'Annual'}
+                {cycle === 'annual' && (
+                  <span
+                    style={{
+                      background: 'var(--amber-light, #fde68a)',
+                      color: 'var(--amber-dark, #7a4f00)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 7px',
+                      borderRadius: 'var(--radius-full, 999px)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.4px',
+                    }}
+                  >
+                    Save 17%
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Plan cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          {tiers.map(tier => {
-            const isRecommended = tier.tier === recommendedTier;
-            return (
-              <div
-                key={tier.tier}
-                style={{
-                  border: isRecommended ? '2px solid var(--black)' : '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: 'var(--space-4)',
-                  boxShadow: isRecommended ? '3px 3px 0 var(--black)' : 'none',
-                  background: 'var(--color-bg-surface)',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 'var(--space-1)',
-                  }}
-                >
-                  <span style={{ fontWeight: 700, fontSize: 16 }}>
-                    {tier.display_name}
-                    {isRecommended && (
-                      <span
-                        style={{
-                          marginLeft: 'var(--space-2)',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          color: 'var(--green-dark)',
-                          backgroundColor: 'var(--color-status-buy-bg)',
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.04em',
-                        }}
-                      >
-                        Selected
-                      </span>
-                    )}
-                  </span>
-                </div>
+          <PlanCard
+            tier="standard"
+            displayName={standardTier.display_name}
+            price={getPrice(standardTier)}
+            billingNote={getBillingNote(standardTier)}
+            features={STANDARD_FEATURES}
+            variant="standard"
+            ctaLabel={`Subscribe to ${standardTier.display_name}`}
+            onClick={() => handleCheckout('standard')}
+            disabled={checkingOut}
+            loading={checkingOut}
+          />
 
-                <div style={{ marginBottom: 'var(--space-2)' }}>
-                  <span
-                    style={{
-                      fontFamily: "'Instrument Sans', 'Inter', system-ui, sans-serif",
-                      fontWeight: 700,
-                      fontSize: 24,
-                    }}
-                  >
-                    {getPrice(tier)}
-                  </span>
-                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)', marginLeft: 2 }}>
-                    {billingCycle === 'annual' ? '/mo' : '/mo'}
-                  </span>
-                </div>
-
-                {billingCycle === 'annual' && (
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--color-text-muted)',
-                      marginBottom: 'var(--space-2)',
-                    }}
-                  >
-                    {getBillingNote(tier)}
-                  </p>
-                )}
-
-                <p
-                  className="vela-body-sm"
-                  style={{
-                    color: 'var(--color-text-secondary)',
-                    lineHeight: 1.4,
-                    marginBottom: 'var(--space-3)',
-                    fontSize: 12,
-                  }}
-                >
-                  {tier.max_assets === 0 ? 'Unlimited' : tier.max_assets} asset
-                  {tier.max_assets !== 1 ? 's' : ''}
-                  {' · '}
-                  {tier.tier === 'premium' ? 'Auto-execute' : 'Manual approval'}
-                  {' · '}
-                  {tier.max_leverage}x leverage
-                  {' · '}
-                  {tier.trade_fee_pct === 0 ? 'No trade fee' : `${tier.trade_fee_pct}% trade fee`}
-                </p>
-
-                <button
-                  onClick={() => handleCheckout(tier.tier as 'standard' | 'premium')}
-                  disabled={checkingOut}
-                  className={`vela-btn ${isRecommended ? 'vela-btn-primary' : 'vela-btn-outline'}`}
-                  style={{
-                    width: '100%',
-                    fontSize: 13,
-                    padding: 'var(--space-2) var(--space-4)',
-                    cursor: checkingOut ? 'wait' : 'pointer',
-                  }}
-                >
-                  {checkingOut ? 'Redirecting...' : `Subscribe to ${tier.display_name}`}
-                </button>
-              </div>
-            );
-          })}
+          <PlanCard
+            tier="premium"
+            displayName={premiumTier.display_name}
+            price={getPrice(premiumTier)}
+            billingNote={getBillingNote(premiumTier)}
+            featuresHeading="Everything in Standard, plus:"
+            features={PREMIUM_ADDITIONS}
+            variant="premium"
+            ctaLabel={`Subscribe to ${premiumTier.display_name}`}
+            onClick={() => handleCheckout('premium')}
+            disabled={checkingOut}
+            loading={checkingOut}
+          />
         </div>
 
         {/* Checkout error */}
@@ -1052,16 +1041,219 @@ function OnboardingPlanSelection({
         )}
       </div>
 
-      {/* Skip to free */}
-      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-3)' }}>
-        <button
-          onClick={onSkipToFree}
-          className="vela-btn vela-btn-ghost"
-          style={{ width: '100%', fontSize: 13 }}
+      {/* The "I'm not ready to subscribe yet" link lives here in Batch 2e
+          and reveals the trial-offer detour. Kept wired to onSkipToFree so
+          the prop remains consumed; rendered display:none until 2e. */}
+      <button
+        type="button"
+        onClick={onSkipToFree}
+        style={{ display: 'none' }}
+        aria-hidden="true"
+        tabIndex={-1}
+        data-testid="hidden-skip-to-free"
+      >
+        I&apos;m not ready to subscribe yet
+      </button>
+    </div>
+  );
+}
+
+interface PlanCardProps {
+  tier: 'standard' | 'premium';
+  displayName: string;
+  price: string;
+  billingNote: string;
+  features: Array<{ title: string; detail?: string }>;
+  featuresHeading?: string;
+  variant: 'standard' | 'premium';
+  ctaLabel: string;
+  onClick: () => void;
+  disabled: boolean;
+  loading: boolean;
+}
+
+function PlanCard({
+  tier,
+  displayName,
+  price,
+  billingNote,
+  features,
+  featuresHeading,
+  variant,
+  ctaLabel,
+  onClick,
+  disabled,
+  loading,
+}: PlanCardProps) {
+  const isPremium = variant === 'premium';
+  return (
+    <div
+      data-plan={tier}
+      style={{
+        position: 'relative',
+        background: isPremium ? 'var(--green-tint, #f0fdf6)' : 'var(--color-bg-surface)',
+        border: `${isPremium ? 3 : 2}px solid var(--color-border-default)`,
+        borderRadius: 'var(--radius-lg)',
+        padding: 'var(--space-5) var(--space-5) var(--space-4)',
+        boxShadow: isPremium ? '6px 6px 0 var(--color-border-default)' : 'none',
+        marginTop: isPremium ? 'var(--space-4)' : 0,
+      }}
+    >
+      {isPremium && (
+        <span
+          style={{
+            position: 'absolute',
+            top: -12,
+            left: 18,
+            background: 'var(--vela-signal-green, #0fe68c)',
+            color: 'var(--vela-ink)',
+            fontSize: 11,
+            fontWeight: 700,
+            padding: '5px 12px',
+            borderRadius: 'var(--radius-full, 999px)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.6px',
+            border: '2px solid var(--color-border-default)',
+          }}
         >
-          Continue on free plan
-        </button>
+          Recommended
+        </span>
+      )}
+
+      <div
+        style={{
+          fontFamily: "'Space Grotesk', 'Inter', system-ui, sans-serif",
+          fontSize: 22,
+          fontWeight: 700,
+          marginBottom: 4,
+        }}
+      >
+        {displayName}
       </div>
+
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 4,
+          marginBottom: 2,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            fontSize: 32,
+            fontWeight: 700,
+            lineHeight: 1,
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {price}
+        </span>
+        <span style={{ fontSize: 13, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+          / month
+        </span>
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: 'var(--color-text-muted)',
+          marginBottom: 'var(--space-3)',
+        }}
+      >
+        {billingNote}
+      </div>
+
+      {featuresHeading && (
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            color: 'var(--color-text-muted)',
+            marginBottom: 'var(--space-2)',
+          }}
+        >
+          {featuresHeading}
+        </div>
+      )}
+
+      <ul
+        style={{
+          listStyle: 'none',
+          margin: 0,
+          marginBottom: 'var(--space-3)',
+          padding: 0,
+        }}
+      >
+        {features.map((feature, i) => (
+          <li
+            key={feature.title}
+            style={{
+              fontSize: 14,
+              lineHeight: 1.45,
+              padding: '9px 0',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              borderBottom:
+                i < features.length - 1 ? '1px solid var(--color-border-muted, #e5e7eb)' : 'none',
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                color: 'var(--green-dark, #059669)',
+                fontWeight: 800,
+                flexShrink: 0,
+                width: 14,
+                fontSize: 14,
+              }}
+            >
+              ✓
+            </span>
+            <span>
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: 'var(--color-text-primary)',
+                }}
+              >
+                {feature.title}
+              </span>
+              {feature.detail && (
+                <span
+                  style={{
+                    color: 'var(--color-text-muted)',
+                    fontWeight: 400,
+                    display: 'block',
+                    fontSize: 12.5,
+                    marginTop: 2,
+                  }}
+                >
+                  {feature.detail}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        onClick={onClick}
+        disabled={disabled}
+        className={`vela-btn ${isPremium ? 'vela-btn-primary' : 'vela-btn-secondary'}`}
+        style={{
+          width: '100%',
+          fontSize: 14,
+          padding: '13px',
+          cursor: disabled ? 'wait' : 'pointer',
+          fontWeight: 700,
+        }}
+      >
+        {loading ? 'Redirecting...' : ctaLabel}
+      </button>
     </div>
   );
 }
@@ -1091,14 +1283,9 @@ export default function Onboarding() {
     new URLSearchParams(window.location.search).get('checkout') === 'cancelled' && !isOnboarded;
 
   // State initializers are lazy (only fire on mount) — perfect for the
-  // cancel-return restore, which must capture the tier before we consume it
-  // in the mount effect below.
+  // cancel-return path, which must capture the URL param before the bail
+  // sheet dismissal removes it.
   const [step, setStep] = useState<OnboardingStep>(() => (returnedFromCancel ? 'plan' : 'splash'));
-  const [pendingCheckout, setPendingCheckout] = useState<'standard' | 'premium' | null>(() =>
-    returnedFromCancel
-      ? (sessionStorage.getItem('vela_pending_tier') as 'standard' | 'premium' | null)
-      : null
-  );
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showBailSheet, setShowBailSheet] = useState(returnedFromCancel);
 
@@ -1168,7 +1355,6 @@ export default function Onboarding() {
 
   const handleSkipToFree = async () => {
     // User decided to skip paid plan — continue on free tier
-    setPendingCheckout(null);
     sessionStorage.removeItem('vela_pending_tier');
     await completeOnboarding();
     navigate('/', { replace: true });
@@ -1193,7 +1379,6 @@ export default function Onboarding() {
   return (
     <>
       <OnboardingPlanSelection
-        recommendedTier={pendingCheckout ?? 'standard'}
         onCheckout={handlePlanCheckout}
         onSkipToFree={handleSkipToFree}
         checkoutError={checkoutError}
