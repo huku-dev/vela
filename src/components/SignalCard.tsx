@@ -91,11 +91,20 @@ export default function SignalCard({ data, position }: SignalCardProps) {
 
   // Position-aware headline: users with a position see P&L status,
   // users without see market context (trading-action language stripped).
+  // WAIT fallback: when the signal is grey AND no brief headline exists,
+  // Sarah-style users previously saw nothing after the chip and bounced.
+  // Mirror AssetDetail's "what would change" framing so the tap-through
+  // feels continuous: Home previews, detail explains.
+  const waitFallback =
+    signal?.signal_color === 'grey'
+      ? 'No clear signal yet. Vela is watching for a stronger signal.'
+      : null;
+
   const headline = position
     ? getPositionHeadline(position, asset.symbol.toUpperCase(), brief?.headline, price)
     : brief?.headline
       ? stripTradingAction(stripAssetPrefix(brief.headline, asset.symbol))
-      : null;
+      : waitFallback;
 
   return (
     <div

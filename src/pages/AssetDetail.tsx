@@ -1096,13 +1096,13 @@ function buildSignalBreakdown(
   result.trend_filter =
     price > sma50
       ? `Price is above the 50-day trend line (${fmt(sma50)}), which supports the broader uptrend.`
-      : `Price is below the 50-day trend line (${fmt(sma50)}), which suggests the broader trend is bearish.`;
+      : `Price is below the 50-day trend line (${fmt(sma50)}), which suggests the broader trend is pointing down.`;
 
   result.adx =
     adx > 25
       ? `Trend strength at ${adx.toFixed(0)} shows a strong directional move in progress.`
       : adx > 20
-        ? `Trend strength at ${adx.toFixed(0)} shows moderate directional momentum.`
+        ? `Trend strength at ${adx.toFixed(0)} shows moderate strength.`
         : `Trend strength at ${adx.toFixed(0)} shows a weak or absent trend. Choppy conditions.`;
 
   return result;
@@ -1142,7 +1142,7 @@ function buildWhatWouldChange(
   }
 
   if (conditions.length === 0) {
-    return 'Current conditions are close to triggering a signal. Vela is watching for confirmation.';
+    return 'Current conditions are close to triggering a signal. Vela is watching for a stronger signal.';
   }
 
   const joined =
@@ -1769,9 +1769,9 @@ function PriceLevelTriggers({
           label={
             aboveBull
               ? signalColor === 'green'
-                ? 'Price is above short-term averages. Maintaining this with rising momentum strengthens our Buy signal'
-                : 'Price is above short-term averages. Sustained momentum here could shift the signal towards Buy'
-              : 'A sustained break above short-term averages with rising momentum could shift the signal towards Buy'
+                ? 'Price is above short-term averages. Maintaining this with continued strength supports our Buy signal'
+                : 'Price is above short-term averages. Sustained strength here could shift the signal towards Buy'
+              : 'A sustained break above short-term averages with continued strength could shift the signal towards Buy'
           }
         />
         <TriggerCard
@@ -1782,8 +1782,8 @@ function PriceLevelTriggers({
             belowBear
               ? signalColor === 'red'
                 ? `Price is ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. This weakness supports our Sell signal`
-                : `Price is ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. Continued weakness here adds bearish pressure`
-              : 'A break below the 50-day average would signal meaningful bearish pressure and could trigger a Sell'
+                : `Price is ${(((bearLevel - cp) / bearLevel) * 100).toFixed(0)}% below this level. Continued weakness here adds downward pressure`
+              : 'A break below the 50-day average would signal meaningful downward pressure and could trigger a Sell'
           }
         />
       </div>
