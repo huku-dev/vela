@@ -149,7 +149,7 @@ function SignalPill({ asset, status }: { asset: string; status: 'buy' | 'sell' |
       <span style={{ color: 'var(--color-text-primary)' }}>{asset}</span>
       <span
         style={{
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           letterSpacing: '0.04em',
           padding: '2px 6px',

@@ -300,7 +300,7 @@ function BalanceCard({
           <p
             className="vela-label-sm"
             style={{
-              fontSize: '0.6rem',
+              fontSize: '0.72rem',
               fontWeight: 600,
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
@@ -895,7 +895,7 @@ function FundingStatusBadge({ status }: { status: import('../types').FundingEven
   return (
     <span
       style={{
-        fontSize: '0.65rem',
+        fontSize: '0.72rem',
         fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: '0.04em',
@@ -2712,7 +2712,7 @@ export default function Account() {
             <span
               className="vela-label-sm"
               style={{
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: 700,
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',

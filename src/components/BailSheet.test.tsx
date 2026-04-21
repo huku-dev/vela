@@ -161,7 +161,9 @@ describe('BAIL: BailSheet trial CTA (Batch 2e)', () => {
   it('renders the trial CTA when onStartTrial is provided', () => {
     render(<BailSheet onChoosePlan={() => {}} onStartTrial={() => {}} />);
     expect(screen.getByTestId('bail-sheet-start-trial')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /try premium free for 7 days/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /try premium free for 7 days/i })
+    ).toBeInTheDocument();
   });
 
   it('omits the trial CTA when onStartTrial is NOT provided', () => {

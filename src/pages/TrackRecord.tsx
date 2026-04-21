@@ -399,7 +399,7 @@ export default function TrackRecord() {
                     <span
                       style={{
                         display: 'block',
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: 600,
                         color: 'var(--color-text-muted)',
                         textTransform: 'uppercase',
@@ -967,7 +967,7 @@ function DetailRow({
           style={{
             margin: 0,
             marginTop: 'var(--space-1)',
-            fontSize: '0.68rem',
+            fontSize: '0.75rem',
             lineHeight: 1.4,
             color: 'var(--gray-500)',
             backgroundColor: 'var(--gray-100)',
@@ -1098,7 +1098,7 @@ function LivePositionCard({
                     borderRadius: 'var(--radius-sm)',
                     border: '1.5px solid var(--black)',
                     fontWeight: 700,
-                    fontSize: 10,
+                    fontSize: 11,
                     position: 'relative',
                     top: '-1px',
                   }}
@@ -1403,7 +1403,7 @@ function ClosedPositionCard({
                     borderRadius: 'var(--radius-sm)',
                     border: '1.5px solid var(--gray-300)',
                     fontWeight: 700,
-                    fontSize: 10,
+                    fontSize: 11,
                     position: 'relative',
                     top: '-1px',
                   }}

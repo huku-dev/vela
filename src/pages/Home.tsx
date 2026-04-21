@@ -234,10 +234,15 @@ export default function Home() {
   const firstTradeMoment: FirstTradeMoment = useMemo(() => {
     if (!isAuthenticated || tier === 'free') return null;
 
-    // First successfully executed trade (must be status=executed, not just auto-approved).
-    // Only trigger if exactly 1 executed proposal exists — prevents showing to existing users
-    // who had trades before this feature shipped (they lack the localStorage key but have many trades).
+    // First-proposal moments only fire for users whose proposal history is exactly one
+    // resolved proposal. Existing users who predate this feature have many resolved
+    // proposals and no localStorage key, so gating on "some(...)" would fire for them.
     const executedProposals = proposals.filter(p => p.status === 'executed');
+    const declinedProposals = proposals.filter(p => p.status === 'declined');
+    const expiredProposals = proposals.filter(p => p.status === 'expired');
+    const resolvedCount =
+      executedProposals.length + declinedProposals.length + expiredProposals.length;
+
     if (executedProposals.length === 1 && !safeGetItem('vela_first_trade_celebrated')) {
       const executedProposal = executedProposals[0];
       return {
@@ -248,13 +253,19 @@ export default function Home() {
       };
     }
 
-    // First decline
-    if (proposals.some(p => p.status === 'declined') && !safeGetItem('vela_first_decline_shown')) {
+    if (
+      resolvedCount === 1 &&
+      declinedProposals.length === 1 &&
+      !safeGetItem('vela_first_decline_shown')
+    ) {
       return { type: 'first-decline' };
     }
 
-    // First expiry
-    if (proposals.some(p => p.status === 'expired') && !safeGetItem('vela_first_expiry_shown')) {
+    if (
+      resolvedCount === 1 &&
+      expiredProposals.length === 1 &&
+      !safeGetItem('vela_first_expiry_shown')
+    ) {
       return { type: 'first-expiry' };
     }
 
@@ -435,7 +446,7 @@ export default function Home() {
           <VelaLogo variant="full" size={40} />
           <span
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
@@ -790,8 +801,8 @@ export default function Home() {
           <p
             style={{
               fontFamily: 'var(--type-heading-base-font)',
-              fontWeight: 800,
-              fontSize: '0.82rem',
+              fontWeight: 700,
+              fontSize: 16,
               color: 'var(--color-text-primary)',
               marginBottom: 'var(--space-3)',
               display: 'flex',
@@ -801,14 +812,17 @@ export default function Home() {
             }}
           >
             <span>Daily brief</span>
-            <span aria-hidden="true" style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+            <span
+              aria-hidden="true"
+              style={{ color: 'var(--color-text-muted)', fontWeight: 500, fontSize: 13 }}
+            >
               ·
             </span>
             <span
               style={{
                 fontWeight: 500,
                 color: 'var(--color-text-muted)',
-                fontSize: '0.78rem',
+                fontSize: 12.5,
               }}
             >
               {new Date(digest.created_at).toLocaleDateString(undefined, {

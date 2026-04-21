@@ -648,7 +648,7 @@ function WelcomeSplash({
         return;
       }
       el.scrollTo({ left: el.clientWidth * currentIdx, behavior: 'smooth' });
-    }, 3000);
+    }, 5000);
 
     return () => {
       clearInterval(timer);

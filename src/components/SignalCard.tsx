@@ -205,7 +205,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
             <span
               className="vela-body-sm"
               style={{
-                fontSize: '0.6rem',
+                fontSize: '0.72rem',
                 color: 'var(--color-text-muted)',
                 marginTop: 2,
                 display: 'block',
@@ -230,7 +230,7 @@ export default function SignalCard({ data, position }: SignalCardProps) {
                 className="vela-mono"
                 style={{
                   fontWeight: 'var(--weight-semibold)',
-                  fontSize: '0.65rem',
+                  fontSize: '0.75rem',
                   color: priceData.change24h >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
                   lineHeight: 1,
                   whiteSpace: 'nowrap',

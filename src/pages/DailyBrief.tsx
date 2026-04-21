@@ -179,15 +179,23 @@ export default function DailyBrief() {
     : null;
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div
+      style={{
+        maxWidth: 600,
+        margin: '0 auto',
+        padding: 'var(--space-4)',
+      }}
+    >
       {/* ← Back */}
       <span
         className="vela-body-sm"
         role="button"
         tabIndex={0}
-        onClick={() => navigate('/')}
+        onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
         onKeyDown={e => {
-          if (e.key === 'Enter' || e.key === ' ') navigate('/');
+          if (e.key === 'Enter' || e.key === ' ') {
+            window.history.length > 1 ? navigate(-1) : navigate('/');
+          }
         }}
         style={{
           cursor: 'pointer',
@@ -254,7 +262,16 @@ export default function DailyBrief() {
               Market Pulse
             </span>
             {pulseAge != null && (
-              <span className="vela-body-xs vela-text-muted">
+              <span
+                className="vela-label-sm"
+                style={{
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 500,
+                  color: 'var(--color-text-muted)',
+                }}
+              >
                 {pulseAge < 1
                   ? 'Just now'
                   : pulseAge < 24
