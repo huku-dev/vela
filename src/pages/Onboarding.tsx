@@ -1,13 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
-import { useTrading } from '../hooks/useTrading';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { useSubscription } from '../hooks/useSubscription';
 import { track, AnalyticsEvent } from '../lib/analytics';
 import VelaLogo from '../components/VelaLogo';
 import { BailSheet } from '../components/BailSheet';
-import type { TradingMode } from '../types';
 import { TIER_DEFINITIONS } from '../lib/tier-definitions';
 
 // ── Splash panel data ──────────────────────────────────────
@@ -55,37 +53,12 @@ const PANELS: SplashPanel[] = [
   },
 ];
 
-// ── Trading mode config ────────────────────────────────────
-
-const MODE_OPTIONS: {
-  mode: TradingMode;
-  label: string;
-  description: string;
-  price: string;
-  recommended?: boolean;
-}[] = [
-  {
-    mode: 'view_only',
-    label: 'View only',
-    description: 'See signals and analysis. Includes 1 free trade to try it out.',
-    price: 'Free',
-  },
-  {
-    mode: 'semi_auto',
-    label: 'Manual approval',
-    description:
-      'Vela proposes trades based on signals. You approve each one before it executes. A good balance of control and convenience.',
-    price: '$10/mo',
-    recommended: true,
-  },
-  {
-    mode: 'full_auto',
-    label: 'Auto-execute',
-    description:
-      'Vela executes trades automatically the moment it spots an opportunity. Best way to capture optimal prices.',
-    price: '$20/mo',
-  },
-];
+// TradingModeSetup was removed in 2026-04 (Batch 2b). The standalone mode
+// selection step created confusion (Sarah's onboarding call) and overlapped
+// with the plan page's features. Mode is now derived from plan choice on
+// Stripe success (Home.tsx post-checkout effect): Standard → semi_auto,
+// Premium → full_auto. Wallet provisioning moved to that same effect for
+// paid users; free/trial users provision lazily at first deposit or trade.
 
 // ── Mockup components (marketing-site quality) ─────────────
 
@@ -851,154 +824,6 @@ function WelcomeSplash({
   );
 }
 
-function TradingModeSetup({ onContinue }: { onContinue: (mode: TradingMode) => void }) {
-  const [selectedMode, setSelectedMode] = useState<TradingMode>('semi_auto');
-  const selectedOption = MODE_OPTIONS.find(o => o.mode === selectedMode);
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100dvh',
-        backgroundColor: 'var(--color-bg-page)',
-        padding: 'var(--space-6) var(--space-4) var(--space-6)',
-      }}
-    >
-      {/* Header */}
-      <div style={{ marginBottom: 'var(--space-6)' }}>
-        <VelaLogo size={40} />
-      </div>
-
-      <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
-        <h2 className="vela-heading-lg" style={{ marginBottom: 'var(--space-2)' }}>
-          How should Vela trade for you?
-        </h2>
-        <p className="vela-body-sm vela-text-secondary" style={{ marginBottom: 'var(--space-5)' }}>
-          You can change this anytime.
-        </p>
-
-        {/* Ultra-compact mode options: label + price on one line */}
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-2)',
-          }}
-        >
-          {MODE_OPTIONS.map(({ mode, label, price, recommended }) => {
-            const isSelected = selectedMode === mode;
-            return (
-              <button
-                key={mode}
-                onClick={() => setSelectedMode(mode)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                  padding: 'var(--space-4)',
-                  backgroundColor: isSelected ? 'var(--gray-100)' : 'transparent',
-                  border: isSelected ? '2px solid var(--black)' : '1px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                  width: '100%',
-                  boxShadow: isSelected ? '2px 2px 0 var(--black)' : 'none',
-                  transition: 'all 120ms ease-out',
-                }}
-              >
-                {/* Radio circle */}
-                <div
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    border: `2px solid ${isSelected ? 'var(--black)' : 'var(--gray-300)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {isSelected && (
-                    <div
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--black)',
-                      }}
-                    />
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span className="vela-body-sm" style={{ fontWeight: 600 }}>
-                    {label}
-                  </span>
-                  {recommended && (
-                    <span
-                      style={{
-                        marginLeft: 'var(--space-2)',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: 'var(--green-dark)',
-                        backgroundColor: 'var(--color-status-buy-bg)',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
-                      }}
-                    >
-                      Recommended
-                    </span>
-                  )}
-                </div>
-                <span className="vela-body-sm" style={{ fontWeight: 600, flexShrink: 0 }}>
-                  {price}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Detail panel for selected mode */}
-        {selectedOption && (
-          <div
-            style={{
-              marginTop: 'var(--space-4)',
-              padding: 'var(--space-4)',
-              backgroundColor: 'var(--gray-50)',
-              border: '1px solid var(--gray-200)',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0, marginBottom: 4 }}>
-              {selectedOption.label}
-            </p>
-            <p className="vela-body-sm vela-text-muted" style={{ margin: 0, lineHeight: 1.5 }}>
-              {selectedOption.description}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom CTA area */}
-      <div style={{ maxWidth: 440, margin: '0 auto', width: '100%', paddingTop: 'var(--space-4)' }}>
-        <button
-          className="vela-btn vela-btn-primary"
-          onClick={() => onContinue(selectedMode)}
-          style={{ width: '100%' }}
-        >
-          {selectedMode === 'view_only' ? 'Continue' : 'Continue'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// WalletSetup removed — wallet is provisioned in handleModeSelected,
-// users go to plan selection then Stripe instead of seeing a wallet screen.
 
 // ── Plan selection (step 4 — after mode selection, before Stripe) ──
 
@@ -1243,12 +1068,11 @@ function OnboardingPlanSelection({
 
 // ── Main onboarding orchestrator ───────────────────────────
 
-type OnboardingStep = 'splash' | 'trading_mode' | 'plan';
+type OnboardingStep = 'splash' | 'plan';
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { isAuthenticated, login } = useAuthContext();
-  const { updatePreferences, enableTrading } = useTrading();
   const { isOnboarded, isChecking, completeOnboarding } = useOnboarding();
   const { startCheckout } = useSubscription();
 
@@ -1290,86 +1114,28 @@ export default function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // If we opened directly onto the plan step because of a cancel return,
-  // skip the first history-push in the popstate effect so the browser's
-  // Back button exits the onboarding naturally instead of walking the user
-  // backwards to the trading-mode step (which would re-run enableTrading).
-  const skipInitialHistoryPush = useRef(returnedFromCancel);
-
-  // When user authenticates (after Privy login), advance to next step —
-  // but only after the onboarding check completes. A returning user who is
-  // authenticated AND already onboarded will be redirected to '/' by the
-  // isOnboarded effect above, so we must not race past splash before that
-  // redirect can fire.
+  // When user authenticates (after Privy login), advance to the plan step.
+  // A returning user who is authenticated AND already onboarded will be
+  // redirected to '/' by the isOnboarded effect above, so we must not race
+  // past splash before that redirect can fire.
   useEffect(() => {
     if (isAuthenticated && !isChecking && !isOnboarded && step === 'splash') {
-      setStep('trading_mode');
+      setStep('plan');
+      track(AnalyticsEvent.ONBOARDING_STEP_VIEWED, { step: 'plan' });
     }
   }, [isAuthenticated, isChecking, isOnboarded, step]);
 
-  // In-app back navigation: push a history entry each time we advance a
-  // step, then pop back to the previous step when the browser/OS back
-  // button fires. Without this, back from the plan step exits the
-  // onboarding flow entirely and returns users to the Privy sign-in page.
-  //
-  // Dedupe pushes by checking current history state — prevents duplicate
-  // entries in React StrictMode (double-invoked effects) which would
-  // otherwise force the user to hit Back multiple times to leave.
-  //
-  // skipInitialHistoryPush is true only on the first render after a Stripe
-  // cancel return; we intentionally do not push a back-target for the
-  // landing step there, so Back exits the onboarding rather than walking
-  // back through steps the user did not visit this session.
-  useEffect(() => {
-    if (step === 'splash') return;
-    if (skipInitialHistoryPush.current) {
-      skipInitialHistoryPush.current = false;
-    } else if (window.history.state?.onboardingStep !== step) {
-      window.history.pushState({ onboardingStep: step }, '');
-    }
-    const handlePop = () => {
-      setStep(prev => (prev === 'plan' ? 'trading_mode' : 'splash'));
-    };
-    window.addEventListener('popstate', handlePop);
-    return () => window.removeEventListener('popstate', handlePop);
-  }, [step]);
+  // Browser back from the plan step: there is no in-app previous step now
+  // that TradingModeSetup is gone. We intentionally do NOT push a history
+  // entry, so Back follows normal browser behavior and exits /welcome to
+  // wherever the user came from (marketing site, bookmark, etc.).
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
       // Already logged in (e.g. returning user who hasn't completed onboarding)
-      setStep('trading_mode');
+      setStep('plan');
     } else {
       login();
-    }
-  };
-
-  const handleModeSelected = async (mode: TradingMode) => {
-    track(AnalyticsEvent.TRADING_MODE_SELECTED, { mode });
-
-    // Always provision wallet + save preferences (regardless of tier).
-    // enableTrading calls updatePreferences + provision-wallet.
-    try {
-      if (mode !== 'view_only') {
-        await enableTrading(mode);
-      } else {
-        await updatePreferences({ mode } as Record<string, unknown>);
-      }
-    } catch {
-      // Best-effort — don't block onboarding if this fails.
-      // The Account page "Enable trading" button is a fallback path.
-      console.warn('[Onboarding] Failed to save trading mode / provision wallet');
-    }
-
-    if (mode === 'semi_auto') {
-      setPendingCheckout('standard');
-      setStep('plan');
-    } else if (mode === 'full_auto') {
-      setPendingCheckout('premium');
-      setStep('plan');
-    } else {
-      // Free mode — skip plan selection, go straight to dashboard
-      await completeOnboarding();
-      navigate('/', { replace: true });
     }
   };
 
@@ -1410,10 +1176,6 @@ export default function Onboarding() {
 
   if (step === 'splash') {
     return <WelcomeSplash onGetStarted={handleGetStarted} onLogin={login} />;
-  }
-
-  if (step === 'trading_mode') {
-    return <TradingModeSetup onContinue={handleModeSelected} />;
   }
 
   const handleBailSheetDismiss = () => {

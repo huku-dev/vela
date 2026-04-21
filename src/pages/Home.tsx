@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { AssetClass } from '../types';
 import { Card } from '../components/VelaComponents';
@@ -63,7 +63,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { data, digest, loading, error, lastUpdated } = useDashboard();
   const { isAuthenticated } = useAuthContext();
-  const { positions, preferences, wallet, proposals, refresh } = useTrading();
+  const { positions, preferences, wallet, proposals, refresh, enableTrading } = useTrading();
   const {
     tier,
     partitionAssets,
@@ -76,6 +76,38 @@ export default function Home() {
   const [digestExpanded, setDigestExpanded] = useState(false);
   const [showTierSheet, setShowTierSheet] = useState(false);
   const [showDepositSheet, setShowDepositSheet] = useState(false);
+  const [provisioningWallet, setProvisioningWallet] = useState(false);
+
+  /**
+   * Opens the deposit sheet, provisioning a wallet first if one doesn't exist.
+   *
+   * Free / trial users don't get wallets at sign-up (lazy-provisioning
+   * pattern — see docs/threat-reports/onboarding-simplification.md). The
+   * first time they click Deposit, we create the wallet on demand so the
+   * flow stays linear: click → loader for ~2s → deposit sheet opens.
+   *
+   * Idempotent: if a wallet already exists, enableTrading only updates
+   * preferences and returns quickly. Paid users returning from a successful
+   * Stripe checkout already have wallets (provisioned in the checkout
+   * success effect) so this path is a no-op for them.
+   */
+  const openDepositSheet = useCallback(async () => {
+    if (wallet?.master_address) {
+      setShowDepositSheet(true);
+      return;
+    }
+    setProvisioningWallet(true);
+    try {
+      await enableTrading('semi_auto');
+      setShowDepositSheet(true);
+    } catch (err) {
+      console.warn('[Home] wallet provisioning failed on deposit click:', err);
+      // Soft-fail: leave the provisioning state up briefly, then clear so
+      // the user can retry. Sentry captures the error via useTrading.
+    } finally {
+      setProvisioningWallet(false);
+    }
+  }, [wallet?.master_address, enableTrading]);
   const [selectedClass, setSelectedClass] = useState<'all' | AssetClass>(() => {
     try {
       const stored = localStorage.getItem('vela_signal_tab');
@@ -115,9 +147,22 @@ export default function Home() {
   // friend's onboarded flag without granting paid tier — harmless UX delta.
   // Payment authorisation still depends on the Stripe webhook updating the
   // subscriptions table. Never gate a paid feature on the onboarded flag.
+  // Capture the tier Stripe redirected with exactly once, at mount. Used by
+  // the tier-watch effect below to trigger wallet provisioning and the
+  // mode write when the subscription row catches up. Lazy initializer
+  // ensures we read the URL before anything else (like dismissInterstitial)
+  // strips the params.
+  const [purchasedTier] = useState<'standard' | 'premium' | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('checkout') !== 'success') return null;
+    const t = params.get('tier');
+    return t === 'premium' || t === 'standard' ? t : null;
+  });
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('checkout') !== 'success') return;
+
     (async () => {
       try {
         await markOnboarded();
@@ -125,6 +170,7 @@ export default function Home() {
         console.warn('[Home] markOnboarded failed after checkout success:', err);
       }
     })();
+
     // Clear the persisted tier preference set during the checkout redirect
     // (see Onboarding.tsx handlePlanCheckout) so it doesn't leak into a
     // future cancel-return restore on the same tab.
@@ -143,6 +189,35 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Wallet provisioning + mode write — gated on tier confirmation.
+  //
+  // Why a separate effect: the DB has a validate_user_mode trigger that
+  // rejects preference writes when the requested mode isn't allowed on the
+  // user's current tier (e.g. full_auto requires premium). If we called
+  // enableTrading() immediately on post-checkout arrival, a slow Stripe
+  // webhook would cause the write to race the tier flip and get rejected,
+  // leaving premium users stuck with their prior mode.
+  //
+  // Instead, watch currentTier and fire enableTrading exactly once, after
+  // currentTier matches the purchased tier. The refreshSubscription poll
+  // above makes this happen within a few seconds of the webhook writing.
+  // If the webhook never writes (hard failure), enableTrading never fires
+  // here, and the user can still manually provision via the Account page.
+  const enableTradingFiredRef = useRef(false);
+  useEffect(() => {
+    if (!purchasedTier || enableTradingFiredRef.current) return;
+    if (tier !== purchasedTier) return;
+    enableTradingFiredRef.current = true;
+    const mode = purchasedTier === 'premium' ? 'full_auto' : 'semi_auto';
+    (async () => {
+      try {
+        await enableTrading(mode);
+      } catch (err) {
+        console.warn('[Home] enableTrading failed after checkout success:', err);
+      }
+    })();
+  }, [purchasedTier, tier, enableTrading]);
+
   const dismissInterstitial = (openDeposit: boolean) => {
     safeSetItem('vela_post_checkout_shown', 'true');
     const url = new URL(window.location.href);
@@ -150,7 +225,7 @@ export default function Home() {
     url.searchParams.delete('tier');
     window.history.replaceState({}, '', url.toString());
     setShowInterstitial(false);
-    if (openDeposit) setShowDepositSheet(true);
+    if (openDeposit) openDepositSheet();
   };
 
   // ── First-trade moment cards (one-time celebrations/nudges) ──
@@ -421,7 +496,8 @@ export default function Home() {
               : 'Vela is ready to trade for you. Add funds so we can execute when an opportunity appears.'}
           </p>
           <button
-            onClick={() => setShowDepositSheet(true)}
+            onClick={openDepositSheet}
+            disabled={provisioningWallet}
             style={{
               marginTop: 'var(--space-2)',
               padding: '6px 16px',
@@ -432,9 +508,26 @@ export default function Home() {
               color: 'var(--white)',
               border: 'none',
               borderRadius: '6px',
-              cursor: 'pointer',
+              cursor: provisioningWallet ? 'wait' : 'pointer',
+              opacity: provisioningWallet ? 0.8 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
+            {provisioningWallet && (
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 12,
+                  height: 12,
+                  border: '2px solid rgba(255, 255, 255, 0.4)',
+                  borderTopColor: 'var(--white)',
+                  borderRadius: '50%',
+                  animation: 'vela-spin 700ms linear infinite',
+                }}
+              />
+            )}
             Deposit now
           </button>
         </div>
@@ -948,6 +1041,11 @@ export default function Home() {
           onStartCheckout={startCheckout}
         />
       )}
+
+      {/* Keyframes for the inline deposit-button spinner used during lazy
+          wallet provisioning. Defined once at the component level so the
+          rule is always available even before the first provision click. */}
+      <style>{`@keyframes vela-spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Deposit sheet (triggered from fund-wallet banner or interstitial) */}
       {showDepositSheet && wallet && (
