@@ -23,6 +23,31 @@ const PRICE_PRIMARY: 'hyperliquid' | 'coingecko' =
 
 export const DEFAULT_POSITION_SIZE = 1000;
 
+// Display order for the dashboard feed. Drives what Free sees first (BTC)
+// and which 8 assets Standard gets. Lower = higher priority. Assets not in
+// this map fall through to position 99 and sort alphabetically.
+//
+// Selection logic uses this order via useTierAccess.partitionAssets, which
+// slices the first N. For max_assets=1 (Free) that means BTC wins; for
+// max_assets=8 (Standard) we ship a balanced crypto + equities + macro mix
+// and lock OIL + HYPE behind the upgrade paywall.
+//
+// Kept frontend-only (no DB sort_order column) so we can rebalance without
+// a migration. If this list drifts vs. the asset catalogue, verify in
+// /Users/henry/crypto-agent/docs/asset-lifecycle.md before shipping.
+const ASSET_DISPLAY_ORDER: Record<string, number> = {
+  btc: 1,
+  eth: 2,
+  sol: 3,
+  spx: 4,
+  aapl: 5,
+  nvda: 6,
+  amzn: 7,
+  gold: 8,
+  oil: 9,
+  hype: 10,
+};
+
 // ── Module-level cache so data persists across navigations ──
 let cachedDashboard: AssetDashboard[] | null = null;
 let cachedDigest: Brief | null = null;
@@ -264,7 +289,8 @@ export function useDashboard() {
 
     try {
       const [assetsRes, signalsRes, briefsRes, digestsRes] = await Promise.all([
-        supabase.from('assets').select('*').eq('enabled', true).order('id'),
+        // Order is applied client-side via ASSET_DISPLAY_ORDER after fetch.
+        supabase.from('assets').select('*').eq('enabled', true),
         supabase.from('latest_signals').select('*'),
         supabase.from('latest_briefs').select('*'),
         supabase.from('latest_digest').select('*').limit(1),
@@ -294,6 +320,15 @@ export function useDashboard() {
         fetchBuilderPerpPrices(builderPerpSymbols),
         fetchHyperliquid24hChanges(builderPerpSymbols),
       ]);
+
+      // Sort to the product-preferred order so partitionAssets (which just
+      // slices the first N) surfaces the right defaults to each tier.
+      assets.sort((a: Asset, b: Asset) => {
+        const ap = ASSET_DISPLAY_ORDER[a.id] ?? 99;
+        const bp = ASSET_DISPLAY_ORDER[b.id] ?? 99;
+        if (ap !== bp) return ap - bp;
+        return a.id.localeCompare(b.id);
+      });
 
       const dashboard: AssetDashboard[] = assets.map((asset: Asset) => {
         const signal = signals.find((s: Signal) => s.asset_id === asset.id) || null;

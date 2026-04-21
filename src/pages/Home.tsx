@@ -329,7 +329,10 @@ export default function Home() {
     return tabs;
   }, [classCounts]);
 
-  const CLASS_ORDER: AssetClass[] = ['crypto', 'equities', 'commodities', 'indices'];
+  // Match the ASSET_DISPLAY_ORDER priority in useData.ts: SPX (indices, priority 4)
+  // outranks GOLD/OIL (commodities, 8/9), so indices lands before commodities in
+  // the class-grouped 'all' view.
+  const CLASS_ORDER: AssetClass[] = ['crypto', 'equities', 'indices', 'commodities'];
   const CLASS_LABELS: Record<AssetClass, string> = {
     crypto: 'Crypto',
     equities: 'Equities',
@@ -798,10 +801,7 @@ export default function Home() {
             }}
           >
             <span>Daily brief</span>
-            <span
-              aria-hidden="true"
-              style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}
-            >
+            <span aria-hidden="true" style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
               ·
             </span>
             <span
