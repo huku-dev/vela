@@ -34,7 +34,7 @@ const navItems = [
           height="8"
           rx="1"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           fill="none"
         />
         <rect
@@ -44,7 +44,7 @@ const navItems = [
           height="12"
           rx="1"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           fill="none"
         />
         <rect
@@ -54,7 +54,7 @@ const navItems = [
           height="16"
           rx="1"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           fill="none"
         />
       </svg>
@@ -65,11 +65,11 @@ const navItems = [
     path: '/account',
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <circle cx="10" cy="7" r="4" stroke="currentColor" strokeWidth="2" fill="none" />
         <path
           d="M3 18C3 14.5 6 12 10 12C14 12 17 14.5 17 18"
           stroke="currentColor"
-          strokeWidth="1.5"
+          strokeWidth="2"
           strokeLinecap="round"
           fill="none"
         />
@@ -266,12 +266,32 @@ export default function Layout() {
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: isActive ? 'var(--color-text-primary)' : 'var(--gray-400)',
+                  // Equal-weight tappability: all tabs near-ink so no tab looks
+                  // "lighter" than another. Active state layers a top bar +
+                  // bold label on top; orientation and tappability are
+                  // separate concerns. See mockups/bottom-nav-v3.html Option B.
+                  color: 'var(--gray-800)',
+                  position: 'relative',
                   transition: 'color var(--motion-fast) var(--motion-ease-out)',
                   WebkitTapHighlightColor: 'transparent',
                 }}
                 aria-label={itemLabel}
+                aria-current={isActive ? 'page' : undefined}
               >
+                {isActive && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      top: -2,
+                      left: '14%',
+                      right: '14%',
+                      height: 3,
+                      background: 'var(--vela-ink)',
+                      borderRadius: '0 0 3px 3px',
+                    }}
+                  />
+                )}
                 <div style={{ position: 'relative', display: 'inline-flex' }}>
                   {item.icon}
                   {item.path === '/account' && showAccountDot && (
@@ -316,7 +336,7 @@ export default function Layout() {
                   style={{
                     fontSize: '0.65rem',
                     fontFamily: 'var(--type-label-sm-font)',
-                    fontWeight: isActive ? 700 : 600,
+                    fontWeight: isActive ? 700 : 500,
                     letterSpacing: '0.04em',
                   }}
                 >
