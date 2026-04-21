@@ -199,12 +199,12 @@ export default function DailyBrief() {
         &larr; Back
       </span>
 
-      {/* Heading */}
+      {/* Heading — sentence case per wireframe v2. */}
       <h1
         className="vela-heading-lg"
         style={{ marginBottom: 'var(--space-1)', fontFamily: "'Space Grotesk', sans-serif" }}
       >
-        Daily Brief
+        Daily brief
       </h1>
       <span
         className="vela-body-sm vela-text-muted"

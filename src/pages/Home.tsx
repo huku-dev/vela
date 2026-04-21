@@ -777,7 +777,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Daily Digest */}
+      {/* Daily brief card — inline title + short date (wireframe v2). */}
       {digest && (
         <Card
           variant="lavender"
@@ -790,25 +790,34 @@ export default function Home() {
               fontWeight: 800,
               fontSize: '0.82rem',
               color: 'var(--color-text-primary)',
-              marginBottom: 'var(--space-1)',
-            }}
-          >
-            {new Date(digest.created_at).toLocaleDateString(undefined, {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </p>
-          <span
-            className="vela-label-sm vela-text-muted"
-            style={{
-              textTransform: 'uppercase',
-              display: 'block',
               marginBottom: 'var(--space-3)',
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 'var(--space-2)',
+              flexWrap: 'wrap',
             }}
           >
-            Daily digest
-          </span>
+            <span>Daily brief</span>
+            <span
+              aria-hidden="true"
+              style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}
+            >
+              ·
+            </span>
+            <span
+              style={{
+                fontWeight: 500,
+                color: 'var(--color-text-muted)',
+                fontSize: '0.78rem',
+              }}
+            >
+              {new Date(digest.created_at).toLocaleDateString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          </p>
 
           <div
             style={{
