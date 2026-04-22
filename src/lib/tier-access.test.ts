@@ -264,10 +264,7 @@ describe('Asset ordering matters for tier gating', () => {
 // so future edits to the map don't silently regress Free/Standard visibility.
 
 describe('ASSET-ORDER-SRC: ASSET_DISPLAY_ORDER priority map (Batch 5)', () => {
-  const useDataSrc = readFileSync(
-    resolve(__dirname, '../hooks/useData.ts'),
-    'utf-8'
-  );
+  const useDataSrc = readFileSync(resolve(__dirname, '../hooks/useData.ts'), 'utf-8');
 
   it('defines ASSET_DISPLAY_ORDER with expected prod-10 asset priorities', () => {
     // These are the canonical priorities locked in at Batch 5. Changes here
@@ -293,18 +290,7 @@ describe('ASSET-ORDER-SRC: ASSET_DISPLAY_ORDER priority map (Batch 5)', () => {
 
   it('Free tier (1 slot) surfaces BTC; Standard (8 slots) excludes OIL + HYPE', () => {
     // Simulate the sort applied in useData.ts against the prod asset list.
-    const prodAssets = [
-      'aapl',
-      'amzn',
-      'btc',
-      'eth',
-      'gold',
-      'hype',
-      'nvda',
-      'oil',
-      'sol',
-      'spx',
-    ];
+    const prodAssets = ['aapl', 'amzn', 'btc', 'eth', 'gold', 'hype', 'nvda', 'oil', 'sol', 'spx'];
     const priority: Record<string, number> = {
       btc: 1,
       eth: 2,
