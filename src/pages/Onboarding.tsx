@@ -1273,7 +1273,9 @@ function PlanCard({
         border: `${isPremium ? 3 : 2}px solid var(--color-border-default)`,
         borderRadius: 'var(--radius-lg)',
         padding: 'var(--space-5) var(--space-5) var(--space-4)',
-        boxShadow: isPremium ? '6px 6px 0 var(--color-border-default)' : 'none',
+        boxShadow: isPremium
+          ? '6px 6px 0 var(--color-border-default)'
+          : '2px 2px 0 var(--color-border-default)',
         marginTop: isPremium ? 'var(--space-4)' : 0,
       }}
     >

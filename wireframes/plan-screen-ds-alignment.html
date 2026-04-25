@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plan Screen: Option A — Standard card lift</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --white: #fff;
+        --black: #000;
+        --cream-base: #f5f1e8;
+        --ink: #0a0a0a;
+
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-500: #6b7280;
+        --gray-600: #475569;
+        --gray-700: #374151;
+        --gray-900: #0f172a;
+
+        --mint-50: #f0fdf4;
+        --green-dark: #059669;
+        --green-tint: #f0fdf6;
+        --vela-signal-green: #0fe68c;
+
+        --blue-primary: #2563eb;
+        --amber-light: #fde68a;
+        --amber-dark: #7a4f00;
+
+        --border-medium: 2px;
+        --border-thick: 3px;
+        --radius-sm: 0.5rem;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+        --radius-full: 9999px;
+
+        --shadow-xs: 2px 2px 0 var(--black);
+        --shadow-sm: 3px 3px 0 var(--black);
+        --shadow-md: 4px 4px 0 var(--black);
+        --shadow-lg: 6px 6px 0 var(--black);
+
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+        --space-5: 1.25rem;
+        --space-6: 1.5rem;
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #eee8da;
+        color: var(--gray-900);
+      }
+
+      .stage { padding: 36px 24px 60px; max-width: 1200px; margin: 0 auto; }
+      .stage-header {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0 0 8px; font-size: 26px; letter-spacing: -0.01em;
+      }
+      .stage-sub { color: var(--gray-600); margin: 0 0 28px; font-size: 14px; max-width: 780px; line-height: 1.5; }
+
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+      }
+      @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+
+      .col h2 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+        color: var(--gray-600); margin: 0 0 12px;
+      }
+      .col .tag {
+        display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+        border-radius: 999px; margin-left: 8px; vertical-align: middle; border: 1.5px solid;
+      }
+      .tag-now { color: #b45309; background: #fef3c7; border-color: #fcd34d; }
+      .tag-new { color: var(--green-dark); background: var(--mint-50); border-color: #10b981; }
+
+      /* ────────── Production-accurate screen ────────── */
+      .screen {
+        width: 100%;
+        max-width: 440px;
+        margin: 0 auto;
+        background: var(--cream-base);
+        border: 3px solid var(--black);
+        border-radius: 28px;
+        box-shadow: 6px 6px 0 var(--black);
+        padding: var(--space-6) var(--space-4);
+      }
+
+      .logo {
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: var(--space-6);
+      }
+      .logo-mark {
+        width: 28px; height: 20px;
+        border: 2.5px solid var(--ink);
+        transform: rotate(45deg) scaleY(0.9);
+        display: grid; place-items: center;
+      }
+      .logo-mark::after { content: ""; width: 6px; height: 6px; background: var(--vela-signal-green); }
+      .logo-text { font-family: "Space Grotesk", sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; }
+
+      /* Matches .vela-heading-lg + inline 1.75rem override */
+      .screen-title {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 28px;            /* 1.75rem */
+        line-height: 1.1;
+        letter-spacing: -0.01em;
+        margin: 0 0 var(--space-2);
+      }
+      .screen-sub {
+        font-size: 14px;
+        color: var(--gray-700);
+        line-height: 1.45;
+        margin: 0 0 var(--space-5);
+      }
+
+      /* Billing toggle — matches production exactly */
+      .billing {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: var(--white);
+        border: 2px solid var(--black);
+        border-radius: var(--radius-md);
+        padding: 4px;
+        margin-bottom: var(--space-5);
+        box-shadow: var(--shadow-sm);
+      }
+      .billing button {
+        padding: 12px 10px;
+        font-family: "Inter", sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--gray-600);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .billing button.active { background: var(--ink); color: var(--white); }
+      .billing .save {
+        background: var(--amber-light);
+        color: var(--amber-dark);
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: var(--radius-full);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+      }
+
+      /* Cards — matches production PlanCard */
+      .plan-cards { display: flex; flex-direction: column; gap: var(--space-3); }
+      .card {
+        position: relative;
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5) var(--space-5) var(--space-4);
+      }
+      .card-std-now {
+        border: var(--border-medium) solid var(--black);
+        box-shadow: none;
+      }
+      .card-std-lifted {
+        border: var(--border-medium) solid var(--black);
+        box-shadow: var(--shadow-xs);
+      }
+      .card-premium {
+        border: var(--border-thick) solid var(--black);
+        box-shadow: var(--shadow-lg);
+        background: var(--green-tint);
+        margin-top: var(--space-4);
+      }
+
+      .pill {
+        position: absolute;
+        top: -12px;
+        left: 18px;
+        background: var(--vela-signal-green);
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 700;
+        padding: 5px 12px;
+        border-radius: var(--radius-full);
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        border: 2px solid var(--black);
+      }
+
+      .tier {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 22px;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .price-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 2px; }
+      .price {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.01em;
+      }
+      .price-unit { font-size: 13px; color: var(--gray-500); font-weight: 500; }
+      .billing-note { font-size: 12px; color: var(--gray-500); margin-bottom: var(--space-3); }
+      .features-heading {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--gray-500);
+        margin-bottom: var(--space-2);
+      }
+
+      ul.features { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
+      ul.features li {
+        font-size: 14px;
+        line-height: 1.45;
+        padding: 9px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        border-bottom: 1px solid var(--gray-200);
+      }
+      ul.features li:last-child { border-bottom: none; }
+      ul.features .check {
+        color: var(--green-dark);
+        font-weight: 800;
+        flex-shrink: 0;
+        width: 14px;
+        font-size: 14px;
+      }
+      ul.features .feat-title {
+        font-weight: 600;
+        color: var(--gray-900);
+      }
+      ul.features .feat-detail {
+        color: var(--gray-500);
+        font-weight: 400;
+        display: block;
+        font-size: 12.5px;
+        margin-top: 2px;
+      }
+
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 13px;
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        font-weight: 700;
+        text-align: center;
+        border: var(--border-thick) solid var(--black);
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        font-family: "Inter", sans-serif;
+      }
+      .btn-primary { background: var(--blue-primary); color: var(--white); }
+      .btn-secondary { background: var(--white); color: var(--gray-900); }
+
+      .skip-link {
+        display: block;
+        text-align: center;
+        margin-top: var(--space-5);
+        font-size: 13px;
+        color: var(--gray-600);
+        text-decoration: underline;
+      }
+
+      .notes {
+        margin-top: 16px;
+        font-size: 12.5px;
+        color: var(--gray-700);
+        background: var(--white);
+        border: 2px dashed var(--gray-300);
+        border-radius: 12px;
+        padding: 14px 16px;
+        line-height: 1.55;
+      }
+      .notes strong { color: var(--gray-900); }
+      .notes code {
+        font-family: "JetBrains Mono", monospace;
+        background: var(--gray-200);
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-size: 11.5px;
+      }
+      .diff {
+        background: var(--mint-50);
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <h1 class="stage-header">Plan screen — Option A (production-accurate)</h1>
+      <p class="stage-sub">
+        Rebuilt with the exact dimensions from <code>Onboarding.tsx</code>: 14px feature text, 22px tier name,
+        32px JetBrains Mono price, 2px border on Standard, 3px border on Premium, <code>--shadow-lg</code> (6×6)
+        on Premium, amber SAVE pill on Annual. The only difference between the two screens is
+        <span class="diff">Standard's box-shadow</span>: <code>none</code> (current) → <code>--shadow-xs</code>
+        (2×2, proposed).
+      </p>
+
+      <div class="compare">
+        <!-- ─────────────── CURRENT ─────────────── -->
+        <div class="col">
+          <h2>Current<span class="tag tag-now">LIVE</span></h2>
+          <div class="screen">
+            <div class="logo"><span class="logo-mark"></span><span class="logo-text">vela</span></div>
+            <h2 class="screen-title">Choose your plan</h2>
+            <p class="screen-sub">Cancel anytime from your account settings.</p>
+
+            <div class="billing">
+              <button class="active">Monthly</button>
+              <button>Annual <span class="save">Save 17%</span></button>
+            </div>
+
+            <div class="plan-cards">
+              <div class="card card-std-now">
+                <div class="tier">Standard</div>
+                <div class="price-row">
+                  <span class="price">$10</span><span class="price-unit">/ month</span>
+                </div>
+                <div class="billing-note">Billed monthly</div>
+                <ul class="features">
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Buy, sell &amp; wait signals on 8 assets</span>
+                      <span class="feat-detail">Across crypto, equities, and commodities.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Manual trade approval</span>
+                      <span class="feat-detail">Vela proposes, you approve each trade.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span><span class="feat-title">No trade fees</span></span>
+                  </li>
+                </ul>
+                <button class="btn btn-secondary">Subscribe to Standard</button>
+              </div>
+
+              <div class="card card-premium">
+                <span class="pill">Recommended</span>
+                <div class="tier">Premium</div>
+                <div class="price-row">
+                  <span class="price">$20</span><span class="price-unit">/ month</span>
+                </div>
+                <div class="billing-note">Billed monthly</div>
+                <div class="features-heading">Everything in Standard, plus:</div>
+                <ul class="features">
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Every asset, 24/7 coverage</span>
+                      <span class="feat-detail">Signals on every market Vela watches, round the clock.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Auto-execute trades</span>
+                      <span class="feat-detail">Vela trades the moment a signal fires.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span><span class="feat-title">Priority support</span></span>
+                  </li>
+                </ul>
+                <button class="btn btn-primary">Subscribe to Premium</button>
+              </div>
+            </div>
+
+            <a class="skip-link" href="#">I'm not ready to subscribe yet</a>
+          </div>
+          <div class="notes">
+            Standard card: <code>border: 2px</code>, <code>box-shadow: none</code>. Sits flat on the cream.
+          </div>
+        </div>
+
+        <!-- ─────────────── OPTION A ─────────────── -->
+        <div class="col">
+          <h2>Option A<span class="tag tag-new">SUBTLE LIFT</span></h2>
+          <div class="screen">
+            <div class="logo"><span class="logo-mark"></span><span class="logo-text">vela</span></div>
+            <h2 class="screen-title">Choose your plan</h2>
+            <p class="screen-sub">Cancel anytime from your account settings.</p>
+
+            <div class="billing">
+              <button class="active">Monthly</button>
+              <button>Annual <span class="save">Save 17%</span></button>
+            </div>
+
+            <div class="plan-cards">
+              <div class="card card-std-lifted">
+                <div class="tier">Standard</div>
+                <div class="price-row">
+                  <span class="price">$10</span><span class="price-unit">/ month</span>
+                </div>
+                <div class="billing-note">Billed monthly</div>
+                <ul class="features">
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Buy, sell &amp; wait signals on 8 assets</span>
+                      <span class="feat-detail">Across crypto, equities, and commodities.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Manual trade approval</span>
+                      <span class="feat-detail">Vela proposes, you approve each trade.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span><span class="feat-title">No trade fees</span></span>
+                  </li>
+                </ul>
+                <button class="btn btn-secondary">Subscribe to Standard</button>
+              </div>
+
+              <div class="card card-premium">
+                <span class="pill">Recommended</span>
+                <div class="tier">Premium</div>
+                <div class="price-row">
+                  <span class="price">$20</span><span class="price-unit">/ month</span>
+                </div>
+                <div class="billing-note">Billed monthly</div>
+                <div class="features-heading">Everything in Standard, plus:</div>
+                <ul class="features">
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Every asset, 24/7 coverage</span>
+                      <span class="feat-detail">Signals on every market Vela watches, round the clock.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span>
+                      <span class="feat-title">Auto-execute trades</span>
+                      <span class="feat-detail">Vela trades the moment a signal fires.</span>
+                    </span>
+                  </li>
+                  <li>
+                    <span class="check">✓</span>
+                    <span><span class="feat-title">Priority support</span></span>
+                  </li>
+                </ul>
+                <button class="btn btn-primary">Subscribe to Premium</button>
+              </div>
+            </div>
+
+            <a class="skip-link" href="#">I'm not ready to subscribe yet</a>
+          </div>
+          <div class="notes">
+            Standard card: <code>border: 2px</code>, <span class="diff"><code>box-shadow: var(--shadow-xs)</code></span>.
+            Card lifts 2px. Premium still dominates via 6px shadow, green tint, thicker border, RECOMMENDED pill.
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

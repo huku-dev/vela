@@ -249,6 +249,47 @@
   --z-popover: 600;
   --z-tooltip: 700;
   --z-notification: 800;
+
+}
+
+/* ------------------------------------------------------------------
+   Privy login modal — bridge tokens.
+   Privy exposes a fixed set of CSS variables (--privy-*) for modal
+   customization. Mapping them to our tokens makes the auth handoff
+   feel continuous with the cream/ink app surface. Shadows, fonts,
+   and borders are NOT customizable in Privy; the modal will still
+   read as lighter than the app. See lib/privy.tsx for SDK-level props
+   (theme, accentColor, landingHeader, logo).
+
+   IMPORTANT: Must be scoped to `body`, not `:root`. Privy ships its
+   own :root-scoped defaults that load after our stylesheet, so a
+   :root override loses the cascade. `body` is more specific and wins.
+   ------------------------------------------------------------------ */
+body {
+  --privy-border-radius-sm: var(--radius-sm);
+  --privy-border-radius-md: var(--radius-md);
+  --privy-border-radius-lg: var(--radius-lg);
+  --privy-border-radius-full: var(--radius-full);
+
+  --privy-color-background: var(--color-bg-page);
+  --privy-color-background-2: var(--color-bg-surface);
+  --privy-color-background-3: var(--gray-100);
+
+  --privy-color-foreground: var(--color-text-primary);
+  --privy-color-foreground-2: var(--color-text-secondary);
+  --privy-color-foreground-3: var(--color-text-muted);
+  --privy-color-foreground-4: var(--color-text-disabled);
+  --privy-color-foreground-accent: var(--color-text-on-accent);
+
+  --privy-color-accent: var(--color-action-primary);
+  --privy-color-accent-light: var(--blue-accent);
+  --privy-color-accent-lightest: var(--blue-light);
+  --privy-color-accent-dark: var(--color-action-primary-hover);
+  --privy-color-accent-darkest: var(--color-action-primary-hover);
+
+  --privy-color-success: var(--color-success);
+  --privy-color-error: var(--color-error);
+  --privy-color-error-light: var(--red-light);
 }
 
 /* ============================================================================
