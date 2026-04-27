@@ -162,7 +162,7 @@ The locked card is a single card with no nested chrome. The pill, blurred previe
 
 - **The story panel stays open.** "The story" is an AI summary of public news content. Same source content the user could read on Bloomberg / CoinDesk directly, just digested. No gate.
 - **Vela's read is gated, but the conclusion is visible.** The directional dot (green/red/grey) and the headline ("Bullish for Bitcoin", etc.) render unblurred. The supporting paragraph is blurred.
-- **Same single-card pattern, compact variant.** Below the blurred body paragraph and a thin divider sits the inline upgrade pitch with tighter spacing. Eyebrow `Upgrade required`, title `Unlock Vela's read on the news`, three tight bullets, same CTA + price subline.
+- **Same single-card pattern, compact variant.** Below the blurred body paragraph and a thin divider sits the inline upgrade pitch with tighter spacing. Eyebrow `Upgrade required`, title `Unlock Vela's read on the news`, two short bullets (no filler — the news-detail variant doesn't need three), same CTA + price subline.
 - **"Read full article on {source}" link stays active.** The user can always reach the underlying news regardless of tier.
 - **"More on {asset} today" section** stays open with the same row tappable affordance.
 
@@ -177,7 +177,7 @@ The locked card is a single card with no nested chrome. The pill, blurred previe
 | Surface | Eyebrow | Title | Bullets |
 |---------|---------|-------|---------|
 | Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | See why Vela calls Wait, Buy, or Short · Vela trades {Asset} for you and looks after the position · A heads-up when news could move the price |
-| News detail Vela's read | `Upgrade required` | `Unlock Vela's read on the news` | Plain-English take on news that matters · Tied to your {Asset} position · A heads-up only when it counts |
+| News detail Vela's read | `Upgrade required` | `Unlock Vela's read on the news` | Understand the detail beyond the news · See how it shapes Vela's call on {Asset} |
 
 ### What stays open across both surfaces
 
