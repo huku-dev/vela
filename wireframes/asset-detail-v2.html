@@ -200,6 +200,87 @@
     .pos-vela-text strong { font-weight: var(--weight-bold); display: block; margin-bottom: 2px; }
     .pos-vela-text .why { font-size: var(--text-xs); color: var(--color-text-secondary); line-height: var(--leading-normal); }
 
+    /* Expanded position card details (preserved unchanged from live AssetDetail.tsx) */
+    .pos-expanded {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: var(--border-medium) dashed var(--gray-300);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .pos-expanded-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      font-size: var(--text-sm);
+    }
+    .pos-expanded-row .lbl { color: var(--color-text-muted); }
+    .pos-expanded-row .val { font-family: 'JetBrains Mono', monospace; font-weight: var(--weight-semibold); color: var(--color-text-primary); }
+    .pos-expanded-row .val .info {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; margin-left: 6px;
+      border-radius: 50%; border: 1.5px solid var(--gray-400);
+      font-family: 'Inter', system-ui, sans-serif; font-size: 9px; font-weight: var(--weight-bold);
+      color: var(--gray-500);
+    }
+    .pos-close-btn {
+      margin-top: var(--space-2);
+      padding: 10px var(--space-3);
+      background: var(--color-bg-surface);
+      border: var(--border-medium) solid var(--color-border-default);
+      border-radius: var(--radius-md);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: var(--weight-semibold);
+      font-size: var(--text-sm);
+      color: var(--red-dark);
+      cursor: pointer;
+      width: 100%;
+    }
+
+    /* Free-tier locked signal card — mirrors LockedSignalCard.tsx */
+    .signal-card.locked {
+      opacity: 0.7;
+      position: relative;
+      cursor: pointer;
+    }
+    .locked-head {
+      display: flex; align-items: center; gap: var(--space-2);
+      margin-bottom: var(--space-2);
+    }
+    .locked-head .lk-icon {
+      margin-left: auto;
+      width: 20px; height: 20px;
+    }
+    .locked-teaser {
+      position: relative;
+      max-height: 1.6em;
+      overflow: hidden;
+      margin-top: var(--space-2);
+    }
+    .locked-teaser p {
+      margin: 0;
+      font-size: var(--text-sm);
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+      white-space: nowrap;
+    }
+    .locked-teaser::after {
+      content: "";
+      position: absolute;
+      top: 0; right: 0;
+      width: 70%; height: 100%;
+      background: linear-gradient(to right, transparent 0%, var(--color-bg-surface) 80%);
+      pointer-events: none;
+    }
+    .locked-cta {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: var(--border-medium) solid var(--gray-200);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+    .locked-cta .arrow {
+      color: var(--color-text-secondary);
+      font-weight: var(--weight-semibold);
+    }
+
     /* Merged Signal + WPS card */
     .signal-card {
       background: var(--color-bg-surface);
@@ -323,17 +404,21 @@
     .wm-headline a { color: inherit; text-decoration: none; }
     .wm-meta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font-size: var(--text-2xs); }
     .wm-source {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: var(--weight-bold);
-      letter-spacing: var(--tracking-wide);
-      background: var(--gray-100);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-weight: var(--weight-semibold);
       color: var(--color-text-primary);
-      border: 1px solid var(--color-border-default);
-      border-radius: 3px;
-      padding: 1px 5px;
-      font-size: 9px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .wm-cat { color: var(--color-text-muted); text-transform: capitalize; }
+    .wm-cat::before {
+      content: "·";
+      color: var(--color-text-muted);
+      opacity: 0.5;
+      margin-right: 6px;
+    }
     .wm-time { color: var(--color-text-muted); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
 
     .section-label {
@@ -1046,6 +1131,104 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- POSITION CARD PRIMITIVE — collapsed vs expanded (unchanged)   -->
+<!-- ============================================================ -->
+<div class="section-title">Position card primitive · collapsed vs expanded (preserved from live)</div>
+<div class="section-desc">
+  The position card itself is unchanged from the current app. Tapping the chevron still expands
+  to reveal Position size, Entry price, Current price, Time open, Stop-loss, and the
+  Close position button. The only addition in this redesign is the inline Vela action row
+  shown at the bottom of the collapsed state (and below the expanded details when expanded).
+</div>
+
+<div class="row">
+
+  <div class="frame-wrap">
+    <div class="frame-label">Collapsed (default)</div>
+    <div class="phone" style="height:auto;">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="app-content">
+        <div class="pos-card" style="margin-bottom:0;">
+          <div class="pos-head">
+            <span class="pos-eyebrow">YOUR POSITION</span>
+            <span class="pos-side">LONG</span>
+            <span class="pos-chev">▾</span>
+          </div>
+          <div>
+            <span class="pos-pnl up">+$2,830 profit</span>
+            <span class="pos-pnl-pct" style="color:var(--green-dark);">(+8.2%)</span>
+          </div>
+          <div class="pos-meta">
+            <span class="num">Entry $69,150</span>
+            <span>·</span>
+            <span class="num">2x</span>
+          </div>
+          <div class="pos-vela-inline">
+            <span class="pos-vela-iris"></span>
+            <span class="pos-vela-text">
+              <strong>Profit target $77,500.</strong>
+              <span class="why">Vela trims part of the position to lock in profit. The rest stays open if the move continues.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-desc">
+      Default state. P&amp;L hero, entry, leverage, and the new inline Vela action.
+      Chevron in the header indicates expandable.
+    </div>
+  </div>
+
+  <div class="frame-wrap">
+    <div class="frame-label">Expanded (chevron tapped) · live primitives preserved</div>
+    <div class="phone" style="height:auto;">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="app-content">
+        <div class="pos-card" style="margin-bottom:0;">
+          <div class="pos-head">
+            <span class="pos-eyebrow">YOUR POSITION</span>
+            <span class="pos-side">LONG</span>
+            <span class="pos-chev" style="transform:rotate(180deg);">▾</span>
+          </div>
+          <div>
+            <span class="pos-pnl up">+$2,830 profit</span>
+            <span class="pos-pnl-pct" style="color:var(--green-dark);">(+8.2%)</span>
+          </div>
+          <div class="pos-meta">
+            <span class="num">Entry $69,150</span>
+            <span>·</span>
+            <span class="num">2x</span>
+          </div>
+
+          <div class="pos-expanded">
+            <div class="pos-expanded-row"><span class="lbl">Position size</span><span class="val">$1,725</span></div>
+            <div class="pos-expanded-row"><span class="lbl">Entry price</span><span class="val">$69,150</span></div>
+            <div class="pos-expanded-row"><span class="lbl">Current price</span><span class="val">$74,812</span></div>
+            <div class="pos-expanded-row"><span class="lbl">Time open</span><span class="val">3 days</span></div>
+            <div class="pos-expanded-row"><span class="lbl">Stop-loss</span><span class="val">$67,800<span class="info">i</span></span></div>
+            <button class="pos-close-btn">Close position</button>
+          </div>
+
+          <div class="pos-vela-inline">
+            <span class="pos-vela-iris"></span>
+            <span class="pos-vela-text">
+              <strong>Profit target $77,500.</strong>
+              <span class="why">Vela trims part of the position to lock in profit. The rest stays open if the move continues.</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="frame-desc">
+      <strong>All live primitives preserved:</strong> Position size, Entry price, Current price,
+      Time open, Stop-loss with info tooltip, Close position button.
+      The new inline Vela action sits below them.
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
 <!-- VARIANT 1 — WAIT, OPEN LONG UP 8.2%                           -->
 <!-- ============================================================ -->
 <div class="section-title">Variant 1 · Wait · open long, up 8.2%</div>
@@ -1121,21 +1304,21 @@
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Bitcoin ETFs see record $412M daily inflow</a></div>
-              <div class="wm-meta"><span class="wm-source">BBG</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Bloomberg</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
-              <div class="wm-meta"><span class="wm-source">COIN</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment neut"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">DOJ ends probe into Fed Chair as White House weighs successor</a></div>
-              <div class="wm-meta"><span class="wm-source">RTRS</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Reuters</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
             </div>
           </div>
         </div>
@@ -1392,14 +1575,14 @@
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Bitcoin ETFs see record $412M daily inflow</a></div>
-              <div class="wm-meta"><span class="wm-source">BBG</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Bloomberg</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
-              <div class="wm-meta"><span class="wm-source">COIN</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
             </div>
           </div>
         </div>
@@ -1474,14 +1657,14 @@
             <span class="wm-sentiment bear"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">$580M in crypto liquidated as price breaks below key support</a></div>
-              <div class="wm-meta"><span class="wm-source">BLOCK</span><span class="wm-cat">flows</span><span class="wm-time">3h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">The Block</span><span class="wm-cat">flows</span><span class="wm-time">3h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment bear"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">SEC investigation expands to three more spot-Bitcoin issuers</a></div>
-              <div class="wm-meta"><span class="wm-source">RTRS</span><span class="wm-cat">regulation</span><span class="wm-time">6h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Reuters</span><span class="wm-cat">regulation</span><span class="wm-time">6h ago</span></div>
             </div>
           </div>
         </div>
@@ -1507,6 +1690,171 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- VARIANT 5 — FREE-TIER GATING                                  -->
+<!-- ============================================================ -->
+<div class="section-title">Variant 5 · Free tier · signal locked, public surfaces visible</div>
+<div class="section-desc">
+  Free-tier user lands on an asset their plan doesn't include. The signal card uses the existing
+  <code>LockedSignalCard</code> primitive: dimmed at 70%, lock glyph, faded brief teaser, single
+  upgrade nudge. Header price + What's moving + Fear/Greed stay readable (public-data digests, not
+  paywalled signal output). "Why we think this" disclosure is hidden because the indicators it
+  reveals are signal-derived. One nudge per page. Tapping the locked card or the upgrade pill
+  routes to the plan picker.
+</div>
+
+<div class="row">
+
+  <div class="frame-wrap">
+    <div class="frame-label">Mobile · 380w · free tier</div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="app-content">
+
+        <div class="asset-header">
+          <div class="asset-icon">B</div>
+          <div class="asset-name-block"><div class="asset-name">Bitcoin</div><div class="asset-sub">BTC</div></div>
+          <div class="asset-price-block"><div class="asset-price">$74,812</div><div class="asset-change change-up">+1.2% today</div></div>
+        </div>
+
+        <div class="signal-card locked new-here" style="position:relative;">
+          <span class="new-marker">Free-tier locked</span>
+          <div class="locked-head">
+            <span class="verdict-pill pill-wait" style="opacity:0.6;"><span class="pill-dot dot-wait"></span>Locked</span>
+            <svg class="lk-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
+              <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="verdict-line" style="opacity:0.6;">Bitcoin signal &amp; brief</div>
+          <div class="locked-teaser">
+            <p>Vela is on Wait. The Buy setup that opened the trade is still holding above $69,000 and no new shift</p>
+          </div>
+          <div class="locked-cta">
+            Upgrade your plan to see Bitcoin signals <span class="arrow">→</span>
+          </div>
+        </div>
+
+        <div class="card wm-card">
+          <span class="section-label">What's moving Bitcoin</span>
+          <div class="wm-row">
+            <span class="wm-sentiment bull"></span>
+            <div class="wm-body">
+              <div class="wm-headline"><a href="#">Bitcoin ETFs see record $412M daily inflow</a></div>
+              <div class="wm-meta"><span class="wm-source">Bloomberg</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
+            </div>
+          </div>
+          <div class="wm-row">
+            <span class="wm-sentiment bull"></span>
+            <div class="wm-body">
+              <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+            </div>
+          </div>
+          <div class="wm-row">
+            <span class="wm-sentiment neut"></span>
+            <div class="wm-body">
+              <div class="wm-headline"><a href="#">DOJ ends probe into Fed Chair as White House weighs successor</a></div>
+              <div class="wm-meta"><span class="wm-source">Reuters</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mood-card">
+          <div class="mood-gauge">
+            <svg viewBox="0 0 140 80">
+              <path d="M10,75 A60,60 0 0,1 130,75" fill="none" stroke="var(--gray-200)" stroke-width="10" stroke-linecap="round"/>
+              <path d="M10,75 A60,60 0 0,1 95,17" fill="none" stroke="var(--green-primary)" stroke-width="10" stroke-linecap="round"/>
+              <text x="70" y="65" text-anchor="middle" font-family="JetBrains Mono" font-size="22" font-weight="700" fill="var(--color-text-primary)">68</text>
+              <text x="70" y="78" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--color-text-muted)" letter-spacing="0.05em">GREED</text>
+            </svg>
+          </div>
+          <p class="mood-text">Investors are feeling optimistic. Confidence is building but not overheated yet.</p>
+        </div>
+
+        <!-- "Why we think this" disclosure intentionally omitted on free tier -->
+
+      </div>
+    </div>
+    <div class="frame-desc">
+      <strong>One nudge per page.</strong> The locked card is the only upgrade prompt. No
+      additional banners, no overlays, no double-CTAs. Footer (Rate / Share) is hidden too —
+      no brief to rate.
+      <strong>Public surfaces stay open:</strong> price header, news headlines, Fear/Greed.
+      These are public-data digests, not paywalled signal output.
+      <strong>Tap target:</strong> the entire locked card is clickable; the trailing arrow is
+      visual affordance only (matches LockedSignalCard.tsx).
+    </div>
+  </div>
+
+  <div class="frame-wrap">
+    <div class="frame-label">Web · 600w · free tier</div>
+    <div class="phone phone-web">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="app-content">
+
+        <div class="asset-header">
+          <div class="asset-icon">B</div>
+          <div class="asset-name-block"><div class="asset-name">Bitcoin</div><div class="asset-sub">BTC</div></div>
+          <div class="asset-price-block"><div class="asset-price">$74,812</div><div class="asset-change change-up">+1.2% today</div></div>
+        </div>
+
+        <div class="signal-card locked" style="position:relative;">
+          <div class="locked-head">
+            <span class="verdict-pill pill-wait" style="opacity:0.6;"><span class="pill-dot dot-wait"></span>Locked</span>
+            <svg class="lk-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
+              <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="verdict-line" style="opacity:0.6;">Bitcoin signal &amp; brief</div>
+          <div class="locked-teaser">
+            <p>Vela is on Wait. The Buy setup that opened the trade is still holding above $69,000 and no new shift</p>
+          </div>
+          <div class="locked-cta">
+            Upgrade your plan to see Bitcoin signals <span class="arrow">→</span>
+          </div>
+        </div>
+
+        <div class="card wm-card">
+          <span class="section-label">What's moving Bitcoin</span>
+          <div class="wm-row">
+            <span class="wm-sentiment bull"></span>
+            <div class="wm-body">
+              <div class="wm-headline"><a href="#">Bitcoin ETFs see record $412M daily inflow</a></div>
+              <div class="wm-meta"><span class="wm-source">Bloomberg</span><span class="wm-cat">flows</span><span class="wm-time">2h ago</span></div>
+            </div>
+          </div>
+          <div class="wm-row">
+            <span class="wm-sentiment bull"></span>
+            <div class="wm-body">
+              <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mood-card">
+          <div class="mood-gauge">
+            <svg viewBox="0 0 140 80">
+              <path d="M10,75 A60,60 0 0,1 130,75" fill="none" stroke="var(--gray-200)" stroke-width="10" stroke-linecap="round"/>
+              <path d="M10,75 A60,60 0 0,1 95,17" fill="none" stroke="var(--green-primary)" stroke-width="10" stroke-linecap="round"/>
+              <text x="70" y="65" text-anchor="middle" font-family="JetBrains Mono" font-size="22" font-weight="700" fill="var(--color-text-primary)">68</text>
+              <text x="70" y="78" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--color-text-muted)" letter-spacing="0.05em">GREED</text>
+            </svg>
+          </div>
+          <p class="mood-text">Investors are feeling optimistic. Confidence is building but not overheated yet.</p>
+        </div>
+
+      </div>
+    </div>
+    <div class="frame-desc">
+      Web variant matches mobile (PWA centered at 600w). Same single-nudge rule.
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
 <!-- NEWS DETAIL PAGE — UNCHANGED                                  -->
 <!-- ============================================================ -->
 <div class="section-title">News detail page · unchanged from rev 5</div>
@@ -1526,7 +1874,7 @@
         <h1 class="news-headline">Bitcoin ETFs see record $412M daily inflow</h1>
 
         <div class="news-meta-row">
-          <span class="wm-source">BBG</span>
+          <span class="wm-source">Bloomberg</span>
           <span class="wm-cat">flows</span>
           <span class="wm-time">2h ago</span>
         </div>
@@ -1567,14 +1915,14 @@
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
-              <div class="wm-meta"><span class="wm-source">COIN</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment neut"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">DOJ ends probe into Fed Chair as White House weighs successor</a></div>
-              <div class="wm-meta"><span class="wm-source">RTRS</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Reuters</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
             </div>
           </div>
         </div>
@@ -1620,7 +1968,7 @@
         <h1 class="news-headline">Bitcoin ETFs see record $412M daily inflow</h1>
 
         <div class="news-meta-row">
-          <span class="wm-source">BBG</span>
+          <span class="wm-source">Bloomberg</span>
           <span class="wm-cat">flows</span>
           <span class="wm-time">2h ago</span>
         </div>
@@ -1655,14 +2003,14 @@
             <span class="wm-sentiment bull"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">Saylor signals MicroStrategy will buy more on this dip</a></div>
-              <div class="wm-meta"><span class="wm-source">COIN</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">CoinDesk</span><span class="wm-cat">leadership</span><span class="wm-time">5h ago</span></div>
             </div>
           </div>
           <div class="wm-row">
             <span class="wm-sentiment neut"></span>
             <div class="wm-body">
               <div class="wm-headline"><a href="#">DOJ ends probe into Fed Chair as White House weighs successor</a></div>
-              <div class="wm-meta"><span class="wm-source">RTRS</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
+              <div class="wm-meta"><span class="wm-source">Reuters</span><span class="wm-cat">geopolitical</span><span class="wm-time">7h ago</span></div>
             </div>
           </div>
         </div>
@@ -1970,7 +2318,7 @@
               Bitcoin ETFs see record $412M daily inflow
             </div>
             <div class="scp-news-source" style="margin-bottom: var(--space-3);">
-              <span class="src-chip">BBG</span> Bloomberg · 2h ago
+              Bloomberg · 2h ago
             </div>
 
             <p class="scp-context" style="margin-bottom: var(--space-4);">

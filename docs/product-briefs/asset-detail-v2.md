@@ -49,7 +49,7 @@ These apply to every user-facing string the redesign touches. The same rules app
 ### Section order, top to bottom
 
 1. **Sticky asset header** — unchanged. Icon, name, price, 24h change.
-2. **Position card** (if user has open position on this asset) — unchanged primitive (mint for long, peach for short, P&L hero, entry, leverage, expandable details). NEW: state-aware inline Vela action at the bottom (see below).
+2. **Position card** (if user has open position on this asset) — unchanged primitive (mint for long, peach for short, P&L hero, entry, leverage, expandable details). The expanded view (chevron tapped) keeps every live primitive: Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, Close position button. NEW: state-aware inline Vela action row at the bottom of the card, present in both collapsed and expanded states (see below).
 3. **Merged Signal + WPS card** — REPLACES the live "Tier 1 Key Signal" card AND the "Where Price Stands" card. Single card containing:
    - Signal pill (top, on its own line — fixes the floating-pill issue)
    - Verdict line (Space Grotesk, position-aware lede)
@@ -57,9 +57,9 @@ These apply to every user-facing string the redesign touches. The same rules app
    - 3-up stats row (Last 24H / Last 7D / 7D Range — kept from live WPS, this is core visual variance)
    - "What would change" plain-English paragraph with named price levels
    - "View signal history (N changes in 30 days)" footer link with subtle dotted underline. Hidden when there's no prior history.
-4. **What's moving** — REWIRED. Reads from `news_cache` directly (not `brief.detail.events_moving_markets`). Each row: sentiment dot (green/red/grey from `ai_classification.sentiment`), headline (clickable, opens news detail page), source chip (mono abbrev like BBG/RTRS/COIN), catalyst category, relative time.
-5. **Market Mood** — unchanged. FearGreedGauge SVG + plain-English context line.
-6. **Why we think this** — unchanged. Collapsible disclosure containing existing technicals (RSI / ADX / EMA / SMA), kept out of the main flow.
+4. **What's moving** — REWIRED. Reads from `news_cache` directly (not `brief.detail.events_moving_markets`). Each row: sentiment dot (green/red/grey from `ai_classification.sentiment`), headline (clickable, opens news detail page), source name in plain text (Bloomberg / CoinDesk / Reuters / The Block — full names, no mono chip), separator dot, catalyst category, relative time.
+5. **Market Mood** — unchanged from live. Existing FearGreedGauge SVG component + plain-English context line. No redesign work; the smart-refresh trigger on importance≥4 news is the only behavioral change (see backend section).
+6. **Why we think this** — unchanged from live. Collapsible disclosure rendering the existing IndicatorsSection block (Short-term trend / Longer-term trend / Momentum / Trend strength). No copy or component changes; kept out of the main flow.
 7. **Engagement footer** — unchanged. Rate this brief / Share buttons.
 
 ### Variant copy reference
@@ -133,12 +133,40 @@ When `positions.take_profit_price` and ladder logic produce 2+ trim levels, show
 ### What stays exactly as-is
 
 - Sticky asset header
-- Position card primitives (P&L hero, mint/peach tinting, expand chevron, manual close confirm)
+- Position card primitives (P&L hero, mint/peach tinting, expand chevron, manual close confirm). The expanded state continues to show Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, and Close position button. The new inline Vela action row sits at the bottom of the card in both collapsed and expanded states.
 - FearGreedGauge SVG and Market Mood card
 - "Why we think this" disclosure containing existing IndicatorsSection
 - Engagement footer (Rate / Share)
 - Tier comparison sheet
 - All routing / data-fetching that doesn't relate to the merged card
+
+---
+
+## Free-tier gating
+
+When a free-tier user opens an asset their plan doesn't include, the asset detail page reuses the existing `LockedSignalCard` primitive (`src/components/LockedSignalCard.tsx`). No new component, no new banner system.
+
+### What changes vs. paid tier
+
+- **Signal card** is replaced by `LockedSignalCard` rendered in the same slot. Dimmed at 70% opacity, lock glyph in the top-right, single-line faded brief teaser, and one upgrade CTA at the bottom (`Upgrade your plan to see {Asset} signals →`). The whole card is the tap target; the trailing arrow is visual affordance.
+- **"Why we think this"** disclosure is hidden. The indicators it reveals are signal-derived, so they belong behind the same gate as the signal itself.
+- **Engagement footer** (Rate / Share) is hidden. There's no brief to rate, and the share preview is a paid surface.
+
+### What stays open
+
+- Asset header (icon, name, price, 24h change). Public market data.
+- "What's moving {asset}" section. News headlines, sentiment dots, source bylines, time stamps. These are public-data digests, not paywalled signal output, so they stay readable. Tapping a headline still opens the news detail page (the news detail page is also free-tier-readable; only the "Vela's read" panel inside it gates if the asset is locked, using the same primitive).
+- Market Mood (Fear & Greed gauge + context line). Public data.
+
+### One nudge per page
+
+The locked card is the only upgrade prompt on the page. No additional banners, no top-bar, no overlays, no double-CTAs. Tapping it routes to the plan picker (`navigate('/account?tab=plan')`). Analytics: `LOCKED_CARD_CLICKED` is already wired on the existing component.
+
+### Why this approach
+
+- Reuses an existing, shipped, A/B-tested primitive. Zero new components.
+- Preserves the rest of the page so the user can still understand the asset (news, mood, price). The gate sits exactly where the proprietary value sits.
+- Matches the pattern already used on the dashboard for locked assets, so a free-tier user who upgrades doesn't have to relearn anything.
 
 ---
 
@@ -150,7 +178,7 @@ Reached by tapping any headline in the asset detail page's "What's moving" secti
 
 1. **‹ Back to Bitcoin** link, top-left only. (NOT a top-right Share — that clogged the UI and used the wrong arrow direction.)
 2. **News headline** (Space Grotesk, large)
-3. **Source meta row:** source chip (BBG / RTRS / etc.) · catalyst category · relative time. Same primitive as the asset detail page WhatsMoving section — consistent byline component across both surfaces.
+3. **Source meta row:** source name in plain text (Bloomberg / CoinDesk / Reuters / The Block — full names, no abbreviation chip) · separator dot · catalyst category · relative time. Same primitive as the asset detail page WhatsMoving section, consistent byline component across both surfaces. The dot is rendered as a CSS `::before` pseudo-element on the category span (`content: "·"`, muted color, 6px right margin) so the byline reads naturally without an extra DOM node.
 4. **Asset price strip** (NEW) — small chip showing icon + asset name + current price + 24h change. Reinforces the asset-news connection.
 5. **The story** (white card) — AI-generated 3-5 sentence factual summary. Lead with the most important fact.
 6. **Vela's read** (lavender card matching the in-app "What Vela is doing" pattern) — sentiment label (Bullish/Bearish/Neutral for the asset, dot-prefixed) + 2-3 sentence interpretation.
@@ -481,6 +509,9 @@ Also fixes the existing fallback-path bug at `brief-generator.ts:1577-1579` that
 | 27 | Engagement footer (Rate / Share) preserved on all asset detail variants |
 | 28 | News detail footer: Share only, no Rate (different content type than a brief) |
 | 29 | All voice rules: no em dashes, no jargon, Buy/Short/Wait, direction-neutral, 15-year-old reading level |
+| 30 | Free-tier gating reuses existing `LockedSignalCard` primitive in the signal-card slot. "Why we think this" and engagement footer hidden. News + Fear/Greed stay open. One nudge per page, routes to plan picker. |
+| 31 | Position card expanded state preserves all live primitives (Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, Close position button). Inline Vela action row sits below in both collapsed and expanded states. |
+| 32 | Source byline format: full source name in plain text + CSS pseudo-element separator dot before the catalyst category. No abbreviation chip. |
 
 ---
 
