@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where Price Stands - Current Price Options</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+  :root {
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-600: #6b7280;
+    --gray-900: #0f172a;
+    --green-dark: #059669;
+    --red-dark: #dc2626;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f0e8;
+    padding: 32px 20px;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 6px;
+    margin-top: 36px;
+  }
+
+  .note {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .label {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: white;
+    background: var(--gray-900);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-bottom: 12px;
+  }
+
+  .card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1.5px solid var(--gray-200);
+    padding: var(--space-6);
+    margin-bottom: 12px;
+  }
+
+  .section-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--gray-600);
+    margin-bottom: var(--space-2);
+  }
+
+  .stats-row {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .stat-box {
+    flex: 1;
+    padding: var(--space-2);
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    text-align: center;
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 10px;
+    color: var(--gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .stat-value.positive { color: var(--green-dark); }
+  .stat-value.negative { color: var(--red-dark); }
+  .stat-value.neutral { color: var(--gray-900); }
+
+  .blurb {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+
+  .blurb strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    color: var(--gray-900);
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--gray-200);
+    margin: var(--space-3) 0;
+  }
+
+  /* Current price highlight row */
+  .current-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px var(--space-3);
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-3);
+  }
+
+  .current-price-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray-600);
+  }
+
+  .current-price-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--gray-900);
+  }
+
+  /* Inline price reference */
+  .price-ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray-600);
+  }
+</style>
+</head>
+<body>
+
+<h1>Where Price Stands</h1>
+<p class="note">User feedback: the price change %s don't immediately connect to a reference price. The current price is above the fold in the header, but once you scroll to this section, it's not visible.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>A. Current Layout</h2>
+<p class="note">No current price reference. User must scroll up to see the price.</p>
+
+<div class="label">Current</div>
+
+<div class="card">
+  <span class="section-label">WHERE PRICE STANDS</span>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-label">Last 24h</span>
+      <span class="stat-value positive">+3.2%</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Last 7D</span>
+      <span class="stat-value positive">+8.1%</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">7D Range</span>
+      <span class="stat-value neutral">$6,210-$6,773</span>
+    </div>
+  </div>
+
+  <div class="blurb">
+    A close above the 200-day moving average at <strong>$6,650</strong> with buying pressure below 70 would confirm the ceasefire rally is sustainable and flip the signal to BUY.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>B. Current Price Row at Top</h2>
+<p class="note">Add a prominent "Current price" row at the top of the section. Gives immediate context to the changes below. Simple, no ambiguity.</p>
+
+<div class="label">Option B</div>
+
+<div class="card">
+  <span class="section-label">WHERE PRICE STANDS</span>
+
+  <div class="current-price-row">
+    <span class="current-price-label">Current price</span>
+    <span class="current-price-value">$6,770</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-label">Last 24h</span>
+      <span class="stat-value positive">+3.2%</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Last 7D</span>
+      <span class="stat-value positive">+8.1%</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">7D Range</span>
+      <span class="stat-value neutral">$6,210-$6,773</span>
+    </div>
+  </div>
+
+  <div class="blurb">
+    SPX is near the top of its weekly range. A sustained close above <strong>$6,650</strong> with momentum cooling would confirm the rally has legs.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>C. Inline Price References</h2>
+<p class="note">Add the reference prices inline in each stat box. The "from" price shows what the % is calculated against. Compact, no extra row.</p>
+
+<div class="label">Option C</div>
+
+<div class="card">
+  <span class="section-label">WHERE PRICE STANDS</span>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-label">Last 24h</span>
+      <span class="stat-value positive">+3.2%</span>
+      <span class="price-ref">from $6,560</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Last 7D</span>
+      <span class="stat-value positive">+8.1%</span>
+      <span class="price-ref">from $6,263</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">7D Range</span>
+      <span class="stat-value neutral">$6,210-$6,773</span>
+      <span class="price-ref">&nbsp;</span>
+    </div>
+  </div>
+
+  <div class="blurb">
+    SPX is near the top of its weekly range. A sustained close above <strong>$6,650</strong> with momentum cooling would confirm the rally has legs.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>D. Both: Price Row + Inline Refs</h2>
+<p class="note">Combines options B and C. Maximum context. Slightly taller, but leaves zero ambiguity about what the percentages mean.</p>
+
+<div class="label">Option D</div>
+
+<div class="card">
+  <span class="section-label">WHERE PRICE STANDS</span>
+
+  <div class="current-price-row">
+    <span class="current-price-label">Current price</span>
+    <span class="current-price-value">$6,770</span>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-label">Last 24h</span>
+      <span class="stat-value positive">+3.2%</span>
+      <span class="price-ref">from $6,560</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">Last 7D</span>
+      <span class="stat-value positive">+8.1%</span>
+      <span class="price-ref">from $6,263</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-label">7D Range</span>
+      <span class="stat-value neutral">$6,210-$6,773</span>
+      <span class="price-ref">&nbsp;</span>
+    </div>
+  </div>
+
+  <div class="blurb">
+    SPX is near the top of its weekly range. A sustained close above <strong>$6,650</strong> with momentum cooling would confirm the rally has legs.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<h2>E. Sticky Header (concept)</h2>
+<p class="note">Not wireframeable in static HTML, but the concept: make the page header (asset name + price) sticky so it stays visible while scrolling. This solves the problem everywhere, not just in this section. Trade-off: takes ~50px of vertical space permanently. Illustrated below as a fixed bar.</p>
+
+<div class="label">Option E (Concept)</div>
+
+<div style="position: relative;">
+  <!-- Simulated sticky header -->
+  <div style="background: white; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--gray-100); border: 1px solid var(--gray-200); display: flex; align-items: center; justify-content: center; font-size: 14px;">&#x1F4C8;</div>
+      <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px;">SPX</span>
+    </div>
+    <div style="text-align: right;">
+      <span style="font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px;">$6,770</span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--green-dark); margin-left: 6px;">+3.2%</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="section-label">WHERE PRICE STANDS</span>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <span class="stat-label">Last 24h</span>
+        <span class="stat-value positive">+3.2%</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Last 7D</span>
+        <span class="stat-value positive">+8.1%</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">7D Range</span>
+        <span class="stat-value neutral">$6,210-$6,773</span>
+      </div>
+    </div>
+
+    <div class="blurb">
+      SPX is near the top of its weekly range. A sustained close above <strong>$6,650</strong> with momentum cooling would confirm the rally has legs.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

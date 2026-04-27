@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Daily brief title / date — options</title>
+    <style>
+      :root {
+        --ink: #0a0a0a;
+        --bg: #fffbf5;
+        --white: #ffffff;
+        --gray-200: #e5e5e5;
+        --gray-300: #cccccc;
+        --gray-400: #999999;
+        --gray-500: #666666;
+        --amber-light: #fde68a;
+        --amber-dark: #7a4f00;
+        --green-light: #d1fadf;
+        --green-dark: #065f46;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 32px 20px 60px;
+        font-family: 'Inter', system-ui, sans-serif;
+        background: #f4f1ea;
+        color: var(--ink);
+      }
+      h1.page-title {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-size: 18px;
+        margin: 0 0 8px;
+      }
+      p.lede {
+        font-size: 13px;
+        color: var(--gray-500);
+        margin: 0 0 32px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .card {
+        background: var(--white);
+        border: 2px solid var(--ink);
+        border-radius: 12px;
+        box-shadow: 4px 4px 0 var(--ink);
+        overflow: hidden;
+      }
+      .variant-label {
+        background: var(--ink);
+        color: var(--white);
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 8px 14px;
+      }
+      .variant-note {
+        padding: 10px 16px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: var(--gray-500);
+        background: #faf6eb;
+        border-bottom: 1px solid var(--gray-200);
+      }
+      .phone {
+        width: 100%;
+        min-height: 540px;
+        padding: 24px 22px 20px;
+        background: var(--bg);
+      }
+      .back {
+        color: var(--gray-500);
+        font-size: 13px;
+        margin-bottom: 20px;
+      }
+
+      /* Shared */
+      .h1-brief {
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+      }
+      .muted-sm {
+        font-size: 13px;
+        color: var(--gray-500);
+      }
+
+      /* Current */
+      .curr-title {
+        margin: 0 0 4px;
+      }
+      .curr-date {
+        margin: 0 0 24px;
+      }
+
+      /* Variant A: eyebrow + date-as-heading */
+      .eyebrow {
+        display: inline-block;
+        font-family: 'Space Grotesk', system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: var(--amber-light);
+        color: var(--amber-dark);
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1.5px solid var(--ink);
+        margin-bottom: 10px;
+      }
+
+      /* Variant B: date only + helper subline */
+      .subline {
+        margin: 4px 0 24px;
+      }
+
+      /* Narrative placeholder */
+      .narr {
+        margin-top: 12px;
+      }
+      .narr p {
+        font-size: 13px;
+        line-height: 1.65;
+        color: #333;
+        margin: 0 0 14px;
+      }
+      .pulse {
+        margin-top: 20px;
+        border: 2px solid var(--ink);
+        border-radius: 10px;
+        background: var(--white);
+      }
+      .pulse-head {
+        padding: 8px 14px;
+        border-bottom: 2px solid var(--ink);
+        display: flex;
+        justify-content: space-between;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .pulse-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+      .pulse-row + .pulse-row {
+        border-top: 1px solid var(--gray-200);
+      }
+      .pulse-val {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1 class="page-title">Batch 3 — Daily Brief title / date</h1>
+    <p class="lede">
+      Three visual options for the top of the brief page. The rest of the page (narrative, Market
+      Pulse, Signal Summary) is unchanged and shown partially for context.
+    </p>
+
+    <div class="grid">
+      <!-- CURRENT -->
+      <div class="card">
+        <div class="variant-label">Current</div>
+        <div class="variant-note">Label is the H1; date is small muted metadata.</div>
+        <div class="phone">
+          <div class="back">← Back</div>
+          <h1 class="h1-brief curr-title">Daily Brief</h1>
+          <div class="muted-sm curr-date">Monday, April 21</div>
+          <div class="narr">
+            <p>
+              Gold broke to a new all-time high this morning as investors sought safety amid the
+              latest round of tariff headlines.
+            </p>
+            <p>
+              Equities wobbled at the open but have steadied into the European close. Rates are a
+              touch lower on the day.
+            </p>
+          </div>
+          <div class="pulse">
+            <div class="pulse-head">
+              <span>Market Pulse</span><span style="color: var(--gray-400)">2h ago</span>
+            </div>
+            <div class="pulse-row"><span>Crypto sentiment</span><span class="pulse-val">62</span></div>
+            <div class="pulse-row"><span>Stock market fear</span><span class="pulse-val">18.4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VARIANT A -->
+      <div class="card">
+        <div class="variant-label">A · Eyebrow label + date as H1 (recommended)</div>
+        <div class="variant-note">
+          "Today's Brief" becomes a small amber pill eyebrow. Date is the largest text and anchors
+          the page as "what's the market take right now." Sarah-style users immediately read the
+          date as the hook; the eyebrow quietly names the section.
+        </div>
+        <div class="phone">
+          <div class="back">← Back</div>
+          <div class="eyebrow">Today's Brief</div>
+          <h1 class="h1-brief">Monday, April 21</h1>
+          <div style="height: 24px"></div>
+          <div class="narr">
+            <p>
+              Gold broke to a new all-time high this morning as investors sought safety amid the
+              latest round of tariff headlines.
+            </p>
+            <p>
+              Equities wobbled at the open but have steadied into the European close. Rates are a
+              touch lower on the day.
+            </p>
+          </div>
+          <div class="pulse">
+            <div class="pulse-head">
+              <span>Market Pulse</span><span style="color: var(--gray-400)">2h ago</span>
+            </div>
+            <div class="pulse-row"><span>Crypto sentiment</span><span class="pulse-val">62</span></div>
+            <div class="pulse-row"><span>Stock market fear</span><span class="pulse-val">18.4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VARIANT B -->
+      <div class="card">
+        <div class="variant-label">B · Date only + helper subline</div>
+        <div class="variant-note">
+          No explicit "brief" label. Date becomes the page title; a static one-line subline names
+          what the page is ("Today's market context"). Cleaner but relies on the subline to tell
+          first-time users what they're looking at.
+        </div>
+        <div class="phone">
+          <div class="back">← Back</div>
+          <h1 class="h1-brief">Monday, April 21</h1>
+          <div class="muted-sm subline">Today's market context, in plain English.</div>
+          <div class="narr">
+            <p>
+              Gold broke to a new all-time high this morning as investors sought safety amid the
+              latest round of tariff headlines.
+            </p>
+            <p>
+              Equities wobbled at the open but have steadied into the European close. Rates are a
+              touch lower on the day.
+            </p>
+          </div>
+          <div class="pulse">
+            <div class="pulse-head">
+              <span>Market Pulse</span><span style="color: var(--gray-400)">2h ago</span>
+            </div>
+            <div class="pulse-row"><span>Crypto sentiment</span><span class="pulse-val">62</span></div>
+            <div class="pulse-row"><span>Stock market fear</span><span class="pulse-val">18.4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

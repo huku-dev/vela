@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post-Onboarding UX — Wireframes v2</title>
+  <style>
+    :root {
+      --black: #0A0A0A;
+      --white: #FFFFFF;
+      --cream: #F5F1E8;
+      --gray-50: #F9F9F9;
+      --gray-100: #F3F3F3;
+      --gray-200: #E5E5E5;
+      --gray-300: #D4D4D4;
+      --gray-400: #A3A3A3;
+      --gray-600: #525252;
+      --green-primary: #10b981;
+      --green-dark: #15803D;
+      --green-bg: #DCFCE7;
+      --yellow-bg: #fffbeb;
+      --yellow-border: #f59e0b;
+      --blue-bg: #EFF6FF;
+      --blue-border: #3B82F6;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: var(--gray-100);
+      color: var(--black);
+      padding: 40px;
+    }
+
+    h1 { font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .subtitle { font-size: 14px; color: var(--gray-600); margin-bottom: 40px; }
+    .section-title { font-size: 18px; font-weight: 700; margin: 48px 0 8px; }
+    .section-desc { font-size: 13px; color: var(--gray-600); margin-bottom: 20px; max-width: 800px; line-height: 1.5; }
+    .divider { height: 1px; background: var(--gray-200); margin: 48px 0; }
+
+    /* Layout: side by side mobile + web */
+    .comparison {
+      display: flex;
+      gap: 32px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .label-tag {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    .tag-p1 { background: #DBEAFE; color: #1E40AF; }
+    .tag-p2 { background: var(--yellow-bg); color: #92400E; }
+    .tag-p3 { background: var(--green-bg); color: var(--green-dark); }
+    .tag-p4 { background: var(--gray-100); color: var(--gray-600); }
+    .tag-red { background: #FEE2E2; color: #991B1B; }
+
+    /* Phone frame */
+    .phone {
+      width: 375px;
+      background: var(--cream);
+      border-radius: 24px;
+      border: 2px solid var(--gray-300);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+
+    /* Web frame */
+    .web {
+      width: 600px;
+      background: var(--cream);
+      border-radius: 12px;
+      border: 2px solid var(--gray-300);
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      flex-shrink: 0;
+    }
+
+    .frame-header {
+      padding: 16px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .frame-logo {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--black);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 11px;
+    }
+
+    .frame-brand { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+
+    .frame-tier {
+      font-size: 9px;
+      font-weight: 700;
+      border: 1.5px solid var(--green-primary);
+      color: var(--green-dark);
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .frame-body { padding: 0 16px 24px; }
+
+    /* Banner base */
+    .banner {
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border-radius: var(--radius-md);
+      position: relative;
+    }
+    .banner-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    .banner-desc { font-size: 12px; color: var(--gray-600); line-height: 1.4; }
+    .banner-dismiss {
+      position: absolute; top: 8px; right: 10px;
+      background: none; border: none; color: var(--gray-400);
+      font-size: 14px; cursor: pointer; line-height: 1;
+    }
+    .banner-cta {
+      display: inline-block; margin-top: 8px; padding: 5px 14px;
+      font-size: 12px; font-weight: 700; border-radius: 6px;
+      cursor: pointer; border: none; font-family: inherit;
+    }
+
+    /* Banner variants */
+    .banner-fund {
+      background: var(--blue-bg);
+      border: 2px solid var(--blue-border);
+      box-shadow: 2px 2px 0 var(--black);
+    }
+    .banner-fund .banner-cta { background: var(--blue-border); color: white; }
+
+    .banner-proposal {
+      background: var(--yellow-bg);
+      border: 2px solid var(--yellow-border);
+      box-shadow: 2px 2px 0 var(--black);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .banner-telegram {
+      background: var(--green-bg);
+      border: 1px solid var(--green-primary);
+    }
+
+    .banner-upgrade {
+      background: var(--white);
+      border: 3px solid var(--black);
+      border-left: 5px solid var(--green-primary);
+      border-radius: 0;
+    }
+    .banner-upgrade .banner-cta {
+      background: var(--green-primary); color: var(--black); border: 2px solid var(--black);
+    }
+
+    /* Digest placeholder */
+    .digest {
+      background: var(--white);
+      border: 2px solid var(--black);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      box-shadow: 2px 2px 0 var(--black);
+    }
+    .digest-date { font-weight: 800; font-size: 13px; margin-bottom: 2px; }
+    .digest-label { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; color: var(--gray-400); text-transform: uppercase; margin-bottom: 8px; display: block; }
+    .digest-text { font-size: 12px; color: var(--gray-600); line-height: 1.5; }
+    .digest-more { font-size: 12px; font-weight: 600; color: var(--black); margin-top: 8px; display: block; }
+
+    /* Signal card */
+    .signal-card {
+      background: var(--white);
+      border: 2px solid var(--black);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 2px 2px 0 var(--black);
+    }
+    .signal-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--gray-200); border: 2px solid var(--black);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; flex-shrink: 0;
+    }
+    .signal-name { font-weight: 700; font-size: 13px; }
+    .signal-ticker { font-size: 11px; color: var(--gray-400); }
+    .signal-price { font-weight: 700; font-size: 14px; text-align: right; }
+    .signal-chip {
+      display: inline-block; font-size: 9px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px; text-transform: uppercase;
+      letter-spacing: 0.04em; margin-left: 4px;
+    }
+    .chip-wait { background: var(--gray-200); color: var(--gray-600); }
+    .chip-buy { background: var(--green-bg); color: var(--green-dark); }
+
+    /* Annotation */
+    .annotation {
+      margin-top: 16px; padding: 12px 16px;
+      background: #FFFBEB; border: 1px solid #FDE68A;
+      border-radius: var(--radius-sm); font-size: 11px;
+      color: #92400E; line-height: 1.5;
+    }
+    .annotation strong {
+      display: block; margin-bottom: 2px;
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    /* Interstitial */
+    .interstitial {
+      width: 375px; background: var(--cream);
+      border-radius: 24px; border: 2px solid var(--gray-300);
+      overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      text-align: center; padding: 48px 32px 32px;
+      flex-shrink: 0;
+    }
+    .interstitial-web {
+      width: 480px; background: var(--white);
+      border-radius: 16px; border: 2px solid var(--gray-200);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.12);
+      text-align: center; padding: 48px 40px 36px;
+      flex-shrink: 0;
+    }
+    .interstitial-emoji { font-size: 48px; margin-bottom: 16px; }
+    .interstitial h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+    .interstitial p, .interstitial-web p { font-size: 14px; color: var(--gray-600); line-height: 1.5; margin-bottom: 24px; }
+    .interstitial-web h2 { font-size: 24px; font-weight: 800; margin-bottom: 8px; }
+    .interstitial-cta {
+      display: block; width: 100%; padding: 14px;
+      background: var(--black); color: var(--white); border: none;
+      border-radius: var(--radius-sm); font-size: 14px; font-weight: 700;
+      font-family: inherit; cursor: pointer; margin-bottom: 12px;
+    }
+    .interstitial-skip {
+      background: none; border: none; color: var(--gray-400);
+      font-size: 13px; cursor: pointer; font-family: inherit; padding: 8px;
+    }
+
+    /* Proposal card */
+    .proposal-card {
+      background: var(--white); border: 2px solid var(--black);
+      border-radius: var(--radius-md); overflow: hidden;
+      margin-bottom: 12px; box-shadow: 2px 2px 0 var(--black);
+    }
+    .guided-intro {
+      background: var(--cream); border-bottom: 1px solid var(--gray-200);
+      padding: 10px 16px; font-size: 12px; color: var(--gray-600);
+      font-weight: 500; line-height: 1.4;
+    }
+    .proposal-header {
+      padding: 14px 16px 8px; display: flex;
+      justify-content: space-between; align-items: center;
+    }
+    .proposal-body {
+      padding: 0 16px 12px; font-size: 12px;
+      color: var(--gray-600); line-height: 1.5;
+    }
+    .proposal-actions { display: flex; border-top: 1px solid var(--gray-200); }
+    .proposal-btn {
+      flex: 1; padding: 12px; border: none; font-size: 13px;
+      font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .btn-approve { background: var(--green-bg); color: var(--green-dark); border-right: 1px solid var(--gray-200); }
+    .btn-decline { background: var(--white); color: var(--gray-600); }
+
+    /* Celebration card */
+    .celebration-card {
+      background: var(--green-bg); border: 2px solid var(--green-primary);
+      border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;
+      box-shadow: 2px 2px 0 var(--black); position: relative;
+    }
+    .celebration-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+    .celebration-card p { font-size: 12px; color: var(--gray-600); line-height: 1.5; margin: 0; }
+
+    /* Gentle feedback card */
+    .gentle-card {
+      background: var(--white); border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;
+      position: relative;
+    }
+    .gentle-card p { font-size: 12px; color: var(--gray-600); line-height: 1.5; margin: 0; }
+    .gentle-card .highlight { font-weight: 600; color: var(--black); }
+    .gentle-cta {
+      display: inline-block; margin-top: 10px; padding: 5px 14px;
+      font-size: 12px; font-weight: 600; border-radius: 6px;
+      cursor: pointer; border: 1px solid var(--gray-300);
+      background: var(--white); color: var(--black); font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Post-Onboarding UX v2</h1>
+<p class="subtitle">Updated with feedback. Mobile + web views. Banners above digest. Corrected copy.</p>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PART 1B: BANNER PRIORITY SYSTEM             -->
+<!-- ═══════════════════════════════════════════ -->
+
+<h2 class="section-title">Part 1B: Banner Priority System</h2>
+<p class="section-desc">Single banner slot at top of Home, above the daily digest. One banner at a time, highest priority wins. Layout: Header > Banner > Daily Digest > Signal Cards.</p>
+
+<!-- P1: Fund wallet -->
+<span class="label-tag tag-p1">Priority 1: Fund wallet (paid user, $0 balance, not dismissible)</span>
+<div class="comparison">
+  <!-- Mobile -->
+  <div class="phone">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+    </div>
+    <div class="frame-body">
+      <div class="banner banner-fund">
+        <div class="banner-title">Fund your wallet to start trading</div>
+        <div class="banner-desc">Vela is ready to trade for you. Add funds so we can execute when an opportunity appears.</div>
+        <button class="banner-cta">Deposit now</button>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest...</div>
+        <span class="digest-more">View more</span>
+      </div>
+      <div class="signal-card">
+        <div class="signal-icon">B</div>
+        <div style="flex:1">
+          <div class="signal-name">Bitcoin <span class="signal-chip chip-wait">WAIT</span></div>
+          <div class="signal-ticker">BTC</div>
+        </div>
+        <div class="signal-price">$72,189</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Web -->
+  <div class="web">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:var(--gray-400)">Updates every 15 mins</span>
+    </div>
+    <div class="frame-body">
+      <div class="banner banner-fund">
+        <div class="banner-title">Fund your wallet to start trading</div>
+        <div class="banner-desc">Vela is ready to trade for you. Add funds so we can execute when an opportunity appears.</div>
+        <button class="banner-cta">Deposit now</button>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest the rally has legs, but trading volumes are still below average. Gold is holding near highs at $2,340...</div>
+        <span class="digest-more">View more</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <div class="signal-card" style="flex:1">
+          <div class="signal-icon">B</div>
+          <div style="flex:1">
+            <div class="signal-name">Bitcoin <span class="signal-chip chip-wait">WAIT</span></div>
+            <div class="signal-ticker">BTC</div>
+          </div>
+          <div class="signal-price">$72,189</div>
+        </div>
+        <div class="signal-card" style="flex:1">
+          <div class="signal-icon">E</div>
+          <div style="flex:1">
+            <div class="signal-name">Ethereum <span class="signal-chip chip-wait">WAIT</span></div>
+            <div class="signal-ticker">ETH</div>
+          </div>
+          <div class="signal-price">$2,221</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PART 1A: POST-CHECKOUT INTERSTITIAL          -->
+<!-- ═══════════════════════════════════════════ -->
+
+<h2 class="section-title">Part 1A: Post-Checkout Interstitial</h2>
+<p class="section-desc">Shown once after first successful Stripe checkout. NOT shown if user cancels checkout (goes straight to Home with upgrade banner). Focuses on the moment, not payment methods.</p>
+
+<div class="comparison">
+  <!-- Mobile -->
+  <div>
+    <span class="label-tag tag-p1">Mobile</span>
+    <div class="interstitial">
+      <div class="interstitial-emoji">🎉</div>
+      <h2>Your account is all set up.</h2>
+      <p>Fund your wallet so Vela can start executing trades for you.</p>
+      <button class="interstitial-cta">Deposit now</button>
+      <button class="interstitial-skip">I'll do this later</button>
+    </div>
+  </div>
+
+  <!-- Web (modal overlay feel) -->
+  <div>
+    <span class="label-tag tag-p1">Web (centered modal)</span>
+    <div class="interstitial-web">
+      <div class="interstitial-emoji">🎉</div>
+      <h2>Your account is all set up.</h2>
+      <p>Fund your wallet so Vela can start executing trades for you.</p>
+      <button class="interstitial-cta">Deposit now</button>
+      <button class="interstitial-skip">I'll do this later</button>
+    </div>
+  </div>
+</div>
+
+<div class="annotation" style="max-width:800px">
+  <strong>Behavior</strong>
+  One-time only (after ?checkout=success). "Deposit now" opens DepositSheet. "I'll do this later" goes to Home where fund-wallet banner catches them. Cancelled Stripe checkout skips this entirely, goes straight to Home. Stored in localStorage so it never shows again.
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- PART 3: FIRST-TRADE GUIDED MOMENTS           -->
+<!-- ═══════════════════════════════════════════ -->
+
+<h2 class="section-title">Part 3: First-Trade Guided Moments</h2>
+<p class="section-desc">All Part 3 cards are dismissible (X button) and auto-dismiss after 24h or next app session, whichever comes first.</p>
+
+<!-- Manual approval: first proposal -->
+<span class="label-tag tag-p1">Manual approval: First proposal</span>
+<div class="comparison">
+  <!-- Mobile -->
+  <div class="phone">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+    </div>
+    <div class="frame-body">
+      <div class="proposal-card">
+        <div class="guided-intro">
+          Your first trade proposal from Vela. Review the reasoning below, then approve or decline.
+        </div>
+        <div class="proposal-header">
+          <div>
+            <span style="font-weight:700;font-size:14px">BTC Long</span>
+            <span class="signal-chip chip-buy">BUY</span>
+          </div>
+          <span style="font-size:12px;color:var(--gray-400)">2 min ago</span>
+        </div>
+        <div class="proposal-body">
+          Bitcoin is showing strength across multiple indicators. Momentum is building and conditions look favorable for an entry here.
+        </div>
+        <div class="proposal-actions">
+          <button class="proposal-btn btn-approve">Approve</button>
+          <button class="proposal-btn btn-decline">Decline</button>
+        </div>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Web -->
+  <div class="web">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:var(--gray-400)">Updates every 15 mins</span>
+    </div>
+    <div class="frame-body">
+      <div class="proposal-card">
+        <div class="guided-intro">
+          Your first trade proposal from Vela. Review the reasoning below, then approve or decline.
+        </div>
+        <div class="proposal-header">
+          <div>
+            <span style="font-weight:700;font-size:14px">BTC Long</span>
+            <span class="signal-chip chip-buy">BUY</span>
+          </div>
+          <span style="font-size:12px;color:var(--gray-400)">2 min ago</span>
+        </div>
+        <div class="proposal-body">
+          Bitcoin is showing strength across multiple indicators. Momentum is building and conditions look favorable for an entry here.
+        </div>
+        <div class="proposal-actions">
+          <button class="proposal-btn btn-approve">Approve</button>
+          <button class="proposal-btn btn-decline">Decline</button>
+        </div>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest the rally has legs, but trading volumes are still below average...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="annotation" style="max-width:800px">
+  <strong>Changes from v1</strong>
+  Intro bar uses cream background (matches page bg) instead of blue. Keeps existing Approve/Decline CTAs. Reasoning text simplified to brief-style language. Bar only shows on first-ever proposal (localStorage flag). Subsequent proposals use standard layout.
+</div>
+
+<!-- Auto-execute: first trade -->
+<div style="margin-top:32px">
+<span class="label-tag tag-p1">Auto-execute: First trade (dismissible, 24h auto-dismiss)</span>
+<div class="comparison">
+  <div class="phone">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier" style="border-color:var(--green-primary)">Premium</span>
+    </div>
+    <div class="frame-body">
+      <div class="celebration-card">
+        <button class="banner-dismiss">✕</button>
+        <h3>🎉 Congrats on your first Vela trade!</h3>
+        <p>Vela spotted an opportunity for BTC and executed a long at $72,100. Based on your settings, we set targets to maximize upside and limit any downside.</p>
+        <p style="margin-top:8px"><a href="#" style="color:var(--green-dark);font-weight:600;font-size:12px">View trade details →</a></p>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="web">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier" style="border-color:var(--green-primary)">Premium</span>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:var(--gray-400)">Updates every 15 mins</span>
+    </div>
+    <div class="frame-body">
+      <div class="celebration-card">
+        <button class="banner-dismiss">✕</button>
+        <h3>🎉 Congrats on your first Vela trade!</h3>
+        <p>Vela spotted an opportunity for BTC and executed a long at $72,100. Based on your settings, we set targets to maximize upside and limit any downside.</p>
+        <p style="margin-top:8px"><a href="#" style="color:var(--green-dark);font-weight:600;font-size:12px">View trade details →</a></p>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest the rally has legs...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- First decline -->
+<div style="margin-top:32px">
+<span class="label-tag tag-p2">After first decline (dismissible, 24h auto-dismiss)</span>
+<div class="comparison">
+  <div class="phone">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+    </div>
+    <div class="frame-body">
+      <div class="gentle-card">
+        <button class="banner-dismiss">✕</button>
+        <p><span class="highlight">You passed on your first proposal.</span> No worries, Vela will keep watching and send another when conditions are right.</p>
+        <button class="gentle-cta">Give feedback</button>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="web">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:var(--gray-400)">Updates every 15 mins</span>
+    </div>
+    <div class="frame-body">
+      <div class="gentle-card">
+        <button class="banner-dismiss">✕</button>
+        <p><span class="highlight">You passed on your first proposal.</span> No worries, Vela will keep watching and send another when conditions are right.</p>
+        <button class="gentle-cta">Give feedback</button>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest the rally has legs...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="annotation" style="max-width:800px">
+  <strong>Changes from v1</strong>
+  Tighter copy for in-app. "Give feedback" CTA takes user directly to Support. Longer version with the full warm message reserved for Telegram/email. Dismissible with X. Also triggers an email with the full-length version.
+</div>
+</div>
+
+<!-- First expiry -->
+<div style="margin-top:32px">
+<span class="label-tag tag-red">High churn risk: First expiry (dismissible, 24h auto-dismiss)</span>
+<div class="comparison">
+  <div class="phone">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+    </div>
+    <div class="frame-body">
+      <div class="gentle-card" style="border: 2px solid var(--yellow-border)">
+        <button class="banner-dismiss">✕</button>
+        <p><span class="highlight">Your first trade proposal expired.</span> No worries, these come regularly. Next time, tap Approve or Decline to let Vela know.</p>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="web">
+    <div class="frame-header">
+      <div class="frame-logo">V</div>
+      <span class="frame-brand">vela</span>
+      <span class="frame-tier">Standard</span>
+      <span style="flex:1"></span>
+      <span style="font-size:11px;color:var(--gray-400)">Updates every 15 mins</span>
+    </div>
+    <div class="frame-body">
+      <div class="gentle-card" style="border: 2px solid var(--yellow-border)">
+        <button class="banner-dismiss">✕</button>
+        <p><span class="highlight">Your first trade proposal expired.</span> No worries, these come regularly. Next time, tap Approve or Decline to let Vela know.</p>
+      </div>
+      <div class="digest">
+        <div class="digest-date">Thursday 10 April</div>
+        <span class="digest-label">Daily Digest</span>
+        <div class="digest-text">Markets rallied overnight with Bitcoin pushing above $72K. Momentum indicators suggest the rally has legs...</div>
+        <span class="digest-more">View more</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="annotation" style="max-width:800px">
+  <strong>Behavior</strong>
+  Yellow border for attention (this user is at churn risk). Tighter copy. Also triggers an email with the longer version explaining what proposals are and that another will come. Dismissible with X, auto-dismiss after 24h.
+</div>
+</div>
+
+</body>
+</html>
