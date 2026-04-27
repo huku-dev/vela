@@ -170,13 +170,13 @@ The locked card is a single card with no nested chrome. The pill, blurred previe
 
 - **No card-inside-card.** A floating overlay over a card reads as two stacked components even when the inner one has no border, and absolute positioning made the overlay overlap the pill or bleed beyond the card boundary on the smaller news-detail surface. The single-card pattern keeps the card's own boundary as the only frame, with the upgrade pitch rendering as just another section of that card.
 - **Blurred preview conveys depth without bloating.** Showing only the verdict line + reason paragraph signals "there's real analysis here." The earlier full WWC + stats + history blur made the card 3× taller for the same message.
-- **Bullets pitch edge + action, not just access.** Free-tier users don't care that Vela explains its calls; they need to feel that Vela sees things ahead of the market and acts on them. Copy emphasizes earliness ("before the market catches on", "the moment Vela spots it") and Vela doing the work ("trades {Asset} for you and looks after the position"). Avoids jargon (no "stop-loss", "profit ladder", "shifts the setup").
+- **Bullets pitch edge + action, not just access.** Free-tier users don't care that Vela explains its calls; they need to feel that Vela sees things ahead of the market and acts on them. Each bullet starts with `Vela [verb]` (calls, trades, flags) so the structure is parallel and the actor is unambiguous. Copy emphasizes earliness ("before the market catches on", "the moment it breaks") and Vela doing the work ("trades {Asset} for you and looks after the position"). Avoids jargon (no "stop-loss", "profit ladder", "shifts the setup").
 
 **Copy by surface**
 
 | Surface | Eyebrow | Title | Bullets |
 |---------|---------|-------|---------|
-| Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | Vela's Buy and Short calls before the market catches on · Vela trades {Asset} for you and looks after the position · News that'll move price, the moment Vela spots it |
+| Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | Vela calls Buys and Shorts before the market catches on · Vela trades {Asset} for you and looks after the position · Vela flags news that'll move price, the moment it breaks |
 | News detail Vela's read | `Upgrade required` | `Unlock Vela's read on the news` | Understand the detail beyond the news · See how it shapes Vela's call on {Asset} |
 
 ### What stays open across both surfaces
