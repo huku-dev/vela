@@ -144,29 +144,40 @@ When `positions.take_profit_price` and ladder logic produce 2+ trim levels, show
 
 ## Free-tier gating
 
-When a free-tier user opens an asset their plan doesn't include, the asset detail page reuses the existing `LockedSignalCard` primitive (`src/components/LockedSignalCard.tsx`). No new component, no new banner system.
+When a free-tier user opens an asset their plan doesn't include, the asset detail page applies a paywall treatment to the analytical surfaces while keeping the real-time signal status and public data visible. Implementation extends the existing `LockedSignalCard` primitive pattern; the new card has more surface area to gate (verdict line, reason, stats row, named price levels, signal history), so the free-tier treatment renders the full card with a blur filter rather than a one-line teaser. This makes the depth of paid content visible and stops the user from concluding "I'm only missing a sentence."
 
-### What changes vs. paid tier
+### Signal+WPS card on free tier
 
-- **Signal card** is replaced by `LockedSignalCard` rendered in the same slot. Dimmed at 70% opacity, lock glyph in the top-right, single-line faded brief teaser, and one upgrade CTA at the bottom (`Upgrade your plan to see {Asset} signals →`). The whole card is the tap target; the trailing arrow is visual affordance.
-- **"Why we think this"** disclosure is hidden. The indicators it reveals are signal-derived, so they belong behind the same gate as the signal itself.
-- **Engagement footer** (Rate / Share) is hidden. There's no brief to rate, and the share preview is a paid surface.
+- **Signal pill stays real.** The Wait/Buy/Short pill renders with full color and the actual signal status. Free-tier users see the current state without paying. This builds trust and gives the upgrade nudge a concrete handle ("Upgrade to see why Vela is on Wait" lands harder than "Upgrade to see the signal").
+- **Lock glyph in the top-right corner** (small, 18×18, gray). Visual cue that the rest of the card is gated.
+- **Full analytical content rendered, then blurred.** Verdict line, reason paragraph, stats row, "what would change" with named price levels, and the View signal history footer are all present in the DOM with `filter: blur(4.5px)` applied. The user can see the shape and length of the content (multiple paragraphs, three stats, named levels, history link) so the depth of what's behind the gate is visible.
+- **One upgrade CTA at the bottom.** Bordered top divider matching the WWC paragraph rhythm, semibold "Upgrade to see why Vela is on {state}" with trailing arrow. Tapping anywhere on the card routes to the plan picker.
+- **"Why we think this" disclosure is hidden.** The indicators it reveals are signal-derived; they belong behind the same gate.
+- **Engagement footer (Rate / Share) is hidden.** No brief to rate, and Share is itself a paid surface.
 
-### What stays open
+### News detail page on free tier
+
+- **The story panel stays open.** "The story" is an AI summary of public news content. Same source content the user could read on Bloomberg / CoinDesk directly, just digested. No gate.
+- **Vela's read is gated, but the conclusion is visible.** The directional dot (green/red/grey) and the headline ("Bullish for Bitcoin", "Bearish for Bitcoin", "Neutral") render unblurred. The supporting paragraph that explains *why* the news is bullish/bearish and how it relates to Vela's current signal is the paid surface, blurred with the same `lk-blur` treatment. Lock glyph in the top-right corner, single upgrade CTA at the bottom.
+- **"Read full article on {source}" link stays active.** The user can always reach the underlying news regardless of tier.
+- **"More on {asset} today" section** (the related-news rows at the bottom) stays open with the same row tappable affordance. They route to other news detail pages, which apply the same gate.
+
+### What stays open across both surfaces
 
 - Asset header (icon, name, price, 24h change). Public market data.
-- "What's moving {asset}" section. News headlines, sentiment dots, source bylines, time stamps. These are public-data digests, not paywalled signal output, so they stay readable. Tapping a headline still opens the news detail page (the news detail page is also free-tier-readable; only the "Vela's read" panel inside it gates if the asset is locked, using the same primitive).
+- "What's moving {asset}" section on the asset detail page. News headlines, sentiment dots, source bylines, time stamps, full row tappable.
 - Market Mood (Fear & Greed gauge + context line). Public data.
+- The story panel and source link on news detail pages.
 
 ### One nudge per page
 
-The locked card is the only upgrade prompt on the page. No additional banners, no top-bar, no overlays, no double-CTAs. Tapping it routes to the plan picker (`navigate('/account?tab=plan')`). Analytics: `LOCKED_CARD_CLICKED` is already wired on the existing component.
+Each page has exactly one upgrade prompt: the locked Signal+WPS card on the asset detail page, or the locked Vela's read card on the news detail page. No additional banners, no top-bar, no overlays, no double-CTAs. Tapping the locked card routes to the plan picker (`navigate('/account?tab=plan')`). Reuse the `LOCKED_CARD_CLICKED` analytics event already wired on the existing component, plus a new `LOCKED_NEWS_TAKE_CLICKED` for the news detail variant.
 
 ### Why this approach
 
-- Reuses an existing, shipped, A/B-tested primitive. Zero new components.
-- Preserves the rest of the page so the user can still understand the asset (news, mood, price). The gate sits exactly where the proprietary value sits.
-- Matches the pattern already used on the dashboard for locked assets, so a free-tier user who upgrades doesn't have to relearn anything.
+- The signal pill stays real so the user gets immediate value from every visit (current state, current price, news, mood). The paywall sits exactly where the proprietary analysis lives.
+- Blurring the full card instead of a one-line teaser conveys the depth of paid content. A user who only sees a one-line teaser concludes "not much here." A user who sees a fully-shaped multi-paragraph card with three stats, named price levels, and a history footer concludes "there's a real analysis here."
+- Same primitive on both surfaces (asset detail signal card + news detail Vela's read), same upgrade copy pattern, same single-nudge rule. Predictable.
 
 ---
 
@@ -509,7 +520,8 @@ Also fixes the existing fallback-path bug at `brief-generator.ts:1577-1579` that
 | 27 | Engagement footer (Rate / Share) preserved on all asset detail variants |
 | 28 | News detail footer: Share only, no Rate (different content type than a brief) |
 | 29 | All voice rules: no em dashes, no jargon, Buy/Short/Wait, direction-neutral, 15-year-old reading level |
-| 30 | Free-tier gating reuses existing `LockedSignalCard` primitive in the signal-card slot. "Why we think this" and engagement footer hidden. News + Fear/Greed stay open. One nudge per page, routes to plan picker. |
+| 30 | Free-tier gating: signal pill (Wait/Buy/Short) stays REAL on the asset detail page so users see the current state. The full analytical card (verdict, reason, stats, WWC, history) is rendered then blurred so the depth of paid content is visible — not just a one-line teaser. "Why we think this" and engagement footer hidden. News + Fear/Greed stay open. CTA: "Upgrade to see why Vela is on {state}". |
+| 30b | News detail free-tier: "The story" panel stays open (public news digest). "Vela's read" is gated. Sentiment dot + bullish/bearish/neutral headline stay visible; the supporting paragraph is blurred. "Read full article on {source}" link stays active. Single nudge, same primitive as the signal card lock. |
 | 31 | Position card expanded state preserves all live primitives (Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, Close position button). Inline Vela action row sits below in both collapsed and expanded states. |
 | 32 | Source byline format: full source name in plain text + CSS pseudo-element separator dot before the catalyst category. No abbreviation chip. |
 | 33 | "What's moving" rows are full-row tappable. Three stacked affordance cues: subtle underline on the headline (gray-300, 3px offset), trailing right-chevron via `::after`, hover state lifts row to mint-50 + slides chevron 2px right. Required for news detail page discoverability. |

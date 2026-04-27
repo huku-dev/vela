@@ -234,51 +234,55 @@
       width: 100%;
     }
 
-    /* Free-tier locked signal card — mirrors LockedSignalCard.tsx */
-    .signal-card.locked {
-      opacity: 0.7;
+    /* Free-tier locked content — keeps the real signal pill visible
+       so users still know the state, blurs the analysis to make the
+       depth they're missing visible. */
+    .signal-card.locked,
+    .vela-take-card.locked {
       position: relative;
       cursor: pointer;
     }
-    .locked-head {
-      display: flex; align-items: center; gap: var(--space-2);
-      margin-bottom: var(--space-2);
-    }
-    .locked-head .lk-icon {
-      margin-left: auto;
-      width: 20px; height: 20px;
-    }
-    .locked-teaser {
-      position: relative;
-      max-height: 1.6em;
-      overflow: hidden;
-      margin-top: var(--space-2);
-    }
-    .locked-teaser p {
-      margin: 0;
-      font-size: var(--text-sm);
-      color: var(--color-text-secondary);
-      line-height: 1.6;
-      white-space: nowrap;
-    }
-    .locked-teaser::after {
+    .signal-card.locked::after,
+    .vela-take-card.locked::after {
       content: "";
       position: absolute;
-      top: 0; right: 0;
-      width: 70%; height: 100%;
-      background: linear-gradient(to right, transparent 0%, var(--color-bg-surface) 80%);
+      inset: 0;
       pointer-events: none;
+      border-radius: inherit;
+    }
+    .lk-icon-corner {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
+      width: 18px; height: 18px;
+      z-index: 2;
+    }
+    .lk-blur {
+      filter: blur(4.5px);
+      user-select: none;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+    .lk-blur-strong {
+      filter: blur(6px);
     }
     .locked-cta {
+      position: relative;
+      z-index: 2;
       margin-top: var(--space-3);
       padding-top: var(--space-3);
       border-top: var(--border-medium) solid var(--gray-200);
       font-size: var(--text-sm);
-      color: var(--color-text-muted);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
     .locked-cta .arrow {
       color: var(--color-text-secondary);
-      font-weight: var(--weight-semibold);
+      font-weight: var(--weight-bold);
+      font-size: 16px;
     }
 
     /* Merged Signal + WPS card */
@@ -1725,14 +1729,17 @@
 <!-- ============================================================ -->
 <!-- VARIANT 5 — FREE-TIER GATING                                  -->
 <!-- ============================================================ -->
-<div class="section-title">Variant 5 · Free tier · signal locked, public surfaces visible</div>
+<div class="section-title">Variant 5 · Free tier · signal status visible, full analysis paywalled</div>
 <div class="section-desc">
-  Free-tier user lands on an asset their plan doesn't include. The signal card uses the existing
-  <code>LockedSignalCard</code> primitive: dimmed at 70%, lock glyph, faded brief teaser, single
-  upgrade nudge. Header price + What's moving + Fear/Greed stay readable (public-data digests, not
-  paywalled signal output). "Why we think this" disclosure is hidden because the indicators it
-  reveals are signal-derived. One nudge per page. Tapping the locked card or the upgrade pill
-  routes to the plan picker.
+  Free-tier user lands on an asset their plan doesn't include. <strong>The Wait/Buy/Short
+  pill stays real</strong> so the user still sees the current signal status. What's gated is
+  everything behind it: the verdict line, the reason explaining <em>why</em>, the stats row,
+  the named price levels in "what would change", and the signal history. The full card is
+  rendered with a blur filter so the user can see the <em>shape</em> and <em>depth</em> of
+  what's locked, not just a one-line teaser. Lock glyph sits in the top-right corner. Single
+  upgrade CTA at the bottom. Tapping anywhere on the card routes to the plan picker.
+  Header price + What's moving headlines + Fear/Greed stay open (public data). "Why we think
+  this" disclosure and engagement footer are hidden.
 </div>
 
 <div class="row">
@@ -1749,21 +1756,41 @@
           <div class="asset-price-block"><div class="asset-price">$74,812</div><div class="asset-change change-up">+1.2% today</div></div>
         </div>
 
-        <div class="signal-card locked new-here" style="position:relative;">
+        <div class="signal-card locked new-here">
           <span class="new-marker">Free-tier locked</span>
-          <div class="locked-head">
-            <span class="verdict-pill pill-wait" style="opacity:0.6;"><span class="pill-dot dot-wait"></span>Locked</span>
-            <svg class="lk-icon" viewBox="0 0 20 20" fill="none">
-              <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
-              <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+          <svg class="lk-icon-corner" viewBox="0 0 20 20" fill="none">
+            <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
+            <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+
+          <!-- REAL pill — user sees the actual signal status -->
+          <span class="verdict-pill pill-wait"><span class="pill-dot dot-wait"></span>Wait</span>
+
+          <!-- Everything below is the paid surface, blurred so the depth is visible -->
+          <div class="lk-blur">
+            <div class="verdict-line">Bitcoin is holding its range.</div>
+            <div class="verdict-because">
+              Vela is on Wait. The Buy setup that opened the trade is still holding above
+              $69,000, and no new shift to take profit has emerged.
+            </div>
+            <div class="stats-row">
+              <div class="stat"><span class="stat-label">Last 24H</span><span class="stat-value up">+1.2%</span></div>
+              <div class="stat"><span class="stat-label">Last 7D</span><span class="stat-value up">+8.4%</span></div>
+              <div class="stat"><span class="stat-label">7D Range</span><span class="stat-value neutral">$68.9K-$75.2K</span></div>
+            </div>
+            <p class="wwc">
+              If Bitcoin drops below <span class="price">$69,000</span>, Vela may shift to Wait with caution.
+              If it pushes above <span class="price">$77,500</span>, more Buy strength gets confirmed.
+            </p>
+            <div class="signal-history-link">
+              <span class="label">View signal history (3 changes in 30 days)</span>
+              <span class="chev">›</span>
+            </div>
           </div>
-          <div class="verdict-line" style="opacity:0.6;">Bitcoin signal &amp; brief</div>
-          <div class="locked-teaser">
-            <p>Vela is on Wait. The Buy setup that opened the trade is still holding above $69,000 and no new shift</p>
-          </div>
+
           <div class="locked-cta">
-            Upgrade your plan to see Bitcoin signals <span class="arrow">→</span>
+            <span>Upgrade to see why Vela is on Wait</span>
+            <span class="arrow">→</span>
           </div>
         </div>
 
@@ -1809,13 +1836,14 @@
       </div>
     </div>
     <div class="frame-desc">
-      <strong>One nudge per page.</strong> The locked card is the only upgrade prompt. No
-      additional banners, no overlays, no double-CTAs. Footer (Rate / Share) is hidden too —
-      no brief to rate.
-      <strong>Public surfaces stay open:</strong> price header, news headlines, Fear/Greed.
-      These are public-data digests, not paywalled signal output.
-      <strong>Tap target:</strong> the entire locked card is clickable; the trailing arrow is
-      visual affordance only (matches LockedSignalCard.tsx).
+      <strong>Pill is real:</strong> users see the current Wait/Buy/Short status without
+      paying. That builds trust and gives the upgrade a concrete handle ("upgrade to see why
+      Vela is on Wait" lands harder than "upgrade to see the signal").
+      <strong>Full card surface blurred:</strong> verdict line, reason, stats row, named
+      price levels in WWC, and signal history are all visible in shape but unreadable.
+      The user can see they're missing a substantial chunk of analysis, not a one-liner.
+      <strong>One nudge per page.</strong> Footer (Rate / Share) is hidden — no brief to
+      rate. Tapping anywhere on the card routes to the plan picker.
     </div>
   </div>
 
@@ -1831,20 +1859,38 @@
           <div class="asset-price-block"><div class="asset-price">$74,812</div><div class="asset-change change-up">+1.2% today</div></div>
         </div>
 
-        <div class="signal-card locked" style="position:relative;">
-          <div class="locked-head">
-            <span class="verdict-pill pill-wait" style="opacity:0.6;"><span class="pill-dot dot-wait"></span>Locked</span>
-            <svg class="lk-icon" viewBox="0 0 20 20" fill="none">
-              <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
-              <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+        <div class="signal-card locked">
+          <svg class="lk-icon-corner" viewBox="0 0 20 20" fill="none">
+            <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
+            <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+
+          <span class="verdict-pill pill-wait"><span class="pill-dot dot-wait"></span>Wait</span>
+
+          <div class="lk-blur">
+            <div class="verdict-line">Bitcoin is holding its range.</div>
+            <div class="verdict-because">
+              Vela is on Wait. The Buy setup that opened the trade is still holding above
+              $69,000, and no new shift to take profit has emerged.
+            </div>
+            <div class="stats-row">
+              <div class="stat"><span class="stat-label">Last 24H</span><span class="stat-value up">+1.2%</span></div>
+              <div class="stat"><span class="stat-label">Last 7D</span><span class="stat-value up">+8.4%</span></div>
+              <div class="stat"><span class="stat-label">7D Range</span><span class="stat-value neutral">$68.9K-$75.2K</span></div>
+            </div>
+            <p class="wwc">
+              If Bitcoin drops below <span class="price">$69,000</span>, Vela may shift to Wait with caution.
+              If it pushes above <span class="price">$77,500</span>, more Buy strength gets confirmed.
+            </p>
+            <div class="signal-history-link">
+              <span class="label">View signal history (3 changes in 30 days)</span>
+              <span class="chev">›</span>
+            </div>
           </div>
-          <div class="verdict-line" style="opacity:0.6;">Bitcoin signal &amp; brief</div>
-          <div class="locked-teaser">
-            <p>Vela is on Wait. The Buy setup that opened the trade is still holding above $69,000 and no new shift</p>
-          </div>
+
           <div class="locked-cta">
-            Upgrade your plan to see Bitcoin signals <span class="arrow">→</span>
+            <span>Upgrade to see why Vela is on Wait</span>
+            <span class="arrow">→</span>
           </div>
         </div>
 
@@ -1881,10 +1927,89 @@
       </div>
     </div>
     <div class="frame-desc">
-      Web variant matches mobile (PWA centered at 600w). Same single-nudge rule.
+      Web variant matches mobile (PWA centered at 600w). Same single-nudge rule, same
+      blur treatment over the analytical content.
     </div>
   </div>
 
+</div>
+
+<!-- News detail · free tier · Vela's read locked -->
+<div class="section-title" style="margin-top:var(--space-6);">Variant 5b · News detail · free tier · Vela's read paywalled</div>
+<div class="section-desc">
+  Free-tier users can still read the AI summary of the article ("The story") because that's a
+  digest of public news. <strong>Vela's read is gated</strong> behind the same paywall: directional
+  pill stays visible (so the user knows whether Vela's interpretation is bullish/bearish/neutral),
+  but the supporting paragraph is blurred. Source link to the full article on Bloomberg stays
+  active. Same single-nudge rule.
+</div>
+
+<div class="row">
+  <div class="frame-wrap">
+    <div class="frame-label">Mobile · 380w · news detail · free tier</div>
+    <div class="phone">
+      <div class="status-bar"><span>9:41</span><span>● ● ●</span></div>
+      <div class="app-content">
+
+        <div class="nav-back">‹ Back to Bitcoin</div>
+
+        <h1 class="news-headline">Bitcoin ETFs see record $412M daily inflow</h1>
+
+        <div class="news-meta-row">
+          <span class="wm-source">Bloomberg</span>
+          <span class="wm-cat">flows</span>
+          <span class="wm-time">2h ago</span>
+        </div>
+
+        <div class="news-asset-strip">
+          <span class="ico">B</span>
+          <span class="nm">Bitcoin</span>
+          <span class="px">$74,812</span>
+          <span class="ch24 up">+2.4%</span>
+        </div>
+
+        <!-- The story stays free — public news digest. -->
+        <div class="card">
+          <span class="section-label">The story</span>
+          <div class="source-summary">
+            <p>$412M flowed into spot Bitcoin ETFs on Wednesday, a record daily total. BlackRock's IBIT led with $263M. Bitcoin rose 2.4%, ending a three-day stretch of outflows.</p>
+          </div>
+        </div>
+
+        <!-- Vela's read locked. Sentiment dot stays visible, body blurred. -->
+        <div class="vela-take-card locked new-here">
+          <span class="new-marker" style="top:auto; bottom:auto;">Vela's read locked</span>
+          <svg class="lk-icon-corner" viewBox="0 0 20 20" fill="none">
+            <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
+            <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <div class="vela-take-eyebrow"><span class="iris"></span> Vela's read</div>
+          <div class="vela-take-headline" style="display:flex; align-items:center; gap:var(--space-2);">
+            <span style="width:10px; height:10px; background:var(--green-primary); border-radius:50%; border:1.5px solid var(--color-border-default);"></span>
+            <span>Bullish for Bitcoin.</span>
+          </div>
+          <p class="vela-take-body lk-blur">
+            Flows this size historically come at the start of multi-month rallies.
+            Aligns with Vela's current Buy signal on Bitcoin.
+          </p>
+          <div class="locked-cta">
+            <span>Upgrade to see Vela's read</span>
+            <span class="arrow">→</span>
+          </div>
+        </div>
+
+        <a class="read-full" href="#">Read full article on Bloomberg ↗</a>
+
+      </div>
+    </div>
+    <div class="frame-desc">
+      <strong>Direction stays visible:</strong> the green/red/grey dot + "Bullish for Bitcoin"
+      headline tell the user the conclusion. The reasoning behind it ("flows this size
+      historically come at...") is the paid surface. Same single-nudge pattern.
+      <strong>Public source still works:</strong> "Read full article on Bloomberg" remains
+      active so the user can always reach the underlying news.
+    </div>
+  </div>
 </div>
 
 <!-- ============================================================ -->
