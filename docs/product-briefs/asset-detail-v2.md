@@ -151,7 +151,7 @@ When a free-tier user opens an asset their plan doesn't include, the asset detai
 The locked card is a single card with no nested chrome. The pill, blurred preview, and upgrade pitch are all sections of the same card separated by thin dividers — same way any normal card stacks its sections. No floating overlay, no card-on-card.
 
 - **Signal pill stays real.** The Wait/Buy/Short pill renders with full color and the actual signal status. Free-tier users see the current state without paying. Builds trust and lets the upgrade pitch land in context.
-- **Lock glyph in the top-right corner** (small, 18×18, gray). One unobtrusive marker that the card is gated.
+- **Lock glyph sits inline next to the "Upgrade required" eyebrow text** (small, 12×12, gray). One unobtrusive marker; placed inline rather than in a corner so it reads as a label cue, not a separate floating ornament.
 - **Compact blurred preview underneath the pill.** Just the verdict line and reason paragraph, blurred with `filter: blur(4.5px)`. Establishes "there's real analysis behind this" without bloating the card with the full WWC + stats + history (those would more than triple the card height for no extra clarity).
 - **Upgrade pitch is plain inline content** below the blurred preview, separated by a thin gray-200 divider. No border, no shadow, no nested-card chrome. Sections in order: muted eyebrow `Upgrade required`, Space Grotesk title `Unlock {Asset} signals`, three short bullets, Signal-Green primary CTA `Upgrade to unlock`, muted `Plans from $10/mo` subline.
 - **Tap anywhere on the card** routes to the plan picker (`navigate('/account?tab=plan')`). Analytics: `LOCKED_CARD_CLICKED`.
@@ -170,13 +170,13 @@ The locked card is a single card with no nested chrome. The pill, blurred previe
 
 - **No card-inside-card.** A floating overlay over a card reads as two stacked components even when the inner one has no border, and absolute positioning made the overlay overlap the pill or bleed beyond the card boundary on the smaller news-detail surface. The single-card pattern keeps the card's own boundary as the only frame, with the upgrade pitch rendering as just another section of that card.
 - **Blurred preview conveys depth without bloating.** Showing only the verdict line + reason paragraph signals "there's real analysis here." The earlier full WWC + stats + history blur made the card 3× taller for the same message.
-- **Plainer copy, fewer cute phrases.** No "stop-loss / profit ladder", no "shifts the setup". Friend-not-finance-pro: "Vela trades Bitcoin for you and looks after the position", "A heads-up when news could move the price."
+- **Bullets pitch edge + action, not just access.** Free-tier users don't care that Vela explains its calls; they need to feel that Vela sees things ahead of the market and acts on them. Copy emphasizes earliness ("before the market catches on", "the moment Vela spots it") and Vela doing the work ("trades {Asset} for you and looks after the position"). Avoids jargon (no "stop-loss", "profit ladder", "shifts the setup").
 
 **Copy by surface**
 
 | Surface | Eyebrow | Title | Bullets |
 |---------|---------|-------|---------|
-| Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | See why Vela calls Wait, Buy, or Short · Vela trades {Asset} for you and looks after the position · A heads-up when news could move the price |
+| Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | Vela's Buy and Short calls before the market catches on · Vela trades {Asset} for you and looks after the position · News that'll move price, the moment Vela spots it |
 | News detail Vela's read | `Upgrade required` | `Unlock Vela's read on the news` | Understand the detail beyond the news · See how it shapes Vela's call on {Asset} |
 
 ### What stays open across both surfaces
