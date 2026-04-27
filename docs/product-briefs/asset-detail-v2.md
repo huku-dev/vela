@@ -148,34 +148,36 @@ When a free-tier user opens an asset their plan doesn't include, the asset detai
 
 ### Signal+WPS card on free tier
 
+The locked card is a single card with no nested chrome. The pill, blurred preview, and upgrade pitch are all sections of the same card separated by thin dividers — same way any normal card stacks its sections. No floating overlay, no card-on-card.
+
 - **Signal pill stays real.** The Wait/Buy/Short pill renders with full color and the actual signal status. Free-tier users see the current state without paying. Builds trust and lets the upgrade pitch land in context.
-- **Lock glyph in the top-right corner** (small, 18×18, gray). Visual cue that the rest of the card is gated.
-- **Full analytical content rendered, then blurred.** Verdict line, reason paragraph, stats row, "what would change" with named price levels, and the View signal history footer are all present in the DOM with `filter: blur(4.5px)` applied. The user can see the shape and length of what's behind the gate.
-- **Centered upgrade overlay sits on top of the blurred content** (not a footer line). Card-shaped, 3px black border, hard offset shadow, white background. Contents: tiny eyebrow with lock glyph + "{Asset} is paid", Space Grotesk headline ("Unlock Vela's {Asset} signals"), three bullet points pitching the value (full reasoning, auto-trading with stop+ladder, news alerts), Signal-Green primary CTA "Upgrade to unlock", and a muted "Plans from $10/mo" subline. The overlay is ~320px wide on mobile, sized to leave the blurred surface visible around it so the gating reads in-context.
+- **Lock glyph in the top-right corner** (small, 18×18, gray). One unobtrusive marker that the card is gated.
+- **Compact blurred preview underneath the pill.** Just the verdict line and reason paragraph, blurred with `filter: blur(4.5px)`. Establishes "there's real analysis behind this" without bloating the card with the full WWC + stats + history (those would more than triple the card height for no extra clarity).
+- **Upgrade pitch is plain inline content** below the blurred preview, separated by a thin gray-200 divider. No border, no shadow, no nested-card chrome. Sections in order: muted eyebrow `Upgrade required`, Space Grotesk title `Unlock {Asset} signals`, three short bullets, Signal-Green primary CTA `Upgrade to unlock`, muted `Plans from $10/mo` subline.
 - **Tap anywhere on the card** routes to the plan picker (`navigate('/account?tab=plan')`). Analytics: `LOCKED_CARD_CLICKED`.
-- **"Why we think this" disclosure is hidden.** The indicators it reveals are signal-derived; they belong behind the same gate.
+- **"Why we think this" disclosure is hidden.** The indicators it reveals are signal-derived.
 - **Engagement footer (Rate / Share) is hidden.** No brief to rate, and Share is itself a paid surface.
 
 ### News detail page on free tier
 
 - **The story panel stays open.** "The story" is an AI summary of public news content. Same source content the user could read on Bloomberg / CoinDesk directly, just digested. No gate.
-- **Vela's read is gated, but the conclusion is visible.** The directional dot (green/red/grey) and the headline ("Bullish for Bitcoin", "Bearish for Bitcoin", "Neutral") render unblurred. The supporting paragraph that explains *why* the news is bullish/bearish and how it relates to Vela's current signal is the paid surface, blurred with the same `lk-blur` treatment.
-- **Same centered overlay pattern, compact variant.** ~280px wide, tighter padding. Eyebrow "Vela's read is paid", headline "See how this news moves {Asset}", three tight bullets (plain-English read on catalysts, position-context hookup, smart alerting), same Signal-Green CTA. Sits over the blurred body paragraph.
+- **Vela's read is gated, but the conclusion is visible.** The directional dot (green/red/grey) and the headline ("Bullish for Bitcoin", etc.) render unblurred. The supporting paragraph is blurred.
+- **Same single-card pattern, compact variant.** Below the blurred body paragraph and a thin divider sits the inline upgrade pitch with tighter spacing. Eyebrow `Upgrade required`, title `Unlock Vela's read on the news`, three tight bullets, same CTA + price subline.
 - **"Read full article on {source}" link stays active.** The user can always reach the underlying news regardless of tier.
-- **"More on {asset} today" section** (the related-news rows at the bottom) stays open with the same row tappable affordance. They route to other news detail pages, which apply the same gate.
+- **"More on {asset} today" section** stays open with the same row tappable affordance.
 
-### Why an overlay (not a bottom CTA)
+### Why a single-card pattern
 
-- **More surface for the value pitch.** A bottom CTA can only carry one line. An overlay carries an eyebrow, headline, three bullets, and a CTA — enough to articulate that the user is unlocking analysis + auto-trading + alerts, not just "the signal."
-- **Reads as in-context gating, not a banner.** The blurred content sits visibly around the overlay so the user knows exactly what's gated.
-- **Concrete value props, not vague "upgrade."** Bullet copy names the actual capability: "Vela trades Bitcoin for you with a stop-loss and profit ladder" beats "see why Vela is on Wait."
+- **No card-inside-card.** A floating overlay over a card reads as two stacked components even when the inner one has no border, and absolute positioning made the overlay overlap the pill or bleed beyond the card boundary on the smaller news-detail surface. The single-card pattern keeps the card's own boundary as the only frame, with the upgrade pitch rendering as just another section of that card.
+- **Blurred preview conveys depth without bloating.** Showing only the verdict line + reason paragraph signals "there's real analysis here." The earlier full WWC + stats + history blur made the card 3× taller for the same message.
+- **Plainer copy, fewer cute phrases.** No "stop-loss / profit ladder", no "shifts the setup". Friend-not-finance-pro: "Vela trades Bitcoin for you and looks after the position", "A heads-up when news could move the price."
 
-**Bullet copy by surface**
+**Copy by surface**
 
 | Surface | Eyebrow | Title | Bullets |
 |---------|---------|-------|---------|
-| Asset detail signal card | `{Asset} is paid` | `Unlock Vela's {Asset} signals` | See the full reasoning behind every Wait, Buy, and Short call · Vela trades {Asset} for you with a stop-loss and profit ladder · Get pinged the moment news shifts the setup |
-| News detail Vela's read | `Vela's read is paid` | `See how this news moves {Asset}` | Vela's plain-English read on every catalyst · Hooks straight into your open {Asset} position · Wakes you up only when the news matters |
+| Asset detail signal card | `Upgrade required` | `Unlock {Asset} signals` | See why Vela calls Wait, Buy, or Short · Vela trades {Asset} for you and looks after the position · A heads-up when news could move the price |
+| News detail Vela's read | `Upgrade required` | `Unlock Vela's read on the news` | Plain-English take on news that matters · Tied to your {Asset} position · A heads-up only when it counts |
 
 ### What stays open across both surfaces
 
@@ -537,7 +539,7 @@ Also fixes the existing fallback-path bug at `brief-generator.ts:1577-1579` that
 | 29 | All voice rules: no em dashes, no jargon, Buy/Short/Wait, direction-neutral, 15-year-old reading level |
 | 30 | Free-tier gating: signal pill (Wait/Buy/Short) stays REAL on the asset detail page so users see the current state. The full analytical card (verdict, reason, stats, WWC, history) is rendered then blurred so the depth of paid content is visible. "Why we think this" and engagement footer hidden. News + Fear/Greed stay open. |
 | 30b | News detail free-tier: "The story" panel stays open (public news digest). "Vela's read" is gated. Sentiment dot + bullish/bearish/neutral headline stay visible; the supporting paragraph is blurred. "Read full article on {source}" link stays active. |
-| 30c | Upgrade prompt is a centered card-shaped OVERLAY sitting on top of the blurred content (not a bottom-CTA line). Carries eyebrow + headline + 3 value bullets + Signal-Green CTA + price subline. Pitches the actual capability (full analysis + auto-trading + smart alerts), not just "see the signal." Compact variant for news detail Vela's read. |
+| 30c | Upgrade pitch is INLINE content within the locked card (eyebrow + title + 3 value bullets + Signal-Green CTA + price subline), separated from the blurred preview by a thin divider. NO floating overlay, NO nested card chrome — single card with the pitch as just another section. Plainer copy: no "stop-loss / profit ladder / shifts the setup". Eyebrow is `Upgrade required`, title is `Unlock {Asset} signals` (drops the redundant "Vela's"). |
 | 31 | Position card expanded state preserves all live primitives (Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, Close position button). Inline Vela action row sits below in both collapsed and expanded states. |
 | 32 | Source byline format: full source name in plain text + CSS pseudo-element separator dot before the catalyst category. No abbreviation chip. |
 | 33 | "What's moving" rows are full-row tappable. Three stacked affordance cues: subtle underline on the headline (gray-300, 3px offset), trailing right-chevron via `::after`, hover state lifts row to mint-50 + slides chevron 2px right. Required for news detail page discoverability. |

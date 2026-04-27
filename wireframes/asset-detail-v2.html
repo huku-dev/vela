@@ -266,22 +266,14 @@
     .lk-blur-strong {
       filter: blur(6px);
     }
-    /* Centered overlay sells the value of upgrading. Sits over the blurred
-       card content so the gate is in-context. The card itself becomes
-       position:relative via .signal-card.locked / .vela-take-card.locked. */
+    /* Upgrade pitch is inline content inside the locked card. NO absolute
+       positioning, NO border, NO shadow, NO backdrop — same card, same
+       boundary. Just sits below the blurred preview separated by a thin
+       divider, like any other section of the card. */
     .lk-overlay {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: calc(100% - var(--space-4) * 2);
-      max-width: 320px;
-      z-index: 3;
-      background: var(--color-bg-surface);
-      border: var(--border-thick) solid var(--color-border-default);
-      border-radius: var(--radius-md);
-      box-shadow: var(--shadow-sm);
-      padding: var(--space-4);
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--gray-200);
       text-align: left;
     }
     .lk-overlay .lk-eyebrow {
@@ -352,7 +344,6 @@
       text-align: center;
     }
     /* Compact variant for the news-detail Vela's read card */
-    .lk-overlay.compact { max-width: 280px; padding: var(--space-3); }
     .lk-overlay.compact .lk-title { font-size: var(--text-base); margin-bottom: var(--space-2); }
     .lk-overlay.compact .lk-bullets { margin-bottom: var(--space-2); }
 
@@ -1837,41 +1828,23 @@
           <!-- REAL pill — user sees the actual signal status -->
           <span class="verdict-pill pill-wait"><span class="pill-dot dot-wait"></span>Wait</span>
 
-          <!-- Everything below is the paid surface, blurred so the depth is visible -->
+          <!-- Compact blurred preview — verdict line + reason only.
+               Establishes "there's analysis here" without bloating the card. -->
           <div class="lk-blur">
             <div class="verdict-line">Bitcoin is holding its range.</div>
             <div class="verdict-because">
               Vela is on Wait. The Buy setup that opened the trade is still holding above
               $69,000, and no new shift to take profit has emerged.
             </div>
-            <div class="stats-row">
-              <div class="stat"><span class="stat-label">Last 24H</span><span class="stat-value up">+1.2%</span></div>
-              <div class="stat"><span class="stat-label">Last 7D</span><span class="stat-value up">+8.4%</span></div>
-              <div class="stat"><span class="stat-label">7D Range</span><span class="stat-value neutral">$68.9K-$75.2K</span></div>
-            </div>
-            <p class="wwc">
-              If Bitcoin drops below <span class="price">$69,000</span>, Vela may shift to Wait with caution.
-              If it pushes above <span class="price">$77,500</span>, more Buy strength gets confirmed.
-            </p>
-            <div class="signal-history-link">
-              <span class="label">View signal history (3 changes in 30 days)</span>
-              <span class="chev">›</span>
-            </div>
           </div>
 
           <div class="lk-overlay">
-            <div class="lk-eyebrow">
-              <svg viewBox="0 0 20 20" fill="none">
-                <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
-                <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              Bitcoin is paid
-            </div>
-            <div class="lk-title">Unlock Vela's Bitcoin signals</div>
+            <div class="lk-eyebrow">Upgrade required</div>
+            <div class="lk-title">Unlock Bitcoin signals</div>
             <ul class="lk-bullets">
-              <li>See the full reasoning behind every Wait, Buy, and Short call.</li>
-              <li>Vela trades Bitcoin for you with a stop-loss and profit ladder.</li>
-              <li>Get pinged the moment news shifts the setup.</li>
+              <li>See why Vela calls Wait, Buy, or Short.</li>
+              <li>Vela trades Bitcoin for you and looks after the position.</li>
+              <li>A heads-up when news could move the price.</li>
             </ul>
             <a class="lk-cta" href="#">Upgrade to unlock</a>
             <div class="lk-subtle">Plans from $10/mo</div>
@@ -2091,18 +2064,12 @@
             Aligns with Vela's current Buy signal on Bitcoin.
           </p>
           <div class="lk-overlay compact">
-            <div class="lk-eyebrow">
-              <svg viewBox="0 0 20 20" fill="none">
-                <rect x="4" y="9" width="12" height="9" rx="2" fill="var(--gray-300)" stroke="var(--gray-400)" stroke-width="1.5"/>
-                <path d="M7 9V6a3 3 0 116 0v3" stroke="var(--gray-400)" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-              Vela's read is paid
-            </div>
-            <div class="lk-title">See how this news moves Bitcoin</div>
+            <div class="lk-eyebrow">Upgrade required</div>
+            <div class="lk-title">Unlock Vela's read on the news</div>
             <ul class="lk-bullets">
-              <li>Vela's plain-English read on every catalyst.</li>
-              <li>Hooks straight into your open Bitcoin position.</li>
-              <li>Wakes you up only when the news matters.</li>
+              <li>Plain-English take on news that matters.</li>
+              <li>Tied to your Bitcoin position.</li>
+              <li>A heads-up only when it counts.</li>
             </ul>
             <a class="lk-cta" href="#">Upgrade to unlock</a>
             <div class="lk-subtle">Plans from $10/mo</div>
