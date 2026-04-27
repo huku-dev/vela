@@ -57,7 +57,7 @@ These apply to every user-facing string the redesign touches. The same rules app
    - 3-up stats row (Last 24H / Last 7D / 7D Range — kept from live WPS, this is core visual variance)
    - "What would change" plain-English paragraph with named price levels
    - "View signal history (N changes in 30 days)" footer link with subtle dotted underline. Hidden when there's no prior history.
-4. **What's moving** — REWIRED. Reads from `news_cache` directly (not `brief.detail.events_moving_markets`). Each row: sentiment dot (green/red/grey from `ai_classification.sentiment`), headline (clickable, opens news detail page), source name in plain text (Bloomberg / CoinDesk / Reuters / The Block — full names, no mono chip), separator dot, catalyst category, relative time.
+4. **What's moving** — REWIRED. Reads from `news_cache` directly (not `brief.detail.events_moving_markets`). Each row: sentiment dot (green/red/grey from `ai_classification.sentiment`), headline, source name in plain text (Bloomberg / CoinDesk / Reuters / The Block — full names, no mono chip), separator dot, catalyst category, relative time. **Each row is a full tappable affordance into the news detail page**, not just the headline text. Three affordance cues stacked: (a) a subtle underline on the headline (gray-300 underline color, 3px offset, matches the signal-history-link label treatment), (b) a trailing right-chevron `›` rendered via `::after` so the HTML stays clean, (c) a hover state that lifts the row background to mint-50 with the chevron sliding 2px right and darkening. The whole row gets `cursor: pointer`. Without these cues the news detail page is undiscoverable and the entire `news_summary` + `news_vela_take` LLM investment goes unused.
 5. **Market Mood** — unchanged from live. Existing FearGreedGauge SVG component + plain-English context line. No redesign work; the smart-refresh trigger on importance≥4 news is the only behavioral change (see backend section).
 6. **Why we think this** — unchanged from live. Collapsible disclosure rendering the existing IndicatorsSection block (Short-term trend / Longer-term trend / Momentum / Trend strength). No copy or component changes; kept out of the main flow.
 7. **Engagement footer** — unchanged. Rate this brief / Share buttons.
@@ -512,6 +512,7 @@ Also fixes the existing fallback-path bug at `brief-generator.ts:1577-1579` that
 | 30 | Free-tier gating reuses existing `LockedSignalCard` primitive in the signal-card slot. "Why we think this" and engagement footer hidden. News + Fear/Greed stay open. One nudge per page, routes to plan picker. |
 | 31 | Position card expanded state preserves all live primitives (Position size, Entry price, Current price, Time open, Stop-loss with info tooltip, Close position button). Inline Vela action row sits below in both collapsed and expanded states. |
 | 32 | Source byline format: full source name in plain text + CSS pseudo-element separator dot before the catalyst category. No abbreviation chip. |
+| 33 | "What's moving" rows are full-row tappable. Three stacked affordance cues: subtle underline on the headline (gray-300, 3px offset), trailing right-chevron via `::after`, hover state lifts row to mint-50 + slides chevron 2px right. Required for news detail page discoverability. |
 
 ---
 
