@@ -12,6 +12,7 @@ import PageLoader from './PageLoader';
 // Lazy load pages for code splitting
 const Home = lazy(() => import('../pages/Home'));
 const AssetDetail = lazy(() => import('../pages/AssetDetail'));
+const NewsDetail = lazy(() => import('../pages/NewsDetail'));
 const TrackRecord = lazy(() => import('../pages/TrackRecord'));
 const Account = lazy(() => import('../pages/Account'));
 const DailyBrief = lazy(() => import('../pages/DailyBrief'));
@@ -105,6 +106,14 @@ export default function AuthShell() {
                   element={
                     <ErrorBoundary>
                       <AssetDetail />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/news/:newsId"
+                  element={
+                    <ErrorBoundary>
+                      <NewsDetail />
                     </ErrorBoundary>
                   }
                 />

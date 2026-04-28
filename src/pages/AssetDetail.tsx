@@ -12,6 +12,9 @@ import { useTrading } from '../hooks/useTrading';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useTierAccess } from '../hooks/useTierAccess';
 import EngagementCard from '../components/EngagementCard';
+import MergedSignalCard from '../components/MergedSignalCard';
+import PositionVelaInline from '../components/PositionVelaInline';
+import WhatsMoving from '../components/WhatsMoving';
 import {
   breakIntoParagraphs,
   formatPrice,
@@ -24,9 +27,13 @@ import {
 import { getEffectivePnl } from '../utils/calculations';
 import type { SignalColor, BriefGroup } from '../types';
 
+// Spec voice rule (asset-detail-v2.md lines 34-44): Buy / Short / Wait
+// nomenclature, never Sell / red / amber. Used by the legacy
+// SignalHistoryCard which now renders only as a history disclosure
+// below the merged Signal+WPS card.
 const signalTitles: Record<SignalColor, string> = {
   green: 'Buy',
-  red: 'Sell',
+  red: 'Short',
   grey: 'Wait',
 };
 
@@ -228,6 +235,10 @@ export default function AssetDetail() {
     : undefined;
   const [positionExpanded, setPositionExpanded] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  // Asset detail v2: "View signal history" footer link expands the legacy
+  // SignalHistoryCard inline below the merged Signal+WPS card. Default
+  // collapsed; tap to reveal.
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   if (loading && !asset) {
     return (
@@ -812,6 +823,23 @@ export default function AssetDetail() {
             )}
           </div>
 
+          {/* Asset detail v2 inline action: profit target when up >=2%,
+              protective management when stop <=2% away, nothing otherwise.
+              Renders in BOTH collapsed and expanded position-card states. */}
+          {(() => {
+            const { pnlPct } = getEffectivePnl(assetPosition, price);
+            return (
+              <PositionVelaInline
+                side={assetPosition.side}
+                entryPrice={assetPosition.entry_price}
+                currentPrice={price ?? assetPosition.current_price}
+                pnlPct={pnlPct}
+                stopLossPrice={assetPosition.stop_loss_price}
+                takeProfitPrice={assetPosition.take_profit_price}
+              />
+            );
+          })()}
+
           {/* Expanded details */}
           {positionExpanded && (
             <div
@@ -960,12 +988,11 @@ export default function AssetDetail() {
         </Card>
       )}
 
-      {/* Tier 1: Key Signal — expandable with signal history */}
+      {/* Asset detail v2: merged Signal + WPS card replaces the legacy
+          "Tier 1 Key Signal" + "Where Price Stands" pair. Verdict-led,
+          position-aware. */}
       {brief &&
         (() => {
-          // Include ALL briefs so the first group always matches the current
-          // signal color — prevents KEY SIGNAL showing WAIT while first
-          // history entry shows BUY
           const signalGroups =
             recentBriefs.length > 0
               ? groupBriefsBySignalState(
@@ -975,40 +1002,62 @@ export default function AssetDetail() {
                   signalTimeline
                 )
               : [];
-          const hasHistory = signalGroups.length > 1; // Need >1 groups (first is current)
+          const hasHistory = signalGroups.length > 1;
+          const historyCount = hasHistory ? signalGroups.length - 1 : 0;
           const latestGroupIsNew =
             hasHistory &&
             signalGroups[1].type === 'signal_change' &&
             Date.now() - new Date(signalGroups[1].briefs[0].created_at).getTime() <
               24 * 60 * 60 * 1000;
 
+          // Position context for the verdict line, when the user holds
+          // an open position on this asset.
+          const positionForCard = assetPosition
+            ? {
+                side: assetPosition.side,
+                entry_price: assetPosition.entry_price,
+                current_price: price ?? assetPosition.current_price,
+                unrealized_pnl_pct: getEffectivePnl(assetPosition, price).pnlPct,
+              }
+            : undefined;
+
           return (
-            <SignalHistoryCard
-              signalColor={signalColor}
-              headline={stripAssetPrefix(brief.headline, asset.symbol)}
-              groups={signalGroups}
-              hasHistory={hasHistory}
-              symbol={asset.symbol}
-              isNew={latestGroupIsNew}
-            />
+            <>
+              <MergedSignalCard
+                signalColor={signalColor}
+                nearConfirmation={signal?.near_confirmation}
+                assetName={asset.name}
+                hlSymbol={asset.hl_symbol ?? asset.symbol}
+                price={price}
+                change24h={change24h}
+                brief={brief}
+                position={positionForCard}
+                historyCount={historyCount}
+                onHistoryClick={
+                  historyCount >= 1 ? () => setHistoryExpanded(v => !v) : undefined
+                }
+                indicators={detail?.indicators}
+              />
+              {/* Legacy SignalHistoryCard re-used as the history disclosure;
+                  hidden by default, opened by the merged card's footer link. */}
+              {historyExpanded && hasHistory && (
+                <SignalHistoryCard
+                  signalColor={signalColor}
+                  headline={stripAssetPrefix(brief.headline, asset.symbol)}
+                  groups={signalGroups}
+                  hasHistory={hasHistory}
+                  symbol={asset.symbol}
+                  isNew={latestGroupIsNew}
+                />
+              )}
+            </>
           );
         })()}
 
-      {/* Tier 2: Where price stands — narrative price context with 7d range */}
-      {detail?.indicators && price != null && (
-        <WherePriceStands
-          indicators={detail.indicators}
-          price={price}
-          detail={detail}
-          symbol={asset.hl_symbol ?? asset.symbol}
-          change24h={change24h}
-        />
-      )}
-
-      {/* Tier 3: What's moving — only shown when there are actual news events */}
-      {detail?.events_moving_markets && detail.events_moving_markets.length > 0 && (
-        <WhatsMovingSection events={detail.events_moving_markets} assetName={asset.name} />
-      )}
+      {/* What's moving — reads news_cache directly with tappable rows
+          routing to the news detail page. Replaces the legacy
+          WhatsMovingSection that read from brief.detail.events_moving_markets. */}
+      <WhatsMoving assetSymbol={asset.symbol} assetName={asset.name} />
 
       {/* Tier 4: Market mood — simplified inline Fear & Greed */}
       {fearGreedValue != null && <MarketMoodInline value={fearGreedValue} label={fearGreedLabel} />}
@@ -1487,251 +1536,12 @@ function IndicatorsSection({
 
 // ── Price Level Triggers ──
 
-// ── "Where Price Stands" — narrative replacement for Key Price Levels ──
+// Note: WherePriceStands + WhatsMovingSection (and their compactPrice +
+// fetch7dRange helpers) were removed as part of asset-detail-v2 Phase 2.
+// The merged Signal+WPS card (src/components/MergedSignalCard.tsx) now
+// renders the 7-day stats inline, and WhatsMoving (src/components/
+// WhatsMoving.tsx) reads news_cache directly with tappable rows.
 
-/** Format price compactly for tight spaces (e.g. $64.2K, $1.8K, $126.8) */
-function compactPrice(p: number): string {
-  if (p >= 1000) return `$${(p / 1000).toFixed(1)}K`;
-  if (p >= 1) return `$${p.toFixed(2)}`;
-  return `$${p.toFixed(4)}`;
-}
-
-/** Fetch 7-day high/low from Hyperliquid hourly candles */
-async function fetch7dRange(symbol: string): Promise<{ high: number; low: number } | null> {
-  try {
-    const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const res = await fetch('https://api.hyperliquid.xyz/info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'candleSnapshot',
-        req: { coin: symbol, interval: '1h', startTime: sevenDaysAgo, endTime: now },
-      }),
-    });
-    if (!res.ok) return null;
-    const candles = await res.json();
-    if (!Array.isArray(candles) || candles.length === 0) return null;
-    const highs = candles.map((c: { h: string }) => parseFloat(c.h));
-    const lows = candles.map((c: { l: string }) => parseFloat(c.l));
-    return { high: Math.max(...highs), low: Math.min(...lows) };
-  } catch {
-    return null;
-  }
-}
-
-function WherePriceStands({
-  price,
-  indicators,
-  detail,
-  symbol,
-  change24h,
-}: {
-  price: number;
-  indicators: {
-    ema_9: number;
-    ema_21: number;
-    rsi_14: number;
-    adx_4h: number;
-    sma_50_daily: number;
-  };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  detail: any;
-  symbol: string;
-  change24h: number | null | undefined;
-}) {
-  const [range7d, setRange7d] = useState<{ high: number; low: number } | null>(null);
-  const [change7d, setChange7d] = useState<number | null>(null);
-
-  useEffect(() => {
-    fetch7dRange(symbol).then(r => {
-      if (r) {
-        // Sanity guard: if range is wildly different from current price, discard (bad data)
-        const midRange = (r.high + r.low) / 2;
-        if (price > 0 && midRange > 0 && Math.abs(price - midRange) / price < 5) {
-          setRange7d(r);
-        }
-      }
-    });
-  }, [symbol, price]);
-
-  // Fetch 7d change from candles (first candle open vs current price)
-  useEffect(() => {
-    (async () => {
-      try {
-        const now = Date.now();
-        const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-        const res = await fetch('https://api.hyperliquid.xyz/info', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'candleSnapshot',
-            req: { coin: symbol, interval: '1d', startTime: sevenDaysAgo, endTime: now },
-          }),
-        });
-        if (!res.ok) return;
-        const candles = await res.json();
-        if (Array.isArray(candles) && candles.length > 0) {
-          const openPrice = parseFloat(candles[0].o);
-          if (openPrice > 0) {
-            const pct = ((price - openPrice) / openPrice) * 100;
-            // Sanity guard: >1000% change in 7 days is almost certainly bad data
-            if (Math.abs(pct) < 1000) setChange7d(pct);
-          }
-        }
-      } catch {
-        // Silent fail
-      }
-    })();
-  }, [symbol, price]);
-
-  // Build "what would change" with bidirectional framing
-  const wwcText: string = detail?.what_would_change || buildWhatWouldChange(indicators, price);
-
-  return (
-    <Card style={{ marginBottom: 'var(--space-4)' }}>
-      <SectionLabel>Where price stands</SectionLabel>
-
-      {/* Stats row */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--space-2)',
-          marginBottom: 'var(--space-3)',
-        }}
-      >
-        {change24h != null && (
-          <div
-            style={{
-              flex: 1,
-              padding: 'var(--space-2) var(--space-2)',
-              background: 'var(--gray-50)',
-              borderRadius: 'var(--radius-sm)',
-              textAlign: 'center',
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                fontSize: 10,
-                color: 'var(--color-text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                marginBottom: 2,
-              }}
-            >
-              Last 24H
-            </span>
-            <span
-              className="vela-mono"
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: change24h >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-              }}
-            >
-              {change24h >= 0 ? '+' : ''}
-              {change24h.toFixed(1)}%
-            </span>
-          </div>
-        )}
-        {change7d != null && (
-          <div
-            style={{
-              flex: 1,
-              padding: 'var(--space-2) var(--space-2)',
-              background: 'var(--gray-50)',
-              borderRadius: 'var(--radius-sm)',
-              textAlign: 'center',
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                fontSize: 10,
-                color: 'var(--color-text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                marginBottom: 2,
-              }}
-            >
-              Last 7D
-            </span>
-            <span
-              className="vela-mono"
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: change7d >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
-              }}
-            >
-              {change7d >= 0 ? '+' : ''}
-              {change7d.toFixed(1)}%
-            </span>
-          </div>
-        )}
-        {range7d && (
-          <div
-            style={{
-              flex: 1,
-              padding: 'var(--space-2) var(--space-2)',
-              background: 'var(--gray-50)',
-              borderRadius: 'var(--radius-sm)',
-              textAlign: 'center',
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                fontSize: 10,
-                color: 'var(--color-text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                marginBottom: 2,
-              }}
-            >
-              7D range
-            </span>
-            <span
-              className="vela-mono"
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: 'var(--color-text-primary)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {compactPrice(range7d.low)}–{compactPrice(range7d.high)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* What would change */}
-      {wwcText && (
-        <p
-          className="vela-body-sm"
-          style={{
-            color: 'var(--color-text-muted)',
-            lineHeight: 1.6,
-            borderTop: '1px solid var(--gray-200)',
-            paddingTop: 'var(--space-3)',
-          }}
-        >
-          {parsePriceSegments(plainEnglish(wwcText)).map((seg, i) =>
-            seg.type === 'price' ? (
-              <strong key={i} className="vela-mono" style={{ fontWeight: 600 }}>
-                {seg.value}
-              </strong>
-            ) : (
-              <React.Fragment key={i}>{seg.value}</React.Fragment>
-            )
-          )}
-        </p>
-      )}
-    </Card>
-  );
-}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function PriceLevelTriggers({
@@ -1832,105 +1642,6 @@ function PriceLevelTriggers({
 
 /** Key price levels promoted to top-level card — most actionable info for users */
 
-/** News events driving this asset — summary bullets removed (redundant with "Where Price Stands") */
-function WhatsMovingSection({
-  events,
-  assetName,
-}: {
-  events: Array<{ title: string; impact: string; source?: string; url?: string; date?: string }>;
-  assetName: string;
-}) {
-  const [showAll, setShowAll] = useState(false);
-
-  // External news events only — filter out Vela's own analysis (redundant with signal card)
-  const externalEvents = events.filter(e => !e.source?.toLowerCase().includes('vela'));
-  const allItems = externalEvents.map(event => ({
-    type: 'event' as const,
-    title: event.title,
-    impact: event.impact,
-    source: event.source,
-    url: event.url,
-    date: event.date,
-  }));
-  if (allItems.length === 0) return null;
-
-  const visibleCount = 3;
-  const hasMore = allItems.length > visibleCount;
-  const displayed = showAll ? allItems : allItems.slice(0, visibleCount);
-
-  return (
-    <Card style={{ marginBottom: 'var(--space-4)' }}>
-      <SectionLabel>What&apos;s moving {assetName}</SectionLabel>
-      <ul style={{ margin: 0, paddingLeft: 'var(--space-5)', listStyle: 'disc' }}>
-        {displayed.map((item, i) => (
-          <li
-            key={i}
-            className="vela-body-sm"
-            style={{
-              color: 'var(--color-text-secondary)',
-              marginBottom: 'var(--space-2)',
-              lineHeight: 1.6,
-            }}
-          >
-            <>
-              <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {item.title.replace(/<\/?cite[^>]*>/g, '')}
-              </span>
-              {showAll && item.impact && (
-                <span style={{ color: 'var(--color-text-secondary)' }}>
-                  {' '}
-                  &mdash; {item.impact.replace(/<\/?cite[^>]*>/g, '')}
-                </span>
-              )}
-              {item.source && (
-                <>
-                  <br />
-                  <a
-                    href={
-                      item.url ||
-                      `https://www.google.com/search?q=${encodeURIComponent(item.title + ' ' + item.source)}`
-                    }
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="vela-label-sm"
-                    style={{
-                      color: 'var(--color-text-muted)',
-                      textDecoration: 'underline',
-                      textDecorationColor: 'var(--gray-300)',
-                      textUnderlineOffset: '2px',
-                    }}
-                  >
-                    {item.date
-                      ? `${new Date(item.date + 'T00:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })} · ${item.source}`
-                      : item.source}
-                  </a>
-                </>
-              )}
-            </>
-          </li>
-        ))}
-      </ul>
-      {hasMore && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="vela-label-sm"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--color-text-muted)',
-            cursor: 'pointer',
-            padding: 'var(--space-2) 0 0',
-            textDecoration: 'underline',
-            textDecorationColor: 'var(--gray-300)',
-            textUnderlineOffset: '2px',
-          }}
-        >
-          {showAll ? 'Show less' : `Show ${allItems.length - visibleCount} more`}
-        </button>
-      )}
-    </Card>
-  );
-}
 
 /** Fear & Greed gauge with plain-English context */
 function MarketMoodInline({ value, label }: { value: number; label: string }) {
@@ -2255,7 +1966,7 @@ const groupColorMap: Record<
     border: 'var(--red-dark)',
     bg: 'var(--red-light)',
     text: 'var(--red-dark)',
-    label: 'Sell',
+    label: 'Short',
   },
   grey: {
     border: 'var(--color-text-muted)',
