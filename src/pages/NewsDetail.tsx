@@ -70,9 +70,7 @@ export default function NewsDetail() {
   // coingecko_ids; with `??` that empty string would propagate and
   // <img src=""> would fire a request for the page URL itself.
   const iconUrl =
-    asset?.icon_url ||
-    (asset?.coingecko_id ? getCoinIcon(asset.coingecko_id) : null) ||
-    null;
+    asset?.icon_url || (asset?.coingecko_id ? getCoinIcon(asset.coingecko_id) : null) || null;
 
   const [meta, setMeta] = useState<NewsRowMeta | null>(null);
   // Distinct from meta itself: flips true after the meta query resolves
@@ -181,7 +179,9 @@ export default function NewsDetail() {
     return <PageLoadingView />;
   }
   if (metaLoaded && meta === null) {
-    return <NotFoundView onBack={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />;
+    return (
+      <NotFoundView onBack={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />
+    );
   }
 
   const summary = detail?.summary ?? null;
@@ -437,7 +437,8 @@ export default function NewsDetail() {
           >
             <SentimentDot sentiment={velaTake.sentiment ?? 'neutral'} />
             <span>
-              {capitalize(velaTake.sentiment ?? 'neutral')} for {asset?.name || assetSymbol || 'this asset'}.
+              {capitalize(velaTake.sentiment ?? 'neutral')} for{' '}
+              {asset?.name || assetSymbol || 'this asset'}.
             </span>
           </div>
           <p
@@ -629,8 +630,8 @@ function NotFoundView({ onBack }: { onBack: () => void }) {
           margin: 0,
         }}
       >
-        This article may have been removed or the link is wrong. Try the home page for the
-        latest news.
+        This article may have been removed or the link is wrong. Try the home page for the latest
+        news.
       </p>
     </div>
   );
