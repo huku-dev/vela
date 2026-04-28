@@ -128,9 +128,8 @@ export default function MergedSignalCard({
   const verdictText = buildVerdict(signalColor, assetName, position);
   const reasonText = buildReason(brief);
   const wwcText: string =
-    brief?.detail?.what_would_change || (indicators && price != null
-      ? buildWhatWouldChangeFallback(indicators, price)
-      : '');
+    brief?.detail?.what_would_change ||
+    (indicators && price != null ? buildWhatWouldChangeFallback(indicators, price) : '');
 
   return (
     <Card style={{ marginBottom: 'var(--space-4)' }}>
@@ -232,7 +231,6 @@ export default function MergedSignalCard({
           </span>
         </button>
       )}
-
     </Card>
   );
 }

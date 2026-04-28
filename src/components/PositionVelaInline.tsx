@@ -52,9 +52,7 @@ export default function PositionVelaInline({
   // profit-target row (Vela harvesting gains), amber for protective
   // management (stop is near). The same green-diamond-on-loss treatment
   // would visually conflict with the BUY signal palette.
-  const dotColor = state.kind === 'profit'
-    ? 'var(--color-signal-buy)'
-    : 'var(--color-signal-wait)';
+  const dotColor = state.kind === 'profit' ? 'var(--color-signal-buy)' : 'var(--color-signal-wait)';
 
   return (
     <div
@@ -119,9 +117,10 @@ function resolveState({
   // the threshold is in PRICE terms, not P&L. Using pnlPct would let
   // leverage trip the trigger on smaller real moves.
   if (currentPrice != null && currentPrice > 0 && entryPrice > 0) {
-    const favorablePct = side === 'long'
-      ? ((currentPrice - entryPrice) / entryPrice) * 100
-      : ((entryPrice - currentPrice) / entryPrice) * 100;
+    const favorablePct =
+      side === 'long'
+        ? ((currentPrice - entryPrice) / entryPrice) * 100
+        : ((entryPrice - currentPrice) / entryPrice) * 100;
 
     if (favorablePct >= PROFIT_TRIGGER_PCT && takeProfitPrice && takeProfitPrice > 0) {
       return {
@@ -144,7 +143,7 @@ function resolveState({
     stopLossPrice != null &&
     stopLossPrice > 0
   ) {
-    const stopDistancePct = Math.abs(currentPrice - stopLossPrice) / currentPrice * 100;
+    const stopDistancePct = (Math.abs(currentPrice - stopLossPrice) / currentPrice) * 100;
     if (stopDistancePct <= STOP_DISTANCE_TRIGGER_PCT) {
       const aboveOrBelow = stopLossPrice > currentPrice ? 'above' : 'below';
       return {

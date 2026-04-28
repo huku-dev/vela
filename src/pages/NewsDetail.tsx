@@ -189,7 +189,9 @@ export default function NewsDetail() {
           cursor: 'pointer',
         }}
       >
-        <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700 }}>‹</span>
+        <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700 }}>
+          ‹
+        </span>
         Back
       </button>
 
@@ -307,7 +309,9 @@ export default function NewsDetail() {
             }}
           >
             <SentimentDot sentiment={velaTake.sentiment ?? 'neutral'} />
-            <span>{capitalize(velaTake.sentiment ?? 'neutral')} for {assetSymbol || 'this asset'}.</span>
+            <span>
+              {capitalize(velaTake.sentiment ?? 'neutral')} for {assetSymbol || 'this asset'}.
+            </span>
           </div>
           <p
             style={{
@@ -325,10 +329,19 @@ export default function NewsDetail() {
       {/* Empty / fail state — collapsed single message */}
       {showFallback && (
         <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <p style={{ fontWeight: 700, fontSize: 'var(--text-base)', margin: 0, marginBottom: 'var(--space-2)' }}>
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: 'var(--text-base)',
+              margin: 0,
+              marginBottom: 'var(--space-2)',
+            }}
+          >
             Vela&apos;s read isn&apos;t ready yet.
           </p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
+          <p
+            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}
+          >
             Try again in a minute. The full article is one tap away below.
           </p>
         </Card>
@@ -337,7 +350,9 @@ export default function NewsDetail() {
       {/* Loading state — keep it calm */}
       {loading && !failed && !showCards && (
         <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
+          <p
+            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}
+          >
             Reading the article…
           </p>
         </Card>

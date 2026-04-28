@@ -1033,9 +1033,7 @@ export default function AssetDetail() {
                 brief={brief}
                 position={positionForCard}
                 historyCount={historyCount}
-                onHistoryClick={
-                  historyCount >= 1 ? () => setHistoryExpanded(v => !v) : undefined
-                }
+                onHistoryClick={historyCount >= 1 ? () => setHistoryExpanded(v => !v) : undefined}
                 indicators={detail?.indicators}
               />
               {/* Legacy SignalHistoryCard re-used as the history disclosure;
@@ -1542,7 +1540,6 @@ function IndicatorsSection({
 // renders the 7-day stats inline, and WhatsMoving (src/components/
 // WhatsMoving.tsx) reads news_cache directly with tappable rows.
 
-
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function PriceLevelTriggers({
   indicators,
@@ -1641,7 +1638,6 @@ function PriceLevelTriggers({
 // ── Promoted Sections (extracted from WhyWeThinkThis per Damola feedback 2026-03-23) ──
 
 /** Key price levels promoted to top-level card — most actionable info for users */
-
 
 /** Fear & Greed gauge with plain-English context */
 function MarketMoodInline({ value, label }: { value: number; label: string }) {
