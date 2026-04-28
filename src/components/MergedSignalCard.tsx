@@ -140,7 +140,7 @@ export default function MergedSignalCard({
           fontFamily: "'Space Grotesk', system-ui, sans-serif",
           fontSize: 'var(--text-lg)',
           fontWeight: 700,
-          lineHeight: 1.25,
+          lineHeight: 'var(--leading-snug)',
           letterSpacing: '-0.02em',
           color: 'var(--color-text-primary)',
           marginBottom: 'var(--space-2)',
@@ -188,48 +188,55 @@ export default function MergedSignalCard({
       )}
 
       {historyCount >= 1 && onHistoryClick && (
-        <button
-          type="button"
-          onClick={onHistoryClick}
+        // Wrapper holds the divider so the inner <button>'s `border:none`
+        // reset can't wipe it. The earlier impl set borderTop on the button
+        // and then `border: none` later in the same style block, which
+        // overrode the borderTop and dropped the divider entirely.
+        <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
             marginTop: 'var(--space-3)',
             paddingTop: 'var(--space-3)',
             borderTop: '1px solid var(--gray-200)',
-            background: 'none',
-            border: 'none',
-            borderBottomLeftRadius: 0,
-            borderBottomRightRadius: 0,
-            cursor: 'pointer',
-            fontSize: 'var(--text-xs)',
-            fontWeight: 600,
-            color: 'var(--color-text-primary)',
-            textAlign: 'left',
-            padding: 'var(--space-3) 0 0',
           }}
         >
-          <span
+          <button
+            type="button"
+            onClick={onHistoryClick}
             style={{
-              textDecoration: 'underline',
-              textDecorationColor: 'var(--gray-300)',
-              textUnderlineOffset: '3px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              fontSize: 'var(--text-xs)',
+              fontWeight: 600,
+              color: 'var(--color-text-primary)',
+              textAlign: 'left',
             }}
           >
-            View signal history ({historyCount} change{historyCount === 1 ? '' : 's'} in 30 days)
-          </span>
-          <span
-            style={{
-              fontFamily: "'Space Grotesk', system-ui, sans-serif",
-              color: 'var(--color-text-secondary)',
-              fontWeight: 700,
-            }}
-          >
-            ›
-          </span>
-        </button>
+            <span
+              style={{
+                textDecoration: 'underline',
+                textDecorationColor: 'var(--gray-300)',
+                textUnderlineOffset: '3px',
+              }}
+            >
+              View signal history ({historyCount} change{historyCount === 1 ? '' : 's'} in 30 days)
+            </span>
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                color: 'var(--color-text-secondary)',
+                fontWeight: 700,
+              }}
+            >
+              ›
+            </span>
+          </button>
+        </div>
       )}
     </Card>
   );

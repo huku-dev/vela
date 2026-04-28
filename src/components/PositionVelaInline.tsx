@@ -62,7 +62,10 @@ export default function PositionVelaInline({
         gap: 'var(--space-2)',
         marginTop: 'var(--space-3)',
         paddingTop: 'var(--space-3)',
-        borderTop: '1px solid var(--gray-200)',
+        // Dashed separator per wireframe (.pos-vela-inline) — signals
+        // this row is a different content category from the position
+        // numbers above.
+        borderTop: 'var(--border-medium) dashed var(--gray-300)',
       }}
     >
       <span
@@ -71,22 +74,35 @@ export default function PositionVelaInline({
           width: 8,
           height: 8,
           background: dotColor,
-          border: '1px solid var(--color-border-default)',
           transform: 'rotate(45deg)',
           flexShrink: 0,
-          marginTop: 6,
+          marginTop: 5,
         }}
       />
-      <span
+      <div
         style={{
           fontSize: 'var(--text-sm)',
           color: 'var(--color-text-primary)',
-          lineHeight: 1.5,
+          lineHeight: 'var(--leading-snug)',
         }}
       >
-        <strong style={{ fontWeight: 700 }}>{state.subject}</strong>{' '}
-        <span style={{ color: 'var(--color-text-secondary)' }}>{state.description}</span>
-      </span>
+        {/* Subject sits ABOVE description on its own line per wireframe
+            (.pos-vela-text strong { display: block; margin-bottom: 2px }).
+            Description is one notch smaller and softer per .why styles. */}
+        <strong style={{ fontWeight: 700, display: 'block', marginBottom: 2 }}>
+          {state.subject}
+        </strong>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 'var(--text-xs)',
+            color: 'var(--color-text-secondary)',
+            lineHeight: 'var(--leading-normal)',
+          }}
+        >
+          {state.description}
+        </span>
+      </div>
     </div>
   );
 }

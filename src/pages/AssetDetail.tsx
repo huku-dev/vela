@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Alert } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
-import SignalChip from '../components/SignalChip';
 import PriceArrow from '../components/PriceArrow';
 import FearGreedGauge from '../components/FearGreedGauge';
 import TradeProposalCard from '../components/TradeProposalCard';
@@ -568,18 +567,11 @@ export default function AssetDetail() {
         </div>
 
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <h1 className="vela-heading-xl" style={{ fontSize: 'var(--text-xl)' }}>
-              {asset.symbol}
-            </h1>
-            <SignalChip
-              color={signalColor}
-              size="small"
-              nearConfirmation={signal?.near_confirmation}
-            />
-          </div>
-          <span className="vela-body-sm vela-text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+          <h1 className="vela-heading-xl" style={{ fontSize: 'var(--text-xl)' }}>
             {asset.name}
+          </h1>
+          <span className="vela-body-sm vela-text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+            {asset.symbol}
           </span>
         </div>
 
@@ -781,7 +773,11 @@ export default function AssetDetail() {
                     lineHeight: 1.2,
                   }}
                 >
-                  {isPositive ? '+' : ''}${Math.abs(pnlDollar).toFixed(2)}{' '}
+                  {isPositive ? '+' : ''}$
+                  {Math.abs(pnlDollar).toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 2,
+                  })}{' '}
                   {isPositive ? 'profit' : 'loss'}
                 </span>
                 <span
@@ -949,7 +945,11 @@ export default function AssetDetail() {
                             style={{ margin: 0, marginBottom: 'var(--space-3)', fontWeight: 600 }}
                           >
                             Current P&L: {closePnlDollar >= 0 ? '+' : ''}$
-                            {Math.abs(closePnlDollar).toFixed(2)} ({closePnlPct >= 0 ? '+' : ''}
+                            {Math.abs(closePnlDollar).toLocaleString('en-US', {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 2,
+                            })}{' '}
+                            ({closePnlPct >= 0 ? '+' : ''}
                             {closePnlPct.toFixed(1)}%)
                           </p>
                         );

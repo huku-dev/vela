@@ -24,7 +24,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useDashboard } from '../hooks/useData';
 import { Card } from '../components/VelaComponents';
+import VelaLogo from '../components/VelaLogo';
+import WhatsMoving from '../components/WhatsMoving';
+import { formatPrice, getCoinIcon } from '../lib/helpers';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -52,11 +56,32 @@ export default function NewsDetail() {
   // news_cache has RLS `TO authenticated`; the bare anon client returns
   // zero rows. Pull the JWT-bearing client from auth context.
   const { getToken, supabaseClient } = useAuthContext();
+  // Asset metadata + live price for the price strip. Reuses the dashboard
+  // hook so we don't duplicate fetches.
+  const { data: dashboardData } = useDashboard();
+  const dashboardEntry = assetSymbol
+    ? dashboardData.find(d => d.asset.symbol.toUpperCase() === assetSymbol.toUpperCase())
+    : undefined;
+  const asset = dashboardEntry?.asset;
+  const livePrice = dashboardEntry?.priceData?.price;
+  const change24h = dashboardEntry?.priceData?.change24h;
+  // Coerce empty string to null so the JSX img branch only fires when
+  // we actually have a URL. getCoinIcon returns "" for unknown
+  // coingecko_ids; with `??` that empty string would propagate and
+  // <img src=""> would fire a request for the page URL itself.
+  const iconUrl =
+    asset?.icon_url ||
+    (asset?.coingecko_id ? getCoinIcon(asset.coingecko_id) : null) ||
+    null;
 
   const [meta, setMeta] = useState<NewsRowMeta | null>(null);
+  // Distinct from meta itself: flips true after the meta query resolves
+  // regardless of result. Lets the page distinguish "still fetching" from
+  // "fetched and empty" so we can render a not-found terminal instead of
+  // a perpetual "Loading…" placeholder.
+  const [metaLoaded, setMetaLoaded] = useState(false);
   const [detail, setDetail] = useState<DetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
 
   // Fetch the row meta (always succeeds even when LLM is unavailable so
   // the headline + source + Read-full-article link always render).
@@ -65,9 +90,9 @@ export default function NewsDetail() {
     // Reset state on route change so the previous article doesn't flash
     // under the new URL while fetches resolve.
     setMeta(null);
+    setMetaLoaded(false);
     setDetail(null);
     setLoading(true);
-    setFailed(false);
 
     let cancelled = false;
     (async () => {
@@ -79,9 +104,13 @@ export default function NewsDetail() {
       if (cancelled) return;
       if (error) {
         console.warn('[NewsDetail] news_cache meta read failed:', error.message);
-        return;
+      } else if (data) {
+        setMeta(data as NewsRowMeta);
       }
-      if (data) setMeta(data as NewsRowMeta);
+      // Always flip metaLoaded once the query settles so the not-found
+      // terminal can render when data is null without keeping the page
+      // stuck on a loader.
+      setMetaLoaded(true);
     })();
     return () => {
       cancelled = true;
@@ -96,7 +125,6 @@ export default function NewsDetail() {
       try {
         const token = await getToken();
         if (!token) {
-          setFailed(true);
           setLoading(false);
           return;
         }
@@ -124,7 +152,6 @@ export default function NewsDetail() {
         });
         if (cancelled) return;
         if (!res.ok) {
-          setFailed(true);
           setLoading(false);
           return;
         }
@@ -133,7 +160,6 @@ export default function NewsDetail() {
         setLoading(false);
       } catch {
         if (!cancelled) {
-          setFailed(true);
           setLoading(false);
         }
       }
@@ -144,11 +170,18 @@ export default function NewsDetail() {
   }, [newsId, assetSymbol, getToken, supabaseClient]);
 
   if (!newsId) {
-    return (
-      <div style={{ padding: 'var(--space-6)' }}>
-        <p style={{ color: 'var(--color-error)' }}>News article not found</p>
-      </div>
-    );
+    return <NotFoundView onBack={() => navigate('/')} />;
+  }
+
+  // States:
+  //   metaLoaded=false                -> still fetching the row → pulse loader
+  //   metaLoaded=true && meta===null  -> terminal not-found
+  //   metaLoaded=true && meta!==null  -> render the page (LLM status drives the cards inside)
+  if (!metaLoaded) {
+    return <PageLoadingView />;
+  }
+  if (metaLoaded && meta === null) {
+    return <NotFoundView onBack={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} />;
   }
 
   const summary = detail?.summary ?? null;
@@ -159,7 +192,7 @@ export default function NewsDetail() {
   const catalyst =
     Array.isArray(meta?.ai_classification?.catalysts) &&
     meta!.ai_classification.catalysts.length > 0
-      ? String(meta!.ai_classification.catalysts[0])
+      ? capitalize(String(meta!.ai_classification.catalysts[0]))
       : null;
 
   return (
@@ -171,7 +204,8 @@ export default function NewsDetail() {
         margin: '0 auto',
       }}
     >
-      {/* Back link */}
+      {/* Back link — parent-asset-aware ("Back to Bitcoin") per wireframe.
+          Falls back to bare "Back" when no asset symbol is available. */}
       <button
         type="button"
         onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
@@ -192,7 +226,7 @@ export default function NewsDetail() {
         <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700 }}>
           ‹
         </span>
-        Back
+        Back{asset?.name ? ` to ${asset.name}` : ''}
       </button>
 
       {/* Headline */}
@@ -201,13 +235,13 @@ export default function NewsDetail() {
           fontFamily: "'Space Grotesk', system-ui, sans-serif",
           fontSize: 'var(--text-xl)',
           fontWeight: 700,
-          lineHeight: 1.2,
+          lineHeight: 'var(--leading-snug)',
           letterSpacing: '-0.02em',
           marginBottom: 'var(--space-2)',
           color: 'var(--color-text-primary)',
         }}
       >
-        {meta?.title ?? 'Loading…'}
+        {meta!.title}
       </h1>
 
       {/* Source meta row */}
@@ -220,7 +254,7 @@ export default function NewsDetail() {
             flexWrap: 'wrap',
             fontSize: 11,
             color: 'var(--color-text-muted)',
-            marginBottom: 'var(--space-4)',
+            marginBottom: 'var(--space-3)',
           }}
         >
           <span>{meta.source}</span>
@@ -232,6 +266,98 @@ export default function NewsDetail() {
           )}
           <span>·</span>
           <span>{formatTimeAgo(meta.published_at)}</span>
+        </div>
+      )}
+
+      {/* Asset price strip — anchors the news to the parent asset's
+          current state. Full-width per wireframe (.news-asset-strip):
+          icon + name on the left, price + 24h pushed to the right via
+          margin-left:auto. */}
+      {asset && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            padding: 'var(--space-2) var(--space-3)',
+            border: 'var(--border-medium) solid var(--color-border-default)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--color-bg-surface)',
+            marginBottom: 'var(--space-4)',
+          }}
+        >
+          {iconUrl ? (
+            <img
+              src={iconUrl}
+              alt=""
+              width={22}
+              height={22}
+              style={{
+                borderRadius: '50%',
+                flex: '0 0 22px',
+                border: '1.5px solid var(--color-border-default)',
+              }}
+              onError={e => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            // Brand-gradient monogram fallback when icon URL is missing.
+            <span
+              aria-hidden
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                border: '1.5px solid var(--color-border-default)',
+                background: 'linear-gradient(135deg, #f7931a, #ffb84d)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: "'Space Grotesk', system-ui, sans-serif",
+                fontWeight: 900,
+                fontSize: 'var(--text-2xs)',
+                color: 'var(--white)',
+                flex: '0 0 22px',
+              }}
+            >
+              {asset.symbol.charAt(0)}
+            </span>
+          )}
+          <span
+            style={{
+              fontFamily: "'Space Grotesk', system-ui, sans-serif",
+              fontWeight: 700,
+              fontSize: 'var(--text-sm)',
+            }}
+          >
+            {asset.name}
+          </span>
+          {livePrice != null && (
+            <span
+              className="vela-mono"
+              style={{
+                fontSize: 'var(--text-sm)',
+                fontWeight: 700,
+                marginLeft: 'auto',
+              }}
+            >
+              {formatPrice(livePrice)}
+            </span>
+          )}
+          {change24h != null && (
+            <span
+              className="vela-mono"
+              style={{
+                fontSize: 'var(--text-2xs)',
+                fontWeight: 600,
+                color: change24h >= 0 ? 'var(--green-dark)' : 'var(--red-dark)',
+              }}
+            >
+              {change24h >= 0 ? '+' : ''}
+              {change24h.toFixed(1)}%
+            </span>
+          )}
         </div>
       )}
 
@@ -264,12 +390,14 @@ export default function NewsDetail() {
         </Card>
       )}
 
-      {/* "Vela's read" card */}
+      {/* "Vela's read" card — lavender background per wireframe
+          (.vela-take-card matches the in-app "What Vela is doing"
+          pattern). Iris uses --vela-signal-green, no border. */}
       {velaTake?.vela_take && (
         <Card
           style={{
             marginBottom: 'var(--space-4)',
-            background: 'var(--mint-50)',
+            background: 'var(--lavender-50)',
           }}
         >
           <div
@@ -290,8 +418,7 @@ export default function NewsDetail() {
               style={{
                 width: 8,
                 height: 8,
-                background: 'var(--green-primary)',
-                border: '1px solid var(--color-border-default)',
+                background: 'var(--vela-signal-green)',
                 transform: 'rotate(45deg)',
               }}
             />
@@ -310,13 +437,13 @@ export default function NewsDetail() {
           >
             <SentimentDot sentiment={velaTake.sentiment ?? 'neutral'} />
             <span>
-              {capitalize(velaTake.sentiment ?? 'neutral')} for {assetSymbol || 'this asset'}.
+              {capitalize(velaTake.sentiment ?? 'neutral')} for {asset?.name || assetSymbol || 'this asset'}.
             </span>
           </div>
           <p
             style={{
               fontSize: 'var(--text-sm)',
-              lineHeight: 1.6,
+              lineHeight: 'var(--leading-relaxed)',
               color: 'var(--color-text-primary)',
               margin: 0,
             }}
@@ -326,55 +453,90 @@ export default function NewsDetail() {
         </Card>
       )}
 
-      {/* Empty / fail state — collapsed single message */}
+      {/* Empty / fail state — centered layout per wireframe. Vela diamond
+          sits prominently above the headline (in a soft tile), signalling
+          "off, not alarming" without dominating the card. The "More on X"
+          section below still renders since it has no LLM dependency. */}
       {showFallback && (
         <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <p
+          <div
             style={{
-              fontWeight: 700,
-              fontSize: 'var(--text-base)',
-              margin: 0,
-              marginBottom: 'var(--space-2)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              padding: 'var(--space-3) var(--space-4)',
             }}
           >
-            Vela&apos;s read isn&apos;t ready yet.
-          </p>
-          <p
-            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}
-          >
-            Try again in a minute. The full article is one tap away below.
-          </p>
+            <span
+              aria-hidden
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: 'var(--gray-100)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 'var(--space-3)',
+              }}
+            >
+              <span
+                style={{
+                  width: 14,
+                  height: 14,
+                  background: 'var(--gray-300)',
+                  transform: 'rotate(45deg)',
+                  display: 'inline-block',
+                }}
+              />
+            </span>
+            <p
+              style={{
+                fontWeight: 700,
+                fontSize: 'var(--text-base)',
+                margin: 0,
+                marginBottom: 'var(--space-1)',
+              }}
+            >
+              Vela&apos;s read isn&apos;t ready yet.
+            </p>
+            <p
+              style={{
+                fontSize: 'var(--text-sm)',
+                color: 'var(--color-text-secondary)',
+                margin: 0,
+                maxWidth: 280,
+              }}
+            >
+              Try again in a minute. The full article is one tap away below.
+            </p>
+          </div>
         </Card>
       )}
 
-      {/* Loading state — keep it calm */}
-      {loading && !failed && !showCards && (
-        <Card style={{ marginBottom: 'var(--space-4)' }}>
-          <p
-            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', margin: 0 }}
-          >
-            Reading the article…
-          </p>
-        </Card>
-      )}
-
-      {/* Read full article link — always works regardless of LLM status */}
+      {/* Read full article — full-width primary dark CTA per wireframe
+          (.read-full). Always works regardless of LLM status. */}
       {meta?.url && (
         <a
           href={meta.url}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            display: 'inline-flex',
+            display: 'flex',
             alignItems: 'center',
+            justifyContent: 'center',
             gap: 'var(--space-1)',
-            padding: 'var(--space-3) var(--space-4)',
+            width: '100%',
+            padding: 'var(--space-3)',
             border: 'var(--border-medium) solid var(--color-border-default)',
             borderRadius: 'var(--radius-md)',
-            background: 'var(--color-bg-surface)',
+            boxShadow: 'var(--shadow-sm)',
+            background: 'var(--color-text-primary)',
             fontSize: 'var(--text-sm)',
-            fontWeight: 600,
-            color: 'var(--color-text-primary)',
+            fontWeight: 700,
+            letterSpacing: '0.02em',
+            color: 'var(--white)',
             textDecoration: 'none',
             marginTop: 'var(--space-2)',
           }}
@@ -382,6 +544,94 @@ export default function NewsDetail() {
           Read full article on {meta.source} <span aria-hidden>↗</span>
         </a>
       )}
+
+      {/* "More on {asset} today" — same WhatsMoving primitive as the
+          asset detail page, with the current article excluded. Renders
+          regardless of LLM status (no per-article dependency). */}
+      {assetSymbol && asset && (
+        <div style={{ marginTop: 'var(--space-6)' }}>
+          <WhatsMoving
+            assetSymbol={assetSymbol}
+            assetName={asset.name}
+            title={`More on ${asset.name} today`}
+            excludeId={newsId}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PageLoadingView() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 'var(--space-4)',
+        paddingTop: 'var(--space-16)',
+      }}
+    >
+      <VelaLogo variant="mark" size={48} pulse />
+      <span className="vela-body-sm vela-text-muted">Loading article…</span>
+    </div>
+  );
+}
+
+function NotFoundView({ onBack }: { onBack: () => void }) {
+  return (
+    <div
+      style={{
+        padding: 'var(--space-6)',
+        maxWidth: 600,
+        margin: '0 auto',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onBack}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 'var(--space-1)',
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          marginBottom: 'var(--space-6)',
+          fontSize: 'var(--text-sm)',
+          fontWeight: 600,
+          color: 'var(--color-text-secondary)',
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontFamily: "'Space Grotesk', system-ui, sans-serif", fontWeight: 700 }}>
+          ‹
+        </span>
+        Back
+      </button>
+      <h1
+        style={{
+          fontFamily: "'Space Grotesk', system-ui, sans-serif",
+          fontSize: 'var(--text-lg)',
+          fontWeight: 700,
+          marginBottom: 'var(--space-2)',
+          color: 'var(--color-text-primary)',
+        }}
+      >
+        Article not found
+      </h1>
+      <p
+        style={{
+          fontSize: 'var(--text-sm)',
+          color: 'var(--color-text-secondary)',
+          margin: 0,
+        }}
+      >
+        This article may have been removed or the link is wrong. Try the home page for the
+        latest news.
+      </p>
     </div>
   );
 }
