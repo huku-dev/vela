@@ -13,6 +13,7 @@ paths:
 
 ## Data Display
 - Dollar P&L: always "+$54 profit" / "-$12 loss" — never bare amounts
+- **Comma separators** on dollar values >= $1,000. Use `toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })`. Output: "$2,830", "$7.50", "$1,750.45". Trailing zeros drop on round amounts. NEVER `.toFixed(2)` directly — produces "$1750.00" with no comma.
 - On social/public: percentage-only (dollar P&L misleading without position size)
 - All timestamps UTC in DB, convert to local for display, always show timezone
 - Stale data warnings required for data >5 min old
