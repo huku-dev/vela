@@ -43,7 +43,14 @@ interface WhatsMovingProps {
 }
 
 const HOURS_48 = 48 * 60 * 60 * 1000;
-const ROW_LIMIT = 10;
+// Show only the top 5 by importance. We're a market intelligence app,
+// not a news aggregator — surfacing the most market-moving stories
+// beats showing every story.
+const ROW_LIMIT = 5;
+// Fetch a candidate pool larger than ROW_LIMIT so client-side ranking
+// by importance has something meaningful to pick from. Without this,
+// the 5 most-recent (but possibly low-importance) rows would always win.
+const CANDIDATE_POOL = 20;
 
 export default function WhatsMoving({
   assetSymbol,
@@ -63,24 +70,33 @@ export default function WhatsMoving({
     (async () => {
       const symbolLower = assetSymbol.toLowerCase();
       const cutoff = new Date(Date.now() - HOURS_48).toISOString();
-      // When excludeId is set, fetch one extra row so we still hit
-      // ROW_LIMIT after filtering.
-      const fetchLimit = excludeId ? ROW_LIMIT + 1 : ROW_LIMIT;
       const { data, error } = await supabaseClient
         .from('news_cache')
         .select('id, title, source, published_at, ai_classification')
         .contains('relevant_assets', [symbolLower])
         .gte('published_at', cutoff)
         .order('published_at', { ascending: false })
-        .limit(fetchLimit);
+        .limit(CANDIDATE_POOL);
       if (cancelled) return;
       if (error) {
         console.warn('[WhatsMoving] news_cache read failed:', error.message);
         setRows([]);
         return;
       }
-      const filtered = (data ?? []).filter((r: NewsRow) => r.id !== excludeId).slice(0, ROW_LIMIT);
-      setRows(filtered as NewsRow[]);
+      // Importance lives in ai_classification jsonb (1-5 scale). Rank
+      // client-side by importance DESC then published_at DESC as the
+      // tiebreaker, then take the top ROW_LIMIT. Rows missing the
+      // classification fall to the bottom (importance defaults to 0).
+      const ranked = (data ?? [])
+        .filter((r: NewsRow) => r.id !== excludeId)
+        .sort((a: NewsRow, b: NewsRow) => {
+          const impA = Number(a.ai_classification?.importance ?? 0);
+          const impB = Number(b.ai_classification?.importance ?? 0);
+          if (impB !== impA) return impB - impA;
+          return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
+        })
+        .slice(0, ROW_LIMIT);
+      setRows(ranked as NewsRow[]);
     })();
     return () => {
       cancelled = true;
