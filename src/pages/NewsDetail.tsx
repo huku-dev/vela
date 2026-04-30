@@ -21,7 +21,7 @@
 // the two LLM cards collapse to a single calm message. The "Read full
 // article" link still works so the user has a path forward.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useDashboard } from '../hooks/useData';
@@ -282,7 +282,26 @@ export default function NewsDetail() {
             marginBottom: 'var(--space-3)',
           }}
         >
-          <span>{meta.source}</span>
+          {/* Source name links to the original article (same destination
+              as the "Read full article" CTA at the bottom). target="_blank"
+              + noopener for security on external link. */}
+          {meta.url ? (
+            <a
+              href={meta.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: 'inherit',
+                textDecoration: 'underline',
+                textDecorationColor: 'var(--color-text-muted)',
+                textUnderlineOffset: '2px',
+              }}
+            >
+              {meta.source}
+            </a>
+          ) : (
+            <span>{meta.source}</span>
+          )}
           {catalyst && (
             <>
               <span>·</span>
@@ -402,16 +421,14 @@ export default function NewsDetail() {
           >
             The story
           </div>
-          <p
+          <Paragraphs
+            text={summary}
             style={{
               fontSize: 'var(--text-sm)',
               lineHeight: 1.6,
               color: 'var(--color-text-primary)',
-              margin: 0,
             }}
-          >
-            {summary}
-          </p>
+          />
         </Card>
       )}
 
@@ -461,21 +478,27 @@ export default function NewsDetail() {
             }}
           >
             <SentimentDot sentiment={velaTake.sentiment ?? 'neutral'} />
+            {/* When opened from an asset detail page (?asset=btc) we have an
+                asset context and render "Bullish for BTC". When opened from
+                a Telegram brief deep link (no asset param), there's no
+                asset to anchor to — render just the sentiment word. The
+                old "Bullish for this asset" reads as boilerplate. */}
             <span>
-              {capitalize(velaTake.sentiment ?? 'neutral')} for{' '}
-              {asset?.name || assetSymbol || 'this asset'}.
+              {capitalize(velaTake.sentiment ?? 'neutral')}
+              {(asset?.name || assetSymbol) && (
+                <> for {asset?.name || assetSymbol}</>
+              )}
+              .
             </span>
           </div>
-          <p
+          <Paragraphs
+            text={velaTake.vela_take}
             style={{
               fontSize: 'var(--text-sm)',
               lineHeight: 'var(--leading-relaxed)',
               color: 'var(--color-text-primary)',
-              margin: 0,
             }}
-          >
-            {velaTake.vela_take}
-          </p>
+          />
         </Card>
       )}
 
@@ -685,7 +708,49 @@ function SentimentDot({ sentiment }: { sentiment: string }) {
 }
 
 function capitalize(s: string): string {
-  return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
+  // Defensive lower-then-capitalize: schema enforces lowercase enum
+  // ("bullish"/"bearish"/"neutral"), but if a future schema relaxation
+  // or a slipped-through model output hands us "BULLISH" or "Bullish",
+  // we still render "Bullish" rather than "BULLISH".
+  if (s.length === 0) return s;
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/**
+ * Render LLM text that may contain paragraph breaks (\n\n) as separate
+ * <p> blocks. Single \n inside a paragraph collapses to a space (matches
+ * how prose flows through whitespace). Used by The Story + Vela's Read
+ * cards so multi-paragraph LLM output renders with proper spacing instead
+ * of one wall of text.
+ */
+function Paragraphs({
+  text,
+  style,
+}: {
+  text: string;
+  style?: CSSProperties;
+}) {
+  const paragraphs = text.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+  // Whitespace-only input collapses to empty after the filter. Render
+  // null so the parent doesn't show a labeled card with no body.
+  if (paragraphs.length === 0) return null;
+  return (
+    <>
+      {paragraphs.map((para, i) => (
+        <p
+          key={i}
+          style={{
+            ...style,
+            margin: 0,
+            marginTop: i === 0 ? 0 : 'var(--space-3)',
+          }}
+        >
+          {para.replace(/\n/g, ' ')}
+        </p>
+      ))}
+    </>
+  );
 }
 
 function formatTimeAgo(dateStr: string): string {
