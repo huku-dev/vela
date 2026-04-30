@@ -40,6 +40,9 @@ interface NewsRowMeta {
   published_at: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ai_classification: any;
+  summary: string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vela_take: any;
 }
 
 interface DetailResponse {
@@ -96,14 +99,30 @@ export default function NewsDetail() {
     (async () => {
       const { data, error } = await supabaseClient
         .from('news_cache')
-        .select('id, title, source, url, published_at, ai_classification')
+        .select('id, title, source, url, published_at, ai_classification, summary, vela_take')
         .eq('id', newsId)
         .maybeSingle();
       if (cancelled) return;
       if (error) {
         console.warn('[NewsDetail] news_cache meta read failed:', error.message);
       } else if (data) {
-        setMeta(data as NewsRowMeta);
+        const row = data as NewsRowMeta;
+        setMeta(row);
+        // Short-circuit: when the LLM-generated fields are already
+        // persisted on the row, render directly without a round-trip
+        // to news-detail-generate. The edge function would itself
+        // short-circuit on cache hit, but skipping the call entirely
+        // saves the JWT auth + network round-trip (~1-2s "Loading
+        // article…" flash on every visit, including for old briefs
+        // linked from Telegram).
+        if (row.summary && row.vela_take) {
+          setDetail({
+            status: 'cached',
+            summary: row.summary,
+            vela_take: row.vela_take,
+          });
+          setLoading(false);
+        }
       }
       // Always flip metaLoaded once the query settles so the not-found
       // terminal can render when data is null without keeping the page
@@ -116,8 +135,14 @@ export default function NewsDetail() {
   }, [newsId, supabaseClient]);
 
   // Fetch (or trigger generation of) summary + vela_take.
+  // Wait for the meta query above to settle so we know whether the row
+  // is cached. The first useEffect sets detail directly on cache hit;
+  // we only need this effect for cache misses (LLM generation needed).
   useEffect(() => {
     if (!newsId || !supabaseClient) return;
+    if (!metaLoaded) return;
+    if (!meta) return; // not found — render-time terminal handles UX
+    if (meta.summary && meta.vela_take) return; // cached, already rendered
     let cancelled = false;
     (async () => {
       try {
@@ -165,7 +190,7 @@ export default function NewsDetail() {
     return () => {
       cancelled = true;
     };
-  }, [newsId, assetSymbol, getToken, supabaseClient]);
+  }, [newsId, assetSymbol, getToken, supabaseClient, metaLoaded, meta]);
 
   if (!newsId) {
     return <NotFoundView onBack={() => navigate('/')} />;
