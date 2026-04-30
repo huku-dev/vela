@@ -1026,7 +1026,6 @@ export default function AssetDetail() {
               <MergedSignalCard
                 signalColor={signalColor}
                 nearConfirmation={signal?.near_confirmation}
-                assetName={asset.name}
                 hlSymbol={asset.hl_symbol ?? asset.symbol}
                 price={price}
                 change24h={change24h}
@@ -1034,7 +1033,6 @@ export default function AssetDetail() {
                 position={positionForCard}
                 historyCount={historyCount}
                 onHistoryClick={historyCount >= 1 ? () => setHistoryExpanded(v => !v) : undefined}
-                indicators={detail?.indicators}
               />
               {/* Legacy SignalHistoryCard re-used as the history disclosure;
                   hidden by default, opened by the merged card's footer link. */}

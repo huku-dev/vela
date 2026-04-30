@@ -40,7 +40,6 @@ interface BriefLite {
 interface MergedSignalCardProps {
   signalColor: SignalColor;
   nearConfirmation?: boolean;
-  assetName: string;
   hlSymbol: string;
   price: number | null | undefined;
   change24h: number | null | undefined;
@@ -50,20 +49,11 @@ interface MergedSignalCardProps {
    * "View signal history (N changes in 30 days)" when N >= 1. */
   historyCount?: number;
   onHistoryClick?: () => void;
-  /** Indicators block from `brief.detail.indicators` (or top-level signal
-   * row) used as the fallback source for "what would change" when the
-   * brief doesn't carry it explicitly. */
-  indicators?: {
-    ema_9: number;
-    ema_21: number;
-    sma_50_daily: number;
-  };
 }
 
 export default function MergedSignalCard({
   signalColor,
   nearConfirmation,
-  assetName,
   hlSymbol,
   price,
   change24h,
@@ -71,7 +61,6 @@ export default function MergedSignalCard({
   position,
   historyCount = 0,
   onHistoryClick,
-  indicators,
 }: MergedSignalCardProps) {
   const [range7d, setRange7d] = useState<{ high: number; low: number } | null>(null);
   const [change7d, setChange7d] = useState<number | null>(null);
@@ -125,29 +114,34 @@ export default function MergedSignalCard({
     };
   }, [hlSymbol, price]);
 
-  const verdictText = buildVerdict(signalColor, assetName, position);
+  const verdictText = buildVerdict(position);
   const reasonText = buildReason(brief);
-  const wwcText: string =
-    brief?.detail?.what_would_change ||
-    (indicators && price != null ? buildWhatWouldChangeFallback(indicators, price) : '');
+  // what_would_change is now generated daily by signal-explanation-generate
+  // with state-aware framing and named dollar levels. No client-side
+  // fallback — when the field is missing (cold-start asset before the
+  // daily cron's first run) we hide the paragraph entirely rather than
+  // ship the off-brand jargon-y indicator-derived fallback.
+  const wwcText: string = brief?.detail?.what_would_change || '';
 
   return (
     <Card style={{ marginBottom: 'var(--space-4)' }}>
       <SignalPill color={signalColor} nearConfirmation={nearConfirmation} />
 
-      <div
-        style={{
-          fontFamily: "'Space Grotesk', system-ui, sans-serif",
-          fontSize: 'var(--text-lg)',
-          fontWeight: 700,
-          lineHeight: 'var(--leading-snug)',
-          letterSpacing: '-0.02em',
-          color: 'var(--color-text-primary)',
-          marginBottom: 'var(--space-2)',
-        }}
-      >
-        {verdictText}
-      </div>
+      {verdictText && (
+        <div
+          style={{
+            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+            fontSize: 'var(--text-lg)',
+            fontWeight: 700,
+            lineHeight: 'var(--leading-snug)',
+            letterSpacing: '-0.02em',
+            color: 'var(--color-text-primary)',
+            marginBottom: 'var(--space-2)',
+          }}
+        >
+          {verdictText}
+        </div>
+      )}
 
       {reasonText && (
         <p
@@ -382,51 +376,33 @@ function Stat({
 
 // ── Pure helpers ──────────────────────────────────────────────────────
 
-function buildVerdict(
-  signalColor: SignalColor,
-  assetName: string,
-  position?: AssetPositionLite
-): string {
+function buildVerdict(position?: AssetPositionLite): string {
+  // Position-aware framing only: P&L isn't on the pill chip, so it earns
+  // its real estate. Without a position the pill chip + reason paragraph
+  // already communicate the state — a synthesized "Vela has flipped X to
+  // Wait" line just rehashes the chip. Period kept on the position case
+  // per the spec at docs/product-briefs/asset-detail-v2.md:71-85.
   if (position) {
     const pct = position.unrealized_pnl_pct ?? 0;
     const direction = position.side === 'long' ? 'long' : 'short';
     const verb = pct >= 0 ? 'up' : 'down';
     return `Your ${direction} is ${verb} ${Math.abs(pct).toFixed(1)}%.`;
   }
-  const action = signalColor === 'green' ? 'Buy' : signalColor === 'red' ? 'Short' : 'Wait';
-  return `Vela has flipped ${assetName} to ${action}.`;
+  return '';
 }
 
 function buildReason(brief: BriefLite | null | undefined): string {
   if (!brief) return '';
-  // Phase 1 backend writes the 3-sentence "why the flip" copy here.
+  // signal-explanation-generate writes this daily for every asset. No
+  // brief.summary fallback: that field is 3-5 sentences (~400 chars) and
+  // exceeds the card's mobile-line budget. When the field is missing
+  // (cold-start asset before the first daily cron tick) the paragraph
+  // hides entirely rather than rendering the wrong shape.
   const explanation = brief.detail?.signal_explanation_plain;
   if (typeof explanation === 'string' && explanation.trim().length > 0) {
     return explanation.trim();
   }
-  // Fallback to existing brief summary while signal_explanation propagates
-  // through running assets. Strips any leading asset-name prefix (matches
-  // legacy behavior on the live page).
-  return (brief.summary ?? '').trim();
-}
-
-function buildWhatWouldChangeFallback(
-  indicators: { ema_9: number; ema_21: number; sma_50_daily: number },
-  price: number
-): string {
-  // Plain-English fallback when brief.detail.what_would_change is missing.
-  // Mirrors the spec's bidirectional framing without naming RSI/EMA.
-  const sma = indicators.sma_50_daily;
-  const ema21 = indicators.ema_21;
-  const upLevel = Math.max(price * 1.04, ema21 * 1.02);
-  const downLevel = Math.min(price * 0.96, sma * 0.98);
-  return `If price drops below $${formatLevel(downLevel)}, the setup gets weaker. If it pushes above $${formatLevel(upLevel)}, the move strengthens.`;
-}
-
-function formatLevel(p: number): string {
-  if (p >= 1000) return p.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (p >= 1) return p.toFixed(2);
-  return p.toFixed(4);
+  return '';
 }
 
 function compactPrice(p: number): string {
