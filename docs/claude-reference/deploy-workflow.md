@@ -157,3 +157,39 @@ Documentation must never be outdated. If a fact has changed (test count, file pa
 - **BSD grep:** Has no `-P` (Perl regex). Use `awk -F'|'` for complex pattern matching in bash scripts.
 - **BSD awk:** Doesn't support `\s` — use `[[:space:]]` POSIX class.
 - Both `grep -P` and `\s` in awk caused deploy.sh to silently skip migrations. Full troubleshooting in `DEPLOY.md`.
+
+---
+
+## Vercel Preview Deployments are SSO-gated
+
+Pushing a feature branch to `origin` produces a Vercel preview URL
+(`https://vela-<hash>-hus-projects-622e7f6d.vercel.app`). **These URLs
+require Vercel SSO authentication** — Telegram, server-to-server cURL
+with our own bearer tokens, etc. all hit a Vercel auth wall before
+reaching the route.
+
+**Implications for E2E testing:**
+
+If the staging backend needs to call a Vercel-served endpoint (e.g.
+`VERCEL_OG_URL` for image generation), pointing it at a preview URL
+will fail with HTML auth-wall responses, not the route's actual output.
+Symptoms: `Vercel OG returned 401: <!doctype html>...Authentication
+Required...`.
+
+**Three options to unblock:**
+
+1. **Push to main** — production deploy is public-by-default, gated by
+   our own auth (`OG_IMAGE_SECRET` Bearer). This is what we do for
+   the news-brief OG route. Trade-off: pushes any user-facing changes
+   on the same commit straight to prod without a preview review.
+2. **Disable Deployment Protection** for previews in Vercel project
+   settings. Persistent change, makes ALL future previews public.
+3. **Generate a Protection Bypass for Automation secret** in Vercel,
+   pass it as `x-vercel-protection-bypass: <secret>` header on every
+   server-side fetch. Adds plumbing in social-poster.ts and another
+   Supabase secret to manage.
+
+For the news-brief OG route we picked (1). The cache fix that shipped
+on the same commit went straight to prod users without a preview
+review — small risk in this case, but worth flagging when bundling
+user-facing changes with backend-only changes in one push.
