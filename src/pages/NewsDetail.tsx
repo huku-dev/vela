@@ -84,6 +84,13 @@ export default function NewsDetail() {
   const [detail, setDetail] = useState<DetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // SC-2 (defense-in-depth): React doesn't block `javascript:` schemes in
+  // href, only in event handlers. RSS feeds we ingest only emit https in
+  // practice, but there's no DB constraint on news_cache.url, so gate the
+  // anchor on http(s) before rendering. Used by both the source-name
+  // header link and the bottom "Read full article" CTA.
+  const safeUrl = meta?.url && /^https?:\/\//i.test(meta.url) ? meta.url : null;
+
   // Fetch the row meta (always succeeds even when LLM is unavailable so
   // the headline + source + Read-full-article link always render).
   useEffect(() => {
@@ -284,10 +291,11 @@ export default function NewsDetail() {
         >
           {/* Source name links to the original article (same destination
               as the "Read full article" CTA at the bottom). target="_blank"
-              + noopener for security on external link. */}
-          {meta.url ? (
+              + noopener for security on external link. safeUrl gates on
+              http(s) — see SC-2 comment above. */}
+          {safeUrl ? (
             <a
-              href={meta.url}
+              href={safeUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -485,10 +493,13 @@ export default function NewsDetail() {
                 old "Bullish for this asset" reads as boilerplate. */}
             <span>
               {capitalize(velaTake.sentiment ?? 'neutral')}
+              {/* N-2: uppercase the URL symbol fallback so we render
+                  "Bullish for BTC" not "Bullish for btc" when the user
+                  doesn't hold the asset in their dashboard (so asset.name
+                  is undefined and we fall back to the raw URL param). */}
               {(asset?.name || assetSymbol) && (
-                <> for {asset?.name || assetSymbol}</>
-              )}
-              .
+                <> for {asset?.name || assetSymbol.toUpperCase()}</>
+              )}.
             </span>
           </div>
           <Paragraphs
@@ -565,10 +576,11 @@ export default function NewsDetail() {
       )}
 
       {/* Read full article — full-width primary dark CTA per wireframe
-          (.read-full). Always works regardless of LLM status. */}
-      {meta?.url && (
+          (.read-full). Always works regardless of LLM status. Uses safeUrl
+          to gate on http(s) — see SC-2 comment above. */}
+      {safeUrl && (
         <a
-          href={meta.url}
+          href={safeUrl}
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -590,7 +602,7 @@ export default function NewsDetail() {
             marginTop: 'var(--space-2)',
           }}
         >
-          Read full article on {meta.source} <span aria-hidden>↗</span>
+          Read full article on {meta?.source} <span aria-hidden>↗</span>
         </a>
       )}
 
@@ -724,14 +736,11 @@ function capitalize(s: string): string {
  * cards so multi-paragraph LLM output renders with proper spacing instead
  * of one wall of text.
  */
-function Paragraphs({
-  text,
-  style,
-}: {
-  text: string;
-  style?: CSSProperties;
-}) {
-  const paragraphs = text.split(/\n\s*\n+/).map((p) => p.trim()).filter(Boolean);
+function Paragraphs({ text, style }: { text: string; style?: CSSProperties }) {
+  const paragraphs = text
+    .split(/\n\s*\n+/)
+    .map(p => p.trim())
+    .filter(Boolean);
   // Whitespace-only input collapses to empty after the filter. Render
   // null so the parent doesn't show a labeled card with no body.
   if (paragraphs.length === 0) return null;
