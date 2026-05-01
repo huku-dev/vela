@@ -115,14 +115,12 @@ export default function NewsDetail() {
       } else if (data) {
         const row = data as NewsRowMeta;
         setMeta(row);
-        // Short-circuit: when the LLM-generated fields are already
-        // persisted on the row, render directly without a round-trip
-        // to news-detail-generate. The edge function would itself
-        // short-circuit on cache hit, but skipping the call entirely
-        // saves the JWT auth + network round-trip (~1-2s "Loading
-        // article…" flash on every visit, including for old briefs
-        // linked from Telegram).
-        if (row.summary && row.vela_take) {
+        // Short-circuit: when summary is already persisted, render
+        // directly without a round-trip to news-detail-generate.
+        // We gate on summary alone (not summary && vela_take) because
+        // macro articles without a Vela asset will never have a vela_take
+        // — gating on both would fire the edge function on every tap.
+        if (row.summary) {
           setDetail({
             status: 'cached',
             summary: row.summary,
@@ -149,7 +147,7 @@ export default function NewsDetail() {
     if (!newsId || !supabaseClient) return;
     if (!metaLoaded) return;
     if (!meta) return; // not found — render-time terminal handles UX
-    if (meta.summary && meta.vela_take) return; // cached, already rendered
+    if (meta.summary) return; // summary cached — edge fn not needed
     let cancelled = false;
     (async () => {
       try {
@@ -497,9 +495,8 @@ export default function NewsDetail() {
                   "Bullish for BTC" not "Bullish for btc" when the user
                   doesn't hold the asset in their dashboard (so asset.name
                   is undefined and we fall back to the raw URL param). */}
-              {(asset?.name || assetSymbol) && (
-                <> for {asset?.name || assetSymbol.toUpperCase()}</>
-              )}.
+              {(asset?.name || assetSymbol) && <> for {asset?.name || assetSymbol.toUpperCase()}</>}
+              .
             </span>
           </div>
           <Paragraphs
