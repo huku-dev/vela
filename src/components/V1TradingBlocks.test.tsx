@@ -243,9 +243,7 @@ describe('BANNER-SRC: PendingProposalsBanner renders correctly', () => {
   });
 
   it('returns null when no pending proposals exist (in countdown hook)', () => {
-    expect(bannerHookSrc).toContain(
-      'if (pending.length === 0 || !soonest) return null'
-    );
+    expect(bannerHookSrc).toContain('if (pending.length === 0 || !soonest) return null');
   });
 
   it('navigates to trades page', () => {

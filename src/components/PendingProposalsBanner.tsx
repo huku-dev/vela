@@ -72,11 +72,7 @@ export default function PendingProposalsBanner() {
             flex: 1,
           }}
         >
-          <VelaLogo
-            variant="mark"
-            size={20}
-            pulse={urgency !== 'neutral'}
-          />
+          <VelaLogo variant="mark" size={20} pulse={urgency !== 'neutral'} />
           <span
             className="vela-body-sm"
             style={{

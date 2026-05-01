@@ -265,9 +265,7 @@ describe('usePendingProposalsCountdown', () => {
 
   it('boundary: T just over 60m is normal', () => {
     setTradingMock({
-      proposals: [
-        mkProposal({ expires_at: new Date(NOW + 60 * 60_000 + 5_000).toISOString() }),
-      ],
+      proposals: [mkProposal({ expires_at: new Date(NOW + 60 * 60_000 + 5_000).toISOString() })],
     });
     const { result } = renderHook(() => usePendingProposalsCountdown());
     expect(result.current?.urgency).toBe('normal');

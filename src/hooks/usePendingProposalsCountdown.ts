@@ -38,18 +38,14 @@ export function usePendingProposalsCountdown(): PendingBannerState | null {
   // rather than rendering "expired" or "0m 00s".
   const now = Date.now();
   const pending = useMemo(
-    () =>
-      proposals.filter(
-        p => p.status === 'pending' && new Date(p.expires_at).getTime() > now
-      ),
+    () => proposals.filter(p => p.status === 'pending' && new Date(p.expires_at).getTime() > now),
     [proposals, now]
   );
 
   const soonest = useMemo<TradeProposal | null>(() => {
     if (pending.length === 0) return null;
     return [...pending].sort(
-      (a, b) =>
-        new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime()
+      (a, b) => new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime()
     )[0];
   }, [pending]);
 
