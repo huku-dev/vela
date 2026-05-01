@@ -129,8 +129,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? formatTimestamp(String(date))
     : formatTimestamp(new Date().toISOString());
 
-  const bullishTickers = bullish ? String(bullish).split(",").map((t) => t.trim()).filter(Boolean) : [];
-  const bearishTickers = bearish ? String(bearish).split(",").map((t) => t.trim()).filter(Boolean) : [];
+  // Defense-in-depth: never render internal classifier tags (_macro, _market)
+  // or anything starting with `_` as if it were a tradeable asset. The
+  // backend filters these in bucketAssetsForDisplay; this is a second wall.
+  const isDisplayableTicker = (t: string) => t.length > 0 && !t.startsWith("_");
+  const bullishTickers = bullish ? String(bullish).split(",").map((t) => t.trim()).filter(isDisplayableTicker) : [];
+  const bearishTickers = bearish ? String(bearish).split(",").map((t) => t.trim()).filter(isDisplayableTicker) : [];
 
   const velaIcon = getVelaIconDataUri();
 
