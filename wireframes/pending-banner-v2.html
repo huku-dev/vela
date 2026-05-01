@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pending Proposals Banner v2 — Wireframe</title>
+  <style>
+    :root {
+      /* Tokens copied verbatim from vela-design-system.css */
+      --black: #0A0A0A;
+      --cream-base: #f5f1e8;
+      --gray-100: #F3F3F3;
+      --gray-200: #E5E5E5;
+      --gray-300: #D4D4D4;
+      --gray-500: #6B7280;
+      --gray-600: #525252;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --amber-primary: #f59e0b;
+      --amber-dark: #d97706;
+      --amber-light: #fde68a;
+      --amber-bg: #fffbeb;
+      --green-primary: #10b981;
+      --blue-primary: #2563eb;
+
+      --color-bg-page: var(--cream-base);
+      --color-text-primary: var(--gray-900);
+      --color-text-secondary: var(--gray-600);
+      --color-action-primary: var(--blue-primary);
+      --color-status-wait-bg: var(--amber-bg);
+      --color-status-wait-text: var(--amber-dark);
+      --color-status-wait-border: var(--amber-primary);
+
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: var(--space-6);
+      font-family: Inter, system-ui, sans-serif;
+      background: var(--color-bg-page);
+      color: var(--color-text-primary);
+    }
+
+    h1 {
+      font-family: 'Instrument Sans', Inter, system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      margin: 0 0 var(--space-2);
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin: 0 0 var(--space-8);
+      max-width: 720px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray-500);
+      font-weight: 600;
+      margin: var(--space-8) 0 var(--space-3);
+    }
+
+    .variant-grid {
+      display: grid;
+      grid-template-columns: 375px 1fr;
+      gap: var(--space-6);
+      align-items: start;
+      margin-bottom: var(--space-6);
+    }
+
+    .variant-grid > .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-700);
+      padding-top: var(--space-3);
+    }
+
+    .frame {
+      background: var(--color-bg-page);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    }
+
+    .frame.mobile {
+      width: 375px;
+    }
+
+    .frame-meta {
+      font-size: 10px;
+      color: var(--gray-500);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: var(--space-2);
+    }
+
+    /* ─── Banner styles ──────────────────────────── */
+
+    .banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: Inter, system-ui, sans-serif;
+      box-shadow: 2px 2px 0 var(--black);
+      border: 2px solid var(--color-status-wait-border);
+      background: var(--color-status-wait-bg);
+      gap: var(--space-3);
+      text-align: left;
+    }
+
+    .banner.urgent {
+      background: var(--amber-light);
+    }
+
+    .banner.critical {
+      background: var(--amber-light);
+      border-width: 3px;
+    }
+
+    .banner.neutral {
+      background: var(--gray-100);
+      border: 2px solid var(--gray-300);
+    }
+
+    .banner-left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      min-width: 0;
+      flex: 1;
+    }
+
+    .banner-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--black);
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cream-base);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .banner-icon.pulse {
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    .banner-icon.pulse.fast {
+      animation-duration: 0.9s;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.12); opacity: 0.85; }
+    }
+
+    .banner-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .banner-countdown {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--color-status-wait-text);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .banner.urgent .banner-countdown,
+    .banner.critical .banner-countdown {
+      color: var(--amber-dark);
+    }
+
+    .banner-arrow {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-action-primary);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .banner.neutral .banner-countdown {
+      display: none;
+    }
+
+    .banner.neutral .banner-icon {
+      background: var(--gray-500);
+    }
+
+    /* Below the banner: faint mock of the rest of dashboard */
+    .dashboard-stub {
+      margin-top: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .stub-card {
+      height: 64px;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+    }
+
+    .full-auto-explainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      background: white;
+      border: 1px dashed var(--gray-300);
+      border-radius: var(--radius-md);
+      color: var(--gray-500);
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* Desktop frame styling */
+    .frame.desktop {
+      max-width: 100%;
+    }
+
+    .desktop-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .desktop-nav {
+      height: 56px;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-5);
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .desktop-banner-wrap {
+      padding: var(--space-3) var(--space-5);
+      background: var(--color-bg-page);
+      border-left: 1px solid var(--gray-200);
+      border-right: 1px solid var(--gray-200);
+    }
+
+    .desktop-content {
+      padding: var(--space-4);
+      background: var(--color-bg-page);
+      border: 1px solid var(--gray-200);
+      border-top: none;
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .desktop-content .stub-card {
+      flex: 1;
+    }
+
+    .annotations {
+      margin-top: var(--space-2);
+      font-size: 12px;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    .annotations code {
+      font-size: 11px;
+      background: var(--gray-100);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Pending Proposals Banner v2</h1>
+  <p class="subtitle">
+    Wireframe for E (dashboard urgency UI). Existing PendingProposalsBanner.tsx is extended in place. Banner mounts globally at Layout level, hidden on /trades. Tap behaviour unchanged: navigates to /trades. All five variants shown at mobile (375w) and one desktop reference at the bottom.
+  </p>
+
+  <div class="section-label">Variant 1 · Single proposal · normal urgency · T > 60m</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard</div>
+      <button class="banner" type="button">
+        <div class="banner-left">
+          <span class="banner-icon pulse">V</span>
+          <span class="banner-label">AAPL · long pending</span>
+        </div>
+        <span class="banner-countdown">2h 41m</span>
+        <span class="banner-arrow">&rarr;</span>
+      </button>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Single proposal: label includes <code>asset · direction</code>. Countdown rounds to <code>Xh Ym</code> while T &gt; 60m. <code>--color-status-wait-bg</code> background, <code>--amber-dark</code> countdown text. Pulses every 1.6s (existing VelaLogo pulse cadence).
+  </div>
+
+  <div class="section-label">Variant 2 · Multiple proposals · normal urgency</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard</div>
+      <button class="banner" type="button">
+        <div class="banner-left">
+          <span class="banner-icon pulse">V</span>
+          <span class="banner-label">3 trades pending</span>
+        </div>
+        <span class="banner-countdown">1h 04m</span>
+        <span class="banner-arrow">&rarr;</span>
+      </button>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Multi-proposal: shortened to <code>N trades pending</code> so countdown fits inline without truncating the label at 375w. Countdown shows the soonest-expiring proposal; no &ldquo;soonest&rdquo; word needed. When that proposal expires (or gets approved), count drops by one and the countdown jumps to the next-expiring. Existing &ldquo;waiting for your approval&rdquo; copy is replaced because keeping it forced ellipsis or a two-row layout.
+  </div>
+
+  <div class="section-label">Variant 3 · Single proposal · last 60m (urgent)</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard</div>
+      <button class="banner urgent" type="button">
+        <div class="banner-left">
+          <span class="banner-icon pulse fast">V</span>
+          <span class="banner-label">AAPL · long pending</span>
+        </div>
+        <span class="banner-countdown">47m</span>
+        <span class="banner-arrow">&rarr;</span>
+      </button>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Background deepens to <code>--amber-light</code>. Pulse cadence drops to 0.9s. Countdown switches to minutes-only when &lt; 60m.
+  </div>
+
+  <div class="section-label">Variant 4 · Single proposal · last 10m (critical)</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard</div>
+      <button class="banner critical" type="button">
+        <div class="banner-left">
+          <span class="banner-icon pulse fast">V</span>
+          <span class="banner-label">AAPL · long pending</span>
+        </div>
+        <span class="banner-countdown">9m 12s</span>
+        <span class="banner-arrow">&rarr;</span>
+      </button>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Border weight bumps to 3px. Countdown updates every second. Tick rate switches from 60s to 1s automatically when &le; 10m. Still no red — red is reserved for short signals.
+  </div>
+
+  <div class="section-label">Variant 5 · view_only user (no countdown)</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard · view_only tier</div>
+      <button class="banner neutral" type="button">
+        <div class="banner-left">
+          <span class="banner-icon">V</span>
+          <span class="banner-label">1 signal pending review</span>
+        </div>
+        <span class="banner-arrow">&rarr;</span>
+      </button>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    No urgency framing because view_only users can&rsquo;t act. Neutral grey bg, no pulse, no countdown. Copy reads &ldquo;signal pending review&rdquo; (singular pluralises naturally).
+  </div>
+
+  <div class="section-label">Variant 6 · full_auto user (banner hidden)</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/dashboard · full_auto tier</div>
+      <div class="full-auto-explainer">no banner rendered &mdash; trades auto-execute</div>
+      <div class="dashboard-stub">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Component returns <code>null</code> for full_auto users. Their proposals auto-approve, so there is nothing to surface.
+  </div>
+
+  <div class="section-label">Desktop reference · variant 3 (urgent) at full width</div>
+  <div class="frame desktop">
+    <div class="desktop-shell">
+      <div class="desktop-nav">Vela &nbsp;·&nbsp; dashboard</div>
+      <div class="desktop-banner-wrap">
+        <button class="banner urgent" type="button">
+          <div class="banner-left">
+            <span class="banner-icon pulse fast">V</span>
+            <span class="banner-label">AAPL · long pending</span>
+          </div>
+          <span class="banner-countdown">47m</span>
+          <span class="banner-arrow">&rarr;</span>
+        </button>
+      </div>
+      <div class="desktop-content">
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    Desktop banner sits inside the content column (does not span full viewport edge-to-edge), matching how cards already render on the dashboard. Same visual logic as mobile, more horizontal breathing room.
+  </div>
+
+  <div class="section-label">Hidden on /trades (already shows proposals inline)</div>
+  <div class="variant-grid">
+    <div class="label">Mobile · 375w</div>
+    <div class="frame mobile">
+      <div class="frame-meta">/trades</div>
+      <div class="full-auto-explainer">no banner rendered &mdash; user is on the page that shows proposals</div>
+      <div class="dashboard-stub">
+        <div class="stub-card" style="height:120px;"></div>
+        <div class="stub-card"></div>
+      </div>
+    </div>
+  </div>
+  <div class="annotations">
+    On /trades, the proposal cards are the page&rsquo;s primary content. Banner would be redundant, so it&rsquo;s hidden via a route check.
+  </div>
+
+</body>
+</html>

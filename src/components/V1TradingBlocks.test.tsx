@@ -20,6 +20,10 @@ import { describe, it, expect } from 'vitest';
 const accountSrc = readFileSync(resolve(__dirname, '../pages/Account.tsx'), 'utf-8');
 const proposalCardSrc = readFileSync(resolve(__dirname, './TradeProposalCard.tsx'), 'utf-8');
 const bannerSrc = readFileSync(resolve(__dirname, './PendingProposalsBanner.tsx'), 'utf-8');
+const bannerHookSrc = readFileSync(
+  resolve(__dirname, '../hooks/usePendingProposalsCountdown.ts'),
+  'utf-8'
+);
 const layoutSrc = readFileSync(resolve(__dirname, './Layout.tsx'), 'utf-8');
 const assetDetailSrc = readFileSync(resolve(__dirname, '../pages/AssetDetail.tsx'), 'utf-8');
 
@@ -233,21 +237,39 @@ describe('PROPOSAL-ADV: TradeProposalCard adversarial checks', () => {
 // BANNER-SRC: Source-verification — Pending Proposals Banner
 // ════════════════════════════════════════════════════════════
 describe('BANNER-SRC: PendingProposalsBanner renders correctly', () => {
-  it('filters only pending proposals', () => {
-    expect(bannerSrc).toContain("p.status === 'pending'");
+  // Pending-filter logic now lives in the usePendingProposalsCountdown hook
+  it('filters only pending proposals (in countdown hook)', () => {
+    expect(bannerHookSrc).toContain("p.status === 'pending'");
   });
 
-  it('returns null when no pending proposals exist', () => {
-    expect(bannerSrc).toContain('if (pending.length === 0) return null');
+  it('returns null when no pending proposals exist (in countdown hook)', () => {
+    expect(bannerHookSrc).toContain(
+      'if (pending.length === 0 || !soonest) return null'
+    );
   });
 
   it('navigates to trades page', () => {
     expect(bannerSrc).toContain("'/trades'");
   });
 
-  it('shows correct singular/plural label', () => {
-    expect(bannerSrc).toContain('1 trade waiting for your approval');
-    expect(bannerSrc).toContain('trades waiting for your approval');
+  it('shows asset and direction in single-proposal label', () => {
+    expect(bannerHookSrc).toContain(
+      '${soonest.asset_id.toUpperCase()} · ${soonest.side.toUpperCase()} pending'
+    );
+  });
+
+  it('shows count + "trades pending" copy for multi-proposal label', () => {
+    expect(bannerHookSrc).toContain('${pending.length} trades pending');
+  });
+
+  it('view_only users get neutral "signal pending review" copy', () => {
+    expect(bannerHookSrc).toContain('pending review');
+    expect(bannerHookSrc).toContain("preferences.mode === 'view_only'");
+  });
+
+  it('full_auto users do not see the banner', () => {
+    expect(bannerHookSrc).toContain("preferences.mode === 'full_auto'");
+    expect(bannerHookSrc).toMatch(/full_auto.*return null/s);
   });
 });
 
@@ -257,15 +279,43 @@ describe('BANNER-SRC: PendingProposalsBanner renders correctly', () => {
 describe('BANNER-ADV: PendingProposalsBanner adversarial checks', () => {
   it('ADV: non-pending statuses are excluded from count', () => {
     // Must use strict equality check on "pending" status
-    expect(bannerSrc).toContain("p.status === 'pending'");
+    expect(bannerHookSrc).toContain("p.status === 'pending'");
     // Must NOT match on substring or partial status names
-    expect(bannerSrc).not.toContain('.includes');
-    expect(bannerSrc).not.toContain('.startsWith');
+    expect(bannerHookSrc).not.toContain('.includes');
+    expect(bannerHookSrc).not.toContain('.startsWith');
   });
 
   it('ADV: navigates to /trades to show all pending proposals', () => {
     // Banner navigates to the trades page (not a single asset page)
     expect(bannerSrc).toContain("'/trades'");
+  });
+
+  it('ADV: countdown urgency thresholds use strict <= comparisons', () => {
+    // Critical and urgent thresholds must be strict numeric comparisons,
+    // not approximate string matches.
+    expect(bannerHookSrc).toContain('10 * 60_000');
+    expect(bannerHookSrc).toContain('60 * 60_000');
+  });
+
+  it('ADV: filters out proposals whose expires_at has already passed', () => {
+    // Race window: status may still say "pending" before the realtime
+    // update lands. Hook must drop these to avoid an "expired" countdown.
+    expect(bannerHookSrc).toContain('expires_at).getTime() > now');
+  });
+});
+
+// ════════════════════════════════════════════════════════════
+// BANNER-MOUNT: Global mount via Layout, hidden on /trades
+// ════════════════════════════════════════════════════════════
+describe('BANNER-MOUNT: global mount rules', () => {
+  it('Layout imports and renders PendingProposalsBanner', () => {
+    expect(layoutSrc).toContain("import PendingProposalsBanner from './PendingProposalsBanner'");
+    expect(layoutSrc).toContain('<PendingProposalsBanner />');
+  });
+
+  it('Layout hides the banner on /trades and /welcome', () => {
+    expect(layoutSrc).toMatch(/pathname !== '\/trades'/);
+    expect(layoutSrc).toMatch(/pathname !== '\/welcome'/);
   });
 });
 

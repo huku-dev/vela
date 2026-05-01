@@ -6,7 +6,6 @@ import SignalCard from '../components/SignalCard';
 import LockedSignalCard from '../components/LockedSignalCard';
 import EmptyState from '../components/EmptyState';
 import VelaLogo from '../components/VelaLogo';
-import PendingProposalsBanner from '../components/PendingProposalsBanner';
 import UpgradeNudgeBanner from '../components/UpgradeNudgeBanner';
 import TelegramConnectButton from '../components/TelegramConnectButton';
 import TierComparisonSheet from '../components/TierComparisonSheet';
@@ -52,7 +51,7 @@ function safeSetItem(key: string, value: string): void {
 const DIGEST_COLLAPSED_HEIGHT = 96;
 const TG_NUDGE_DISMISSED_KEY = 'vela_telegram_nudge_dismissed';
 
-type BannerPriority = 'fund-wallet' | 'pending-proposals' | 'connect-telegram' | 'upgrade' | null;
+type BannerPriority = 'fund-wallet' | 'connect-telegram' | 'upgrade' | null;
 type FirstTradeMoment =
   | { type: 'first-trade'; assetId: string; side: string; price: number }
   | { type: 'first-decline' }
@@ -369,7 +368,8 @@ export default function Home() {
       positions.filter(p => p.status === 'open').length === 0
     )
       return 'fund-wallet';
-    if (hasPendingProposals) return 'pending-proposals';
+    // 'pending-proposals' is now handled by the global PendingProposalsBanner
+    // mounted in Layout.tsx; no longer part of Home's rotation.
     if (
       isAuthenticated &&
       tierConfig.features.telegram_alerts &&
@@ -386,7 +386,6 @@ export default function Home() {
     wallet,
     needsFunding,
     positions,
-    hasPendingProposals,
     tierConfig.features.telegram_alerts,
     preferences,
     tgNudgeDismissed,
@@ -544,12 +543,6 @@ export default function Home() {
             )}
             Deposit now
           </button>
-        </div>
-      )}
-
-      {activeBanner === 'pending-proposals' && (
-        <div style={{ marginBottom: 'var(--space-4)' }}>
-          <PendingProposalsBanner />
         </div>
       )}
 

@@ -158,6 +158,13 @@
   --color-status-wait-near-border: #6ee7b7;
   --color-status-wait-near-dot: #10b981;
 
+  /* Pending-banner urgent (last 60m / last 10m) — deeper amber than the
+     standard wait state. Distinct semantic token so dark-mode override
+     handles it without bleeding raw --amber-light into a dark page. */
+  --color-banner-urgent-bg: var(--amber-light);
+  --color-banner-urgent-border: var(--amber-primary);
+  --color-banner-urgent-text: var(--amber-dark);
+
   --color-status-neutral-bg: var(--gray-50);
   --color-status-neutral-text: var(--gray-700);
   --color-status-neutral-border: var(--gray-400);

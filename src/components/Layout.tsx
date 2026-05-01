@@ -4,6 +4,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { useTrading } from '../hooks/useTrading';
 import { useTierAccess } from '../hooks/useTierAccess';
 import VelaToast from './VelaToast';
+import PendingProposalsBanner from './PendingProposalsBanner';
 
 const navItems = [
   {
@@ -213,6 +214,13 @@ export default function Layout() {
         />
       )}
       <main id="main-content">
+        {/* Global pending-proposals banner. Owns its own wrapper so it
+            renders nothing (no empty padding) when there's no pending
+            proposal. Hidden on /trades (proposal cards are the page content
+            there) and /welcome (auth flow). */}
+        {location.pathname !== '/trades' && location.pathname !== '/welcome' && (
+          <PendingProposalsBanner />
+        )}
         <Outlet />
       </main>
       {showNav && (
