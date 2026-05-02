@@ -62,8 +62,15 @@ export default function NewsDetail() {
   // Use the JWT-bearing client when available (authenticated users get the
   // full experience including LLM generation); fall back to the bare anon
   // client so the article meta + cached summary always renders.
-  const { getToken, supabaseClient } = useAuthContext();
-  const readClient = supabaseClient ?? anonSupabase;
+  const { getToken, supabaseClient, isLoading: authLoading } = useAuthContext();
+  // Wait for Privy to resolve before choosing a client. This prevents the
+  // double-fetch flicker where:
+  //   1. mount: supabaseClient=null → readClient=anonSupabase → anon fetch fires
+  //   2. Privy resolves: supabaseClient=<jwt client> → readClient changes → effect
+  //      re-fires, resetting meta/metaLoaded mid-render
+  // Once authLoading=false we know supabaseClient is either null (genuinely
+  // unauthenticated) or a JWT-bearing client (authenticated).
+  const readClient = authLoading ? null : (supabaseClient ?? anonSupabase);
   // Asset metadata + live price for the price strip. Reuses the dashboard
   // hook so we don't duplicate fetches.
   const { data: dashboardData } = useDashboard();
@@ -99,7 +106,7 @@ export default function NewsDetail() {
   // Fetch the row meta (always succeeds even when LLM is unavailable so
   // the headline + source + Read-full-article link always render).
   useEffect(() => {
-    if (!newsId) return;
+    if (!newsId || !readClient) return;
     // Reset state on route change so the previous article doesn't flash
     // under the new URL while fetches resolve.
     setMeta(null);
@@ -149,7 +156,7 @@ export default function NewsDetail() {
   // is cached. The first useEffect sets detail directly on cache hit;
   // we only need this effect for cache misses (LLM generation needed).
   useEffect(() => {
-    if (!newsId) return;
+    if (!newsId || !readClient) return;
     if (!metaLoaded) return;
     if (!meta) return; // not found — render-time terminal handles UX
     if (meta.summary) return; // summary cached — edge fn not needed
@@ -561,7 +568,7 @@ export default function NewsDetail() {
                 marginBottom: 'var(--space-1)',
               }}
             >
-              Vela&apos;s read isn&apos;t ready yet.
+              {supabaseClient ? "Vela’s read isn’t ready yet." : 'Log in to see the full analysis.'}
             </p>
             <p
               style={{
@@ -571,7 +578,9 @@ export default function NewsDetail() {
                 maxWidth: 280,
               }}
             >
-              Try again in a minute. The full article is one tap away below.
+              {supabaseClient
+                ? 'Try again in a minute. The full article is one tap away below.'
+                : 'The full article is one tap away below.'}
             </p>
           </div>
         </Card>
