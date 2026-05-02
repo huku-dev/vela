@@ -24,6 +24,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../contexts/AuthContext';
+import { supabase as anonSupabase } from '../lib/supabase';
 import { useDashboard } from '../hooks/useData';
 import { Card } from '../components/VelaComponents';
 import VelaLogo from '../components/VelaLogo';
@@ -56,9 +57,13 @@ export default function NewsDetail() {
   const [searchParams] = useSearchParams();
   const assetSymbol = searchParams.get('asset') ?? '';
   const navigate = useNavigate();
-  // news_cache has RLS `TO authenticated`; the bare anon client returns
-  // zero rows. Pull the JWT-bearing client from auth context.
+  // news_cache supports both authenticated and anon reads (the anon RLS
+  // policy enables Telegram deep links to load without a browser session).
+  // Use the JWT-bearing client when available (authenticated users get the
+  // full experience including LLM generation); fall back to the bare anon
+  // client so the article meta + cached summary always renders.
   const { getToken, supabaseClient } = useAuthContext();
+  const readClient = supabaseClient ?? anonSupabase;
   // Asset metadata + live price for the price strip. Reuses the dashboard
   // hook so we don't duplicate fetches.
   const { data: dashboardData } = useDashboard();
@@ -94,7 +99,7 @@ export default function NewsDetail() {
   // Fetch the row meta (always succeeds even when LLM is unavailable so
   // the headline + source + Read-full-article link always render).
   useEffect(() => {
-    if (!newsId || !supabaseClient) return;
+    if (!newsId) return;
     // Reset state on route change so the previous article doesn't flash
     // under the new URL while fetches resolve.
     setMeta(null);
@@ -104,7 +109,7 @@ export default function NewsDetail() {
 
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabaseClient
+      const { data, error } = await readClient
         .from('news_cache')
         .select('id, title, source, url, published_at, ai_classification, summary, vela_take')
         .eq('id', newsId)
@@ -137,14 +142,14 @@ export default function NewsDetail() {
     return () => {
       cancelled = true;
     };
-  }, [newsId, supabaseClient]);
+  }, [newsId, readClient]);
 
   // Fetch (or trigger generation of) summary + vela_take.
   // Wait for the meta query above to settle so we know whether the row
   // is cached. The first useEffect sets detail directly on cache hit;
   // we only need this effect for cache misses (LLM generation needed).
   useEffect(() => {
-    if (!newsId || !supabaseClient) return;
+    if (!newsId) return;
     if (!metaLoaded) return;
     if (!meta) return; // not found — render-time terminal handles UX
     if (meta.summary) return; // summary cached — edge fn not needed
@@ -161,7 +166,7 @@ export default function NewsDetail() {
         // routes and look it up here.
         let assetUuid: string | undefined;
         if (assetSymbol) {
-          const { data: assetRow } = await supabaseClient
+          const { data: assetRow } = await readClient
             .from('assets')
             .select('id')
             .eq('symbol', assetSymbol.toUpperCase())
@@ -195,7 +200,7 @@ export default function NewsDetail() {
     return () => {
       cancelled = true;
     };
-  }, [newsId, assetSymbol, getToken, supabaseClient, metaLoaded, meta]);
+  }, [newsId, assetSymbol, getToken, readClient, metaLoaded, meta]);
 
   if (!newsId) {
     return <NotFoundView onBack={() => navigate('/')} />;
