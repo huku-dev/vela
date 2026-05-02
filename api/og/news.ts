@@ -124,7 +124,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const headlineStr = decodeHtmlEntities(String(headline));
   // velaRead is optional. When omitted the read-line span is skipped entirely
   // so the layout collapses cleanly rather than rendering an empty gap.
-  const velaReadStr = velaRead ? decodeHtmlEntities(String(velaRead)) : "";
+  const velaReadStr = velaRead
+    ? decodeHtmlEntities(String(velaRead)).replace(/^[a-z]/, (c) => c.toUpperCase())
+    : "";
   const dateStr = date
     ? formatTimestamp(String(date))
     : formatTimestamp(new Date().toISOString());
