@@ -158,7 +158,6 @@ describe('TRACK-SRC: Source-verification — page structure', () => {
     expect(src).not.toContain('BestTradeCard');
     expect(src).not.toContain('showVelaHistory');
   });
-
 });
 
 // ═══════════════════════════════════════════════════════════════════
