@@ -562,7 +562,17 @@ export type EnrichedTrade = PaperTrade & {
   exit_reason_code?: string;
 };
 
-export function useTrackRecord() {
+/**
+ * `useTrackRecord` powers two pages with different needs:
+ * - When `withTrades: true` (default), fetches paper_trades + enrichment + stats.
+ *   Used by surfaces that render the paper-trade history.
+ * - When `withTrades: false`, skips the paper_trades fetch entirely. The asset map
+ *   is built from the assets table directly so user-position lookups work even
+ *   for assets with no paper_trades yet. Used by the trades page after Zone 2
+ *   ("Vela's track record") was hidden pending the home-page redesign.
+ */
+export function useTrackRecord(options?: { withTrades?: boolean }) {
+  const withTrades = options?.withTrades ?? true;
   const [trades, setTrades] = useState<EnrichedTrade[]>([]);
   const [stats, setStats] = useState<PaperTradeStats[]>([]);
   const [livePrices, setLivePrices] = useState<Record<string, PriceData>>({});
@@ -652,43 +662,61 @@ export function useTrackRecord() {
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [tradesRes, statsRes] = await Promise.all([
-        supabase
-          .from('paper_trades')
-          .select('*, assets(symbol, coingecko_id, icon_url)')
-          .order('opened_at', { ascending: false }),
-        supabase.from('paper_trade_stats').select('*'),
-      ]);
-
-      const rows = tradesRes.data || [];
-      const mapped = dedup(mapTrades(rows));
-      setHasMore(false);
-      setStats(statsRes.data || []);
-
-      // Build asset map for logos (include non-crypto assets with null coingecko_id)
       const aMap: Record<string, TradeAssetInfo> = {};
-      for (const t of mapped) {
-        if (t.asset_symbol) {
-          aMap[t.asset_id] = {
-            symbol: t.asset_symbol,
-            coingecko_id: t.asset_coingecko_id ?? null,
-            icon_url: t.asset_icon_url ?? null,
+
+      if (withTrades) {
+        const [tradesRes, statsRes] = await Promise.all([
+          supabase
+            .from('paper_trades')
+            .select('*, assets(symbol, coingecko_id, icon_url)')
+            .order('opened_at', { ascending: false }),
+          supabase.from('paper_trade_stats').select('*'),
+        ]);
+
+        const rows = tradesRes.data || [];
+        const mapped = dedup(mapTrades(rows));
+        setHasMore(false);
+        setStats(statsRes.data || []);
+
+        // Build asset map for logos (include non-crypto assets with null coingecko_id)
+        for (const t of mapped) {
+          if (t.asset_symbol) {
+            aMap[t.asset_id] = {
+              symbol: t.asset_symbol,
+              coingecko_id: t.asset_coingecko_id ?? null,
+              icon_url: t.asset_icon_url ?? null,
+            };
+          }
+        }
+        setAssetMap(aMap);
+
+        // Enrich trades with brief headlines (best-effort, fails silently)
+        try {
+          const enriched = await enrichTrades(mapped);
+          setTrades(enriched);
+        } catch (err) {
+          Sentry.captureException(err, {
+            tags: { flow: 'track-record' },
+            extra: { step: 'enrichTrades', tradeCount: mapped.length },
+          });
+          console.error('[useTrackRecord] enrichment failed:', err);
+          setTrades(mapped);
+        }
+      } else {
+        // Trades-page path: skip paper_trades fetch + enrichment.
+        // Build the asset map from `assets` directly so positions on assets without
+        // any paper_trades still resolve to a symbol / icon / coingecko_id.
+        const assetsRes = await supabase
+          .from('assets')
+          .select('id, symbol, coingecko_id, icon_url');
+        for (const a of assetsRes.data ?? []) {
+          aMap[a.id] = {
+            symbol: a.symbol,
+            coingecko_id: a.coingecko_id ?? null,
+            icon_url: a.icon_url ?? null,
           };
         }
-      }
-      setAssetMap(aMap);
-
-      // Enrich trades with brief headlines (best-effort, fails silently)
-      try {
-        const enriched = await enrichTrades(mapped);
-        setTrades(enriched);
-      } catch (err) {
-        Sentry.captureException(err, {
-          tags: { flow: 'track-record' },
-          extra: { step: 'enrichTrades', tradeCount: mapped.length },
-        });
-        console.error('[useTrackRecord] enrichment failed:', err);
-        setTrades(mapped);
+        setAssetMap(aMap);
       }
 
       // Fetch live prices for all known assets (covers both open paper_trades and real positions)
@@ -713,6 +741,7 @@ export function useTrackRecord() {
       setLoading(false);
     };
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadMore = useCallback(async () => {
