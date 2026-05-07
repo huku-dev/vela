@@ -41,7 +41,7 @@ Added admin Telegram alerting to `rate-limiter.ts`:
 - **Webhooks:** Stripe signature, Telegram secret, email HMAC all verified
 - **Wallets:** Private keys never stored locally (Privy HSM), agent wallets can't withdraw
 
-### Open Items
+### Open Items (post 2026-03-18)
 
 - `max_active_positions` values under review (current: free=1, standard=2, premium=5)
 - Staging service role key removed from `.env` but key itself not rotated (low priority, never committed to git)
@@ -51,3 +51,60 @@ Added admin Telegram alerting to `rate-limiter.ts`:
 ### Scheduled Audit
 
 `monthly-security-audit` task runs 1st of every month. Full STRIDE + OWASP sweep with regression checks against prior findings.
+
+---
+
+## STRIDE + OWASP Audit (2026-05-06)
+
+Full report: `docs/security-audits/2026-05-06-monthly-audit.md`
+
+### Critical Finding: run-signals Has No Authentication
+
+**Problem:** `supabase/functions/run-signals/index.ts` has no auth check at all. Any caller can POST to the endpoint and trigger the full signal engine — including trade execution for all `full_auto` users, proposal generation, and Telegram/email notifications to all users. No rate limit, no credentials required.
+
+**Status: OPEN — must fix before next cron window.**
+
+Fix: Add service role key check at handler entry (same pattern as `market-context-refresh:58-65`).
+
+### High Findings: 11 additional edge functions lack authentication
+
+Several cron-triggered functions (email senders + LLM callers) have no auth check, making them publicly callable:
+- `asset-intel-generate` — triggers LLM calls, bypasses 60-min dedup on `mode=manual`
+- `proposal-reminder` — spams reminder emails to all users with pending proposals
+- `weekly-recap` — spams recap emails to entire user base
+- `subscription-reminders`, `daily-digest`, `position-holder-brief` — similar mass-email risk
+
+Fix: Service role key check on all of them (5 min each).
+
+### High Finding: npm audit — 1 critical + 2 high transitive vulnerabilities
+
+- Critical: `protobufjs@7.5.4` via `posthog-js` → OpenTelemetry (not processing user data, low practical risk)
+- High: `lodash@4.17.23` via `@privy-io/react-auth` → `@metamask`
+- High: `defu@6.1.4` via `@privy-io/react-auth` → `@walletconnect`
+- Fix: `npm audit fix` after testing Privy/WalletConnect compat.
+
+### Medium Finding: Ownership check runs after DB update in processProposalAction
+
+`trade-webhook/index.ts:119-166` — status is updated BEFORE ownership check. Revert is fire-and-forget (error unchecked). If revert fails, proposal state is corrupted permanently with no alert.
+Fix: Add `.eq("user_id", authenticatedUserId)` to the initial UPDATE.
+
+### Medium Finding: withdrawal_otps stored in plaintext
+
+`withdrawal_otps.code` column is plaintext. Fix: Hash before storage.
+
+### Low Findings
+
+- Missing HSTS header in `vercel.json`
+- Missing Permissions-Policy header in `vercel.json`
+- `DEV_BYPASS` not gated on `import.meta.env.DEV` in `useAuth.ts:16`
+
+### Regression Check
+
+All prior fixes confirmed still in place:
+- Email HMAC IDOR: CONFIRMED FIXED
+- APP_BASE_URL fail-loud (in formatProposalEmail): CONFIRMED
+- Rate limit abuse alerting: CONFIRMED
+- WALLET_ENVIRONMENT fail-loud in process-withdrawal: CONFIRMED
+- RLS + SECURITY DEFINER view fixes: CONFIRMED
+
+Soft regression: `auth-exchange` still does soft-skip on missing `WALLET_ENVIRONMENT` (doesn't default to testnet, but silently skips wallet provisioning). Fix: throw rather than warn.

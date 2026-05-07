@@ -13,7 +13,9 @@ const EXCHANGE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-exc
 // Set VITE_DEV_BYPASS_AUTH=true in .env.local to enable.
 // Uses the public Supabase client (reads signals/briefs/assets).
 // Trading actions won't work (no real JWT), but UI QA is fully functional.
-const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+// Gate on import.meta.env.DEV so the bypass is stripped from production builds
+// even if VITE_DEV_BYPASS_AUTH is accidentally set in Vercel env config.
+const DEV_BYPASS = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
 if (DEV_BYPASS && typeof window !== 'undefined') {
   // Only seed the onboarded flag if it hasn't been explicitly set. This
