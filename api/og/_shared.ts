@@ -119,6 +119,8 @@ export async function svgToPng(svg: string): Promise<Buffer> {
 /** Decode common HTML entities that may leak from brief generation */
 export function decodeHtmlEntities(str: string): string {
   return str
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&#39;/g, "'")
