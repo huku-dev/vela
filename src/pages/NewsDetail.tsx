@@ -587,9 +587,9 @@ export default function NewsDetail() {
               <button
                 onClick={login}
                 style={{
-                  background: 'var(--color-ink)',
-                  color: 'var(--color-cream)',
-                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--color-ink)',
+                  border: '1.5px solid var(--color-ink)',
                   borderRadius: 'var(--radius-md)',
                   padding: 'var(--space-2) var(--space-5)',
                   fontSize: 'var(--text-sm)',
