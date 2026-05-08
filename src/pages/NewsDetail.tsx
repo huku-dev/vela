@@ -62,7 +62,7 @@ export default function NewsDetail() {
   // Use the JWT-bearing client when available (authenticated users get the
   // full experience including LLM generation); fall back to the bare anon
   // client so the article meta + cached summary always renders.
-  const { getToken, supabaseClient, isLoading: authLoading } = useAuthContext();
+  const { getToken, supabaseClient, isLoading: authLoading, login } = useAuthContext();
   // Wait for Privy to resolve before choosing a client. This prevents the
   // double-fetch flicker where:
   //   1. mount: supabaseClient=null → readClient=anonSupabase → anon fetch fires
@@ -568,7 +568,7 @@ export default function NewsDetail() {
                 marginBottom: 'var(--space-1)',
               }}
             >
-              {supabaseClient ? "Vela’s read isn’t ready yet." : 'Log in to see the full analysis.'}
+              {supabaseClient ? 'Vela’s read isn’t ready yet.' : 'Log in to see the full analysis.'}
             </p>
             <p
               style={{
@@ -576,12 +576,31 @@ export default function NewsDetail() {
                 color: 'var(--color-text-secondary)',
                 margin: 0,
                 maxWidth: 280,
+                marginBottom: supabaseClient ? 0 : 'var(--space-3)',
               }}
             >
               {supabaseClient
                 ? 'Try again in a minute. The full article is one tap away below.'
                 : 'The full article is one tap away below.'}
             </p>
+            {!supabaseClient && (
+              <button
+                onClick={login}
+                style={{
+                  background: 'var(--color-ink)',
+                  color: 'var(--color-cream)',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-2) var(--space-5)',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+              >
+                Log in
+              </button>
+            )}
           </div>
         </Card>
       )}
