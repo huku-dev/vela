@@ -38,7 +38,7 @@
    git worktree prune                                   # clean orphaned refs
    ```
 7. Update MEMORY.md following the routing rules in `documentation-maintenance.md` — detail goes in topic files, main file stays ≤200 lines
-8. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. Cover every section below with specific examples and honest reflection:
+8. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED, RENDERED IN CHAT):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. **The retro is rendered IN THE CHAT in addition to being saved to a file.** The user reads the chat version as the primary deliverable; the file is the durable archive. Both are required, not either-or. Save to `~/crypto-agent-frontend/memory/session-retro-YYYY-MM-DD.md`. Cover every section below with specific examples and honest reflection:
    - **What was accomplished:** List each distinct piece of work with enough detail that someone reading it cold understands what shipped. Include file paths, deployment targets, and what changed.
    - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework? Call out specific moments. Be honest — don't just say "your prompts were great."
    - **Efficiency feedback:** Where could Claude have been better? Identify specific wasted steps, wrong approaches tried first, things that should have been anticipated, unnecessary round-trips. This is the most important section — be self-critical.
@@ -46,7 +46,7 @@
    - **CLAUDE.md / MEMORY.md updates needed:** Explicitly state what was updated and whether anything still needs updating. If nothing, say so.
    - **Open items:** Anything left unfinished, blocked, or deferred. If nothing, say so.
 
-   **DO NOT summarize or abbreviate the retro.** The user has repeatedly asked for full retrospectives. A 3-bullet summary is not a retro.
+   **DO NOT summarize or abbreviate the retro.** The user has repeatedly asked for full retrospectives. A 3-bullet summary is not a retro. **DO NOT only save to a file — always also render in chat.**
 9. **Remind user to run `vela-end`** — this is interactive (prompts for decisions + tasks) and must be run by the user in terminal, not by Claude Code
 
 ---

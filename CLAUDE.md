@@ -100,19 +100,7 @@ These rules load automatically when editing matching files:
 | Needing product context, roadmap, or plan mode | `docs/claude-reference/project-context.md` |
 | Planning a non-trivial implementation | `docs/claude-reference/project-context.md` (Plan Mode Protocol) |
 | Writing adversarial threat reports | `docs/threat-reports/TEMPLATE.md` |
-
----
-
-## Dev tools (in-repo)
-
-Two interactive tools live in `src/dev-tools/` and ship as separate Vite entries (registered in `vite.config.ts`). Run via `pnpm dev`, then visit `/src/dev-tools/<name>.html`. Build outputs land in `dist/src/dev-tools/`.
-
-| Tool | Purpose |
-|------|---------|
-| `component-matrix.tsx` | Renders MergedSignalCard + VelaComponents primitives in every documented variant on one page. Open before shipping a component change to catch missed states. |
-| `design-system.tsx` | Every CSS token from `vela-design-system.css` grouped by the brand-doc-canonical 19 categories with per-token usage notes from `VELA-BRAND-SYSTEM-V2.md`. Signal-reserved badges enforce "never reuse for non-signal UI". Light + dark theme toggle. |
-
-Add new dev tools the same way: drop a `name.tsx` + `name.html` pair in `src/dev-tools/`, register the entry in `vite.config.ts` `rollupOptions.input`, run `pnpm build` to verify.
+| Auditing components or design tokens, or adding a dev tool | `docs/claude-reference/dev-tools.md` |
 
 ---
 
