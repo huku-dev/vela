@@ -103,4 +103,17 @@ These rules load automatically when editing matching files:
 
 ---
 
+## Dev tools (in-repo)
+
+Two interactive tools live in `src/dev-tools/` and ship as separate Vite entries (registered in `vite.config.ts`). Run via `pnpm dev`, then visit `/src/dev-tools/<name>.html`. Build outputs land in `dist/src/dev-tools/`.
+
+| Tool | Purpose |
+|------|---------|
+| `component-matrix.tsx` | Renders MergedSignalCard + VelaComponents primitives in every documented variant on one page. Open before shipping a component change to catch missed states. |
+| `design-system.tsx` | Every CSS token from `vela-design-system.css` grouped by the brand-doc-canonical 19 categories with per-token usage notes from `VELA-BRAND-SYSTEM-V2.md`. Signal-reserved badges enforce "never reuse for non-signal UI". Light + dark theme toggle. |
+
+Add new dev tools the same way: drop a `name.tsx` + `name.html` pair in `src/dev-tools/`, register the entry in `vite.config.ts` `rollupOptions.input`, run `pnpm build` to verify.
+
+---
+
 **Remember:** Vela is about **trust**. Every design choice, every line of code, every user-facing message should reinforce that users are in control and getting accurate, honest information.

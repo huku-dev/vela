@@ -2,8 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { resolve } from 'node:path';
 
 export default defineConfig({
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     // Upload source maps to Sentry for readable stack traces in production.
@@ -38,9 +42,14 @@ export default defineConfig({
     // (sentryVitePlugin deletes .map files after upload)
     sourcemap: 'hidden',
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        'component-matrix': resolve(__dirname, 'src/dev-tools/component-matrix.html'),
+        'design-system': resolve(__dirname, 'src/dev-tools/design-system.html'),
+      },
       output: {
         manualChunks: {
-          // Stable vendor chunks — cached across deploys
+          // Stable vendor chunks, cached across deploys
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
           sentry: ['@sentry/react'],
