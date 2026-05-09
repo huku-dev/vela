@@ -568,7 +568,7 @@ export default function NewsDetail() {
                 marginBottom: 'var(--space-1)',
               }}
             >
-              {supabaseClient ? 'Vela’s read isn’t ready yet.' : 'Log in to see the full analysis.'}
+              {supabaseClient ? "Vela's read isn't ready yet." : "Vela's analysis is members-only."}
             </p>
             <p
               style={{
@@ -576,31 +576,31 @@ export default function NewsDetail() {
                 color: 'var(--color-text-secondary)',
                 margin: 0,
                 maxWidth: 280,
-                marginBottom: supabaseClient ? 0 : 'var(--space-3)',
               }}
             >
-              {supabaseClient
-                ? 'Try again in a minute. The full article is one tap away below.'
-                : 'The full article is one tap away below.'}
+              {supabaseClient ? (
+                'Try again in a minute. The full article is one tap away below.'
+              ) : (
+                <>
+                  <button
+                    onClick={login}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: 'var(--color-ink)',
+                      fontWeight: 600,
+                      fontSize: 'inherit',
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    Log in to Vela
+                  </button>
+                  {' for its analysis, or tap below for the full article.'}
+                </>
+              )}
             </p>
-            {!supabaseClient && (
-              <button
-                onClick={login}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--color-ink)',
-                  border: '1.5px solid var(--color-ink)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: 'var(--space-2) var(--space-5)',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  width: '100%',
-                }}
-              >
-                Log in
-              </button>
-            )}
           </div>
         </Card>
       )}
