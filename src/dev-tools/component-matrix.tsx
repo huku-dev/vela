@@ -236,7 +236,7 @@ const SPECS: ComponentSpec[] = [
     propCount: 4,
     variants: ['buy', 'sell', 'wait', 'neutral', 'up', 'down'],
     states: ['default'],
-    build: (variant) => {
+    build: variant => {
       const labelMap: Record<string, string> = {
         buy: 'BUY',
         sell: 'SHORT',
@@ -290,7 +290,7 @@ function Toolbar({
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-        <label
+        <span
           style={{
             fontSize: 'var(--text-2xs)',
             color: 'var(--color-text-muted)',
@@ -300,14 +300,14 @@ function Toolbar({
           }}
         >
           Padding step
-        </label>
+        </span>
         <input
           type="range"
           min={-2}
           max={2}
           step={1}
           value={paddingStep}
-          onChange={(e) => setPaddingStep(parseInt(e.target.value, 10))}
+          onChange={e => setPaddingStep(parseInt(e.target.value, 10))}
         />
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
           {paddingStep > 0 ? `+${paddingStep}` : paddingStep}
@@ -315,7 +315,7 @@ function Toolbar({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-        <label
+        <span
           style={{
             fontSize: 'var(--text-2xs)',
             color: 'var(--color-text-muted)',
@@ -325,7 +325,7 @@ function Toolbar({
           }}
         >
           Theme
-        </label>
+        </span>
         <button
           type="button"
           className="vela-btn vela-btn-secondary vela-btn-sm"
@@ -336,7 +336,7 @@ function Toolbar({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-        <label
+        <span
           style={{
             fontSize: 'var(--text-2xs)',
             color: 'var(--color-text-muted)',
@@ -346,11 +346,11 @@ function Toolbar({
           }}
         >
           Viewport width
-        </label>
+        </span>
         <select
           className="vela-input vela-select"
           value={String(viewport)}
-          onChange={(e) => {
+          onChange={e => {
             const v = e.target.value;
             setViewport(v === 'fluid' ? 'fluid' : (parseInt(v, 10) as Viewport));
           }}
@@ -408,7 +408,7 @@ function Cell({
       role="button"
       tabIndex={0}
       onClick={() => onCopy(payload.jsx)}
-      onKeyDown={(e) => {
+      onKeyDown={e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           onCopy(payload.jsx);
@@ -496,10 +496,7 @@ function ComponentBlock({
           flexWrap: 'wrap',
         }}
       >
-        <h2
-          className="vela-heading-lg"
-          style={{ color: 'var(--color-text-primary)', margin: 0 }}
-        >
+        <h2 className="vela-heading-lg" style={{ color: 'var(--color-text-primary)', margin: 0 }}>
           {spec.name}
         </h2>
         <code
@@ -529,7 +526,7 @@ function ComponentBlock({
         }}
       >
         <div />
-        {spec.variants.map((v) => (
+        {spec.variants.map(v => (
           <div
             key={v}
             style={{
@@ -546,7 +543,7 @@ function ComponentBlock({
           </div>
         ))}
 
-        {spec.states.map((state) => (
+        {spec.states.map(state => (
           <React.Fragment key={state}>
             <div
               style={{
@@ -561,7 +558,7 @@ function ComponentBlock({
             >
               {state}
             </div>
-            {spec.variants.map((variant) => (
+            {spec.variants.map(variant => (
               <Cell
                 key={`${variant}-${state}`}
                 payload={spec.build(variant, state)}
@@ -709,7 +706,7 @@ function App() {
           setViewport={setViewport}
         />
         <div style={containerStyle}>
-          {SPECS.map((spec) => (
+          {SPECS.map(spec => (
             <ComponentBlock
               key={spec.name}
               spec={spec}
