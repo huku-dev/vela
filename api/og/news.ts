@@ -52,11 +52,13 @@ const HAIRLINE = "rgba(10, 10, 10, 0.14)";
 const INK_60 = "rgba(10, 10, 10, 0.60)";
 // Chip backgrounds are tinted versions of SIGNAL_GREEN / SIGNAL_RED
 // (#0FE68C and #FF4757 from _shared.ts). Foreground colors are darker
-// desaturated versions for legibility against the tinted bg.
-const BULLISH_CHIP_BG = "rgba(15, 230, 140, 0.18)";
-const BULLISH_CHIP_FG = "#07854f";
-const BEARISH_CHIP_BG = "rgba(255, 71, 87, 0.15)";
-const BEARISH_CHIP_FG = "#b3261e";
+// desaturated versions for legibility against the tinted bg. Bumped
+// 2026-05-11 (bg opacity + darker fg) after live render showed
+// borderline contrast at chip scale.
+const BULLISH_CHIP_BG = "rgba(15, 230, 140, 0.24)";
+const BULLISH_CHIP_FG = "#05683e";
+const BEARISH_CHIP_BG = "rgba(255, 71, 87, 0.22)";
+const BEARISH_CHIP_FG = "#8a1c16";
 
 // ── Asset icon resolution ──────────────────────────────────
 // Local PNGs for stocks/commodities; coingecko CDN for crypto. Cached in
@@ -124,7 +126,7 @@ function chipHtml(ticker: string, direction: "bullish" | "bearish", iconDataUri:
   return (
     `<div style="display: flex; align-items: center; gap: 18px; padding: 8px 28px 8px 8px; border-radius: 999px; background: ${bg}; color: ${fg};">` +
       iconEl +
-      `<span style="font-family: 'Inter'; font-weight: 600; font-size: 32px;">${ticker} ${direction}</span>` +
+      `<span style="font-family: 'Inter'; font-weight: 600; font-size: 38px;">${ticker} ${direction}</span>` +
     `</div>`
   );
 }
@@ -215,12 +217,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // elements (bold source + dot separator + muted time) rather than a single
   // span with mixed element/text children. A single-text-child span on the
   // outer wrapper would throw at render time.
+  // Outlet name is the anchor — bumped to 28px to give source attribution
+  // more pixel weight. Dot + time stay at 24px to preserve hierarchy
+  // (outlet > timestamp).
   const articleMetaLine = sourceStr
-    ? `<div style="display: flex; align-items: baseline; font-family: 'Inter'; font-size: 24px;">` +
-        `<span style="font-weight: 700; color: ${INK};">${sourceStr}</span>` +
+    ? `<div style="display: flex; align-items: baseline; font-family: 'Inter';">` +
+        `<span style="font-weight: 700; color: ${INK}; font-size: 28px;">${sourceStr}</span>` +
         (articleTimeFormatted
-          ? `<span style="font-weight: 500; color: ${INK_60}; margin-left: 10px;">·</span>` +
-            `<span style="font-weight: 500; color: ${INK_60}; margin-left: 10px;">${articleTimeFormatted}</span>`
+          ? `<span style="font-weight: 500; color: ${INK_60}; margin-left: 10px; font-size: 24px;">·</span>` +
+            `<span style="font-weight: 500; color: ${INK_60}; margin-left: 10px; font-size: 24px;">${articleTimeFormatted}</span>`
           : "") +
       `</div>`
     : "";
@@ -259,7 +264,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const heroFontSize = hasChips ? 66 : 72;
   const headlineFallbackSize = hasChips ? 60 : 72;
   const bodyInner = hasVelaRead
-    ? `<div style="display: flex; align-self: flex-start; background: ${INK}; color: ${CREAM}; padding: 10px 24px; border-radius: 999px; font-family: 'Inter'; font-weight: 700; font-size: 22px; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 28px;">Vela's read</div>` +
+    ? `<div style="display: flex; align-self: flex-start; background: ${INK}; color: ${CREAM}; padding: 10px 24px; border-radius: 999px; font-family: 'Inter'; font-weight: 700; font-size: 26px; letter-spacing: 0.10em; text-transform: uppercase; margin-bottom: 28px;">Vela's read</div>` +
       `<span style="font-family: 'Space Grotesk'; font-weight: 700; font-size: ${heroFontSize}px; line-height: 1.15; letter-spacing: -0.015em; color: ${INK}; margin-bottom: 32px;">${velaReadStr}</span>` +
       articleBlockBordered +
       chipsMarkup
@@ -275,7 +280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           `<img src="${velaIcon}" style="width: 36px; height: 36px;" />` +
           `<span style="font-family: 'Space Grotesk'; font-weight: 800; font-size: 44px; letter-spacing: -0.03em; color: ${INK};">vela</span>` +
         `</div>` +
-        `<span style="font-family: 'Inter'; font-weight: 500; font-size: 26px; color: ${GREY_TEXT};">${dateStr}</span>` +
+        `<span style="font-family: 'Inter'; font-weight: 500; font-size: 28px; color: ${GREY_TEXT};">${dateStr}</span>` +
       `</div>` +
       // Body — vertically centered, branched per hasVelaRead above.
       `<div style="display: flex; flex-direction: column; flex: 1; padding: 56px 88px 120px; justify-content: center;">` +
@@ -283,8 +288,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `</div>` +
       // Footer — unchanged
       `<div style="display: flex; position: absolute; bottom: 0; left: 0; width: ${CARD_WIDTH}px; height: 88px; background: ${INK}; padding: 0 56px; justify-content: space-between; align-items: center;">` +
-        `<span style="font-family: 'Inter'; font-weight: 500; font-size: 26px; color: ${GREY_TEXT};">getvela.xyz</span>` +
-        `<span style="font-family: 'Inter'; font-weight: 600; font-size: 26px; color: ${SIGNAL_GREEN};">Read full brief →</span>` +
+        `<span style="font-family: 'Inter'; font-weight: 500; font-size: 28px; color: ${GREY_TEXT};">getvela.xyz</span>` +
+        `<span style="font-family: 'Inter'; font-weight: 600; font-size: 28px; color: ${SIGNAL_GREEN};">Read full brief →</span>` +
       `</div>` +
     `</div>`;
 
