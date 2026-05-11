@@ -91,8 +91,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--vela-cream': {
     group: 'brand',
-    usage:
-      'Primary light. Page backgrounds and logomark strokes in dark contexts.',
+    usage: 'Primary light. Page backgrounds and logomark strokes in dark contexts.',
   },
   '--vela-purple': {
     group: 'brand',
@@ -119,8 +118,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-bg-surface-subtle': {
     group: 'surface',
-    usage:
-      'Lightly tinted surface for nested content inside cards. Lavender-50.',
+    usage: 'Lightly tinted surface for nested content inside cards. Lavender-50.',
   },
   '--color-bg-elevated': {
     group: 'surface',
@@ -134,13 +132,11 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   // ── Text ───────────────────────────────────────────────────────────
   '--color-text-primary': {
     group: 'text',
-    usage:
-      'Body copy and headings. 13.2:1 on cream (WCAG AAA).',
+    usage: 'Body copy and headings. 13.2:1 on cream (WCAG AAA).',
   },
   '--color-text-secondary': {
     group: 'text',
-    usage:
-      'Supporting copy. 7.8:1 on cream (close to AAA). Use for subheads, helper labels.',
+    usage: 'Supporting copy. 7.8:1 on cream (close to AAA). Use for subheads, helper labels.',
   },
   '--color-text-muted': {
     group: 'text',
@@ -152,8 +148,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-text-on-accent': {
     group: 'text',
-    usage:
-      'Text placed on a filled brand or action button. White on purple, white on blue.',
+    usage: 'Text placed on a filled brand or action button. White on purple, white on blue.',
   },
   '--color-text-inverse': {
     group: 'text',
@@ -163,8 +158,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   // ── Border colors ──────────────────────────────────────────────────
   '--color-border-default': {
     group: 'border-color',
-    usage:
-      'The defining 3px black outline of every neobrutalist edge. Cards, buttons, badges.',
+    usage: 'The defining 3px black outline of every neobrutalist edge. Cards, buttons, badges.',
   },
   '--color-border-subtle': {
     group: 'border-color',
@@ -190,8 +184,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-action-primary': {
     group: 'action',
-    usage:
-      'Default primary button (action blue). Use for the main "Get started" path on a screen.',
+    usage: 'Default primary button (action blue). Use for the main "Get started" path on a screen.',
   },
   '--color-action-primary-hover': {
     group: 'action',
@@ -255,8 +248,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-status-wait-near-bg': {
     group: 'status',
-    usage:
-      'Heating-up WAIT background. Subtle green tint for "approaching confirmation".',
+    usage: 'Heating-up WAIT background. Subtle green tint for "approaching confirmation".',
   },
   '--color-status-wait-near-text': {
     group: 'status',
@@ -272,8 +264,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-banner-urgent-bg': {
     group: 'status',
-    usage:
-      'Pending-banner background when a trade window is closing (last 60m / 10m).',
+    usage: 'Pending-banner background when a trade window is closing (last 60m / 10m).',
   },
   '--color-banner-urgent-border': {
     group: 'status',
@@ -285,8 +276,7 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
   '--color-status-neutral-bg': {
     group: 'status',
-    usage:
-      'Neutral / IDLE chip background. Use when no signal direction applies.',
+    usage: 'Neutral / IDLE chip background. Use when no signal direction applies.',
   },
   '--color-status-neutral-text': {
     group: 'status',
@@ -344,19 +334,37 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   },
 
   // ── Color primitives (raw palette, not for direct use) ─────────────
-  '--white': { group: 'color-primitive', usage: 'Raw white. Prefer --color-bg-surface in product UI.' },
-  '--black': { group: 'color-primitive', usage: 'Raw black. Prefer --color-border-default for borders.' },
+  '--white': {
+    group: 'color-primitive',
+    usage: 'Raw white. Prefer --color-bg-surface in product UI.',
+  },
+  '--black': {
+    group: 'color-primitive',
+    usage: 'Raw black. Prefer --color-border-default for borders.',
+  },
   '--cream-base': { group: 'color-primitive', usage: 'Raw cream base behind --color-bg-page.' },
-  '--gray-50': { group: 'color-primitive', usage: 'Lightest gray. Used inside neutral status chips.' },
+  '--gray-50': {
+    group: 'color-primitive',
+    usage: 'Lightest gray. Used inside neutral status chips.',
+  },
   '--gray-100': { group: 'color-primitive', usage: 'Very light gray for subtle dividers.' },
   '--gray-200': { group: 'color-primitive', usage: 'Light gray. Backs --color-border-muted.' },
   '--gray-300': { group: 'color-primitive', usage: 'Light gray for inactive states.' },
-  '--gray-400': { group: 'color-primitive', usage: 'Medium gray. Backs --color-text-disabled and --color-border-subtle.' },
+  '--gray-400': {
+    group: 'color-primitive',
+    usage: 'Medium gray. Backs --color-text-disabled and --color-border-subtle.',
+  },
   '--gray-500': { group: 'color-primitive', usage: 'Mid gray for secondary icons.' },
   '--gray-600': { group: 'color-primitive', usage: 'Dark gray. Backs --color-text-muted.' },
-  '--gray-700': { group: 'color-primitive', usage: 'Darker gray. Backs --color-text-secondary for AA contrast.' },
+  '--gray-700': {
+    group: 'color-primitive',
+    usage: 'Darker gray. Backs --color-text-secondary for AA contrast.',
+  },
   '--gray-800': { group: 'color-primitive', usage: 'Near-black gray for high-emphasis dark text.' },
-  '--gray-900': { group: 'color-primitive', usage: 'Slate-black. Backs --color-text-primary on cream.' },
+  '--gray-900': {
+    group: 'color-primitive',
+    usage: 'Slate-black. Backs --color-text-primary on cream.',
+  },
   '--lavender-50': { group: 'color-primitive', usage: 'Lavender card background tint.' },
   '--lavender-100': { group: 'color-primitive', usage: 'Stronger lavender for elevated surfaces.' },
   '--mint-50': { group: 'color-primitive', usage: 'Mint card background tint.' },
@@ -365,87 +373,172 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   '--peach-100': { group: 'color-primitive', usage: 'Stronger peach for emphasis surfaces.' },
   '--sky-50': { group: 'color-primitive', usage: 'Sky card background tint.' },
   '--sky-100': { group: 'color-primitive', usage: 'Stronger sky for emphasis surfaces.' },
-  '--blue-primary': { group: 'color-primitive', usage: 'Raw action blue. Backs --color-action-primary.' },
+  '--blue-primary': {
+    group: 'color-primitive',
+    usage: 'Raw action blue. Backs --color-action-primary.',
+  },
   '--blue-hover': { group: 'color-primitive', usage: 'Action blue hover.' },
-  '--blue-light': { group: 'color-primitive', usage: 'Action blue tint for focus rings and selected states.' },
+  '--blue-light': {
+    group: 'color-primitive',
+    usage: 'Action blue tint for focus rings and selected states.',
+  },
   '--blue-bg': { group: 'color-primitive', usage: 'Action blue surface tint.' },
   '--blue-accent': { group: 'color-primitive', usage: 'Brighter blue for highlight accents.' },
-  '--warm-cream': { group: 'color-primitive', usage: 'Warm cream for first-trade and onboarding surfaces.' },
-  '--warm-cream-border': { group: 'color-primitive', usage: 'Border that pairs with --warm-cream.' },
-  '--green-primary': { group: 'color-primitive', usage: 'Raw signal green primitive. Backs --color-signal-buy and --color-success.' },
+  '--warm-cream': {
+    group: 'color-primitive',
+    usage: 'Warm cream for first-trade and onboarding surfaces.',
+  },
+  '--warm-cream-border': {
+    group: 'color-primitive',
+    usage: 'Border that pairs with --warm-cream.',
+  },
+  '--green-primary': {
+    group: 'color-primitive',
+    usage: 'Raw signal green primitive. Backs --color-signal-buy and --color-success.',
+  },
   '--green-dark': { group: 'color-primitive', usage: 'Darker green for text on green chips.' },
   '--green-light': { group: 'color-primitive', usage: 'Light green for up-arrow badges.' },
   '--green-bg': { group: 'color-primitive', usage: 'Soft green surface tint behind buy chips.' },
-  '--green-tint': { group: 'color-primitive', usage: 'Brand-adjacent green tint that does not read as a signal. Used on the Premium plan card.' },
-  '--red-primary': { group: 'color-primitive', usage: 'Raw red primitive. Backs --color-signal-sell and --color-error.' },
+  '--green-tint': {
+    group: 'color-primitive',
+    usage:
+      'Brand-adjacent green tint that does not read as a signal. Used on the Premium plan card.',
+  },
+  '--red-primary': {
+    group: 'color-primitive',
+    usage: 'Raw red primitive. Backs --color-signal-sell and --color-error.',
+  },
   '--red-dark': { group: 'color-primitive', usage: 'Darker red for text on red chips.' },
   '--red-light': { group: 'color-primitive', usage: 'Light red for down-arrow badges.' },
   '--red-bg': { group: 'color-primitive', usage: 'Soft red surface tint behind sell chips.' },
-  '--amber-primary': { group: 'color-primitive', usage: 'Raw amber primitive. Backs --color-signal-wait and --color-warning.' },
+  '--amber-primary': {
+    group: 'color-primitive',
+    usage: 'Raw amber primitive. Backs --color-signal-wait and --color-warning.',
+  },
   '--amber-dark': { group: 'color-primitive', usage: 'Darker amber for text on amber chips.' },
-  '--amber-light': { group: 'color-primitive', usage: 'Light amber for urgent banner backgrounds.' },
+  '--amber-light': {
+    group: 'color-primitive',
+    usage: 'Light amber for urgent banner backgrounds.',
+  },
   '--amber-bg': { group: 'color-primitive', usage: 'Soft amber surface tint behind wait chips.' },
 
   // ── Composite type tokens ──────────────────────────────────────────
-  '--type-display-xl-font': { group: 'type-composite', usage: 'Display XL family (Space Grotesk). Hero headlines on marketing surfaces.' },
+  '--type-display-xl-font': {
+    group: 'type-composite',
+    usage: 'Display XL family (Space Grotesk). Hero headlines on marketing surfaces.',
+  },
   '--type-display-xl-size': { group: 'type-composite', usage: 'Display XL size. 36px / text-4xl.' },
   '--type-display-xl-weight': { group: 'type-composite', usage: 'Display XL weight (bold).' },
   '--type-display-xl-line-height': { group: 'type-composite', usage: 'Display XL line height.' },
   '--type-display-xl-tracking': { group: 'type-composite', usage: 'Display XL tracking.' },
-  '--type-display-lg-font': { group: 'type-composite', usage: 'Display LG family (Space Grotesk). Section openers.' },
+  '--type-display-lg-font': {
+    group: 'type-composite',
+    usage: 'Display LG family (Space Grotesk). Section openers.',
+  },
   '--type-display-lg-size': { group: 'type-composite', usage: 'Display LG size. 30px / text-3xl.' },
   '--type-display-lg-weight': { group: 'type-composite', usage: 'Display LG weight (bold).' },
   '--type-display-lg-line-height': { group: 'type-composite', usage: 'Display LG line height.' },
-  '--type-heading-xl-font': { group: 'type-composite', usage: 'Heading XL family. Page titles in product.' },
+  '--type-heading-xl-font': {
+    group: 'type-composite',
+    usage: 'Heading XL family. Page titles in product.',
+  },
   '--type-heading-xl-size': { group: 'type-composite', usage: 'Heading XL size. 24px / text-2xl.' },
   '--type-heading-xl-weight': { group: 'type-composite', usage: 'Heading XL weight (bold).' },
   '--type-heading-xl-line-height': { group: 'type-composite', usage: 'Heading XL line height.' },
-  '--type-heading-lg-font': { group: 'type-composite', usage: 'Heading LG family. Card titles and section headers.' },
+  '--type-heading-lg-font': {
+    group: 'type-composite',
+    usage: 'Heading LG family. Card titles and section headers.',
+  },
   '--type-heading-lg-size': { group: 'type-composite', usage: 'Heading LG size. 20px / text-xl.' },
   '--type-heading-lg-weight': { group: 'type-composite', usage: 'Heading LG weight (semibold).' },
   '--type-heading-lg-line-height': { group: 'type-composite', usage: 'Heading LG line height.' },
-  '--type-heading-base-font': { group: 'type-composite', usage: 'Heading base family. Inline subheads.' },
-  '--type-heading-base-size': { group: 'type-composite', usage: 'Heading base size. 16px / text-base.' },
-  '--type-heading-base-weight': { group: 'type-composite', usage: 'Heading base weight (semibold).' },
-  '--type-heading-base-line-height': { group: 'type-composite', usage: 'Heading base line height.' },
-  '--type-body-lg-font': { group: 'type-composite', usage: 'Body LG family (Inter). Lead paragraphs.' },
+  '--type-heading-base-font': {
+    group: 'type-composite',
+    usage: 'Heading base family. Inline subheads.',
+  },
+  '--type-heading-base-size': {
+    group: 'type-composite',
+    usage: 'Heading base size. 16px / text-base.',
+  },
+  '--type-heading-base-weight': {
+    group: 'type-composite',
+    usage: 'Heading base weight (semibold).',
+  },
+  '--type-heading-base-line-height': {
+    group: 'type-composite',
+    usage: 'Heading base line height.',
+  },
+  '--type-body-lg-font': {
+    group: 'type-composite',
+    usage: 'Body LG family (Inter). Lead paragraphs.',
+  },
   '--type-body-lg-size': { group: 'type-composite', usage: 'Body LG size. 18px / text-lg.' },
   '--type-body-lg-weight': { group: 'type-composite', usage: 'Body LG weight (normal).' },
-  '--type-body-lg-line-height': { group: 'type-composite', usage: 'Body LG line height (relaxed).' },
-  '--type-body-base-font': { group: 'type-composite', usage: 'Body base family (Inter). Default product copy.' },
+  '--type-body-lg-line-height': {
+    group: 'type-composite',
+    usage: 'Body LG line height (relaxed).',
+  },
+  '--type-body-base-font': {
+    group: 'type-composite',
+    usage: 'Body base family (Inter). Default product copy.',
+  },
   '--type-body-base-size': { group: 'type-composite', usage: 'Body base size. 16px / text-base.' },
   '--type-body-base-weight': { group: 'type-composite', usage: 'Body base weight (normal).' },
-  '--type-body-base-line-height': { group: 'type-composite', usage: 'Body base line height (normal).' },
-  '--type-body-sm-font': { group: 'type-composite', usage: 'Body SM family (Inter). Helper text and dense rows.' },
+  '--type-body-base-line-height': {
+    group: 'type-composite',
+    usage: 'Body base line height (normal).',
+  },
+  '--type-body-sm-font': {
+    group: 'type-composite',
+    usage: 'Body SM family (Inter). Helper text and dense rows.',
+  },
   '--type-body-sm-size': { group: 'type-composite', usage: 'Body SM size. 14px / text-sm.' },
   '--type-body-sm-weight': { group: 'type-composite', usage: 'Body SM weight (normal).' },
   '--type-body-sm-line-height': { group: 'type-composite', usage: 'Body SM line height.' },
-  '--type-label-lg-font': { group: 'type-composite', usage: 'Label LG family (Inter). Button copy on the largest CTAs.' },
+  '--type-label-lg-font': {
+    group: 'type-composite',
+    usage: 'Label LG family (Inter). Button copy on the largest CTAs.',
+  },
   '--type-label-lg-size': { group: 'type-composite', usage: 'Label LG size. 16px.' },
   '--type-label-lg-weight': { group: 'type-composite', usage: 'Label LG weight (semibold).' },
   '--type-label-lg-line-height': { group: 'type-composite', usage: 'Label LG line height.' },
   '--type-label-lg-tracking': { group: 'type-composite', usage: 'Label LG tracking (wide).' },
-  '--type-label-base-font': { group: 'type-composite', usage: 'Label base family (Inter). Default button and form-label copy.' },
+  '--type-label-base-font': {
+    group: 'type-composite',
+    usage: 'Label base family (Inter). Default button and form-label copy.',
+  },
   '--type-label-base-size': { group: 'type-composite', usage: 'Label base size. 14px.' },
   '--type-label-base-weight': { group: 'type-composite', usage: 'Label base weight (semibold).' },
   '--type-label-base-line-height': { group: 'type-composite', usage: 'Label base line height.' },
   '--type-label-base-tracking': { group: 'type-composite', usage: 'Label base tracking (wide).' },
-  '--type-label-sm-font': { group: 'type-composite', usage: 'Label SM family (Inter). Badge and chip copy.' },
+  '--type-label-sm-font': {
+    group: 'type-composite',
+    usage: 'Label SM family (Inter). Badge and chip copy.',
+  },
   '--type-label-sm-size': { group: 'type-composite', usage: 'Label SM size. 12px.' },
   '--type-label-sm-weight': { group: 'type-composite', usage: 'Label SM weight (semibold).' },
   '--type-label-sm-line-height': { group: 'type-composite', usage: 'Label SM line height.' },
   '--type-label-sm-tracking': { group: 'type-composite', usage: 'Label SM tracking (wide).' },
-  '--type-mono-lg-font': { group: 'type-composite', usage: 'Mono LG family (JetBrains Mono). Featured prices and large numerics.' },
+  '--type-mono-lg-font': {
+    group: 'type-composite',
+    usage: 'Mono LG family (JetBrains Mono). Featured prices and large numerics.',
+  },
   '--type-mono-lg-size': { group: 'type-composite', usage: 'Mono LG size. 20px.' },
   '--type-mono-lg-weight': { group: 'type-composite', usage: 'Mono LG weight (bold).' },
   '--type-mono-lg-line-height': { group: 'type-composite', usage: 'Mono LG line height.' },
-  '--type-mono-base-font': { group: 'type-composite', usage: 'Mono base family. Inline prices and numerics in tables.' },
+  '--type-mono-base-font': {
+    group: 'type-composite',
+    usage: 'Mono base family. Inline prices and numerics in tables.',
+  },
   '--type-mono-base-size': { group: 'type-composite', usage: 'Mono base size. 16px.' },
   '--type-mono-base-weight': { group: 'type-composite', usage: 'Mono base weight (semibold).' },
   '--type-mono-base-line-height': { group: 'type-composite', usage: 'Mono base line height.' },
 
   // ── Type primitives ────────────────────────────────────────────────
-  '--text-2xs': { group: 'type-primitive', usage: '10px. Reserved for label-tracking copy and dense badges.' },
+  '--text-2xs': {
+    group: 'type-primitive',
+    usage: '10px. Reserved for label-tracking copy and dense badges.',
+  },
   '--text-xs': { group: 'type-primitive', usage: '12px. Captions and helper text.' },
   '--text-sm': { group: 'type-primitive', usage: '14px. Default for dense product copy.' },
   '--text-base': { group: 'type-primitive', usage: '16px. Default body size.' },
@@ -458,25 +551,52 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   '--weight-medium': { group: 'type-primitive', usage: 'Body emphasis weight (500).' },
   '--weight-semibold': { group: 'type-primitive', usage: 'Subheading and label weight (600).' },
   '--weight-bold': { group: 'type-primitive', usage: 'Heading weight (700).' },
-  '--weight-black': { group: 'type-primitive', usage: 'Wordmark weight (900). Used for the "vela" logotype.' },
-  '--leading-tight': { group: 'type-primitive', usage: 'Line height 1.25. Display and mono numerics.' },
+  '--weight-black': {
+    group: 'type-primitive',
+    usage: 'Wordmark weight (900). Used for the "vela" logotype.',
+  },
+  '--leading-tight': {
+    group: 'type-primitive',
+    usage: 'Line height 1.25. Display and mono numerics.',
+  },
   '--leading-snug': { group: 'type-primitive', usage: 'Line height 1.375. Headings.' },
   '--leading-normal': { group: 'type-primitive', usage: 'Line height 1.5. Default body.' },
   '--leading-relaxed': { group: 'type-primitive', usage: 'Line height 1.625. Lead paragraphs.' },
-  '--tracking-tight': { group: 'type-primitive', usage: 'Letter spacing -0.02em. Used on display and the wordmark.' },
+  '--tracking-tight': {
+    group: 'type-primitive',
+    usage: 'Letter spacing -0.02em. Used on display and the wordmark.',
+  },
   '--tracking-normal': { group: 'type-primitive', usage: 'Letter spacing 0. Default body.' },
-  '--tracking-wide': { group: 'type-primitive', usage: 'Letter spacing 0.04em. Uppercase labels and chip copy.' },
+  '--tracking-wide': {
+    group: 'type-primitive',
+    usage: 'Letter spacing 0.04em. Uppercase labels and chip copy.',
+  },
 
   // ── Spacing ────────────────────────────────────────────────────────
-  '--space-1': { group: 'spacing', usage: '4px. Smallest gap. Use between an icon and its inline label.' },
+  '--space-1': {
+    group: 'spacing',
+    usage: '4px. Smallest gap. Use between an icon and its inline label.',
+  },
   '--space-2': { group: 'spacing', usage: '8px. Tight stacks (badge rows, button icon gaps).' },
-  '--space-3': { group: 'spacing', usage: '12px. Compact padding inside small chips and tight cards.' },
+  '--space-3': {
+    group: 'spacing',
+    usage: '12px. Compact padding inside small chips and tight cards.',
+  },
   '--space-4': { group: 'spacing', usage: '16px. Default sibling gap. Standard card padding.' },
   '--space-5': { group: 'spacing', usage: '20px. Comfortable inner padding for medium cards.' },
-  '--space-6': { group: 'spacing', usage: '24px. Default card padding. Stack gap between major rows.' },
-  '--space-7': { group: 'spacing', usage: '28px. Granularity step between 24 and 32 (added in v2.0).' },
+  '--space-6': {
+    group: 'spacing',
+    usage: '24px. Default card padding. Stack gap between major rows.',
+  },
+  '--space-7': {
+    group: 'spacing',
+    usage: '28px. Granularity step between 24 and 32 (added in v2.0).',
+  },
   '--space-8': { group: 'spacing', usage: '32px. Large stack gap.' },
-  '--space-9': { group: 'spacing', usage: '36px. Granularity step between 32 and 40 (added in v2.0).' },
+  '--space-9': {
+    group: 'spacing',
+    usage: '36px. Granularity step between 32 and 40 (added in v2.0).',
+  },
   '--space-10': { group: 'spacing', usage: '40px. Section spacing on dense pages.' },
   '--space-12': { group: 'spacing', usage: '48px. Section spacing on standard pages.' },
   '--space-16': { group: 'spacing', usage: '64px. Hero section spacing.' },
@@ -485,8 +605,14 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   // ── Border widths ──────────────────────────────────────────────────
   '--border-thin': { group: 'border-width', usage: '1px. Hairline dividers and table rules.' },
   '--border-medium': { group: 'border-width', usage: '2px. Inputs, badges, nested cards.' },
-  '--border-thick': { group: 'border-width', usage: '3px. The neobrutalist standard for cards and buttons.' },
-  '--border-heavy': { group: 'border-width', usage: '4px. High-contrast emphasis only. Reserved for hero CTAs.' },
+  '--border-thick': {
+    group: 'border-width',
+    usage: '3px. The neobrutalist standard for cards and buttons.',
+  },
+  '--border-heavy': {
+    group: 'border-width',
+    usage: '4px. High-contrast emphasis only. Reserved for hero CTAs.',
+  },
 
   // ── Radius ─────────────────────────────────────────────────────────
   '--radius-sm': { group: 'radius', usage: '8px. Badges, chips, small inputs.' },
@@ -496,18 +622,45 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   '--radius-full': { group: 'radius', usage: 'Pill / circle. Avatars and dot indicators.' },
 
   // ── Elevation (neobrutalist solid offsets) ─────────────────────────
-  '--shadow-xs': { group: 'elevation', usage: '2px / 2px solid black. Pressed and nested-card states.' },
-  '--shadow-sm': { group: 'elevation', usage: '3px / 3px solid black. Default card and button rest state.' },
-  '--shadow-md': { group: 'elevation', usage: '4px / 4px solid black. Card and button hover state.' },
-  '--shadow-lg': { group: 'elevation', usage: '6px / 6px solid black. Modals and floating panels.' },
+  '--shadow-xs': {
+    group: 'elevation',
+    usage: '2px / 2px solid black. Pressed and nested-card states.',
+  },
+  '--shadow-sm': {
+    group: 'elevation',
+    usage: '3px / 3px solid black. Default card and button rest state.',
+  },
+  '--shadow-md': {
+    group: 'elevation',
+    usage: '4px / 4px solid black. Card and button hover state.',
+  },
+  '--shadow-lg': {
+    group: 'elevation',
+    usage: '6px / 6px solid black. Modals and floating panels.',
+  },
   '--shadow-xl': { group: 'elevation', usage: '8px / 8px solid black. Marketing-tier emphasis.' },
 
   // ── Motion ─────────────────────────────────────────────────────────
-  '--motion-fast': { group: 'motion', usage: '120ms. Button hover, icon swap, subtle state change.' },
-  '--motion-normal': { group: 'motion', usage: '180ms. Card hover, panel slide, default UI motion.' },
-  '--motion-slow': { group: 'motion', usage: '300ms. Modal entry, drawer reveal, page transitions.' },
-  '--motion-ease-out': { group: 'motion', usage: 'cubic-bezier(0.2, 0.85, 0.4, 1). Default UI easing. Fast in, soft out.' },
-  '--motion-ease-in-out': { group: 'motion', usage: 'cubic-bezier(0.4, 0, 0.2, 1). Symmetric easing for crossfades.' },
+  '--motion-fast': {
+    group: 'motion',
+    usage: '120ms. Button hover, icon swap, subtle state change.',
+  },
+  '--motion-normal': {
+    group: 'motion',
+    usage: '180ms. Card hover, panel slide, default UI motion.',
+  },
+  '--motion-slow': {
+    group: 'motion',
+    usage: '300ms. Modal entry, drawer reveal, page transitions.',
+  },
+  '--motion-ease-out': {
+    group: 'motion',
+    usage: 'cubic-bezier(0.2, 0.85, 0.4, 1). Default UI easing. Fast in, soft out.',
+  },
+  '--motion-ease-in-out': {
+    group: 'motion',
+    usage: 'cubic-bezier(0.4, 0, 0.2, 1). Symmetric easing for crossfades.',
+  },
 
   // ── Z-index ────────────────────────────────────────────────────────
   '--z-base': { group: 'z-index', usage: '0. Default page flow.' },
@@ -518,29 +671,89 @@ const TOKEN_REGISTRY: Record<string, TokenEntry> = {
   '--z-modal': { group: 'z-index', usage: '500. Modal panels.' },
   '--z-popover': { group: 'z-index', usage: '600. Popovers anchored to triggers.' },
   '--z-tooltip': { group: 'z-index', usage: '700. Tooltips above popovers.' },
-  '--z-notification': { group: 'z-index', usage: '800. Toasts and notification stacks (top of stack).' },
+  '--z-notification': {
+    group: 'z-index',
+    usage: '800. Toasts and notification stacks (top of stack).',
+  },
 
   // ── Privy bridge tokens ────────────────────────────────────────────
-  '--privy-border-radius-sm': { group: 'privy', usage: 'Privy modal small radius. Bridges to --radius-sm.' },
-  '--privy-border-radius-md': { group: 'privy', usage: 'Privy modal medium radius. Bridges to --radius-md.' },
-  '--privy-border-radius-lg': { group: 'privy', usage: 'Privy modal large radius. Bridges to --radius-lg.' },
-  '--privy-border-radius-full': { group: 'privy', usage: 'Privy modal pill radius. Bridges to --radius-full.' },
-  '--privy-color-background': { group: 'privy', usage: 'Privy modal page background. Bridges to --color-bg-page.' },
-  '--privy-color-background-2': { group: 'privy', usage: 'Privy modal surface. Bridges to --color-bg-surface.' },
-  '--privy-color-background-3': { group: 'privy', usage: 'Privy modal subtle background. Bridges to --gray-100.' },
-  '--privy-color-foreground': { group: 'privy', usage: 'Privy modal primary text. Bridges to --color-text-primary.' },
-  '--privy-color-foreground-2': { group: 'privy', usage: 'Privy modal secondary text. Bridges to --color-text-secondary.' },
-  '--privy-color-foreground-3': { group: 'privy', usage: 'Privy modal muted text. Bridges to --color-text-muted.' },
-  '--privy-color-foreground-4': { group: 'privy', usage: 'Privy modal disabled text. Bridges to --color-text-disabled.' },
-  '--privy-color-foreground-accent': { group: 'privy', usage: 'Privy modal text on accent. Bridges to --color-text-on-accent.' },
-  '--privy-color-accent': { group: 'privy', usage: 'Privy modal accent. Bridges to --color-action-primary.' },
-  '--privy-color-accent-light': { group: 'privy', usage: 'Privy modal accent (lighter). Bridges to --blue-accent.' },
-  '--privy-color-accent-lightest': { group: 'privy', usage: 'Privy modal accent (lightest). Bridges to --blue-light.' },
-  '--privy-color-accent-dark': { group: 'privy', usage: 'Privy modal accent hover. Bridges to --color-action-primary-hover.' },
-  '--privy-color-accent-darkest': { group: 'privy', usage: 'Privy modal accent pressed. Bridges to --color-action-primary-hover.' },
-  '--privy-color-success': { group: 'privy', usage: 'Privy modal success. Bridges to --color-success.' },
+  '--privy-border-radius-sm': {
+    group: 'privy',
+    usage: 'Privy modal small radius. Bridges to --radius-sm.',
+  },
+  '--privy-border-radius-md': {
+    group: 'privy',
+    usage: 'Privy modal medium radius. Bridges to --radius-md.',
+  },
+  '--privy-border-radius-lg': {
+    group: 'privy',
+    usage: 'Privy modal large radius. Bridges to --radius-lg.',
+  },
+  '--privy-border-radius-full': {
+    group: 'privy',
+    usage: 'Privy modal pill radius. Bridges to --radius-full.',
+  },
+  '--privy-color-background': {
+    group: 'privy',
+    usage: 'Privy modal page background. Bridges to --color-bg-page.',
+  },
+  '--privy-color-background-2': {
+    group: 'privy',
+    usage: 'Privy modal surface. Bridges to --color-bg-surface.',
+  },
+  '--privy-color-background-3': {
+    group: 'privy',
+    usage: 'Privy modal subtle background. Bridges to --gray-100.',
+  },
+  '--privy-color-foreground': {
+    group: 'privy',
+    usage: 'Privy modal primary text. Bridges to --color-text-primary.',
+  },
+  '--privy-color-foreground-2': {
+    group: 'privy',
+    usage: 'Privy modal secondary text. Bridges to --color-text-secondary.',
+  },
+  '--privy-color-foreground-3': {
+    group: 'privy',
+    usage: 'Privy modal muted text. Bridges to --color-text-muted.',
+  },
+  '--privy-color-foreground-4': {
+    group: 'privy',
+    usage: 'Privy modal disabled text. Bridges to --color-text-disabled.',
+  },
+  '--privy-color-foreground-accent': {
+    group: 'privy',
+    usage: 'Privy modal text on accent. Bridges to --color-text-on-accent.',
+  },
+  '--privy-color-accent': {
+    group: 'privy',
+    usage: 'Privy modal accent. Bridges to --color-action-primary.',
+  },
+  '--privy-color-accent-light': {
+    group: 'privy',
+    usage: 'Privy modal accent (lighter). Bridges to --blue-accent.',
+  },
+  '--privy-color-accent-lightest': {
+    group: 'privy',
+    usage: 'Privy modal accent (lightest). Bridges to --blue-light.',
+  },
+  '--privy-color-accent-dark': {
+    group: 'privy',
+    usage: 'Privy modal accent hover. Bridges to --color-action-primary-hover.',
+  },
+  '--privy-color-accent-darkest': {
+    group: 'privy',
+    usage: 'Privy modal accent pressed. Bridges to --color-action-primary-hover.',
+  },
+  '--privy-color-success': {
+    group: 'privy',
+    usage: 'Privy modal success. Bridges to --color-success.',
+  },
   '--privy-color-error': { group: 'privy', usage: 'Privy modal error. Bridges to --color-error.' },
-  '--privy-color-error-light': { group: 'privy', usage: 'Privy modal error tint. Bridges to --red-light.' },
+  '--privy-color-error-light': {
+    group: 'privy',
+    usage: 'Privy modal error tint. Bridges to --red-light.',
+  },
 };
 
 // Tokens called out in the brand doc that aren't (yet) in the CSS.
@@ -557,14 +770,22 @@ interface GroupMeta {
   id: GroupId;
   title: string;
   description: string;
-  render: 'swatch' | 'spacing-bar' | 'radius-grid' | 'shadow-grid' | 'motion-row' | 'z-row' | 'type-list';
+  render:
+    | 'swatch'
+    | 'spacing-bar'
+    | 'radius-grid'
+    | 'shadow-grid'
+    | 'motion-row'
+    | 'z-row'
+    | 'type-list';
 }
 
 const GROUP_ORDER: GroupMeta[] = [
   {
     id: 'brand',
     title: 'Brand identity',
-    description: 'Signal Green, Ink, Cream, and Vela purple. The ownable colors that carry the identity.',
+    description:
+      'Signal Green, Ink, Cream, and Vela purple. The ownable colors that carry the identity.',
     render: 'swatch',
   },
   {
@@ -582,55 +803,64 @@ const GROUP_ORDER: GroupMeta[] = [
   {
     id: 'border-color',
     title: 'Border colors',
-    description: 'The 3px black outline is the defining neobrutalist edge. Subtler colors are for dividers only.',
+    description:
+      'The 3px black outline is the defining neobrutalist edge. Subtler colors are for dividers only.',
     render: 'swatch',
   },
   {
     id: 'action',
     title: 'Action and brand buttons',
-    description: 'Primary action (blue) and brand action (purple). Use one per screen as the dominant CTA.',
+    description:
+      'Primary action (blue) and brand action (purple). Use one per screen as the dominant CTA.',
     render: 'swatch',
   },
   {
     id: 'signal',
     title: 'Signal direction (reserved)',
-    description: 'Green = BUY, red = SELL, amber = WAIT. Semantically reserved by the design-system guide. Never reuse for non-signal UI.',
+    description:
+      'Green = BUY, red = SELL, amber = WAIT. Semantically reserved by the design-system guide. Never reuse for non-signal UI.',
     render: 'swatch',
   },
   {
     id: 'status',
     title: 'Status chips and banners',
-    description: 'Buy / sell / wait chip surfaces, plus the heating-up WAIT and urgent pending-banner states.',
+    description:
+      'Buy / sell / wait chip surfaces, plus the heating-up WAIT and urgent pending-banner states.',
     render: 'swatch',
   },
   {
     id: 'state',
     title: 'Functional state',
-    description: 'Success, warning, error, and info messaging. Distinct from signal direction tokens.',
+    description:
+      'Success, warning, error, and info messaging. Distinct from signal direction tokens.',
     render: 'swatch',
   },
   {
     id: 'data-viz',
     title: 'Data visualization',
-    description: 'Each chart color carries meaning across charts: brand, trend, profitability, volatility, risk, sentiment.',
+    description:
+      'Each chart color carries meaning across charts: brand, trend, profitability, volatility, risk, sentiment.',
     render: 'swatch',
   },
   {
     id: 'color-primitive',
     title: 'Color primitives',
-    description: 'Raw palette behind the semantic tokens above. Avoid using these directly. Reach for a semantic alias first.',
+    description:
+      'Raw palette behind the semantic tokens above. Avoid using these directly. Reach for a semantic alias first.',
     render: 'swatch',
   },
   {
     id: 'type-composite',
     title: 'Composite type tokens',
-    description: 'Pre-configured Display / Heading / Body / Label / Mono families. Pull a whole style with one token group.',
+    description:
+      'Pre-configured Display / Heading / Body / Label / Mono families. Pull a whole style with one token group.',
     render: 'type-list',
   },
   {
     id: 'type-primitive',
     title: 'Type primitives',
-    description: 'Underlying size, weight, leading, and tracking values that the composite tokens compose.',
+    description:
+      'Underlying size, weight, leading, and tracking values that the composite tokens compose.',
     render: 'type-list',
   },
   {
@@ -642,13 +872,15 @@ const GROUP_ORDER: GroupMeta[] = [
   {
     id: 'border-width',
     title: 'Border widths',
-    description: 'Neobrutalist edges are 3-4px black. Anything thinner is for dividers, not affordances.',
+    description:
+      'Neobrutalist edges are 3-4px black. Anything thinner is for dividers, not affordances.',
     render: 'spacing-bar',
   },
   {
     id: 'radius',
     title: 'Radius',
-    description: 'Soft corners on buttons, cards, and chips. Pill radius for avatars and dot indicators.',
+    description:
+      'Soft corners on buttons, cards, and chips. Pill radius for avatars and dot indicators.',
     render: 'radius-grid',
   },
   {
@@ -672,7 +904,8 @@ const GROUP_ORDER: GroupMeta[] = [
   {
     id: 'privy',
     title: 'Privy modal bridge',
-    description: 'Maps Privy login modal CSS variables to our semantic tokens so the auth handoff feels continuous.',
+    description:
+      'Maps Privy login modal CSS variables to our semantic tokens so the auth handoff feels continuous.',
     render: 'swatch',
   },
 ];
@@ -722,7 +955,15 @@ function pxFromVar(varExpr: string): string {
 
 // ── Layout primitives ─────────────────────────────────────────────────
 
-function SectionHeader({ title, count, description }: { title: string; count?: number; description?: string }) {
+function SectionHeader({
+  title,
+  count,
+  description,
+}: {
+  title: string;
+  count?: number;
+  description?: string;
+}) {
   return (
     <header
       style={{
@@ -732,7 +973,9 @@ function SectionHeader({ title, count, description }: { title: string; count?: n
         marginBottom: 'var(--space-4)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+      <div
+        style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}
+      >
         <h2 className="vela-heading-xl" style={{ color: 'var(--color-text-primary)', margin: 0 }}>
           {title}
         </h2>
@@ -743,7 +986,14 @@ function SectionHeader({ title, count, description }: { title: string; count?: n
         )}
       </div>
       {description && (
-        <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', maxWidth: 720 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 'var(--text-sm)',
+            color: 'var(--color-text-secondary)',
+            maxWidth: 720,
+          }}
+        >
           {description}
         </p>
       )}
@@ -781,7 +1031,14 @@ function ColorSwatch({ token }: { token: ParsedToken }) {
           borderBottom: '1px solid var(--color-border-muted)',
         }}
       />
-      <div style={{ padding: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+      <div
+        style={{
+          padding: 'var(--space-3)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-1)',
+        }}
+      >
         <code
           style={{
             fontFamily: 'var(--type-mono-base-font)',
@@ -801,7 +1058,13 @@ function ColorSwatch({ token }: { token: ParsedToken }) {
         >
           {resolved || token.rawValue}
         </code>
-        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-snug)' }}>
+        <span
+          style={{
+            fontSize: 'var(--text-2xs)',
+            color: 'var(--color-text-secondary)',
+            lineHeight: 'var(--leading-snug)',
+          }}
+        >
           {usage || '(no documented usage. Flag for review.)'}
         </span>
         {reserved && (
@@ -832,7 +1095,7 @@ function SwatchGrid({ tokens }: { tokens: ParsedToken[] }) {
         gap: 'var(--space-3)',
       }}
     >
-      {tokens.map((t) => (
+      {tokens.map(t => (
         <ColorSwatch key={t.name} token={t} />
       ))}
     </div>
@@ -859,10 +1122,24 @@ function SpacingBarRow({ token }: { token: ParsedToken }) {
         borderRadius: 'var(--radius-sm)',
       }}
     >
-      <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)', minWidth: 140 }}>
+      <code
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--color-text-primary)',
+          minWidth: 140,
+        }}
+      >
         {token.name}
       </code>
-      <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)', minWidth: 60 }}>
+      <code
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontSize: 'var(--text-2xs)',
+          color: 'var(--color-text-muted)',
+          minWidth: 60,
+        }}
+      >
         {resolved || token.rawValue}
       </code>
       <div
@@ -890,7 +1167,7 @@ function SpacingBarList({ tokens }: { tokens: ParsedToken[] }) {
   });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      {sorted.map((t) => (
+      {sorted.map(t => (
         <SpacingBarRow key={t.name} token={t} />
       ))}
     </div>
@@ -902,7 +1179,7 @@ function SpacingBarList({ tokens }: { tokens: ParsedToken[] }) {
 function RadiusGrid({ tokens }: { tokens: ParsedToken[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-      {tokens.map((t) => {
+      {tokens.map(t => {
         const usage = TOKEN_REGISTRY[t.name]?.usage;
         return (
           <div
@@ -919,10 +1196,22 @@ function RadiusGrid({ tokens }: { tokens: ParsedToken[] }) {
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-              <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)' }}>
+              <code
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-primary)',
+                }}
+              >
                 {t.name}
               </code>
-              <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+              <code
+                style={{
+                  fontFamily: 'var(--type-mono-base-font)',
+                  fontSize: 'var(--text-2xs)',
+                  color: 'var(--color-text-muted)',
+                }}
+              >
                 {t.rawValue}
               </code>
               <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-secondary)' }}>
@@ -973,7 +1262,7 @@ function ShadowGrid({ tokens }: { tokens: ParsedToken[] }) {
         borderRadius: 'var(--radius-md)',
       }}
     >
-      {tokens.map((t) => {
+      {tokens.map(t => {
         const usage = TOKEN_REGISTRY[t.name]?.usage;
         return (
           <div
@@ -997,13 +1286,31 @@ function ShadowGrid({ tokens }: { tokens: ParsedToken[] }) {
                 boxShadow: `var(${t.name})`,
               }}
             />
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
               {t.name}
             </code>
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-2xs)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
               {t.rawValue}
             </code>
-            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-secondary)', maxWidth: 200 }}>
+            <span
+              style={{
+                fontSize: 'var(--text-2xs)',
+                color: 'var(--color-text-secondary)',
+                maxWidth: 200,
+              }}
+            >
               {usage || '(no documented usage. Flag for review.)'}
             </span>
           </div>
@@ -1020,15 +1327,18 @@ function MotionRow({ tokens }: { tokens: ParsedToken[] }) {
   // so the swatch literally demonstrates the motion.
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((n) => n + 1), 1500);
+    const id = setInterval(() => setTick(n => n + 1), 1500);
     return () => clearInterval(id);
   }, []);
   const moved = tick % 2 === 1;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      {tokens.map((t) => {
+      {tokens.map(t => {
         const usage = TOKEN_REGISTRY[t.name]?.usage;
-        const isDuration = t.name.startsWith('--motion-fast') || t.name.startsWith('--motion-normal') || t.name.startsWith('--motion-slow');
+        const isDuration =
+          t.name.startsWith('--motion-fast') ||
+          t.name.startsWith('--motion-normal') ||
+          t.name.startsWith('--motion-slow');
         const isEasing = t.name.startsWith('--motion-ease');
         return (
           <div
@@ -1044,10 +1354,22 @@ function MotionRow({ tokens }: { tokens: ParsedToken[] }) {
               borderRadius: 'var(--radius-sm)',
             }}
           >
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
               {t.name}
             </code>
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-2xs)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
               {t.rawValue}
             </code>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
@@ -1097,7 +1419,7 @@ function ZIndexRow({ tokens }: { tokens: ParsedToken[] }) {
   });
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-      {sorted.map((t) => {
+      {sorted.map(t => {
         const usage = TOKEN_REGISTRY[t.name]?.usage;
         return (
           <div
@@ -1113,10 +1435,22 @@ function ZIndexRow({ tokens }: { tokens: ParsedToken[] }) {
               borderRadius: 'var(--radius-sm)',
             }}
           >
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
               {t.name}
             </code>
-            <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+            <code
+              style={{
+                fontFamily: 'var(--type-mono-base-font)',
+                fontSize: 'var(--text-2xs)',
+                color: 'var(--color-text-muted)',
+              }}
+            >
               {t.rawValue}
             </code>
             <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
@@ -1153,13 +1487,31 @@ function TypeListRow({ token }: { token: ParsedToken }) {
         alignItems: 'baseline',
       }}
     >
-      <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)' }}>
+      <code
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--color-text-primary)',
+        }}
+      >
         {token.name}
       </code>
-      <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+      <code
+        style={{
+          fontFamily: 'var(--type-mono-base-font)',
+          fontSize: 'var(--text-2xs)',
+          color: 'var(--color-text-muted)',
+        }}
+      >
         {resolved || token.rawValue}
       </code>
-      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-snug)' }}>
+      <span
+        style={{
+          fontSize: 'var(--text-xs)',
+          color: 'var(--color-text-secondary)',
+          lineHeight: 'var(--leading-snug)',
+        }}
+      >
         {usage || '(no documented usage. Flag for review.)'}
       </span>
     </div>
@@ -1170,7 +1522,7 @@ function TypeList({ tokens }: { tokens: ParsedToken[] }) {
   const sorted = [...tokens].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-      {sorted.map((t) => (
+      {sorted.map(t => (
         <TypeListRow key={t.name} token={t} />
       ))}
     </div>
@@ -1199,22 +1551,98 @@ function TokenSection({ meta, tokens }: { meta: GroupMeta; tokens: ParsedToken[]
 
 const SAMPLE_TEXT = 'Read the market today.';
 
-const TYPE_SAMPLES: Array<{ label: string; size: string; lineHeight: string; weight: string; family?: string }> = [
-  { label: 'Display 4xl', size: 'var(--text-4xl)', lineHeight: 'var(--leading-tight)', weight: 'var(--weight-bold)', family: 'var(--type-display-xl-font)' },
-  { label: 'Display 3xl', size: 'var(--text-3xl)', lineHeight: 'var(--leading-tight)', weight: 'var(--weight-bold)', family: 'var(--type-display-lg-font)' },
-  { label: 'Heading 2xl', size: 'var(--text-2xl)', lineHeight: 'var(--leading-snug)', weight: 'var(--weight-bold)', family: 'var(--type-heading-xl-font)' },
-  { label: 'Heading xl', size: 'var(--text-xl)', lineHeight: 'var(--leading-snug)', weight: 'var(--weight-semibold)', family: 'var(--type-heading-lg-font)' },
-  { label: 'Heading base', size: 'var(--text-base)', lineHeight: 'var(--leading-snug)', weight: 'var(--weight-semibold)', family: 'var(--type-heading-base-font)' },
-  { label: 'Body lg', size: 'var(--text-lg)', lineHeight: 'var(--leading-relaxed)', weight: 'var(--weight-normal)', family: 'var(--type-body-lg-font)' },
-  { label: 'Body base', size: 'var(--text-base)', lineHeight: 'var(--leading-normal)', weight: 'var(--weight-normal)', family: 'var(--type-body-base-font)' },
-  { label: 'Body sm', size: 'var(--text-sm)', lineHeight: 'var(--leading-normal)', weight: 'var(--weight-normal)', family: 'var(--type-body-sm-font)' },
-  { label: 'Body xs', size: 'var(--text-xs)', lineHeight: 'var(--leading-normal)', weight: 'var(--weight-normal)' },
-  { label: 'Body 2xs', size: 'var(--text-2xs)', lineHeight: 'var(--leading-normal)', weight: 'var(--weight-normal)' },
-  { label: 'Mono lg', size: 'var(--text-xl)', lineHeight: 'var(--leading-tight)', weight: 'var(--weight-bold)', family: 'var(--type-mono-lg-font)' },
-  { label: 'Mono base', size: 'var(--text-base)', lineHeight: 'var(--leading-snug)', weight: 'var(--weight-semibold)', family: 'var(--type-mono-base-font)' },
+const TYPE_SAMPLES: Array<{
+  label: string;
+  size: string;
+  lineHeight: string;
+  weight: string;
+  family?: string;
+}> = [
+  {
+    label: 'Display 4xl',
+    size: 'var(--text-4xl)',
+    lineHeight: 'var(--leading-tight)',
+    weight: 'var(--weight-bold)',
+    family: 'var(--type-display-xl-font)',
+  },
+  {
+    label: 'Display 3xl',
+    size: 'var(--text-3xl)',
+    lineHeight: 'var(--leading-tight)',
+    weight: 'var(--weight-bold)',
+    family: 'var(--type-display-lg-font)',
+  },
+  {
+    label: 'Heading 2xl',
+    size: 'var(--text-2xl)',
+    lineHeight: 'var(--leading-snug)',
+    weight: 'var(--weight-bold)',
+    family: 'var(--type-heading-xl-font)',
+  },
+  {
+    label: 'Heading xl',
+    size: 'var(--text-xl)',
+    lineHeight: 'var(--leading-snug)',
+    weight: 'var(--weight-semibold)',
+    family: 'var(--type-heading-lg-font)',
+  },
+  {
+    label: 'Heading base',
+    size: 'var(--text-base)',
+    lineHeight: 'var(--leading-snug)',
+    weight: 'var(--weight-semibold)',
+    family: 'var(--type-heading-base-font)',
+  },
+  {
+    label: 'Body lg',
+    size: 'var(--text-lg)',
+    lineHeight: 'var(--leading-relaxed)',
+    weight: 'var(--weight-normal)',
+    family: 'var(--type-body-lg-font)',
+  },
+  {
+    label: 'Body base',
+    size: 'var(--text-base)',
+    lineHeight: 'var(--leading-normal)',
+    weight: 'var(--weight-normal)',
+    family: 'var(--type-body-base-font)',
+  },
+  {
+    label: 'Body sm',
+    size: 'var(--text-sm)',
+    lineHeight: 'var(--leading-normal)',
+    weight: 'var(--weight-normal)',
+    family: 'var(--type-body-sm-font)',
+  },
+  {
+    label: 'Body xs',
+    size: 'var(--text-xs)',
+    lineHeight: 'var(--leading-normal)',
+    weight: 'var(--weight-normal)',
+  },
+  {
+    label: 'Body 2xs',
+    size: 'var(--text-2xs)',
+    lineHeight: 'var(--leading-normal)',
+    weight: 'var(--weight-normal)',
+  },
+  {
+    label: 'Mono lg',
+    size: 'var(--text-xl)',
+    lineHeight: 'var(--leading-tight)',
+    weight: 'var(--weight-bold)',
+    family: 'var(--type-mono-lg-font)',
+  },
+  {
+    label: 'Mono base',
+    size: 'var(--text-base)',
+    lineHeight: 'var(--leading-snug)',
+    weight: 'var(--weight-semibold)',
+    family: 'var(--type-mono-base-font)',
+  },
 ];
 
-function TypographySample({ spec }: { spec: typeof TYPE_SAMPLES[number] }) {
+function TypographySample({ spec }: { spec: (typeof TYPE_SAMPLES)[number] }) {
   const [resolvedSize, setResolvedSize] = useState('');
   useEffect(() => {
     setResolvedSize(pxFromVar(spec.size));
@@ -1231,12 +1659,36 @@ function TypographySample({ spec }: { spec: typeof TYPE_SAMPLES[number] }) {
         gap: 'var(--space-2)',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
-        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: 'var(--tracking-wide)', fontWeight: 600 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          flexWrap: 'wrap',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 'var(--text-2xs)',
+            color: 'var(--color-text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: 'var(--tracking-wide)',
+            fontWeight: 600,
+          }}
+        >
           {spec.label}
         </span>
-        <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-secondary)' }}>
-          {resolvedSize} size, line-height {spec.lineHeight.replace('var(--leading-', '').replace(')', '')}, weight {spec.weight.replace('var(--weight-', '').replace(')', '')}
+        <code
+          style={{
+            fontFamily: 'var(--type-mono-base-font)',
+            fontSize: 'var(--text-2xs)',
+            color: 'var(--color-text-secondary)',
+          }}
+        >
+          {resolvedSize} size, line-height{' '}
+          {spec.lineHeight.replace('var(--leading-', '').replace(')', '')}, weight{' '}
+          {spec.weight.replace('var(--weight-', '').replace(')', '')}
         </code>
       </div>
       <div
@@ -1262,7 +1714,7 @@ function TypographySamplesSection() {
         description="Each step of the type scale rendered at full fidelity. Sample copy: Read the market today."
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {TYPE_SAMPLES.map((spec) => (
+        {TYPE_SAMPLES.map(spec => (
           <TypographySample key={spec.label} spec={spec} />
         ))}
       </div>
@@ -1287,7 +1739,7 @@ function MiscSection({ tokens, gaps }: { tokens: ParsedToken[]; gaps: Documented
             Undocumented tokens (TODO: classify)
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {tokens.map((t) => (
+            {tokens.map(t => (
               <div
                 key={t.name}
                 style={{
@@ -1299,10 +1751,23 @@ function MiscSection({ tokens, gaps }: { tokens: ParsedToken[]; gaps: Documented
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
-                <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-text-primary)', minWidth: 220 }}>
+                <code
+                  style={{
+                    fontFamily: 'var(--type-mono-base-font)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--color-text-primary)',
+                    minWidth: 220,
+                  }}
+                >
                   {t.name}
                 </code>
-                <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-2xs)', color: 'var(--color-text-muted)' }}>
+                <code
+                  style={{
+                    fontFamily: 'var(--type-mono-base-font)',
+                    fontSize: 'var(--text-2xs)',
+                    color: 'var(--color-text-muted)',
+                  }}
+                >
                   {t.rawValue}
                 </code>
               </div>
@@ -1316,7 +1781,7 @@ function MiscSection({ tokens, gaps }: { tokens: ParsedToken[]; gaps: Documented
             Documented but not implemented
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            {gaps.map((g) => (
+            {gaps.map(g => (
               <div
                 key={g.name}
                 style={{
@@ -1329,10 +1794,23 @@ function MiscSection({ tokens, gaps }: { tokens: ParsedToken[]; gaps: Documented
                   flexWrap: 'wrap',
                 }}
               >
-                <code style={{ fontFamily: 'var(--type-mono-base-font)', fontSize: 'var(--text-xs)', color: 'var(--color-status-wait-text)', minWidth: 220 }}>
+                <code
+                  style={{
+                    fontFamily: 'var(--type-mono-base-font)',
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--color-status-wait-text)',
+                    minWidth: 220,
+                  }}
+                >
                   {g.name}
                 </code>
-                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-status-wait-text)', flex: 1 }}>
+                <span
+                  style={{
+                    fontSize: 'var(--text-xs)',
+                    color: 'var(--color-status-wait-text)',
+                    flex: 1,
+                  }}
+                >
                   {g.reason}
                 </span>
               </div>
@@ -1356,7 +1834,9 @@ function ComponentsSection() {
       <Stack spacing="lg">
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Buttons</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Buttons
+            </h3>
             <Row spacing="sm">
               <Button variant="primary">Get started</Button>
               <Button variant="brand">Open dossier</Button>
@@ -1373,7 +1853,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Badges</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Badges
+            </h3>
             <Row spacing="sm">
               <Badge variant="buy">BUY</Badge>
               <Badge variant="sell">SHORT</Badge>
@@ -1387,7 +1869,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Cards</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Cards
+            </h3>
             <Grid columns={3}>
               <Card variant="lavender">Lavender surface</Card>
               <Card variant="mint">Mint surface</Card>
@@ -1401,7 +1885,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Stat cards</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Stat cards
+            </h3>
             <Grid columns={3}>
               <StatCard label="Win rate" value="68%" change="+4.2%" />
               <StatCard label="Open positions" value="3" />
@@ -1412,7 +1898,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Inputs</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Inputs
+            </h3>
             <Grid columns={2}>
               <Input label="Email" placeholder="you@example.com" />
               <Input label="Amount" placeholder="100" helper="USDC available." />
@@ -1431,7 +1919,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Alerts</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Alerts
+            </h3>
             <Stack spacing="sm">
               <Alert variant="info">A new signal is ready to review.</Alert>
               <Alert variant="success">Your trade was placed.</Alert>
@@ -1443,7 +1933,9 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Empty state</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Empty state
+            </h3>
             <EmptyState
               title="No signals yet"
               description="Vela will publish a read here once the market sets up."
@@ -1454,14 +1946,18 @@ function ComponentsSection() {
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Page header</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Page header
+            </h3>
             <PageHeader title="Signals" subtitle="Live reads across 10 assets." />
           </Stack>
         </Card>
 
         <Card>
           <Stack spacing="md">
-            <h3 className="vela-heading-lg" style={{ margin: 0 }}>Loading spinner</h3>
+            <h3 className="vela-heading-lg" style={{ margin: 0 }}>
+              Loading spinner
+            </h3>
             <Row spacing="md">
               <LoadingSpinner size={20} />
               <LoadingSpinner size={28} />
@@ -1573,7 +2069,7 @@ function App() {
     <div style={{ background: 'var(--color-bg-page)', minHeight: '100vh' }}>
       <DesignSystemHeader />
       <div style={{ padding: 'var(--space-6)', maxWidth: 1400, margin: '0 auto' }}>
-        {GROUP_ORDER.map((meta) => (
+        {GROUP_ORDER.map(meta => (
           <TokenSection key={meta.id} meta={meta} tokens={grouped.byGroup[meta.id]} />
         ))}
         <TypographySamplesSection />
@@ -1588,7 +2084,12 @@ function App() {
             color: 'var(--color-text-muted)',
           }}
         >
-          Generated from <code style={{ fontFamily: 'var(--type-mono-base-font)' }}>src/styles/vela-design-system.css</code> on {__BUILD_DATE__}. Groupings sourced from VELA-BRAND-SYSTEM-V2.md and docs/claude-reference/design-system-guide.md.
+          Generated from{' '}
+          <code style={{ fontFamily: 'var(--type-mono-base-font)' }}>
+            src/styles/vela-design-system.css
+          </code>{' '}
+          on {__BUILD_DATE__}. Groupings sourced from VELA-BRAND-SYSTEM-V2.md and
+          docs/claude-reference/design-system-guide.md.
         </footer>
       </div>
     </div>
