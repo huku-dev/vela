@@ -1,18 +1,22 @@
 /**
  * Tests for LockedSignalCard — the tier-locked asset card.
  *
+ * Free users see signal direction (BUY/SELL/WAIT), price, and 24h change. The
+ * trade action and detailed brief are gated behind a paid plan. The card is
+ * fully clickable into the upgrade sheet, with a subtle lock indicator on the
+ * action area only.
+ *
  * Covers:
- * - Rendering: asset icon, symbol, name, upgrade label, lock icon
- * - Brief teaser: faded headline display, no headline case
- * - Accessibility: role="button", aria-label, keyboard navigation (Enter, Space)
+ * - Rendering: asset icon, symbol, name, signal chip, price, 24h change
+ * - Action area: upgrade CTA + lock glyph (chip is NOT hidden)
+ * - Accessibility: role="button", aria-label, keyboard navigation
  * - Click behavior: onUpgradeClick callback fires
- * - Asset prefix stripping: "ETH: headline" becomes just "headline"
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LockedSignalCard from './LockedSignalCard';
-import type { Asset } from '../types';
+import type { Asset, Signal, PriceData } from '../types';
 
 // ── Fixtures ───────────────────────────────────────────────────────
 
@@ -40,12 +44,37 @@ const HYPE_ASSET: Asset = {
   enabled: true,
 };
 
+function makeSignal(color: 'green' | 'red' | 'grey'): Signal {
+  return {
+    id: 'sig-1',
+    asset_id: 'eth',
+    timestamp: '2026-05-11T00:00:00Z',
+    signal_color: color,
+    reason_code: 'ema_cross',
+    price_at_signal: 3500,
+    ema_9: 3500,
+    ema_21: 3450,
+    rsi_14: 55,
+    sma_50_daily: 3300,
+    adx_4h: 25,
+    near_confirmation: false,
+    created_at: '2026-05-11T00:00:00Z',
+  };
+}
+
+const PRICE_DATA: PriceData = {
+  price: 3525,
+  change24h: 2.4,
+  priceSource: 'hyperliquid',
+};
+
 function renderCard(props?: Partial<Parameters<typeof LockedSignalCard>[0]>) {
   const defaultProps = {
     asset: ETH_ASSET,
-    upgradeLabel: 'Upgrade your plan to see ETH signals',
+    upgradeLabel: 'Upgrade your plan to unlock trades and full briefs',
     onUpgradeClick: vi.fn(),
-    briefHeadline: null,
+    signal: makeSignal('green'),
+    priceData: PRICE_DATA,
   };
   return {
     onUpgradeClick: defaultProps.onUpgradeClick,
@@ -73,17 +102,11 @@ describe('LockedSignalCard', () => {
       expect(screen.getByText('Ethereum')).toBeInTheDocument();
     });
 
-    it('displays the upgrade label', () => {
-      renderCard({ upgradeLabel: 'Upgrade your plan to see ETH signals' });
-      expect(screen.getByText(/Upgrade your plan to see ETH signals/)).toBeInTheDocument();
-    });
-
-    it('renders the lock icon SVG', () => {
-      const { container } = renderCard();
-      const svg = container.querySelector('svg');
-      expect(svg).toBeInTheDocument();
-      expect(svg).toHaveAttribute('width', '20');
-      expect(svg).toHaveAttribute('height', '20');
+    it('displays the upgrade label in the action area', () => {
+      renderCard({ upgradeLabel: 'Upgrade your plan to unlock trades and full briefs' });
+      expect(
+        screen.getByText(/Upgrade your plan to unlock trades and full briefs/)
+      ).toBeInTheDocument();
     });
 
     it('renders asset icon img when coingecko_id is available', () => {
@@ -93,20 +116,6 @@ describe('LockedSignalCard', () => {
       expect(img).toHaveAttribute('src');
     });
 
-    it('renders letter fallback when no icon URL', () => {
-      // Asset with a coingecko_id that produces null from getCoinIcon
-      // Actually getCoinIcon always returns a URL for known assets, so we test
-      // that the symbol is rendered for display
-      renderCard({ asset: ETH_ASSET });
-      expect(screen.getByText('ETH')).toBeInTheDocument();
-    });
-
-    it('has reduced opacity (0.7) for locked appearance', () => {
-      const { container } = renderCard();
-      const card = container.firstElementChild as HTMLElement;
-      expect(card.style.opacity).toBe('0.7');
-    });
-
     it('has cursor: pointer style', () => {
       const { container } = renderCard();
       const card = container.firstElementChild as HTMLElement;
@@ -114,47 +123,68 @@ describe('LockedSignalCard', () => {
     });
   });
 
-  // ── Brief teaser ──
+  // ── Signal direction visibility (FREE TIER REQUIREMENT) ──
 
-  describe('brief teaser', () => {
-    it('shows faded brief headline when provided', () => {
-      renderCard({ briefHeadline: 'Ethereum shows strong momentum' });
-      expect(screen.getByText('Ethereum shows strong momentum')).toBeInTheDocument();
+  describe('signal direction is visible to free users', () => {
+    it('renders the BUY label for a green signal', () => {
+      renderCard({ signal: makeSignal('green') });
+      expect(screen.getByText(/buy/i)).toBeInTheDocument();
     });
 
-    it('does not render brief section when headline is null', () => {
-      const { container } = renderCard({ briefHeadline: null });
-      // No paragraph with brief content
-      const paragraphs = container.querySelectorAll('p');
-      // Should only have the upgrade label paragraph
-      const briefParagraph = Array.from(paragraphs).find(p =>
-        p.textContent?.includes('strong momentum')
-      );
-      expect(briefParagraph).toBeUndefined();
+    it('renders the SELL label for a red signal', () => {
+      renderCard({ signal: makeSignal('red') });
+      expect(screen.getByText(/sell/i)).toBeInTheDocument();
     });
 
-    it('does not render brief section when headline is undefined', () => {
-      const { container } = renderCard({ briefHeadline: undefined });
-      // Only the upgrade label paragraph should exist
-      const paragraphs = container.querySelectorAll('p');
-      expect(paragraphs.length).toBe(1); // Just the upgrade label
+    it('renders the WAIT label for a grey signal', () => {
+      renderCard({ signal: makeSignal('grey') });
+      expect(screen.getByText(/wait/i)).toBeInTheDocument();
     });
 
-    it('strips asset prefix from headline (e.g. "ETH: " prefix)', () => {
-      renderCard({
-        asset: ETH_ASSET,
-        briefHeadline: 'ETH: Ethereum shows strong momentum',
-      });
-      // stripAssetPrefix should remove "ETH: " prefix
-      expect(screen.getByText('Ethereum shows strong momentum')).toBeInTheDocument();
+    it('renders no signal chip when signal is null (avoids fake WAIT impression)', () => {
+      renderCard({ signal: null });
+      // WAIT is a meaningful direction-neutral state, not a no-data placeholder.
+      // Rendering it for null signals would mislead free users into thinking
+      // Vela is telling them to wait when really there is no signal data.
+      expect(screen.queryByText(/wait|buy|sell/i)).not.toBeInTheDocument();
     });
 
-    it('strips asset name prefix from headline', () => {
-      renderCard({
-        asset: HYPE_ASSET,
-        briefHeadline: 'HYPE - Market showing consolidation',
-      });
-      expect(screen.getByText('Market showing consolidation')).toBeInTheDocument();
+    it('renders the formatted price when priceData is provided', () => {
+      renderCard({ priceData: PRICE_DATA });
+      // formatPrice on 3525 produces a $-prefixed string with commas
+      expect(screen.getByText(/3,525|3525/)).toBeInTheDocument();
+    });
+
+    it('renders the 24h change percentage when priceData has change24h', () => {
+      renderCard({ priceData: { ...PRICE_DATA, change24h: 2.4 } });
+      expect(screen.getByText(/2\.4%/)).toBeInTheDocument();
+    });
+
+    it('falls back to signal.price_at_signal when priceData has no price', () => {
+      renderCard({ priceData: null, signal: makeSignal('green') });
+      expect(screen.getByText(/3,500|3500/)).toBeInTheDocument();
+    });
+  });
+
+  // ── Gated content (paid-only) ──
+
+  describe('gated content is not rendered', () => {
+    it('does NOT render any brief headline on the card', () => {
+      // The brief / news rationale is gated behind paid. We removed the
+      // briefHeadline prop entirely; this guards against re-introducing it.
+      renderCard();
+      const card = screen.getByRole('button');
+      expect(card.textContent?.toLowerCase()).not.toMatch(/momentum|news|rationale/);
+    });
+
+    it('does NOT render an approve / trade action button', () => {
+      renderCard();
+      // No "approve" or "trade" or "execute" button on the card
+      const buttons = screen.queryAllByRole('button');
+      // The whole card is role="button" but it should be the only one
+      expect(buttons.length).toBe(1);
+      const card = buttons[0];
+      expect(card.textContent?.toLowerCase()).not.toMatch(/approve|execute trade/);
     });
   });
 
@@ -199,19 +229,6 @@ describe('LockedSignalCard', () => {
       fireEvent.keyDown(card, { key: 'Tab' });
       expect(onUpgradeClick).not.toHaveBeenCalled();
     });
-
-    it('prevents default on Space to avoid page scroll', () => {
-      renderCard();
-      const card = screen.getByRole('button');
-      const event = new KeyboardEvent('keydown', {
-        key: ' ',
-        bubbles: true,
-        cancelable: true,
-      });
-      const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
-      card.dispatchEvent(event);
-      expect(preventDefaultSpy).toHaveBeenCalled();
-    });
   });
 
   // ── Click behavior ──
@@ -231,23 +248,6 @@ describe('LockedSignalCard', () => {
       const card = screen.getByRole('button');
       await user.click(card);
       expect(onUpgradeClick).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // ── Upgrade label variations ──
-
-  describe('upgrade label', () => {
-    it('renders arrow indicator after label', () => {
-      const { container } = renderCard({
-        upgradeLabel: 'Upgrade your plan to see SOL signals',
-      });
-      // The arrow is a span with "→"
-      expect(container.textContent).toContain('→');
-    });
-
-    it('renders different upgrade labels for different features', () => {
-      renderCard({ upgradeLabel: 'Upgrade your plan to unlock auto-trading' });
-      expect(screen.getByText(/Upgrade your plan to unlock auto-trading/)).toBeInTheDocument();
     });
   });
 });

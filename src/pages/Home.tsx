@@ -994,8 +994,9 @@ export default function Home() {
                 <LockedSignalCard
                   key={item.asset.id}
                   asset={item.asset}
-                  briefHeadline={item.brief?.headline}
-                  upgradeLabel={upgradeLabel(`see ${item.asset.symbol} signals`)}
+                  signal={item.signal}
+                  priceData={item.priceData}
+                  upgradeLabel={upgradeLabel(`see ${item.asset.symbol} trades and full briefs`)}
                   onUpgradeClick={() => setShowTierSheet(true)}
                 />
               );

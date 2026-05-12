@@ -246,11 +246,14 @@ interface BalanceCardProps {
   wallet: import('../types').UserWallet | null;
   hasWallet: boolean;
   isTradingEnabled: boolean;
+  /** Current subscription tier — free users see an upgrade CTA in place of "Enable trading" */
+  tier: import('../types').SubscriptionTier;
   showFundingNudge?: boolean;
   enableLoading?: boolean;
   /** Open positions for computing capital in trades */
   openPositions?: import('../types').Position[];
   onEnableClick?: () => void;
+  onUpgradeClick?: () => void;
   onWithdrawClick?: () => void;
   onDepositClick?: () => void;
 }
@@ -259,16 +262,53 @@ function BalanceCard({
   wallet,
   hasWallet,
   isTradingEnabled,
+  tier,
   showFundingNudge,
   enableLoading,
   openPositions,
   onEnableClick,
+  onUpgradeClick,
   onWithdrawClick,
   onDepositClick,
 }: BalanceCardProps) {
   const navigate = useNavigate();
+  const isFree = tier === 'free';
 
-  // No wallet / trading not enabled — show $0 balance + enable CTA
+  // Free tier: no balance display, no fake wallet. Single upgrade pitch instead.
+  // Mirrors the empty-state pattern in TrackRecord.tsx for consistency.
+  if (isFree) {
+    return (
+      <div
+        className="vela-card"
+        style={{
+          padding: 'var(--space-5)',
+          marginBottom: 'var(--space-6)',
+          textAlign: 'center',
+        }}
+      >
+        <p
+          className="vela-heading-base"
+          style={{ marginBottom: 'var(--space-2)', fontSize: '1rem' }}
+        >
+          Trading is on paid plans
+        </p>
+        <p
+          className="vela-body-sm vela-text-secondary"
+          style={{ maxWidth: 280, margin: '0 auto var(--space-4)', lineHeight: 1.6 }}
+        >
+          Upgrade your plan to enable trading and fund your wallet.
+        </p>
+        <button
+          onClick={onUpgradeClick}
+          className="vela-btn vela-btn-primary vela-btn-sm"
+        >
+          View plans
+        </button>
+      </div>
+    );
+  }
+
+  // Paid, no wallet / trading not enabled: show $0 balance + enable CTA
   if (!isTradingEnabled || !hasWallet || !wallet) {
     return (
       <div
@@ -325,7 +365,7 @@ function BalanceCard({
           </p>
         </div>
 
-        {/* Enable CTA */}
+        {/* Enable CTA — paid users provision a wallet */}
         <div style={{ textAlign: 'center', paddingTop: 'var(--space-4)' }}>
           <p
             className="vela-body-sm vela-text-muted"
@@ -2752,10 +2792,12 @@ export default function Account() {
         wallet={wallet}
         hasWallet={hasWallet}
         isTradingEnabled={isTradingEnabled}
+        tier={currentTier}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
         enableLoading={enableLoading}
         openPositions={positions}
         onEnableClick={handleEnableTrading}
+        onUpgradeClick={() => setShowTierSheet(true)}
         onWithdrawClick={() => setShowWithdrawSheet(true)}
         onDepositClick={() => setShowDepositSheet(true)}
       />
@@ -2885,16 +2927,21 @@ export default function Account() {
           </div>
         )}
 
-        <SettingsItem
-          label="Connected wallet"
-          value={wallet?.master_address ? truncateAddress(wallet.master_address) : 'Not set up'}
-          onClick={() => toggleSection('wallet')}
-          expanded={expandedSection === 'wallet'}
-        />
-        {expandedSection === 'wallet' && (
-          <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
-            <WalletPanel address={wallet?.master_address} />
-          </div>
+        {/* Connected wallet — hidden on free tier (no real wallet, no trading) */}
+        {currentTier !== 'free' && (
+          <>
+            <SettingsItem
+              label="Connected wallet"
+              value={wallet?.master_address ? truncateAddress(wallet.master_address) : 'Not set up'}
+              onClick={() => toggleSection('wallet')}
+              expanded={expandedSection === 'wallet'}
+            />
+            {expandedSection === 'wallet' && (
+              <div style={{ borderBottom: '1px solid var(--gray-200)' }}>
+                <WalletPanel address={wallet?.master_address} />
+              </div>
+            )}
+          </>
         )}
 
         <SettingsItem
