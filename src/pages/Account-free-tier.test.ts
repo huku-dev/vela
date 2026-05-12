@@ -77,7 +77,10 @@ describe('ACCOUNT-SRC: free-tier replaces wallet card with upgrade pitch', () =>
     // user with legacy wallet state still gets the upgrade pitch, not the
     // balance frame with $0.00.
     const balanceCardStart = accountSrc.indexOf('function BalanceCard');
-    const noWalletBranchStart = accountSrc.indexOf('!isTradingEnabled || !hasWallet', balanceCardStart);
+    const noWalletBranchStart = accountSrc.indexOf(
+      '!isTradingEnabled || !hasWallet',
+      balanceCardStart
+    );
     const isFreeReturn = accountSrc.indexOf('if (isFree)', balanceCardStart);
     expect(isFreeReturn).toBeGreaterThan(balanceCardStart);
     expect(isFreeReturn).toBeLessThan(noWalletBranchStart);

@@ -298,10 +298,7 @@ function BalanceCard({
         >
           Upgrade your plan to enable trading and fund your wallet.
         </p>
-        <button
-          onClick={onUpgradeClick}
-          className="vela-btn vela-btn-primary vela-btn-sm"
-        >
+        <button onClick={onUpgradeClick} className="vela-btn vela-btn-primary vela-btn-sm">
           View plans
         </button>
       </div>
