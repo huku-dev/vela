@@ -44,6 +44,7 @@ interface NewsRowMeta {
   summary: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   vela_take: any;
+  relevant_assets: string[] | null;
 }
 
 interface DetailResponse {
@@ -118,7 +119,7 @@ export default function NewsDetail() {
     (async () => {
       const { data, error } = await readClient
         .from('news_cache')
-        .select('id, title, source, url, published_at, ai_classification, summary, vela_take')
+        .select('id, title, source, url, published_at, ai_classification, summary, vela_take, relevant_assets')
         .eq('id', newsId)
         .maybeSingle();
       if (cancelled) return;
@@ -129,10 +130,25 @@ export default function NewsDetail() {
         setMeta(row);
         // Short-circuit: when summary is already persisted, render
         // directly without a round-trip to news-detail-generate.
-        // We gate on summary alone (not summary && vela_take) because
-        // macro articles without a Vela asset will never have a vela_take
-        // — gating on both would fire the edge function on every tap.
-        if (row.summary) {
+        //
+        // Gate logic: we skip the edge function only if the cached state
+        // is COMPLETE for this row. "Complete" means either:
+        //   (a) Both summary AND vela_take are set, OR
+        //   (b) summary is set AND the row has no real (non-pseudo)
+        //       asset (e.g. macro-only rows where vela_take can never
+        //       be generated — gating on vela_take alone would fire
+        //       the edge fn on every tap for these).
+        //
+        // Without the (b) clause we'd re-fire on every tap of a macro
+        // story; without checking vela_take at all (the prior behavior)
+        // we silently never generate vela_take for asset-relevant rows
+        // whose initial classification missed it.
+        const hasRealAsset = (row.relevant_assets ?? []).some(
+          (a) => typeof a === 'string' && a.length > 0 && !a.startsWith('_'),
+        );
+        const cacheComplete =
+          !!row.summary && (!!row.vela_take || !hasRealAsset);
+        if (cacheComplete) {
           setDetail({
             status: 'cached',
             summary: row.summary,
@@ -159,7 +175,16 @@ export default function NewsDetail() {
     if (!newsId || !readClient) return;
     if (!metaLoaded) return;
     if (!meta) return; // not found — render-time terminal handles UX
-    if (meta.summary) return; // summary cached — edge fn not needed
+    // Cache-complete gate (mirrors useEffect #1 above): only skip the
+    // edge fn when summary is set AND either vela_take is set OR the
+    // row has no real (non-pseudo) asset (macro-only rows can never
+    // generate a vela_take). Without the vela_take half of this check,
+    // asset-relevant rows whose initial classification missed
+    // vela_take stay stuck without "Vela's read" forever.
+    const hasRealAssetFx = (meta.relevant_assets ?? []).some(
+      (a) => typeof a === 'string' && a.length > 0 && !a.startsWith('_'),
+    );
+    if (meta.summary && (meta.vela_take || !hasRealAssetFx)) return;
     let cancelled = false;
     (async () => {
       try {
