@@ -1753,8 +1753,8 @@ function TradingPanel({
       {/* Position count + advanced settings — only show if trading enabled */}
       {isTradingEnabled && (
         <>
-          {/* Position count indicator — always visible */}
-          {tierConfig.max_active_positions > 0 && (
+          {/* Position count indicator — always visible (Premium has unlimited cap = 0; still show count) */}
+          {(tierConfig.max_active_positions > 0 || currentTier === 'premium') && (
             <div
               style={{
                 padding: 'var(--space-2) var(--space-3)',
@@ -1774,7 +1774,9 @@ function TradingPanel({
                       : openPositionCount > 0
                         ? '1 free trial trade active'
                         : '1 free trial trade available'
-                    : `${openPositionCount}/${tierConfig.max_active_positions} positions`}
+                    : currentTier === 'premium'
+                      ? `${openPositionCount} ${openPositionCount === 1 ? 'position' : 'positions'}`
+                      : `${openPositionCount}/${tierConfig.max_active_positions} positions`}
                 </p>
                 {currentTier !== 'premium' && (
                   <button
@@ -2953,6 +2955,10 @@ export default function Account() {
               return '1 free trial trade';
             }
             const maxPos = getTierConfig(currentTier).max_active_positions;
+            // Premium: max_active_positions = 0 means unlimited. Show count without denominator.
+            if (currentTier === 'premium') {
+              return `${modeLabel} · ${positions.length} ${positions.length === 1 ? 'position' : 'positions'}`;
+            }
             if (maxPos > 0) return `${modeLabel} · ${positions.length}/${maxPos} positions`;
             return modeLabel;
           })()}

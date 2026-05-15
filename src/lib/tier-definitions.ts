@@ -14,6 +14,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_leverage: 1,
     signal_frequency_hours: 4,
     max_active_positions: 1,
+    sizing_slots: 1,
     max_assets: 1,
     features: {
       auto_mode: false,
@@ -33,6 +34,7 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_leverage: 2,
     signal_frequency_hours: 2,
     max_active_positions: 2,
+    sizing_slots: 2,
     max_assets: 8,
     features: {
       auto_mode: false,
@@ -51,7 +53,8 @@ export const TIER_DEFINITIONS: TierConfig[] = [
     max_position_size_usd: 0, // 0 = unlimited
     max_leverage: 5,
     signal_frequency_hours: 1,
-    max_active_positions: 5,
+    max_active_positions: 0, // 0 = unlimited
+    sizing_slots: 5,
     max_assets: 0, // 0 = unlimited
     features: {
       auto_mode: true,
@@ -109,7 +112,12 @@ export const COMPARISON_FEATURES: {
   {
     key: 'positions',
     label: 'Active positions',
-    getValue: t => (t.tier === 'free' ? '\u2014' : String(t.max_active_positions)),
+    getValue: t =>
+      t.tier === 'free'
+        ? '\u2014'
+        : t.max_active_positions === 0
+          ? 'Unlimited'
+          : String(t.max_active_positions),
   },
   {
     key: 'fee',

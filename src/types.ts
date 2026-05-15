@@ -184,7 +184,10 @@ export interface TierConfig {
   max_position_size_usd: number;
   max_leverage: number;
   signal_frequency_hours: number;
+  /** Hard cap on concurrent positions. 0 = unlimited. */
   max_active_positions: number;
+  /** Sizing denominator (always positive). Independent of the cap above. */
+  sizing_slots: number;
   max_assets: number;
   features: Record<string, boolean>;
   monthly_price_usd: number;

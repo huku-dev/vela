@@ -260,6 +260,18 @@ describe('TIER-ADV: Guard bypass — tier limits enforced consistently', () => {
     expect(free.max_active_positions).toBe(1);
   });
 
+  it('TIER-ADV: premium tier max_active_positions is 0 (unlimited)', () => {
+    const premium = getTierConfig('premium');
+    expect(premium.max_active_positions).toBe(0);
+    expect(premium.sizing_slots).toBeGreaterThan(0);
+  });
+
+  it('TIER-ADV: every tier has positive sizing_slots (sizing math denominator)', () => {
+    for (const def of TIER_DEFINITIONS) {
+      expect(def.sizing_slots).toBeGreaterThan(0);
+    }
+  });
+
   it('TIER-ADV: tier features are boolean flags, not arbitrary strings', () => {
     for (const def of TIER_DEFINITIONS) {
       for (const value of Object.values(def.features)) {
