@@ -46,6 +46,7 @@ const ASSET_DISPLAY_ORDER: Record<string, number> = {
   gold: 8,
   oil: 9,
   hype: 10,
+  zec: 11,
 };
 
 // ── Module-level cache so data persists across navigations ──
