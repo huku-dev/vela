@@ -30,7 +30,7 @@ export const DEFAULT_POSITION_SIZE = 1000;
 // Selection logic uses this order via useTierAccess.partitionAssets, which
 // slices the first N. For max_assets=1 (Free) that means BTC wins; for
 // max_assets=8 (Standard) we ship a balanced crypto + equities + macro mix
-// and lock OIL + HYPE behind the upgrade paywall.
+// and lock OIL, HYPE, ZEC, DELL, BB behind the upgrade paywall.
 //
 // Kept frontend-only (no DB sort_order column) so we can rebalance without
 // a migration. If this list drifts vs. the asset catalogue, verify in
@@ -47,6 +47,8 @@ const ASSET_DISPLAY_ORDER: Record<string, number> = {
   oil: 9,
   hype: 10,
   zec: 11,
+  dell: 12,
+  bb: 13,
 };
 
 // ── Module-level cache so data persists across navigations ──
