@@ -36,6 +36,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import requests
@@ -96,8 +97,8 @@ CONTINUED_THRESHOLD_PCT = 2.0  # min % move to count as "continued in direction"
 
 
 def fetch_positions(
-    close_reason_filter: str | None = None,
-    asset_filter: str | None = None,
+    close_reason_filter: Optional[str] = None,
+    asset_filter: Optional[str] = None,
 ) -> list[dict]:
     """Fetch closed positions from Supabase via PostgREST."""
     if not SUPABASE_URL or not SUPABASE_KEY:
@@ -227,6 +228,8 @@ def compute_foregone(position: dict) -> dict:
     if not bars:
         return {"error": "Empty candle list after parsing"}
 
+    # position-monitor sets current_price to the mark price at close time.
+    # Confirmed correct: entry_price * (1 ± closed_pnl_pct/100) == current_price on real rows.
     close_price = float(position["current_price"] or 0)
     if close_price <= 0:
         return {"error": "Invalid close_price"}

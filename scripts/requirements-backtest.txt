@@ -3,3 +3,4 @@ requests>=2.31
 supabase>=2.0
 pandas-ta>=0.3.14b
 pytest>=7.0
+tabulate>=0.9
