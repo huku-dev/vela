@@ -41,7 +41,7 @@ from typing import Optional
 import pandas as pd
 import requests
 
-# ── Environment ───────────────────────────────────────────────────────────────
+# ── Environment ─────────────────────────────────────────────────────────────────────────
 
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
@@ -62,7 +62,7 @@ SUPABASE_URL = _env.get("VITE_SUPABASE_URL", "")
 SUPABASE_KEY = _env.get("SUPABASE_SERVICE_ROLE_KEY", "") or _env.get("VITE_SUPABASE_ANON_KEY", "")
 HL_API_URL = "https://api.hyperliquid.xyz/info"
 
-# ── Asset mapping ─────────────────────────────────────────────────────────────
+# ── Asset mapping ─────────────────────────────────────────────────────────────────────
 
 # DB asset_id (lowercase) → Hyperliquid coin symbol for candleSnapshot API
 # Crypto trades on native HL perpetuals (no prefix).
@@ -98,7 +98,7 @@ ASSET_TO_HL: dict[str, str] = {
 WINDOWS_HOURS = [1, 4, 12, 24, 48]
 CONTINUED_THRESHOLD_PCT = 2.0  # min % move to count as "continued in direction"
 
-# ── Supabase ──────────────────────────────────────────────────────────────────
+# ── Supabase ──────────────────────────────────────────────────────────────────────────────
 
 
 def fetch_positions(
@@ -140,7 +140,7 @@ def fetch_positions(
     return resp.json()
 
 
-# ── Hyperliquid ───────────────────────────────────────────────────────────────
+# ── Hyperliquid ────────────────────────────────────────────────────────────────────────
 
 
 def fetch_hl_candles(coin: str, start_ms: int, end_ms: int) -> list[dict]:
@@ -178,7 +178,7 @@ def fetch_hl_candles(coin: str, start_ms: int, end_ms: int) -> list[dict]:
     return []
 
 
-# ── Analysis ──────────────────────────────────────────────────────────────────
+# ── Analysis ────────────────────────────────────────────────────────────────────────────
 
 
 def _parse_ts(ts_str: str) -> int:
@@ -234,7 +234,7 @@ def compute_foregone(position: dict) -> dict:
         return {"error": "Empty candle list after parsing"}
 
     # position-monitor sets current_price to the mark price at close time.
-    # Confirmed correct: entry_price * (1 ± closed_pnl_pct/100) == current_price on real rows.
+    # Confirmed correct: entry_price * (1 +/- closed_pnl_pct/100) == current_price on real rows.
     close_price = float(position["current_price"] or 0)
     if close_price <= 0:
         return {"error": "Invalid close_price"}
@@ -294,7 +294,7 @@ def _signal_still_active(pos: dict) -> bool:
         return False
 
 
-# ── Summary printing ──────────────────────────────────────────────────────────
+# ── Summary printing ────────────────────────────────────────────────────────────────────
 
 
 def _fmt_table(rows: list, headers: list) -> None:
@@ -319,8 +319,8 @@ def print_summary(df: pd.DataFrame) -> None:
     print(f"  FOREGONE MOVE ANALYSIS  —  {total} positions  ({error_count} fetch errors)")
     print(f"{'='*68}")
 
-    # ── Summary by close reason ──────────────────────────────────────────────
-    print("\n── By close reason ─────────────────────────────────────────────────")
+    # ── Summary by close reason ──────────────────────────────────────────────────────────────────
+    print("\n── By close reason ───────────────────────────────────────────────────")
     reason_rows = []
     for reason, grp in df.groupby("close_reason"):
         fg = grp["foregone_24h"].dropna()
@@ -335,7 +335,7 @@ def print_summary(df: pd.DataFrame) -> None:
         ])
     _fmt_table(reason_rows, ["Close reason", "N", "Avg foregone 24h", "Median", "P90", "% continued >2%"])
 
-    # ── Trailing stops by asset ───────────────────────────────────────────────
+    # ── Trailing stops by asset ───────────────────────────────────────────────────────────────
     trail_df = df[df["close_reason"] == "trailing_stop"].copy()
     if not trail_df.empty:
         print("\n── Trailing stop exits: foregone move by asset ─────────────────────")
@@ -354,7 +354,7 @@ def print_summary(df: pd.DataFrame) -> None:
         asset_rows.sort(key=lambda r: r[0])
         _fmt_table(asset_rows, ["Asset", "N", "Avg foregone 24h", "Avg foregone 48h", "% continued >2%"])
 
-    # ── Signal still active at trailing stop close ────────────────────────────
+    # ── Signal still active at trailing stop close ────────────────────────────────────
     if not trail_df.empty:
         active = trail_df[trail_df["signal_still_active"] == True]
         print(f"\n── Trailing stops where signal was still active (<24h after entry): {len(active)} trades ──")
@@ -368,7 +368,7 @@ def print_summary(df: pd.DataFrame) -> None:
         else:
             print("   None found.")
 
-    # ── Distribution of foregone 24h (trailing stops) ────────────────────────
+    # ── Distribution of foregone 24h (trailing stops) ─────────────────────────────────
     if not trail_df.empty:
         fg = trail_df["foregone_24h"].dropna()
         print(f"\n── Trailing stop foregone 24h distribution  (n={len(fg)}) ─────────────")
@@ -385,8 +385,8 @@ def print_summary(df: pd.DataFrame) -> None:
             bar = "█" * int(pct / 2)
             print(f"   {label:<38}  {count:3d}  {pct:4.0f}%  {bar}")
 
-    # ── Top 10 missed opportunities ───────────────────────────────────────────
-    print("\n── Top 10 biggest missed opportunities ─────────────────────────────")
+    # ── Top 10 missed opportunities ─────────────────────────────────────────────────────
+    print("\n── Top 10 biggest missed opportunities ─────────────────────────────────")
     top = (
         df.nlargest(10, "foregone_24h")[
             ["asset_id", "side", "close_reason", "closed_pnl_pct",
@@ -403,7 +403,7 @@ def print_summary(df: pd.DataFrame) -> None:
     )
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────────────
 
 
 def main() -> None:
