@@ -64,30 +64,35 @@ HL_API_URL = "https://api.hyperliquid.xyz/info"
 
 # ── Asset mapping ─────────────────────────────────────────────────────────────
 
-# DB asset_id (lowercase) → Hyperliquid perpetual symbol
+# DB asset_id (lowercase) → Hyperliquid coin symbol for candleSnapshot API
+# Crypto trades on native HL perpetuals (no prefix).
+# All non-crypto trades on HIP-3 builder-deployed perps via the xyz (Trade.xyz) deployer.
 ASSET_TO_HL: dict[str, str] = {
+    # Crypto — native HL perpetuals
     "btc":    "BTC",
     "eth":    "ETH",
     "sol":    "SOL",
     "hype":   "HYPE",
     "zec":    "ZEC",
-    "aapl":   "AAPL",
-    "nvda":   "NVDA",
-    "msft":   "MSFT",
-    "gold":   "GOLD",
-    "oil":    "OIL",
-    "amzn":   "AMZN",
-    "meta":   "META",
-    "tsla":   "TSLA",
-    "spx":    "SPX500",
-    "googl":  "GOOGL",
-    "intc":   "INTC",
-    "sndk":   "SNDK",
-    "skhx":   "SKHX",
-    "natgas": "NATGAS",
-    "copper": "COPPER",
-    "silver": "SILVER",
-    "spcx":   "SPCX",
+    # Equities — xyz deployer perps (HIP-3)
+    "aapl":   "xyz:AAPL",
+    "nvda":   "xyz:NVDA",
+    "msft":   "xyz:MSFT",
+    "amzn":   "xyz:AMZN",
+    "meta":   "xyz:META",
+    "tsla":   "xyz:TSLA",
+    "spx":    "xyz:SPX",
+    "googl":  "xyz:GOOGL",
+    "intc":   "xyz:INTC",
+    "sndk":   "xyz:SNDK",
+    "skhx":   "xyz:SKHX",
+    "spcx":   "xyz:SPCX",
+    # Commodities — xyz deployer perps (HIP-3)
+    "gold":   "xyz:GOLD",
+    "oil":    "xyz:CL",      # WTI crude oil; HL ticker is CL
+    "natgas": "xyz:NATGAS",
+    "copper": "xyz:COPPER",
+    "silver": "xyz:SILVER",
 }
 
 WINDOWS_HOURS = [1, 4, 12, 24, 48]
