@@ -49,6 +49,7 @@ const ASSET_DISPLAY_ORDER: Record<string, number> = {
   zec: 11,
   dell: 12,
   bb: 13,
+  near: 14,
 };
 
 // ── Module-level cache so data persists across navigations ──
