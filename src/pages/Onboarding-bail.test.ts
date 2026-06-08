@@ -268,10 +268,16 @@ describe('ONBOARD-SRC: simplified flow (Batch 2b, 2026-04-20)', () => {
     expect(skipHandler).toContain("navigate('/'");
   });
 
-  it('no popstate / in-app back handling (flow has a single step after auth)', () => {
-    // With TradingModeSetup gone there is no in-app previous step to walk
-    // back to, so we rely on browser's default back behaviour.
-    expect(onboardingMain).not.toContain('popstate');
+  it('popstate handling is scoped to the trial step only', () => {
+    // After Lota's 2026-05-05 onboarding call we added a popstate listener for
+    // the trial step (browser-back from trial used to land on an error). The
+    // plan step has NO in-app previous step and intentionally pushes no history
+    // entry, so browser-back from plan continues to exit /welcome to wherever
+    // the user came from. Source: Onboarding.tsx useEffect guarded on
+    // `step !== 'trial'`. See Onboarding-trial-back.test.ts for the full
+    // contract.
+    expect(onboardingMain).toContain('popstate');
+    expect(onboardingMain).toMatch(/step !== ['"]trial['"]/);
     expect(onboardingMain).not.toContain('skipInitialHistoryPush');
     expect(onboardingMain).not.toContain('onboardingStep');
   });

@@ -1076,11 +1076,13 @@ function OnboardingPlanSelection({
 // $20/mo). See docs/threat-reports/trial-system.md Invariant #6 for the
 // fee-calc contract during trial; this screen only carries the UX promise.
 function OnboardingTrialOffer({
+  onBack,
   onStartTrial,
   onContinueFree,
   busy,
   errorMessage,
 }: {
+  onBack: () => void;
   onStartTrial: () => Promise<void>;
   onContinueFree: () => Promise<void>;
   busy: boolean;
@@ -1102,7 +1104,44 @@ function OnboardingTrialOffer({
         padding: 'var(--space-6) var(--space-4) var(--space-6)',
       }}
     >
-      <div style={{ marginBottom: 'var(--space-6)' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          marginBottom: 'var(--space-6)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Go back to plans"
+          data-testid="trial-back-button"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'var(--border-medium) solid var(--color-border-default)',
+            borderRadius: 'var(--radius-sm)',
+            boxShadow: 'var(--shadow-xs)',
+            width: 36,
+            height: 36,
+            background: 'var(--color-bg-surface)',
+            cursor: 'pointer',
+            padding: 0,
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <path
+              d="M9 2L4 7L9 12"
+              style={{ stroke: 'var(--color-text-primary)' }}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
         <VelaLogo size={40} />
       </div>
       <div style={{ flex: 1, maxWidth: 440, margin: '0 auto', width: '100%' }}>
@@ -1496,8 +1535,25 @@ export default function Onboarding() {
 
   // Browser back from the plan step: there is no in-app previous step now
   // that TradingModeSetup is gone. We intentionally do NOT push a history
-  // entry, so Back follows normal browser behavior and exits /welcome to
-  // wherever the user came from (marketing site, bookmark, etc.).
+  // entry for plan, so Back follows normal browser behavior and exits
+  // /welcome to wherever the user came from (marketing site, bookmark, etc.).
+  //
+  // Trial step IS different. From Lota's 2026-05-05 onboarding call: a user
+  // who got to trial then pressed browser-back landed on an error page. The
+  // fix pushes a synthetic history entry on trial entry, listens for popstate,
+  // and routes both browser-back and the in-app back button through
+  // window.history.back() so the two paths share a single transition.
+  useEffect(() => {
+    if (step !== 'trial') return;
+    window.history.pushState({ velaStep: 'trial' }, '');
+    const handlePopState = () => {
+      setTrialError(null);
+      setStep('plan');
+      track(AnalyticsEvent.ONBOARDING_STEP_VIEWED, { step: 'plan' });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [step]);
 
   const handleGetStarted = () => {
     if (isAuthenticated) {
@@ -1574,6 +1630,9 @@ export default function Onboarding() {
   if (step === 'trial') {
     return (
       <OnboardingTrialOffer
+        // Route through history.back() so the in-app button and browser-back
+        // share a single transition path (the popstate listener above).
+        onBack={() => window.history.back()}
         onStartTrial={handleStartTrial}
         onContinueFree={handleSkipToFree}
         busy={trialBusy}

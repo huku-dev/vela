@@ -126,7 +126,11 @@ export function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
+    .replace(/&amp;/g, "&")
+    // Re-escape < and > so decoded entities (&#x3C; → <) don't inject into
+    // the Satori SVG template as raw HTML tags.
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 export function formatPrice(price: number): string {

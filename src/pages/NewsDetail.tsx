@@ -119,7 +119,9 @@ export default function NewsDetail() {
     (async () => {
       const { data, error } = await readClient
         .from('news_cache')
-        .select('id, title, source, url, published_at, ai_classification, summary, vela_take, relevant_assets')
+        .select(
+          'id, title, source, url, published_at, ai_classification, summary, vela_take, relevant_assets'
+        )
         .eq('id', newsId)
         .maybeSingle();
       if (cancelled) return;
@@ -144,10 +146,9 @@ export default function NewsDetail() {
         // we silently never generate vela_take for asset-relevant rows
         // whose initial classification missed it.
         const hasRealAsset = (row.relevant_assets ?? []).some(
-          (a) => typeof a === 'string' && a.length > 0 && !a.startsWith('_'),
+          a => typeof a === 'string' && a.length > 0 && !a.startsWith('_')
         );
-        const cacheComplete =
-          !!row.summary && (!!row.vela_take || !hasRealAsset);
+        const cacheComplete = !!row.summary && (!!row.vela_take || !hasRealAsset);
         if (cacheComplete) {
           setDetail({
             status: 'cached',
@@ -182,7 +183,7 @@ export default function NewsDetail() {
     // asset-relevant rows whose initial classification missed
     // vela_take stay stuck without "Vela's read" forever.
     const hasRealAssetFx = (meta.relevant_assets ?? []).some(
-      (a) => typeof a === 'string' && a.length > 0 && !a.startsWith('_'),
+      a => typeof a === 'string' && a.length > 0 && !a.startsWith('_')
     );
     if (meta.summary && (meta.vela_take || !hasRealAssetFx)) return;
     let cancelled = false;

@@ -84,7 +84,8 @@ export function getCoinIcon(coingeckoId: string): string {
       'https://coin-images.coingecko.com/coins/images/50882/small/hyperliquid.jpg',
     solana: 'https://coin-images.coingecko.com/coins/images/4128/small/solana.png',
     sol: 'https://coin-images.coingecko.com/coins/images/4128/small/solana.png',
-    zcash: 'https://coin-images.coingecko.com/coins/images/486/small/circle-zcash-color.png?1696501740',
+    zcash:
+      'https://coin-images.coingecko.com/coins/images/486/small/circle-zcash-color.png?1696501740',
   };
 
   const iconUrl = icons[coingeckoId] || '';
