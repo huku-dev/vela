@@ -341,3 +341,99 @@ Every env var read by backend code. All must fail loud (500 error) if missing.
 | 2026-03-13 | $10 minimum rejections | HL rejects orders <$10 | Floor in `clampToTierLimits()` + defense-in-depth |
 | 2026-03-14 | HYPE 95% price error | Spot wire used `perpIndex+10000` not `pairIndex+10000` | Use `pair.index` from spotMeta universe |
 | 2026-03-14 | Builder fee insufficient | Treasury wallet empty on HL | Deposit USDC to builder address |
+
+---
+
+## BB2 Upgrade Close Pattern (2026-05-04)
+
+When an EMA signal fires in the same direction as an open BB2 (half-size mean-reversion) position, instead of skipping with "already aligned", the system:
+
+1. Emits an `upgrade_close` proposal (new `proposal_type` added via migration `20260501000001`)
+2. trade-executor closes the BB2, then `await`s `fireUpgradeEmaOpen()` post-fill
+3. `fireUpgradeEmaOpen()` fetches a fresh balance snapshot and inserts a full-size EMA open proposal
+
+**Why post-fill (not two proposals upfront):** Two simultaneous proposals create a race for full_auto users and the first proposal's balance snapshot is stale by the time the second executes.
+
+**Abort condition:** If EMA cooldown fires and strips the follow-on open, the entire upgrade is cancelled. The user keeps their BB2. Logic: `upgradeActions.length > 0 && !actions.some((a) => !a.isClose)` — if we generated upgrade-close actions but the EMA open was stripped, abort.
+
+**Double-close guards:**
+- `generateBB2ExitProposals()` checks for pending `upgrade_close` before emitting a regular BB2 exit
+- `position-monitor` hold-days expiry path checks for in-flight `upgrade_close` before firing a reduce-only close
+
+**`$10` minimum:** `upgrade_close` must be excluded from the $10 guard. BB2 positions are half-size and can legally fall below $10.
+
+**Notification copy:** "Closing your short-term position to open a full-size trade. Signals point to a stronger move." ("short-term position" not "mean-reversion trade" — jargon violation).
+
+**`close_reason`:** Set to `"bb2_upgrade"` (not `"signal_red"`) so P&L accounting and analytics can distinguish upgrade closes from regular signal closes.
+
+---
+
+## Deno Isolate Lifetime — Awaited Side Effects (CRITICAL)
+
+**Problem:** In Deno Deploy, unawaited `.then()` chains after `Response` is returned are silently dropped. The isolate can be recycled before the chained work runs.
+
+**Applies to:** Any post-fill side effect in trade-executor that happens after `executeTradeProposal()` returns. Specifically: `fireUpgradeEmaOpen()` for the BB2 upgrade flow.
+
+**Fix:** Always `await` the side-effect chain inside a `try/catch` block before returning the response. Never use fire-and-forget `.then()` for trade-critical paths.
+
+```typescript
+// WRONG — silently dropped on Deno Deploy
+fireUpgradeEmaOpen(supabase, { ... }).then(async (upgradeResult) => {
+  if (upgradeResult.autoApproved) await executeTradeProposal(...);
+});
+
+// CORRECT — awaited in try/catch
+try {
+  const upgradeResult = await fireUpgradeEmaOpen(supabase, { ... });
+  if (upgradeResult.proposalId && upgradeResult.autoApproved) {
+    await executeTradeProposal(supabase, upgradeResult.proposalId);
+  }
+} catch (upgradeErr) {
+  console.error("[trade-executor] upgrade EMA open failed:", upgradeErr);
+}
+```
+
+Fire-and-forget is acceptable ONLY for notifications (`.catch(() => {})`). Never for trade execution.
+
+---
+
+## `signals` Table Schema (CRITICAL)
+
+The `signals` table does NOT have `headline` or `asset_symbol` columns. Querying for them returns an error.
+
+**Correct pattern:** Query `assets` and `briefs` separately in parallel:
+
+```typescript
+const [assetRes, briefRes] = await Promise.all([
+  supabase.from("assets").select("symbol").eq("id", proposal.asset_id).maybeSingle(),
+  supabase.from("briefs").select("headline")
+    .eq("signal_id", proposal.signal_id)
+    .order("created_at", { ascending: false })
+    .limit(1).maybeSingle(),
+]);
+const assetSymbol = assetRes.data?.symbol ?? "Unknown";
+const headline = briefRes.data?.headline ?? "";
+```
+
+**Why this bites:** PostgREST on a non-existent column does not error with 400 — it silently returns no rows. This can cause the wrong user-facing context (empty symbol/headline) without any log noise.
+
+## Failure Notification Routing (2026-05-07)
+
+`notifyTradeResult` failure path is admin-only by design. Comment in `notify.ts:170-174`: "Trade failures are operational errors, admin-only, not user-facing. Users see the failure reflected in proposal status on the app."
+
+That assumption only holds for operational failures (RPC errors, leverage glitches, network timeouts). When a failure is **user-actionable**, route to a user-facing notify instead so the user gets Telegram + email + admin (not just admin).
+
+Current user-facing failure notifies:
+
+| Function | Trigger | CTA |
+|---|---|---|
+| `notifyLowBalanceFailure` | Auto-approve fails the $10 HL minimum | Deposit at least $10 USDC |
+| `notifyMarginShortfall` | Preflight bail OR HL bounces with insufficient-margin error | Top up to catch the next one |
+
+Both rate-limit via `audit_log`:
+- `notifyLowBalanceFailure`: per-event log only, no rate limit (low recurrence)
+- `notifyMarginShortfall`: 1 per user per 24h via action `margin_shortfall_notified`
+
+**Brand-coherence rule for failure CTAs:** Vela manages position closes on the user's behalf. Never tell users to manually close or trim a position to free up balance. The right action is always deposit or top up. Future user-facing failure copy should default to that framing.
+
+**Decision rule for new failure modes:** before adding a new error path, ask "can the user act on this?". If yes, write a user-facing notify or extend an existing one. If no, the existing admin-only path through `notifyTradeResult` is correct.

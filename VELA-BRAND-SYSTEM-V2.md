@@ -282,14 +282,18 @@ Summary: "We're cautious because..."
 
 **Not just sequencing—each color has meaning across charts.**
 
-### Star Icon as Brand Signature
+### Vela Mark as Brand Signature
 
-**Opportunity:** Micro-animation for the star
-- Subtle pulse on new signal
-- Scale slightly on update
-- Use as data marker in charts
+The Vela mark is an angular eye: a sharp wide-almond polygon (Ink stroke) containing a Signal Green rotated diamond iris. Aspect ratio ~2:1. Wordmark is lowercase "vela" in Space Grotesk 800.
 
-**Makes the star a recognizable motion signature, not just a static logo.**
+**Source of truth:** `src/components/VelaLogo.tsx` — always read this file before using the mark in code or design assets.
+
+**Motion opportunities:**
+- Iris pulse on new signal
+- Eye "blink" scale on data update
+- Mark as chart data marker
+
+**Note:** Earlier versions of this doc referenced a purple star icon. That design was not shipped. The angular eye is the production mark.
 
 ---
 

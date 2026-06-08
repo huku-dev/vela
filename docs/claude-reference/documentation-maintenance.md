@@ -21,6 +21,8 @@
 
 **Key principle:** Main files are *indexes*. They point to detail, they don't contain it.
 
+**MEMORY.md bar — ask this first:** "Would a future session need this fact within the first 60 seconds, in every session, regardless of what they're working on?" If no, the default is a topic file with a 1-line pointer in MEMORY.md. Diagnostic findings, investigation results, and open improvement candidates always go in topic files — never directly in MEMORY.md.
+
 Apply this decision tree for any new piece of information:
 
 | Question | If YES → | If NO ↓ |
@@ -41,6 +43,7 @@ Apply this decision tree for any new piece of information:
 - **Don't** add the same fact to both CLAUDE.md and MEMORY.md — single source of truth
 - **Don't** write "explanatory" entries in MEMORY.md — if you're explaining *why* or *how*, it belongs in a topic file. MEMORY.md entries are *pointers* and *facts*, not explanations.
 - **Don't** batch multiple updates into MEMORY.md without checking each one individually — every entry must pass the ≤2 line check independently
+- **Don't** add diagnostic findings, investigation results, or open improvement candidates directly to MEMORY.md — these belong in topic files. MEMORY.md gets a 1-line pointer at most.
 
 ---
 

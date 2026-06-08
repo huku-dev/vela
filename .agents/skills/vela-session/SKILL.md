@@ -102,8 +102,15 @@ Generate a thorough, detailed retrospective — **never summarize or abbreviate*
 
 6. **Open items:** Anything unfinished, blocked, or deferred. If nothing, say so.
 
-### Step 4: Update MEMORY.md
+### Step 4: Update MEMORY.md and CLAUDE.md
+
+**Mandatory first step: read the documentation policy.** Before making any edits to MEMORY.md or CLAUDE.md, read `docs/claude-reference/documentation-maintenance.md` in full. Do not skip this. The policy defines routing rules, the high bar for MEMORY.md entries, and where different content types belong.
+
+**Gate for every MEMORY.md candidate:** "Would a future session need this fact within the first 60 seconds, in every session, regardless of what they're working on?" If no — create a topic file and add a 1-line pointer instead. The default is topic file. Diagnostic findings, investigation results, and open improvement candidates always go in topic files, not MEMORY.md directly.
+
+- Read `docs/claude-reference/documentation-maintenance.md` (mandatory before any edits)
 - Read current MEMORY.md
+- For each candidate update, pass the gate above before adding it
 - Propose edits: completed items, new patterns, changed facts, updated counts
 - Present diff to user for approval before saving
 
@@ -124,8 +131,8 @@ If the session included user-facing changes (new features, UX improvements, new 
 
 **For each user-facing item, prepare an INSERT:**
 ```sql
-INSERT INTO release_notes (title, body, emoji, published_at, link_url, link_text, category, is_major)
-VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-MM-DD', 'https://...', 'Try it out', 'feature', false);
+INSERT INTO release_notes (title, body, emoji, published_at, link_url, link_text, category, is_major, channels)
+VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-MM-DD', 'https://...', 'Try it out', 'feature', false, ARRAY['telegram']);
 ```
 
 **Fields:**
@@ -136,15 +143,22 @@ VALUES ('Short title', '1-2 sentence description in Vela voice', '🎯', 'YYYY-M
 - `link_url` + `link_text`: Optional CTA if users can try the feature (e.g. Telegram bot link, app page)
 - `category`: One of `feature`, `improvement`, `fix`
 - `is_major`: Discuss with user. Major releases get hero card treatment on the changelog page.
+- `channels`: Which channels to broadcast on. Always ask the user — do not assume.
 
 **Major vs minor classification (always confirm with user):**
 - **Major (`is_major = true`):** New capabilities that fundamentally expand what Vela can do. Examples: platform launch, new product surface (Telegram bot), new asset class support, new execution venue. These get hero cards with optional images and prominent CTAs.
 - **Minor (`is_major = false`):** Improvements, refinements, and fixes to existing functionality. Examples: redesigned cards, better emails, price source changes, language updates. These render as compact timeline entries.
 - When in doubt, default to minor. Ask the user: "Should any of these be flagged as a major release?"
 
-Present the draft to the user for approval before inserting. Insert into production (`dikybxkubbaabnshnreh`).
+**Channel selection (always ask the user before inserting):**
+For each release note, ask: "Should this go to Telegram, email, or both?"
+- `ARRAY['telegram']` — Telegram only. Default for most releases. Reaches users who are already engaged.
+- `ARRAY['email']` — Email only. Rare — only if the change is irrelevant to Telegram users (e.g. an email design improvement).
+- `ARRAY['telegram','email']` — Both. For major releases worth an email blast (new asset class, new product surface, etc.).
 
-**Broadcast behavior:** New release notes with `broadcast_at = NULL` get automatically broadcast to Telegram users on the next cron tick (max 1 broadcast per day, extras batch to next day).
+Present the draft — including the proposed channel for each note — to the user for approval before inserting. Insert into production (`dikybxkubbaabnshnreh`).
+
+**Broadcast behavior:** New release notes with `broadcast_at = NULL` get automatically broadcast on the next cron tick (max 1 broadcast per day, extras batch to next day). Channel filtering is per-note: only notes with `'telegram'` in `channels` go to Telegram, only notes with `'email'` in `channels` go to email.
 
 **Skip this step if:** The session was purely backend/infra with no user-visible changes.
 

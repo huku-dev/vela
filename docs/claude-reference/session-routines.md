@@ -38,7 +38,13 @@
    git worktree prune                                   # clean orphaned refs
    ```
 7. Update MEMORY.md following the routing rules in `documentation-maintenance.md` — detail goes in topic files, main file stays ≤200 lines
-8. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED, RENDERED IN CHAT):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. **The retro is rendered IN THE CHAT in addition to being saved to a file.** The user reads the chat version as the primary deliverable; the file is the durable archive. Both are required, not either-or. Save to `~/crypto-agent-frontend/memory/session-retro-YYYY-MM-DD.md`. Cover every section below with specific examples and honest reflection:
+8. **Session retrospective (MANDATORY — FULL, NOT SUMMARIZED, RENDERED IN CHAT):** Before closing out, review the session's work with the user. This must be a **thorough, detailed retrospective** — not a condensed bullet list. **The retro is rendered IN THE CHAT in addition to being saved to a file.** The user reads the chat version as the primary deliverable; the file is the durable archive. Both are required, not either-or.
+
+   **Where the retro lives:**
+   - Save retro content to a **topic file**: `memory/session-retro-YYYY-MM-DD-<topic>.md` (e.g. `memory/session-retro-2026-05-25-attribution-fixes.md`)
+   - **Do NOT write retro content (learnings, open items, patterns) as bullets directly in MEMORY.md.** MEMORY.md already has a generic pointer to session retro files in the Topic File Index — no new pointer line needed per retro. All substance belongs in the topic file.
+
+   Cover every section below with specific examples and honest reflection:
    - **What was accomplished:** List each distinct piece of work with enough detail that someone reading it cold understands what shipped. Include file paths, deployment targets, and what changed.
    - **Prompting feedback:** How could the user have prompted better? Were instructions unclear, too vague, or missing context that caused rework? Call out specific moments. Be honest — don't just say "your prompts were great."
    - **Efficiency feedback:** Where could Claude have been better? Identify specific wasted steps, wrong approaches tried first, things that should have been anticipated, unnecessary round-trips. This is the most important section — be self-critical.

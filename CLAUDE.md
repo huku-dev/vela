@@ -1,4 +1,6 @@
-# Vela — Project Context for Claude Code
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 > **Stack:** React 18 + TypeScript + Vite + Supabase + Vercel
 > **Product:** Market intelligence — 24/7 monitoring, actionable signals, plain English. Covers crypto, equities, commodities, forex, and more. Not a crypto-only product.
@@ -24,6 +26,7 @@
 - **Error boundaries:** Required on all data-dependent pages.
 - **Data fetching:** Loading states, error handling, stale data warnings (>5 min).
 - **Naming:** PascalCase components, camelCase utils, kebab-case CSS, snake_case DB tables.
+- **Asset IDs:** Lowercase symbol strings (`btc`, `eth`), never UUIDs. Routes: `/asset/btc`.
 
 ---
 
@@ -51,12 +54,21 @@
 
 ```bash
 # Development
-npm run dev | build | preview | type-check | lint
+npm run dev          # start Vite dev server
+npm run build        # production build
+npm run preview      # serve built output locally
+npm run type-check   # tsc --noEmit
+npm run lint         # ESLint, max-warnings 0
+npm run format       # Prettier write
 
 # Tests
-npm run test | test:watch | test:coverage
+npm run test                                      # run all tests (Vitest)
+npm run test:watch                                # watch mode
+npm run test:coverage                             # v8 coverage report
+npm run test -- src/pages/Home.test.tsx           # single test file
+npm run test -- -t "pattern"                      # tests matching name
 
-# Git (conventional commits, auto-deploys to Vercel on push)
+# Git (conventional commits; push to main auto-deploys to Vercel)
 git push origin main
 
 # Backend deploy (details: docs/claude-reference/deploy-workflow.md)
@@ -69,13 +81,45 @@ cd /Users/henry/crypto-agent
 vela-start | vela-end | vela-tasks list | vela-tasks add
 ```
 
+Set `VITE_DEV_BYPASS_AUTH=true` in `.env.local` to skip Privy auth for local UI testing. Trading actions won't work (no real JWT), but all read-only pages are fully exercisable. To test the onboarding flow under bypass, run `localStorage.setItem('vela_onboarded', 'false')` in devtools and refresh.
+
+---
+
+## Architecture
+
+### Bundle split
+
+`App.tsx` routes to two code-split paths: public routes (`/terms`, `/privacy`) load without Privy; everything else goes through `AuthShell.tsx`, which lazy-loads `PrivyProvider`. Main chunk stays ~100 KB gzipped; Privy SDK (~300 KB) is deferred until an auth route is visited.
+
+`AuthShell` applies two guards: `DeactivationGate` (intercepts users with `deactivated_at` set) and `OnboardingGate` (redirects un-onboarded users to `/welcome`, with a narrow carve-out for `/?checkout=success`).
+
+### Auth flow
+
+Privy login triggers a POST to the `auth-exchange` edge function (Bearer: Privy token). It returns a Supabase JWT (1h TTL), cached in `tokenCacheRef` with a 5-min buffer. Concurrent `exchangeToken` calls deduplicate via an `inflightRef` promise lock to prevent thundering herd.
+
+Two Supabase clients: `supabase` (public anon, `src/lib/supabase.ts`) for unauthenticated reads (assets, signals, briefs), and `supabaseClient` from `useAuthContext()` for RLS-protected user data (proposals, positions, wallet). Under dev bypass, `supabaseClient` is the anon client — RLS tables return zero rows silently.
+
+### Data hooks (`src/hooks/useData.ts`)
+
+`useDashboard` fetches assets, signals, briefs, and digest in parallel. Data is cached at **module level** (not React state) so it persists across navigations and is seeded immediately on mount. Auto-refreshes every 15 minutes. `useAssetDetail` hydrates instantly from the module cache, then re-fetches fresh data.
+
+Prices use Hyperliquid mid-prices as primary (toggle via `VITE_PRICE_PRIMARY=coingecko`). CoinGecko is fallback. Non-crypto assets (equities, commodities) use the builder-perp API (`metaAndAssetCtxs?dex=...`).
+
+### Tier gating
+
+`useSubscription` fetches from the edge function, caches in localStorage (`vela_subscription_cache`) to prevent free-tier flash on navigation. `useTierAccess` wraps it and exposes `partitionAssets` / `canAccessAsset` / `startCheckout` / `openPortal`. `0 = unlimited` for `max_active_positions`, `max_position_size_usd`, `max_assets`. `sizing_slots` is always a positive int (never 0).
+
+Asset display order is defined in `ASSET_DISPLAY_ORDER` inside `useData.ts` (frontend-only, no DB column). `partitionAssets` slices the sorted list — free users get position 0 (BTC), Standard gets positions 0–7.
+
+### OG image generation (`api/og/`)
+
+Vercel serverless functions (Node.js) use `satori` + `sharp` to render social cards. Shared utilities in `api/og/_shared.ts` handle font loading (cached across invocations), brand color constants, and the SVG→PNG pipeline. Rules: PNG data URIs only (Gmail strips SVG), dimensions via inline styles, `html(string)` not tagged template for string interpolation.
+
 ---
 
 ## Context Loading
 
 ### Auto-loaded via `.claude/rules/` (path-scoped, no action needed)
-
-These rules load automatically when editing matching files:
 
 | Rule file | Activates on | Deep-dive reference |
 |-----------|-------------|---------------------|
@@ -105,3 +149,4 @@ These rules load automatically when editing matching files:
 ---
 
 **Remember:** Vela is about **trust**. Every design choice, every line of code, every user-facing message should reinforce that users are in control and getting accurate, honest information.
+<!-- ROUTING-VERIFIED: 163 lines -->
