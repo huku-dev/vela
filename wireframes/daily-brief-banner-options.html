@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Daily Brief banner — 3 directions</title>
+  <style>
+    /* Vela design tokens */
+    :root {
+      --ink: #0A0A0A;
+      --cream: #FFFBF5;
+      --cream-deep: #F5EDDD;
+      --hairline: #E8E2D4;
+      --gray: #6B6B6B;
+      --green: #0FE68C;
+      --green-deep: #047857;
+    }
+    body {
+      background: #F0EDE8;
+      font-family: Inter, -apple-system, sans-serif;
+      margin: 0;
+      padding: 24px;
+    }
+    h1.page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--ink);
+      margin: 0 0 6px;
+    }
+    .page-sub {
+      font-size: 13px;
+      color: var(--gray);
+      margin-bottom: 32px;
+    }
+    .canvas-wrap {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+    .device {
+      width: 380px;
+    }
+    .device-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gray);
+      margin: 0 0 8px;
+    }
+    .option-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--ink);
+      margin: 24px 0 8px;
+    }
+    .option-desc {
+      font-size: 12.5px;
+      color: var(--gray);
+      margin: 0 0 12px;
+      line-height: 1.45;
+    }
+    /* Email container — mirrors wrapEmailHtml */
+    .email {
+      max-width: 380px;
+      width: 100%;
+      margin: 0 auto;
+      border: 3px solid var(--ink);
+      background: var(--cream);
+    }
+    .email-header {
+      padding: 18px 24px;
+      background: var(--cream);
+      border-bottom: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .email-header .logo {
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid var(--ink);
+      transform: rotate(45deg);
+      display: inline-block;
+      background: white;
+      position: relative;
+    }
+    .email-header .logo::after {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      background: var(--green);
+    }
+    .email-header .wordmark {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+    }
+    .email-body {
+      padding: 12px 24px 24px;
+      background: var(--cream);
+    }
+    .theme {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1.15;
+      margin: 0 0 8px;
+    }
+    .subhead {
+      font-size: 14.5px;
+      line-height: 1.5;
+      color: var(--gray);
+      margin: 0 0 16px;
+    }
+    .divider {
+      height: 1px;
+      background: var(--hairline);
+      margin: 0 0 16px;
+    }
+    .body-para {
+      font-size: 15px;
+      line-height: 1.55;
+      color: var(--ink);
+      margin: 0 0 14px;
+    }
+
+    /* === Banner A: Magazine masthead (centered vertical stack) === */
+    .banner-a {
+      background: var(--cream-deep);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      padding: 18px 16px;
+      text-align: center;
+      margin: 0 0 22px;
+    }
+    .banner-a .title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      line-height: 1.1;
+      margin: 0 0 4px;
+    }
+    .banner-a .meta {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gray);
+      margin: 0;
+    }
+
+    /* === Banner B: Newspaper banner (single line, no stacking) === */
+    .banner-b {
+      background: var(--cream-deep);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 0 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .banner-b .side {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gray);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .banner-b .title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      text-align: center;
+      flex: 1 1 auto;
+      white-space: nowrap;
+    }
+    .banner-b .side.right { text-align: right; }
+
+    /* === Banner C: Plain title plate + body eyebrow === */
+    .banner-c {
+      background: var(--cream-deep);
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      padding: 18px 16px;
+      text-align: center;
+      margin: 0 0 18px;
+    }
+    .banner-c .title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      line-height: 1.1;
+      margin: 0;
+    }
+    .eyebrow {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gray);
+      margin: 0 0 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="page-title">Daily Brief banner — 3 directions</h1>
+  <p class="page-sub">All three at the same mobile-leaning width (~380px). Same content (Edition 73, May 15 2026) so the only variable is the banner treatment.</p>
+
+  <div class="canvas-wrap">
+    <!-- ============ OPTION A ============ -->
+    <div class="device">
+      <div class="device-label">Option A · Magazine masthead</div>
+      <p class="option-desc">Centered stack: title above, edition + date as one quiet metadata line below. Everything aligned to one vertical axis. No side columns.</p>
+      <div class="email">
+        <div class="email-header">
+          <span class="logo"></span>
+          <span class="wordmark">vela</span>
+        </div>
+        <div class="email-body">
+          <div class="banner-a">
+            <div class="title">Daily Brief</div>
+            <div class="meta">Edition 73 · May 15, 2026</div>
+          </div>
+          <h2 class="theme">Markets on edge</h2>
+          <p class="subhead">Investors brace for volatility as inflation concerns and geopolitical tensions collide.</p>
+          <div class="divider"></div>
+          <p class="body-para">Markets are feeling uncertain because of rising inflation and tensions with Iran. Investors are watching the Fed's next moves closely.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OPTION B ============ -->
+    <div class="device">
+      <div class="device-label">Option B · Newspaper banner</div>
+      <p class="option-desc">Single line, no stacking. Edition left, title centered, date right. Tiny side labels feel like masthead metadata rather than competing columns.</p>
+      <div class="email">
+        <div class="email-header">
+          <span class="logo"></span>
+          <span class="wordmark">vela</span>
+        </div>
+        <div class="email-body">
+          <div class="banner-b">
+            <div class="side">Edition 73</div>
+            <div class="title">Daily Brief</div>
+            <div class="side right">May 15, 2026</div>
+          </div>
+          <h2 class="theme">Markets on edge</h2>
+          <p class="subhead">Investors brace for volatility as inflation concerns and geopolitical tensions collide.</p>
+          <div class="divider"></div>
+          <p class="body-para">Markets are feeling uncertain because of rising inflation and tensions with Iran. Investors are watching the Fed's next moves closely.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ OPTION C ============ -->
+    <div class="device">
+      <div class="device-label">Option C · Title plate only</div>
+      <p class="option-desc">Banner is just "Daily Brief" — clean title plate. Edition + date demoted to a tiny eyebrow line that sits above the theme line, where it doesn't compete with anything.</p>
+      <div class="email">
+        <div class="email-header">
+          <span class="logo"></span>
+          <span class="wordmark">vela</span>
+        </div>
+        <div class="email-body">
+          <div class="banner-c">
+            <div class="title">Daily Brief</div>
+          </div>
+          <p class="eyebrow">Edition 73 · May 15, 2026</p>
+          <h2 class="theme">Markets on edge</h2>
+          <p class="subhead">Investors brace for volatility as inflation concerns and geopolitical tensions collide.</p>
+          <div class="divider"></div>
+          <p class="body-para">Markets are feeling uncertain because of rising inflation and tensions with Iran. Investors are watching the Fed's next moves closely.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

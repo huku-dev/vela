@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QA Review — Daily Digest: News Cohesion, Closes Subtext, Live Signals</title>
+<style>
+  body { font-family: Inter, system-ui, sans-serif; background: #0f0f0f; color: #e5e5e5; max-width: 900px; margin: 40px auto; padding: 0 24px; line-height: 1.6; }
+  h1 { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #888; margin-bottom: 28px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .chip { padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; }
+  .chip.blocking { background: rgba(255,60,60,0.18); color: #ff6060; border: 1px solid rgba(255,60,60,0.35); }
+  .chip.amber { background: rgba(255,170,0,0.14); color: #ffb300; border: 1px solid rgba(255,170,0,0.3); }
+  .chip.nit { background: rgba(160,160,160,0.12); color: #aaa; border: 1px solid rgba(160,160,160,0.25); }
+  .chip.safe { background: rgba(15,230,140,0.10); color: #0fe68c; border: 1px solid rgba(15,230,140,0.25); }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid #2a2a2a; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; vertical-align: top; }
+  .risk-low { color: #0fe68c; }
+  .risk-med { color: #ffb300; }
+  .risk-high { color: #ff6060; }
+  h2 { font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #2a2a2a; }
+  h2.blocking { color: #ff6060; }
+  h2.amber { color: #ffb300; }
+  h2.nit { color: #888; }
+  h2.safe { color: #0fe68c; }
+  .finding { background: #161616; border-radius: 8px; padding: 16px 20px; margin-bottom: 12px; border-left: 3px solid transparent; }
+  .finding.blocking { border-left-color: #ff6060; }
+  .finding.amber { border-left-color: #ffb300; }
+  .finding.nit { border-left-color: #555; }
+  .finding.safe { border-left-color: #0fe68c; }
+  .finding-title { font-weight: 700; font-size: 14px; color: #fff; margin-bottom: 6px; }
+  .finding-loc { font-size: 11px; color: #888; margin-bottom: 8px; font-family: 'Courier New', monospace; }
+  .finding-body { font-size: 13px; color: #ccc; }
+  code { background: #222; padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: 'Courier New', monospace; color: #e0e0e0; }
+  .monitor { background: #1a1500; border: 1px solid #3a2e00; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Daily Digest Improvements</h1>
+<p class="meta">News cohesion · Closes subtext · Signal-relative performance. Reviewed 2026-05-27. Adversarial pass, no author context.</p>
+
+<div class="summary-bar">
+  <div class="chip blocking">Blocking: 1</div>
+  <div class="chip amber">Worth a look: 3</div>
+  <div class="chip nit">Nit: 2</div>
+  <div class="chip safe">Safe: 6</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Risk</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_shared/digest-context.ts</code></td>
+      <td class="risk-med">Medium</td>
+      <td>URL match assumes non-null url column; null-has() is safe but silent. fetch24hPriceWindow staleness is a logic concern.</td>
+    </tr>
+    <tr>
+      <td><code>_shared/notify.ts</code></td>
+      <td class="risk-high">High (layout)</td>
+      <td>white-space:nowrap overflow on long signal-relative strings is a real rendering bug at mobile widths.</td>
+    </tr>
+    <tr>
+      <td><code>daily-digest/index.ts</code></td>
+      <td class="risk-low">Low</td>
+      <td>sourcedNewsUrls plumbing is correct; passed cleanly to notifyDailyDigest.</td>
+    </tr>
+    <tr>
+      <td><code>run-signals/index.ts</code></td>
+      <td class="risk-low">Low</td>
+      <td>Recovery-digest path also populates sourcedNewsUrls correctly.</td>
+    </tr>
+    <tr>
+      <td><code>daily-digest-preview/index.ts</code></td>
+      <td class="risk-low">Low</td>
+      <td>Calls fetchDigestContext(supabase) — backward-compatible with new optional param.</td>
+    </tr>
+    <tr>
+      <td><code>_shared/news-fetcher.ts</code></td>
+      <td class="risk-med">Medium</td>
+      <td>Upsert key is (title, source), NOT url. URL stored in row but not the conflict key.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 class="blocking">Blocking</h2>
+
+<div class="finding blocking">
+  <div class="finding-title">Fix white-space:nowrap on signal-relative subtext — mobile layout breaks</div>
+  <div class="finding-loc">_shared/notify.ts, line 1890 (renderLiveNowModule, subtext div)</div>
+  <div class="finding-body">
+    The subtext cell is styled <code>white-space:nowrap</code>. In a three-column email table with fixed widths (icon=32px, badge=52px, 16px side padding each side), the available text column width at a 375px mobile viewport is roughly <strong>375 - 32 - 52 - 48 = 243px</strong>. That sounds fine until the signal is old or the move is large. <code>"+100.0% since signal · 30d ago"</code> is 34 characters; at Inter 12px ~6.6px per char that's ~224px, which fits. But larger decimals are possible: <code>"+1024.5% since signal · 127d ago"</code> (a >1000% move on a very old signal, e.g. BTC fired Jan 2025) renders ~36 chars = ~238px. More importantly, the badge column is fixed at <code>width="52"</code> but <code>align="left"</code> — if the badge cell overflows, it pushes into the text column, reducing the available width below 243px. The cell itself has no <code>overflow:hidden</code> guard, so the text extends past the table edge on narrow clients (Outlook mobile, older Samsung Mail). Action: remove <code>white-space:nowrap</code> from the subtext div, or add <code>overflow:hidden;text-overflow:ellipsis;max-width:180px;</code>. The middle dot separator is Unicode U+00B7 so it's a natural wrap point if nowrap is dropped — wrapping there is fine visually.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 class="amber">Worth a Look</h2>
+
+<div class="finding amber">
+  <div class="finding-title">URL match silently degrades when news_cache url column is null</div>
+  <div class="finding-loc">_shared/digest-context.ts, lines 332–334 (fetchRecentNews sort comparator)</div>
+  <div class="finding-body">
+    The sort reads <code>sourcedNewsUrls?.has(a.url as string)</code>. If a cached row has <code>url = null</code>, the cast produces <code>has(null as string)</code>. JavaScript <code>Set.has(null)</code> returns <code>false</code> (no throw), so the row just loses priority — safe but silent. However, the upsert in <code>cacheNewsToSupabase</code> (news-fetcher.ts:865) uses <code>onConflict: "title,source"</code>, not url. Two RSS feeds can publish the same story with different URLs; they will be stored as separate rows with distinct urls. Meanwhile, <code>sourcedNewsUrls</code> is populated from the URL the ranker saw at brief-generation time. If caching then deduped a row by title+source and kept a different url variant (or the RSS feed returned a tracker-appended url vs a canonical), the Set lookup will miss even though the story is semantically the same item. This means "brief-sourced items first" degrades to "sometimes first" when urls diverge. Not a correctness bug, but the feature reliability is lower than the code suggests. Log a warning when <code>sourcedNewsUrls</code> is non-empty but zero rows matched after the sort — that would surface divergence in prod logs.
+  </div>
+</div>
+
+<div class="finding amber">
+  <div class="finding-title">fetch24hPriceWindow uses the most-recent indicator_snapshot as "current price" — could be up to 4h stale</div>
+  <div class="finding-loc">_shared/digest-context.ts, lines 198–213 (fetch24hPriceWindow)</div>
+  <div class="finding-body">
+    Snapshots write every 4h via run-signals. The digest cron runs in the morning; if the last snapshot was at 04:00 UTC and the digest runs at 07:00 UTC, <code>current</code> reflects a price 3 hours old. The label in the rendered email is <code>"+X.X% since signal"</code>, not "current price", so this is semantically acceptable — it's the signal-relative move as of the last known price, not live. The risk is that a sharp overnight move (a 20% BTC crash at 06:30 UTC) would show a stale +3% when the signal is actually deeply underwater. Users who understand the subtext as "how the call is doing right now" could be misled. Consider a brief inline note like "as of last snapshot" or ensure the snapshot cadence is tighter than 4h for the digest window. This is not a code bug; it is a product-accuracy concern worth acknowledging in copy or tightening the snapshot schedule.
+  </div>
+</div>
+
+<div class="finding amber">
+  <div class="finding-title">renderClosesSubtext: "All 1 went against us" reads as ungrammatical for single-close loss edge case</div>
+  <div class="finding-loc">_shared/notify.ts, line 1932 (renderClosesSubtext, winCount===0 branch)</div>
+  <div class="finding-body">
+    When <code>total === 1</code> and <code>winCount === 0</code>, the code falls into the <code>winCount === 0</code> branch and evaluates <code>countWord = "All 1"</code>. The output string is: <em>"Here's what Vela closed today. All 1 went against us."</em> The phrase "All 1" is grammatically awkward. The <code>total === 2</code> case maps to "Both" and <code>total === 3</code> maps to "All three" — but <code>total === 1</code> has no special case. Add a <code>total === 1 ? "It" : ...</code> (or "This one") branch before the fallback, yielding "It went against us." Same issue exists in the reverse for a single win: if all closes are wins the function returns the generic positive string without naming the winner, but the minority-losses path names them by asset name — the single-win-plus-loss path at line 1942 calls <code>wins.map(c => c.assetName).join(" and ")</code>, which for 1 winner produces a clean single name. So the minority path is fine; only the all-loss single-close path has the grammar bug.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 class="nit">Nit</h2>
+
+<div class="finding nit">
+  <div class="finding-title">VELA_GREEN_DEEP (#047857) on VELA_CREAM (#FFFBF5) is marginal for WCAG AA at 12px</div>
+  <div class="finding-loc">_shared/notify.ts, line 1879 (subtextColor assignment)</div>
+  <div class="finding-body">
+    Contrast ratio for #047857 on #FFFBF5 is approximately <strong>5.2:1</strong>. WCAG AA requires 4.5:1 for normal text, so this technically passes. However, at exactly 12px (the subtext font-size at line 1890), this is at the lower edge of readability on poorly calibrated displays or in dark email clients that adjust gamma. The brand-system memo flags the inverse case (white on Signal Green = 1.65:1 fail). This direction is fine, but worth noting in case the text shrinks in a future iteration — dropping to 11px would push into AA-fail territory. No action required now.
+  </div>
+</div>
+
+<div class="finding nit">
+  <div class="finding-title">sourcedNewsUrls typed as string[] in fetchDigestContext but Set internally; type comment mismatch</div>
+  <div class="finding-loc">_shared/digest-context.ts, lines 540–543 (fetchDigestContext signature)</div>
+  <div class="finding-body">
+    <code>fetchDigestContext</code> accepts <code>sourcedNewsUrls?: string[]</code> and converts to a <code>Set</code> internally. That is correct. But the JSDoc comment on <code>fetchRecentNews</code> (line 302) takes a <code>Set&lt;string&gt;</code> directly. Public API shape is <code>string[]</code> at the entry point, <code>Set</code> at the inner function — a minor inconsistency a future caller could find confusing. Consider a note in the fetchDigestContext JSDoc that the array is deduplicated into a Set internally.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 class="safe">Safe</h2>
+
+<div class="finding safe">
+  <div class="finding-title">SELL inversion formula is correct</div>
+  <div class="finding-loc">_shared/digest-context.ts, lines 159–163</div>
+  <div class="finding-body">
+    Verified: price 100 → 90 on a SELL: <code>((90-100)/100)*100*(-1) = +10</code>. Price 100 → 110 on a SELL: <code>((110-100)/100)*100*(-1) = -10</code>. Green means the call is paying off for both directions. Correct.
+  </div>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">renderClosesSubtext does not divide by zero</div>
+  <div class="finding-loc">_shared/notify.ts, lines 1921–1943</div>
+  <div class="finding-body">
+    <code>renderRecentClosesModule</code> returns early on <code>closes.length === 0</code> before calling <code>renderClosesSubtext</code>. The subtext function itself uses <code>total</code> only in the <code>"All ${total}"</code> string interpolation and the <code>lossCount > winCount</code> comparison — no division. Zero-close path is unreachable from the call site.
+  </div>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">daily-digest-preview backward compatibility confirmed</div>
+  <div class="finding-loc">daily-digest-preview/index.ts, line 94</div>
+  <div class="finding-body">
+    Calls <code>fetchDigestContext(supabase)</code> with no second argument. The new <code>sourcedNewsUrls?</code> param is optional with no default side-effects — the Set is set to <code>undefined</code>, the sort comparator's <code>sourcedNewsUrls?.has()</code> short-circuits to <code>0</code> for all rows, and the existing importance+publishedAt sort applies unchanged. No breakage.
+  </div>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">deltaPct24h still present on LiveSignal interface; Telegram path unaffected</div>
+  <div class="finding-loc">_shared/digest-context.ts, lines 51–54</div>
+  <div class="finding-body">
+    Both <code>deltaPct24h</code> and the new <code>signalRelativePct</code> are present on the interface. Any Telegram formatter that reads <code>s.deltaPct24h</code> will still find the field; it is populated as before via <code>fetch24hPriceWindow</code>. No regression to the Telegram path.
+  </div>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">sourcedNewsUrls plumbing through both daily-digest paths is complete</div>
+  <div class="finding-loc">daily-digest/index.ts:192, run-signals/index.ts:713</div>
+  <div class="finding-body">
+    Both the primary cron path and the recovery-digest path (generateDigestInline inside run-signals) populate <code>sourcedNewsUrls</code> via <code>rankedItems.map(item => item.url).filter(Boolean)</code> and pass the array to <code>notifyDailyDigest</code>. The notifyDailyDigest signature accepts it at position 5 and threads it to <code>fetchDigestContext</code>. Plumbing is complete and consistent between both callers.
+  </div>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">Set.has(null) returns false — no throw on null url rows</div>
+  <div class="finding-loc">_shared/digest-context.ts, line 333</div>
+  <div class="finding-body">
+    JavaScript <code>Set.has()</code> uses SameValueZero comparison. <code>Set.has(null)</code> returns <code>false</code> unless <code>null</code> was explicitly added to the Set. The Set is built from <code>rankedItems.map(item => item.url).filter(Boolean)</code>, which strips falsy values, so <code>null</code> is never in the Set. The cast to <code>string</code> in the comparator is a TypeScript lie but has no runtime consequence — the JS call is safe.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 style="color:#888;">Risks to Monitor Post-Deploy</h2>
+
+<div class="monitor">
+  <strong>URL match hit rate.</strong> Add a log line counting how many of the 30 fetched news_cache rows matched a URL in <code>sourcedNewsUrls</code>. If the hit rate is consistently 0, it means the RSS url and cached url are diverging (tracker params, canonical redirects). Without this telemetry you won't know if the cohesion feature is working.
+</div>
+<div class="monitor">
+  <strong>Extreme signalRelativePct values.</strong> A signal fired 60+ days ago on a low-cap asset could show "+400% since signal". This is technically accurate but reads like a boast rather than current information. Consider a max-age cap (e.g., suppress after 30d) or a visual cap on the displayed percentage. No code change needed immediately; watch first production sends for anything that looks misleading.
+</div>
+<div class="monitor">
+  <strong>indicator_snapshot recency at digest send time.</strong> If the 04:00 UTC run-signals batch is delayed or skipped, the 07:00 digest will show prices that are 7–11h stale. The signal-relative subtext will still display (no freshness guard) but could misrepresent the current trade status. Consider adding a snapshot-age check before displaying the subtext, or at minimum logging snapshot age during fetchLiveSignals.
+</div>
+
+</body>
+</html>

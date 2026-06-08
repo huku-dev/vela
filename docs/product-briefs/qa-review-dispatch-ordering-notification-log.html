@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Report: Dispatch Ordering Fix + notification_log Audit Trail</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --green: #0FE68C;
+    --red: #FF4444;
+    --amber: #F59E0B;
+    --gray: #9CA3AF;
+    --blue: #3B82F6;
+    --yellow: #FCD34D;
+    --bg-red: #FEF2F2;
+    --bg-amber: #FFFBEB;
+    --bg-green: #F0FDF4;
+    --bg-gray: #F9FAFB;
+    --bg-yellow: #FEFCE8;
+    --border-red: #FECACA;
+    --border-amber: #FDE68A;
+    --border-green: #BBF7D0;
+    --border-gray: #E5E7EB;
+    --border-yellow: #FDE68A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--cream); color: var(--ink); font-size: 14px; line-height: 1.6; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .meta { color: #6B7280; font-size: 12px; margin-bottom: 28px; }
+
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .badge { display: flex; flex-direction: column; align-items: center; padding: 14px 20px; border-radius: 8px; min-width: 110px; font-weight: 700; }
+  .badge .count { font-size: 28px; line-height: 1; }
+  .badge .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  .badge.blocking { background: var(--bg-red); color: var(--red); border: 1px solid var(--border-red); }
+  .badge.amber { background: var(--bg-amber); color: #92400E; border: 1px solid var(--border-amber); }
+  .badge.nit { background: var(--bg-gray); color: #374151; border: 1px solid var(--border-gray); }
+  .badge.safe { background: var(--bg-green); color: #065F46; border: 1px solid var(--border-green); }
+
+  /* Risk matrix */
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #6B7280; margin-bottom: 12px; border-bottom: 1px solid #E5E7EB; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: #F3F4F6; font-weight: 600; color: #374151; }
+  td { padding: 8px 10px; border-top: 1px solid #E5E7EB; vertical-align: top; }
+  tr:hover td { background: #F9FAFB; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .tag.blocking { background: var(--bg-red); color: var(--red); border: 1px solid var(--border-red); }
+  .tag.amber { background: var(--bg-amber); color: #92400E; border: 1px solid var(--border-amber); }
+  .tag.safe { background: var(--bg-green); color: #065F46; border: 1px solid var(--border-green); }
+  .tag.nit { background: var(--bg-gray); color: #374151; border: 1px solid var(--border-gray); }
+  .tag.monitor { background: var(--bg-yellow); color: #78350F; border: 1px solid var(--border-yellow); }
+
+  /* Finding cards */
+  .finding { border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+  .finding.blocking { background: var(--bg-red); border: 1px solid var(--border-red); }
+  .finding.amber { background: var(--bg-amber); border: 1px solid var(--border-amber); }
+  .finding.nit { background: var(--bg-gray); border: 1px solid var(--border-gray); }
+  .finding.monitor { background: var(--bg-yellow); border: 1px solid var(--border-yellow); }
+  .finding.safe { background: var(--bg-green); border: 1px solid var(--border-green); }
+
+  .finding-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .finding-number { font-weight: 800; font-size: 15px; }
+  .finding-title { font-weight: 700; font-size: 14px; }
+  .finding-loc { font-family: monospace; font-size: 12px; color: #6B7280; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 3px; }
+
+  .finding-body { font-size: 13px; line-height: 1.65; }
+  .finding-body .field { margin-top: 8px; }
+  .finding-body .field-label { font-weight: 600; color: #374151; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .finding-body .field-value { margin-top: 2px; }
+  code { font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.07); padding: 1px 5px; border-radius: 3px; }
+  pre { font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.06); padding: 10px; border-radius: 5px; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+
+  ul { padding-left: 18px; margin-top: 4px; }
+  li { margin-bottom: 3px; }
+
+  .safe-list li { padding: 4px 0; border-bottom: 1px solid var(--border-green); }
+  .safe-list li:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>QA Report: Dispatch Ordering Fix + notification_log Audit Trail</h1>
+  <p class="meta">Reviewed 2026-05-27 &middot; Reviewer: independent subagent (no author context) &middot; Files: run-signals/index.ts, _shared/notify.ts, _shared/batch-proposals.test.ts</p>
+
+  <!-- Summary bar -->
+  <div class="summary-bar">
+    <div class="badge blocking"><span class="count">0</span><span class="label">Blocking</span></div>
+    <div class="badge amber"><span class="count">2</span><span class="label">Worth a look</span></div>
+    <div class="badge nit"><span class="count">1</span><span class="label">Nit</span></div>
+    <div class="badge safe"><span class="count">7</span><span class="label">Safe</span></div>
+  </div>
+
+  <!-- Risk matrix -->
+  <div class="section">
+    <div class="section-title">File-Level Risk Matrix</div>
+    <table>
+      <tr>
+        <th>File</th>
+        <th>Change</th>
+        <th>Highest Severity</th>
+      </tr>
+      <tr>
+        <td><code>run-signals/index.ts</code></td>
+        <td>Moved pendingEmailsByUser dispatch before generateDigestInline</td>
+        <td><span class="tag amber">Worth a look</span> Fire-and-forget isolate risk (W1)</td>
+      </tr>
+      <tr>
+        <td><code>_shared/notify.ts</code></td>
+        <td>notification_log inserts in notifyTradeProposal + notifyBatchProposals</td>
+        <td><span class="tag amber">Worth a look</span> Staging guard coverage gap (W2)</td>
+      </tr>
+      <tr>
+        <td><code>_shared/batch-proposals.test.ts</code></td>
+        <td>3 new source-verification tests (41&ndash;43)</td>
+        <td><span class="tag nit">Nit</span> Tests don't verify ordering invariant (N1)</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- BLOCKING section (empty) -->
+  <div class="section">
+    <div class="section-title" style="color:#DC2626">Blocking (0)</div>
+    <div class="finding safe">
+      <div class="finding-body">No blocking issues found. Both changes are safe to remain deployed.</div>
+    </div>
+  </div>
+
+  <!-- WORTH A LOOK section -->
+  <div class="section">
+    <div class="section-title" style="color:#92400E">Worth a Look (2)</div>
+
+    <div class="finding amber">
+      <div class="finding-header">
+        <span class="finding-number">W1</span>
+        <span class="finding-title">notification_log fire-and-forget may drop on isolate exit</span>
+        <span class="finding-loc">_shared/notify.ts:2816, notify.ts:2473</span>
+      </div>
+      <div class="finding-body">
+        <div class="field"><span class="field-label">Symptom</span>
+          <div class="field-value">Both inserts use <code>.then().catch()</code> without <code>await</code>. If the Deno isolate is terminated immediately after <code>Promise.allSettled(tasks)</code> returns, the in-flight DB insert can be dropped before Supabase gets the request.</div>
+        </div>
+        <div class="field"><span class="field-label">Root cause</span>
+          <div class="field-value">Deno isolates do not guarantee execution of unresolved microtask chains after the top-level handler returns. In <code>run-signals</code>, the handler returns a <code>Response</code> object synchronously after <code>await Promise.allSettled(crosscheckPromises)</code>. The two notification_log inserts initiated inside <code>notifyBatchProposals</code> and <code>notifyTradeProposal</code> are fire-and-forget; they're not awaited before the response is returned. There's a real (if low-probability) window where the isolate shuts down before the HTTP round-trip to Supabase completes.</div>
+        </div>
+        <div class="field"><span class="field-label">Context</span>
+          <div class="field-value">The same pattern is already in use for <code>cacheNewsToSupabase</code> and is accepted as fire-and-forget there. For an audit trail, the stakes are higher: a dropped log row means the GOLD scenario that motivated the original bug would still be invisible in the DB (notification sent, no audit row). That said: in practice, the notification dispatch runs well before the isolate exits (crosscheckPromises await follows it), so the risk window is narrow. This is not a data-correctness issue in the financial sense&mdash;no money is at risk. It's a monitoring gap.</div>
+        </div>
+        <div class="field"><span class="field-label">Fix</span>
+          <div class="field-value">Collect the log insert promises into <code>crosscheckPromises</code> (or a parallel <code>logPromises</code> array) and include them in the final <code>Promise.allSettled</code> before returning. Alternatively, since <code>notifyBatchProposals</code> is already awaited via <code>emailTasks</code> in run-signals, move the log insert to be <code>await</code>ed inside <code>notifyBatchProposals</code> itself (it's already after sends complete&mdash;just change the call chain). Low effort; removes the uncertainty entirely.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="finding amber">
+      <div class="finding-header">
+        <span class="finding-number">W2</span>
+        <span class="finding-title">notifyTradeProposal's notification_log insert is not IS_STAGING-guarded</span>
+        <span class="finding-loc">_shared/notify.ts:2764&ndash;2837</span>
+      </div>
+      <div class="finding-body">
+        <div class="field"><span class="field-label">Symptom</span>
+          <div class="field-value">In <code>notifyTradeProposal</code>, the <code>IS_STAGING</code> early return is at line 2764. The notification_log insert at lines 2815&ndash;2836 is positioned AFTER that guard&mdash;so it is correctly skipped on staging. But only <em>if</em> the code reaches the guard. For the case where <code>notifyBatchProposals</code> calls <code>notifyTradeProposal</code> for the n=1 path, <code>IS_STAGING</code> inside <code>notifyBatchProposals</code> returns early at line 2400 before the delegating call, so it's safe. However, if <code>notifyTradeProposal</code> is called directly on staging (not via the batch path), it will correctly return early before the insert. Verified: the guard covers the single-call path correctly.</div>
+        </div>
+        <div class="field"><span class="field-label">Actual risk</span>
+          <div class="field-value">Minor: the guard is correctly placed for all paths. The concern is <code>notifyBatchProposals</code>'s log insert at line 2473: that function's <code>IS_STAGING</code> guard is at line 2400, and the insert is at line 2473 (after the guard), so it is correctly unreachable on staging in the batch (n=2&ndash;15) path. <strong>No gap in the implemented code.</strong> However: the test for this (BATCH-ADV-SRC: batch dispatch guarded by <code>!IS_STAGING</code>) only checks <em>run-signals</em> dispatch, not the notify.ts-level guard on the log insert. A test verifying the insert never fires on staging (via source pattern: that the insert block appears after the IS_STAGING return) would add confidence.</div>
+        </div>
+        <div class="field"><span class="field-label">Fix</span>
+          <div class="field-value">Add a source-verification test asserting that the <code>notification_log</code> insert in <code>notifyBatchProposals</code> appears lexically after the <code>IS_STAGING</code> guard line. This is a test gap, not a code gap&mdash;the production behavior is correct.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NIT section -->
+  <div class="section">
+    <div class="section-title" style="color:#374151">Nit (1)</div>
+
+    <div class="finding nit">
+      <div class="finding-header">
+        <span class="finding-number">N1</span>
+        <span class="finding-title">New tests don't verify the dispatch-before-digest ordering invariant</span>
+        <span class="finding-loc">_shared/batch-proposals.test.ts:407&ndash;434</span>
+      </div>
+      <div class="finding-body">
+        <div class="field"><span class="field-label">Symptom</span>
+          <div class="field-value">Tests 41&ndash;43 verify: (a) userId guard before map insertion, (b) <code>!IS_STAGING</code> guard on dispatch, (c) <code>Promise.allSettled</code> usage. None of them verify that the dispatch block appears <em>before</em> <code>generateDigestInline</code> in the source. The ordering fix was the primary motivation for Change 1; if a future edit accidentally swaps them back, no test catches it.</div>
+        </div>
+        <div class="field"><span class="field-label">Fix</span>
+          <div class="field-value">Add a source-verification test: read <code>run-signals/index.ts</code>, find the index of <code>pendingEmailsByUser.size > 0 && !IS_STAGING</code> and the index of <code>generateDigestInline</code>, assert the dispatch index is lower. One <code>assertLess</code> call; low maintenance burden.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RISKS TO MONITOR -->
+  <div class="section">
+    <div class="section-title" style="color:#78350F">Risks to Monitor Post-Deploy</div>
+
+    <div class="finding monitor">
+      <div class="finding-body">
+        <div class="field"><span class="field-label">Duplicate notification_log rows (low risk)</span>
+          <div class="field-value">If run-signals retries after an HTTP 546 (the original trigger condition), the asset loop replays. Proposals already written to the DB would be de-duped by <code>generateTradeProposals</code> (existing idempotency). But if n proposals were already dispatched and logged in the first run, the retry could log them again if the first run's emails were sent but the isolate died before returning 200. This is bounded by the 15-minute cron interval. Monitor <code>notification_log</code> for duplicate <code>proposal_id</code> entries after any 546 event.</div>
+        </div>
+        <div class="field"><span class="field-label">Digest skip on retry after 546 (acceptable, but watch)</span>
+          <div class="field-value">If batch-1 546s <em>after</em> the dispatch block but <em>before</em> the digest, the next recovery window (12:10 UTC) will generate the digest. The <code>shouldAttemptDigest</code> check uses <code>todaysDigest</code> DB lookup, so digest won't double-fire. This was the pre-existing design. No new risk introduced by the ordering change.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAFE section -->
+  <div class="section">
+    <div class="section-title" style="color:#065F46">Safe (7)</div>
+
+    <div class="finding safe">
+      <ul class="safe-list">
+        <li><strong>pendingEmailsByUser is fully populated before dispatch.</strong> The map is built entirely inside the asset loop (lines 399&ndash;406). Dispatch at line 552 reads the completed map. No digest-phase state is required&mdash;move is safe.</li>
+        <li><strong>crosscheckPromises block is still correctly after the digest.</strong> Lines 613&ndash;615: <code>await Promise.allSettled(crosscheckPromises)</code> runs after <code>generateDigestInline</code>. Signal crosschecks are independent of emails; ordering relative to the digest is unchanged and correct.</li>
+        <li><strong>No double-notification risk from the reorder.</strong> Emails are dispatched once via <code>emailTasks</code> at line 562. <code>notifyBatchProposals</code> is not called anywhere inside <code>generateDigestInline</code>. The reorder cannot produce a second send.</li>
+        <li><strong>notifyTradeProposal's insert is correctly guarded by proposal.supabase &amp;&amp; proposal.userId.</strong> Legacy callers without user context skip the insert (line 2815). The admin-fallback email path (line 2796) doesn't produce a log row&mdash;intentional and correct. No real callers lack these in the run-signals hot path.</li>
+        <li><strong>notifyBatchProposals coverage is complete for all n.</strong> n=1 delegates to <code>notifyTradeProposal</code> (logs individually). n=2&ndash;15 logs via batch insert. n&gt;MAX sends individually via <code>notifyTradeProposal</code> loop (each logs). All paths covered.</li>
+        <li><strong>IS_STAGING guard positions are correct.</strong> Both <code>notifyTradeProposal</code> (line 2764) and <code>notifyBatchProposals</code> (line 2400) return before the inserts on staging. Staging isolation is preserved.</li>
+        <li><strong>The 3 new tests are meaningful source invariants, not vacuous green-path checks.</strong> They verify concrete string patterns that would break if the implementation regressed (channel name, payload keys, warning strings). They're not behavioral mocks, which is appropriate for this codebase's source-verification test convention.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="color:#9CA3AF; font-size:11px; margin-top: 24px; border-top: 1px solid #E5E7EB; padding-top: 12px;">
+    Independent QA pass &middot; No author context &middot; Read-only review &middot; 2026-05-27
+  </p>
+
+</div>
+</body>
+</html>

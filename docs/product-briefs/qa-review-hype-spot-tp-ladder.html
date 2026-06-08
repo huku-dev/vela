@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: HYPE Spot TP Ladder Fix</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1.5rem; background: #0f0f0f; color: #e0e0e0; line-height: 1.6; }
+  h1 { font-size: 1.5rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  .summary-bar { display: flex; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap; }
+  .badge { padding: 0.4rem 1rem; border-radius: 6px; font-weight: 700; font-size: 0.95rem; }
+  .red { background: #5c1a1a; color: #ff6b6b; }
+  .amber { background: #4a3200; color: #ffc94d; }
+  .gray { background: #2a2a2a; color: #aaa; }
+  .green { background: #0d2e1a; color: #4dff91; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th { background: #1a1a1a; text-align: left; padding: 0.5rem 0.75rem; border: 1px solid #333; font-size: 0.85rem; }
+  td { padding: 0.5rem 0.75rem; border: 1px solid #2a2a2a; font-size: 0.875rem; vertical-align: top; }
+  code { background: #1e1e1e; border: 1px solid #333; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.85rem; font-family: 'Menlo', monospace; }
+  .finding { background: #161616; border-left: 4px solid; padding: 0.85rem 1rem; margin: 0.75rem 0; border-radius: 0 4px 4px 0; }
+  .finding.blocking { border-color: #ff6b6b; }
+  .finding.amber { border-color: #ffc94d; }
+  .finding.nit { border-color: #666; }
+  .finding h3 { margin: 0 0 0.3rem 0; font-size: 0.95rem; }
+  .finding .meta { font-size: 0.8rem; color: #888; margin-bottom: 0.5rem; }
+  .finding p { margin: 0.4rem 0; font-size: 0.9rem; }
+  .monitor-item { font-size: 0.9rem; padding: 0.3rem 0; border-bottom: 1px solid #1e1e1e; }
+  .safe-item { font-size: 0.9rem; padding: 0.25rem 0; color: #4dff91; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA Review: HYPE Spot TP Ladder Fix</h1>
+<p style="color:#888; font-size:0.85rem;">Reviewer: independent cold read. Author context: none. Date: 2026-05-29.</p>
+
+<div class="summary-bar">
+  <span class="badge red">Blocking: 1</span>
+  <span class="badge amber">Worth a look: 3</span>
+  <span class="badge gray">Nit: 2</span>
+  <span class="badge green">Safe: 8</span>
+</div>
+
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <tr><th>File</th><th>Highest Severity</th><th>Badge</th></tr>
+  <tr><td><code>position-monitor/index.ts</code></td><td>Blocking (double-trim race)</td><td><span class="badge red">HIGH</span></td></tr>
+  <tr><td><code>_shared/trade-executor.ts</code></td><td>Nit</td><td><span class="badge gray">LOW</span></td></tr>
+  <tr><td><code>_shared/trade-executor.test.ts</code></td><td>Worth a look (weak regex test)</td><td><span class="badge amber">MEDIUM</span></td></tr>
+  <tr><td><code>position-monitor/position-monitor.test.ts</code></td><td>Worth a look (missing spot-ladder structural test)</td><td><span class="badge amber">MEDIUM</span></td></tr>
+</table>
+
+<h2>Blocking Findings</h2>
+
+<div class="finding blocking">
+  <h3>B1. Double spot-trim race: two overlapping position-monitor cycles can both fire the same ladder level</h3>
+  <div class="meta">position-monitor/index.ts ~line 2216. Severity: blocking.</div>
+  <p><strong>Symptom.</strong> Two cron invocations overlap (cron fires every 4 min; function can run up to ~2 min). Both read <code>pos.ladder_levels_trimmed</code> from DB before either trim commits. Both see, say, <code>[]</code> at level 0. Both pass the <code>trimmedLevels.includes(i)</code> check at line 2219. Both call <code>adapter.placeSpotOrder</code> for level 0, selling twice the intended fraction of the spot position.</p>
+  <p><strong>Root cause.</strong> The perp path has the same theoretical race but HL rejects the second reduce-only as "would increase position" because there is no margin position for spot. For spot, both sell orders are independent market sells with no reduce-only guard. HL executes both. The position DB row gets <code>ladder_levels_trimmed: [0]</code> written by whichever cycle commits second, but two full trim orders have already filled.</p>
+  <p><strong>Severity escalation vs perp.</strong> For perp the race was always theoretical because <code>reduceOnly: true</code> provided an exchange-side idempotency gate. Spot removes that gate. This is a new correctness gap introduced by this PR.</p>
+  <p><strong>Fix.</strong> Add an optimistic concurrency guard: include <code>.eq("ladder_levels_trimmed", pos.ladder_levels_trimmed as unknown as Json)</code> (or a Postgres array-length check via RPC) in the update at line 2286. If a concurrent write wins, the update returns 0 rows; skip the rest of the trim success path. Alternatively, lock the row with a SELECT FOR UPDATE before the trim order. The SL close path at line 1619 does not have this problem because closing the DB row to <code>status: "closed"</code> is itself idempotent (second write is a no-op on a closed row), but the ladder trim updates <em>an array field</em> on a still-open row, which is not idempotent.</p>
+</div>
+
+<h2>Worth a Look</h2>
+
+<div class="finding amber">
+  <h3>W1. <code>fill_size === 0</code> is falsy — transfer guard passes but transfers $0</h3>
+  <div class="meta">position-monitor/index.ts line 2265. Severity: worth a look.</div>
+  <p><strong>Symptom.</strong> When <code>placeSpotOrder</code> returns <code>{ success: true, fill_price: 18.0, fill_size: 0 }</code> (partial fill edge case: order accepted but nothing filled yet), the guard <code>if (isSpot &amp;&amp; trimResult.fill_price &amp;&amp; trimResult.fill_size)</code> at line 2265 evaluates <code>0</code> as falsy and skips the transfer correctly. So far so good. However, <code>_parseOrderResponse</code> at adapter line 969 sets <code>fill_size = parseFloat(filled.totalSz)</code>; if HL returns <code>totalSz: "0"</code> on a fully-accepted market order (hasn't matched yet), <code>fill_size</code> is <code>0</code>. In that case the trim DB update still runs (line 2286), recording the trim as done, but no USDC is transferred to perps. The spot sub-account now holds proceeds that the user cannot access for perp trading. Not funds-lost (they remain on-chain), but the perp account balance will be stale until a manual sweep or next phantom reconciliation.</p>
+  <p><strong>Fix.</strong> Log a warning when <code>trimResult.success &amp;&amp; !(trimResult.fill_price &amp;&amp; trimResult.fill_size)</code> so this is observable. Do not record the trim level as done until fill is confirmed.</p>
+</div>
+
+<div class="finding amber">
+  <h3>W2. <code>exchangeSize</code> used for trim fraction is stale after first trim fills</h3>
+  <div class="meta">position-monitor/index.ts lines 2249–2250. Severity: worth a look.</div>
+  <p><strong>Symptom.</strong> For spot positions <code>exchangeSize</code> is assigned once per cycle at line 886 from <code>spotBalanceMap.get(hlCoin)</code>, which was populated at the top of the function at line 505 before the per-position loop. If two ladder levels qualify in the same tick (both thresholds crossed simultaneously), the <code>break</code> at line 2330 exits after the first trim, so only one level fires per cycle. Good. But on the <em>next</em> cycle, <code>spotBalanceMap</code> is re-fetched from HL (line 505) and <code>exchangeSize</code> reflects the post-first-trim balance. The fraction <code>exchangeSize * PROFIT_LADDER_FRACTIONS[i]</code> for level 1 will therefore be 10% of the reduced balance, not 10% of the original balance. This under-shoots: the second trim takes 10% of what is left, not 10% of what was opened. The USD-based <code>trimSizeUsd = originalSize * PROFIT_LADDER_FRACTIONS[i]</code> is correct but the <code>exactSizeInAsset</code> override will be wrong by the first-trim fraction.</p>
+  <p><strong>Assessment.</strong> The worst outcome is a slightly smaller-than-intended trim (excess tokens remain on spot). Not a loss of funds. However, it means the spot-ladder behaviour diverges from the perp-ladder behaviour where all fractions are applied to <code>originalSize</code>. Flag for explicit sign-off rather than treating as a silent known-good.</p>
+  <p><strong>Fix.</strong> Either: (a) remove <code>exactSizeInAsset</code> from the spot trim and let the adapter compute from <code>sizeUsd</code> alone (uses mark price, acceptable precision for a trim); or (b) compute <code>exactSizeInAsset</code> from <code>pos.size * PROFIT_LADDER_FRACTIONS[i]</code> (tracked token count) rather than from the live exchange balance.</p>
+</div>
+
+<div class="finding amber">
+  <h3>W3. FEATURE-ADV regex test for <code>skipTpLadder</code> would pass if <code>openedAsSpot</code> is in an adjacent comment</h3>
+  <div class="meta">trade-executor.test.ts line 2579–2583. Severity: worth a look.</div>
+  <p><strong>Symptom.</strong> The test asserts <code>/skipTpLadder\s*=\s*.*openedAsSpot/</code> against the raw source. The pattern matches any line where <code>openedAsSpot</code> appears anywhere after <code>skipTpLadder =</code>, including a comment. For example, the existing comment at line 1728 ("Spot positions skip native TP... spot profit ladder is handled by position-monitor") followed by a code change that removes <code>openedAsSpot</code> from the condition but leaves a nearby comment mentioning it would produce a false pass. The regex is also single-line dot (<code>.</code>), so a multi-line refactor that breaks the condition across two lines would defeat it.</p>
+  <p><strong>Fix.</strong> Tighten to: <code>/skipTpLadder\s*=\s*[^;]*?\|\|\s*openedAsSpot/</code> (requires the <code>||</code> operator before <code>openedAsSpot</code> on the same expression), which cannot be satisfied by a comment. Also add a complementary negative assertion that the native TP block is not entered when <code>openedAsSpot</code> is true.</p>
+</div>
+
+<h2>Nits</h2>
+
+<div class="finding nit">
+  <h3>N1. No FEATURE-ADV test covering the spot trim path in position-monitor</h3>
+  <div class="meta">position-monitor/position-monitor.test.ts. Severity: nit.</div>
+  <p>The existing SPOT-ADV tests (lines 839–987) confirm the SL/trailing-stop spot paths. There is no test asserting that the poll-based profit-ladder path branches on <code>isSpot</code> and calls <code>adapter.placeSpotOrder</code> (not <code>adapter.placeOrder</code>) for the trim. A source-regex test similar to the SPOT-ADV pattern at line 839 would be: <code>assertMatch(src, /isSpot[\s\S]{0,300}?adapter\.placeSpotOrder[\s\S]{0,300}?profit.*ladder|ladder[\s\S]{0,300}?isSpot[\s\S]{0,300}?placeSpotOrder/i)</code>. Low friction to add; high coverage-to-effort ratio for a financial execution path.</p>
+</div>
+
+<div class="finding nit">
+  <h3>N2. No <code>captureException</code> on spot trim failure (perp failure path already captures)</h3>
+  <div class="meta">position-monitor/index.ts line 2325. Severity: nit.</div>
+  <p>The <code>else</code> branch at line 2324 calls <code>console.error</code>. The perp path lands the same code, so this is not a regression. But given that this PR is the first time spot runs this code path in production, adding <code>captureException</code> to the else branch for the first few deploys would surface unexpected HL spot rejections without requiring log-scraping. The existing native-TP failure path at trade-executor line 1787 does call <code>captureException</code> for comparison. Low-priority but a useful observability nudge for a new path.</p>
+</div>
+
+<h2>Risks to Monitor Post-Deploy</h2>
+<div class="monitor-item">Spot trim double-execution (B1): query <code>notification_log</code> for <code>profit_ladder_trim</code> with the same <code>entity_id</code> and adjacent timestamps (within 5 min). A duplicate indicates the race fired.</div>
+<div class="monitor-item">Stale <code>exchangeSize</code> in fractions (W2): compare <code>trim_fraction * original_size_usd</code> in <code>trim_history</code> against expected 10% per level. Consistent under-trimming at level 1/2 indicates the stale-balance path.</div>
+<div class="monitor-item">Zero <code>fill_size</code> transfers (W1): monitor spot USDC balance on HL. If spot sub-account accumulates USDC after ladder trims without a matching perp-account increase, the transfer guard skipped on a zero-fill.</div>
+<div class="monitor-item">Sentry error rate on spot position opens: should drop to 0 for "trigger orders not enabled on spot" after this deploy. Any remaining occurrences indicate <code>openedAsSpot</code> was false at the check site.</div>
+
+<h2>Safe</h2>
+<div class="safe-item">Fix 1 correctness: <code>openedAsSpot</code> is set at line 1576 as <code>isSpotOpen &amp;&amp; orderResult.success</code> and is in scope at the <code>skipTpLadder</code> check at line 1732. No scope issue.</div>
+<div class="safe-item"><code>pos.side</code> for spot: all spot positions are opened as "long" (buy-and-hold). Hardcoding <code>side: "sell"</code> for spot trims is correct; there are no short spot positions on HL spot market.</div>
+<div class="safe-item"><code>PROFIT_LADDER_FRACTIONS[i]</code> index: <code>i</code> is the outer <code>for</code> loop variable at line 2218 and is in scope inside the ternary. Index alignment is correct.</div>
+<div class="safe-item"><code>placeSpotOrder</code> with only <code>sizeUsd</code> and no <code>exactSizeInAsset</code>: confirmed at adapter line 2413 — <code>sizeInAsset = request.exactSizeInAsset ?? (request.sizeUsd / markPrice)</code>. The spread-omit path is safe; adapter computes from USD.</div>
+<div class="safe-item">Transfer pattern mirrors established SL close path: the <code>if (isSpot &amp;&amp; fill_price &amp;&amp; fill_size)</code> guard at line 2265 is structurally identical to the SL close guard at line 1639. Consistent with existing code conventions.</div>
+<div class="safe-item"><code>logAudit</code> accepts arbitrary <code>details</code> object: confirmed via usage across the codebase; <code>details</code> is typed as <code>Record&lt;string, unknown&gt;</code>. Adding <code>is_spot: isSpot</code> is safe.</div>
+<div class="safe-item">Post-cycle balance re-fetch: <code>spotBalanceMap</code> is rebuilt from scratch at the top of each invocation (line 505). The next cycle will read the correct post-trim balance from HL.</div>
+<div class="safe-item">Comment at trade-executor line 1727–1730 accurately describes the skip rationale and the fallback path. No misleading documentation.</div>
+
+</body>
+</html>

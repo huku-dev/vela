@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QA Review: LLM Fallback Fixes (2026-05-27)</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --green: #0FE68C;
+    --red: #FF4444;
+    --amber: #F59E0B;
+    --gray: #6B7280;
+    --blue: #3B82F6;
+    --card-bg: #F8F8F0;
+    --border: #E0DDD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--cream); color: var(--ink); padding: 32px; max-width: 900px; margin: 0 auto; line-height: 1.6; font-size: 15px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .meta { color: var(--gray); font-size: 13px; margin-bottom: 28px; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 24px; font-size: 13px; font-weight: 700; }
+  .pill-red    { background: #FEE2E2; color: #991B1B; }
+  .pill-amber  { background: #FEF3C7; color: #92400E; }
+  .pill-gray   { background: #F3F4F6; color: #374151; }
+  .pill-green  { background: #D1FAE5; color: #065F46; }
+  .pill-yellow { background: #FFFBEB; color: #78350F; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge-red    { background: #FEE2E2; color: #991B1B; }
+  .badge-amber  { background: #FEF3C7; color: #92400E; }
+  .badge-gray   { background: #F3F4F6; color: #374151; }
+  .badge-green  { background: #D1FAE5; color: #065F46; }
+  .badge-yellow { background: #FFFBEB; color: #78350F; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 14px; }
+  th { background: #EEEBE3; text-align: left; padding: 10px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  h2 { font-size: 16px; font-weight: 800; margin: 32px 0 14px; display: flex; align-items: center; gap: 8px; }
+  .finding { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .finding-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .finding-num { font-size: 13px; font-weight: 800; color: var(--gray); min-width: 24px; }
+  .finding-title { font-weight: 700; font-size: 15px; }
+  .loc { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; color: #7C3AED; background: #F3F0FF; padding: 2px 6px; border-radius: 4px; }
+  .field { font-size: 13px; margin-top: 6px; }
+  .field strong { font-weight: 600; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; background: #EEEAE0; padding: 1px 5px; border-radius: 3px; }
+  pre { background: #1E1E2E; color: #CDD6F4; padding: 14px; border-radius: 6px; font-size: 12px; overflow-x: auto; line-height: 1.5; margin: 8px 0; }
+  .fix { background: #ECFDF5; border-left: 3px solid #10B981; padding: 8px 12px; border-radius: 0 4px 4px 0; margin-top: 8px; font-size: 13px; }
+  ul { padding-left: 20px; }
+  ul li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: LLM Fallback Fixes</h1>
+<p class="meta">2026-05-27 &middot; Reviewer: independent subagent (zero prior context) &middot; Phase 1 (implementation review)</p>
+
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+  <div class="pill pill-red">Blocking: 0</div>
+  <div class="pill pill-amber">Worth a look: 3</div>
+  <div class="pill pill-gray">Nit: 2</div>
+  <div class="pill pill-green">Safe: 7</div>
+  <div class="pill pill-yellow">Monitor post-deploy: 2</div>
+</div>
+
+<!-- FILE-LEVEL RISK MATRIX -->
+<h2>File-level risk matrix</h2>
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Highest finding</th>
+      <th>Tier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_shared/llm/openai-compatible.ts</code></td>
+      <td>TPD short-circuit also blocks fallback cascade for Groq; no unit test for the new branch</td>
+      <td><span class="badge badge-amber">Worth a look</span></td>
+    </tr>
+    <tr>
+      <td><code>_shared/llm/registry.ts</code></td>
+      <td>Two schemas with <code>additionalProperties: false</code> still lack <code>cascadeOnSchemaFail</code></td>
+      <td><span class="badge badge-amber">Worth a look</span></td>
+    </tr>
+    <tr>
+      <td><code>_shared/llm/llm.test.ts</code></td>
+      <td>Test fixture swap valid; coverage gap on TPD short-circuit behavior</td>
+      <td><span class="badge badge-amber">Worth a look</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- BLOCKING -->
+<h2><span class="badge badge-red">BLOCKING</span> &nbsp;Must fix before deploy</h2>
+<p style="color: var(--gray); font-size: 14px; font-style: italic;">No blocking findings.</p>
+
+<!-- WORTH A LOOK -->
+<h2><span class="badge badge-amber">WORTH A LOOK</span> &nbsp;Plausible bugs / surprising patterns</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">W1</div>
+    <div>
+      <div class="finding-title">TPD short-circuit sets <code>retryable=false</code>, silently blocking fallback cascade</div>
+      <span class="loc">openai-compatible.ts:89-97</span>
+    </div>
+  </div>
+  <div class="field"><strong>Symptom:</strong> When Groq returns a 429 with <code>error.type === "tokens"</code> (TPD exhausted), <code>isRetryable</code> is set to <code>false</code> and <code>makeError(..., false)</code> is thrown. In <code>factory.ts:123</code>, <code>primaryRetryable = err.retryable ?? true</code> &mdash; but this is <code>false</code> &mdash; so <code>canFallback</code> evaluates to <code>false</code> at line 124. The factory throws immediately without attempting the NVIDIA fallback.</div>
+  <div class="field"><strong>Root cause:</strong> The fix correctly prevents pointless retries within the same provider but treats the error as globally non-retryable. The factory's cascade logic conflates "don't retry this provider" with "don't try any other provider".</div>
+  <div class="field"><strong>Concrete impact:</strong> For tasks where Groq is primary (e.g. <code>position_catalyst</code>, <code>signal_crosscheck</code>, <code>telegram_query</code>, <code>engagement_reply</code>), a Groq TPD exhaustion means the NVIDIA fallback is never called, even though NVIDIA has a completely independent quota. The system fails harder than it needs to when Groq's daily budget is gone.</div>
+  <div class="field"><strong>Expected behavior for primary failure:</strong> Skip retrying Groq. But still attempt NVIDIA fallback.</div>
+  <div class="field"><strong>The flip side (why the current behavior is not insane):</strong> For tasks where Groq is only the fallback (most tasks, since NVIDIA is primary), this code path isn't reached during primary execution. The risk is real for the 4 tasks listed above. Whether the product wants "NVIDIA fallback fires on Groq TPD" is a judgment call &mdash; but it is currently not happening and there is no comment documenting the intent.</div>
+  <div class="fix">Consider: introduce a distinct <code>providerExhausted</code> property on the error (or a dedicated error subclass) that signals "skip retries within this provider, but still allow cascade." The factory would check <code>!err.providerExhausted</code> (rather than <code>err.retryable</code>) when deciding whether to fall through to the next provider. If the intent is deliberately to not fall back on TPD (because the fallback would also be burning into a shared Groq budget), document that explicitly with a comment.</div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">W2</div>
+    <div>
+      <div class="finding-title"><code>signal_crosscheck</code> and <code>admin_task_triage</code> still use <code>additionalProperties: false</code> schemas without <code>cascadeOnSchemaFail</code></div>
+      <span class="loc">registry.ts:106-117 (CROSSCHECK_SCHEMA) and 399-427 (ADMIN_TASK_TRIAGE_SCHEMA)</span>
+    </div>
+  </div>
+  <div class="field"><strong>Symptom:</strong> Both schemas have <code>additionalProperties: false</code>. If qwen (used as <code>signal_crosscheck</code> fallback via <code>meta/llama-3.3-70b-instruct</code>) or NVIDIA (<code>admin_task_triage</code> primary) returns extra keys, the validator fires a schema_fail. Without <code>cascadeOnSchemaFail</code>, the schema_fail passes through silently &mdash; the caller receives a degraded result without attempting the next provider.</div>
+  <div class="field"><strong>Root cause:</strong> The MEMORY.md entry from 2026-05-19 notes: "<code>earnings_extract</code>, <code>macro_surprise</code>, <code>sec_filing_classify</code> are latent versions of this bug." That list was fixed in this PR (those schemas got <code>additionalProperties: true</code>), but <code>CROSSCHECK_SCHEMA</code> and <code>ADMIN_TASK_TRIAGE_SCHEMA</code> were not touched.</div>
+  <div class="field"><strong>Risk level:</strong>
+    <ul>
+      <li><code>signal_crosscheck</code>: primary is Groq llama (not qwen), and CROSSCHECK_SCHEMA is strict (<code>verdict</code> + <code>reason</code> only). Schema_fail here is plausible but lower frequency than qwen-primary tasks. The test that was updated uses this task precisely because it has no <code>cascadeOnSchemaFail</code> &mdash; so this is also a semantically correct test fixture. Moderate risk.</li>
+      <li><code>admin_task_triage</code>: NVIDIA qwen primary, strict schema. High-frequency schema_fail risk given qwen's documented extra-key habit. No <code>cascadeOnSchemaFail</code> means silent degradation on every qwen extra-key response. The downstream effect is a missing admin triage record rather than user-facing data loss, but it is inconsistent with how every other NVIDIA-primary task in the file is configured.</li>
+    </ul>
+  </div>
+  <div class="fix">Add <code>additionalProperties: true</code> to <code>ADMIN_TASK_TRIAGE_SCHEMA</code> and add <code>cascadeOnSchemaFail: true</code> to the <code>admin_task_triage</code> task. For <code>signal_crosscheck</code>: the schema is intentionally strict (it is the test anchor for the no-cascade behavior), but add a comment explaining why <code>additionalProperties: false</code> is retained intentionally, to prevent future "fix" attempts.</div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">W3</div>
+    <div>
+      <div class="finding-title">No test coverage for the new TPD short-circuit branch</div>
+      <span class="loc">openai-compatible.ts:89-95 / llm.test.ts (absent)</span>
+    </div>
+  </div>
+  <div class="field"><strong>Symptom:</strong> The TPD detection logic (<code>errJson?.error?.type === "tokens"</code> sets <code>isRetryable = false</code>) has zero test coverage. A future refactor that changes the error path could silently revert to the 120s retry behavior.</div>
+  <div class="field"><strong>Root cause:</strong> No test was added alongside the new branch in <code>openai-compatible.ts</code>. The existing 429 test at line 506 tests the retry path but passes a plain-text body (<code>"rate limited"</code>), not a JSON body with <code>error.type === "tokens"</code>.</div>
+  <div class="field"><strong>What a good test checks:</strong> (a) Groq 429 with <code>{"error":{"type":"tokens","message":"..."}}</code> body results in a single attempt (no retry waits), (b) Groq 429 with plain text / RPM body (<code>{"error":{"type":"rate_limit_exceeded"}}</code>) still retries normally (up to MAX_ATTEMPTS).</div>
+  <div class="fix">Add an <code>LLM-ADV: Groq TPD 429 short-circuits without retry</code> test that stubs the Groq endpoint to return <code>{"error":{"type":"tokens","message":"daily token quota exceeded"}}</code> with status 429, and asserts the factory throws after exactly one attempt (not three).</div>
+</div>
+
+<!-- NITS -->
+<h2><span class="badge badge-gray">NIT</span> &nbsp;Polish</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">N1</div>
+    <div>
+      <div class="finding-title">Comment says "midnight UTC for TPD" but Groq resets on a rolling 24h window</div>
+      <span class="loc">openai-compatible.ts:87</span>
+    </div>
+  </div>
+  <div class="field">The comment reads: "the quota resets (midnight UTC for TPD)". Groq's actual TPD (tokens per day) resets on a rolling 24-hour window, not at midnight UTC. The health-check at <code>health-check/index.ts:710</code> already reflects this correctly: "Limit resets on rolling 24h window." Stale comment could mislead a future debugger about when recovery will happen.</div>
+  <div class="fix">Change "midnight UTC for TPD" to "rolling 24h window" to match the health-check comment and Groq's documented behavior.</div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">N2</div>
+    <div>
+      <div class="finding-title"><code>news_rank</code> timeout comment omits the actual arithmetic for MAX_ATTEMPTS=3</div>
+      <span class="loc">registry.ts:743-746</span>
+    </div>
+  </div>
+  <div class="field">The comment reads "3×30s retry exhaustion = 92.5s wasted; 3×15s = 47.5s". The 92.5 and 47.5 figures include backoff time (500ms + 2s + 6s = 8.5s across attempts) but this is not spelled out. Fine math, slightly opaque. The decision to halve the timeout is sound.</div>
+  <div class="fix">Consider noting "(includes ~8.5s cumulative backoff)" parenthetically so the 92.5 / 47.5 numbers are self-evident to a reader who doesn't know the backoff table.</div>
+</div>
+
+<!-- MONITOR POST-DEPLOY -->
+<h2><span class="badge badge-yellow">MONITOR</span> &nbsp;Post-deploy watchpoints</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">M1</div>
+    <div>
+      <div class="finding-title">Verify Groq's actual 429 body format matches <code>error.type === "tokens"</code></div>
+    </div>
+  </div>
+  <div class="field">The TPD short-circuit assumes Groq returns <code>{"error": {"type": "tokens", ...}}</code>. This was inferred from the production Sentry alert body captured at incident time. If Groq changes their error format (or uses a different field name like <code>code</code> instead of <code>type</code>), the guard silently fails and the 120s retry behavior returns. No regression test can catch this &mdash; only monitoring can.</div>
+  <div class="fix">After deploying: query <code>llm_call_log</code> for <code>error_code LIKE '%429%'</code> rows from Groq in the next 24h. If any have latency exceeding ~15s (suggesting multiple retries fired), the short-circuit is not activating. Also confirm via Sentry that future groq-429 alerts clear quickly (single-attempt, not 3 attempts).</div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num">M2</div>
+    <div>
+      <div class="finding-title">Watch <code>asset_intel_brief</code> and <code>position_catalyst</code> fallback rates after <code>cascadeOnSchemaFail</code> activates</div>
+    </div>
+  </div>
+  <div class="field">Both tasks now have <code>cascadeOnSchemaFail: true</code>. This is the correct fix, but it will cause NVIDIA schema_fail events to generate Groq fallback calls that previously were silent no-ops. If NVIDIA's schema_fail rate on these tasks is high (e.g., 20%+), Groq's daily token budget will increase noticeably, potentially accelerating TPD exhaustion on the very same day.</div>
+  <div class="fix">For the first 24-48h after deploy: query <code>SELECT task_name, COUNT(*) FROM llm_call_log WHERE fallback_used = true AND created_at > now() - interval '48h' GROUP BY task_name ORDER BY 2 DESC</code> and compare fallback rate for <code>asset_intel_brief</code> and <code>position_catalyst</code> against pre-deploy baseline.</div>
+</div>
+
+<!-- SAFE -->
+<h2><span class="badge badge-green">SAFE</span> &nbsp;Verified correct</h2>
+
+<ul style="line-height: 2.0; font-size: 14px;">
+  <li><strong>errText consumed once, not twice.</strong> <code>openai-compatible.ts:82-93</code>: <code>res.text()</code> is called once, stored in <code>errText</code>. <code>lastError = errText.slice(0, 400)</code> runs first (assigns a truncated view into <code>lastError</code>), then <code>JSON.parse(errText)</code> uses the full original string. <code>errText</code> is never consumed by a streaming read, so re-using it is safe. No double-consume bug.</li>
+  <li><strong>Malformed JSON in error body is handled safely.</strong> <code>openai-compatible.ts:91-94</code>: the JSON.parse is wrapped in <code>try/catch { /* not JSON */ }</code>. On a malformed or binary body, <code>isRetryable</code> remains its original value (true for 429), so the retry path continues as before. No silent swallow of unexpected errors since the outer <code>if (!isRetryable || attempt === MAX_ATTEMPTS)</code> check still governs behavior.</li>
+  <li><strong>cascadeOnSchemaFail + position_catalyst fallback uses correct schema.</strong> The synthetic error thrown at <code>factory.ts:114-120</code> causes the catch block at line 122 to execute. The <code>fallbackReq</code> at line 130 is built from <code>...req</code>, which includes <code>req.jsonSchema</code> from the original task config. Since <code>POSITION_CATALYST_SCHEMA</code> now has <code>additionalProperties: true</code>, the NVIDIA fallback call uses the same relaxed schema. No mismatch.</li>
+  <li><strong>lastResort guard is correct for position_catalyst.</strong> <code>factory.ts:148-151</code> checks <code>cfg.lastResort.provider !== primary.provider && cfg.lastResort.provider !== cfg.fallback.provider</code>. For <code>position_catalyst</code>: primary=groq, fallback=nvidia, lastResort=anthropic. All three differ. The module-load self-check at <code>registry.ts:794-806</code> also validates this at cold start.</li>
+  <li><strong>Test fixture swap (signal_explanation &rarr; signal_crosscheck) is valid.</strong> The test at line 839 proves "schema_fail does NOT cascade when cascadeOnSchemaFail is absent." <code>signal_crosscheck</code> has no <code>cascadeOnSchemaFail</code> and uses Groq primary, so the test correctly exercises the no-cascade path. The absence of <code>lastResort</code> on <code>signal_crosscheck</code> means the test can't prove lastResort is blocked &mdash; but the companion assertion <code>assertEquals(anthropicCalls, 0)</code> explicitly checks this regardless. The existing <code>cascadeOnSchemaFail</code> test at line 911 (news_summary) provides the positive coverage.</li>
+  <li><strong>news_rank timeout reduction (30s &rarr; 15s) is safe for the actual call.</strong> The caller in <code>news-fetcher.ts:1568-1573</code> sends up to 20 headlines as a numbered list. The prompt is short (&lt;2KB). The expected output is a JSON array of integers (<code>maxTokens: 128</code>). NVIDIA qwen at 15s has headroom for this task; Groq at 15s is faster still. The graceful fallback at line 1602 returns chronological order on any failure, so timeout is not fatal.</li>
+  <li><strong>Schema validator handles additionalProperties: true correctly.</strong> <code>schema.ts:50-57</code>: the additional-property check only runs when <code>schema.additionalProperties === false</code>. When <code>additionalProperties</code> is <code>true</code> or absent, the check is skipped entirely. Setting it to <code>true</code> has no effect on required-field or type checking.</li>
+</ul>
+
+<hr style="margin: 32px 0; border-color: var(--border);" />
+<p style="color: var(--gray); font-size: 12px;">Report generated by independent QA subagent. All findings verified against source files. No prior session context used.</p>
+
+</body>
+</html>

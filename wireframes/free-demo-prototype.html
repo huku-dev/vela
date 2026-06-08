@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Free demo prototype — clickable</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --white: #fff;
+        --black: #000;
+        --cream-base: #f5f1e8;
+        --vela-cream: #fffbf5;
+        --vela-ink: #0a0a0a;
+        --vela-signal-green: #0fe68c;
+
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #94a3b8;
+        --gray-500: #6b7280;
+        --gray-600: #475569;
+        --gray-700: #374151;
+        --gray-900: #0f172a;
+
+        --green-primary: #10b981;
+        --green-dark: #059669;
+        --green-light: #d1fae5;
+        --green-bg: #ecfdf5;
+
+        --red-primary: #ef4444;
+        --red-dark: #dc2626;
+
+        --mint-50: #f0fdf4;
+        --mint-100: #dcfce7;
+        --peach-50: #fff7ed;
+        --sky-50: #f0f9ff;
+        --lavender-50: #f5f3ff;
+
+        --amber-light: #fde68a;
+        --amber-primary: #f59e0b;
+        --warm-cream: #fff8e7;
+
+        --border-thick: 3px;
+        --radius-sm: 0.5rem;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #eee8da;
+        color: var(--gray-900);
+        min-height: 100vh;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 32px;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+
+      /* ── Sidebar / control panel ── */
+      .sidebar {
+        position: sticky; top: 24px; align-self: start;
+      }
+      .sidebar h1 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 800; margin: 0 0 6px; font-size: 22px; letter-spacing: -0.01em;
+      }
+      .sidebar p { font-size: 13px; line-height: 1.55; color: var(--gray-700); margin: 0 0 16px; }
+      .sidebar .reset-btn {
+        background: var(--vela-ink); color: var(--vela-cream);
+        border: 2px solid var(--black); border-radius: 8px;
+        padding: 8px 12px; font-weight: 600; font-size: 12px;
+        font-family: inherit; cursor: pointer;
+        box-shadow: 2px 2px 0 var(--black);
+      }
+      .sidebar .reset-btn:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--black); }
+
+      .state-trace {
+        margin-top: 22px; padding: 12px 14px;
+        background: var(--vela-cream); border: 2px solid var(--black);
+        border-radius: 10px;
+        font-family: "JetBrains Mono", monospace; font-size: 11px;
+        line-height: 1.6;
+      }
+      .state-trace h4 { margin: 0 0 6px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gray-600); }
+      .state-trace .row { display: flex; justify-content: space-between; }
+      .state-trace .row strong { color: var(--vela-ink); }
+      .state-trace .row.muted { color: var(--gray-500); }
+
+      .help {
+        margin-top: 16px; padding: 12px 14px;
+        background: var(--mint-50); border: 1.5px dashed var(--green-dark);
+        border-radius: 10px;
+        font-size: 12px; line-height: 1.5; color: var(--gray-700);
+      }
+      .help strong { color: var(--vela-ink); }
+      .help ul { margin: 6px 0 0; padding-left: 18px; }
+      .help li + li { margin-top: 3px; }
+
+      /* ── Phone frame ── */
+      .phone-stage {
+        display: flex; justify-content: center;
+      }
+      .phone {
+        width: 360px;
+        background: var(--vela-cream);
+        border: var(--border-thick) solid var(--black);
+        border-radius: 36px;
+        padding: 12px 12px 0;
+        box-shadow: 6px 6px 0 var(--black);
+        overflow: hidden;
+      }
+      .status-bar {
+        height: 22px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: "JetBrains Mono", monospace; font-size: 10px; color: var(--gray-600);
+        padding: 0 6px;
+        margin-bottom: 6px;
+      }
+      .app-canvas {
+        background: var(--vela-cream);
+        border-radius: 22px;
+        min-height: 620px;
+        padding: 12px 12px 0;
+        position: relative;
+      }
+
+      /* ── Demo banner (ink informational) ── */
+      .demo-banner {
+        background: var(--vela-ink); color: var(--vela-cream);
+        border-radius: var(--radius-sm);
+        padding: 7px 10px;
+        font-size: 11.5px; font-weight: 500;
+        display: flex; align-items: center; gap: 8px;
+        margin-bottom: var(--space-3);
+      }
+      .demo-banner .wordmark {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 800; letter-spacing: -0.03em;
+      }
+      .demo-banner .right { margin-left: auto; opacity: 0.85; font-size: 10.5px; }
+
+      /* ── Vela primitives ── */
+      .v-card {
+        background: var(--white);
+        border: var(--border-thick) solid var(--black);
+        border-radius: 12px;
+        padding: 11px 13px;
+        box-shadow: 3px 3px 0 var(--black);
+        margin-bottom: var(--space-2);
+        cursor: pointer;
+        transition: transform 80ms ease, box-shadow 80ms ease;
+      }
+      .v-card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--black); }
+      .v-card:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--black); }
+      .v-card.mint { background: var(--mint-50); }
+      .v-card.peach { background: var(--peach-50); }
+      .v-card.sky { background: var(--sky-50); }
+      .v-card.lavender { background: var(--lavender-50); }
+      .v-card.warm { background: var(--warm-cream); }
+      .v-card.no-press { cursor: default; }
+      .v-card.no-press:hover { transform: none; box-shadow: 3px 3px 0 var(--black); }
+
+      .v-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+      .pill {
+        display: inline-block; padding: 2px 7px; border-radius: var(--radius-sm);
+        font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+        border: 1.5px solid var(--black); line-height: 1.3;
+      }
+      .pill.long { background: var(--green-primary); color: var(--white); }
+      .pill.short { background: var(--red-primary); color: var(--white); }
+      .pill.wait { background: var(--gray-200); color: var(--gray-700); }
+
+      .heading { font-family: "Space Grotesk", sans-serif; font-weight: 700; }
+      .h-display { font-family: "Space Grotesk", sans-serif; font-weight: 800; letter-spacing: -0.01em; }
+      .label-sm {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--gray-600);
+      }
+      .mono { font-family: "JetBrains Mono", monospace; }
+      .pnl-pos { color: var(--green-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+      .pnl-neg { color: var(--red-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+
+      .asset-dot {
+        width: 28px; height: 28px; border-radius: 50%;
+        border: 2.5px solid var(--black);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 12px; flex-shrink: 0;
+      }
+      .asset-dot.btc { background: linear-gradient(135deg, #f7931a, #ffaf3c); color: var(--white); }
+      .asset-dot.aapl { background: var(--vela-ink); color: var(--white); }
+      .asset-dot.hype { background: linear-gradient(135deg, #0fe68c, #059669); color: var(--vela-ink); }
+      .asset-dot.spx { background: linear-gradient(135deg, #2563eb, #3b82f6); color: var(--white); }
+
+      /* ── CTAs ── */
+      .btn {
+        display: block; width: 100%;
+        background: var(--vela-signal-green);
+        border: 2.5px solid var(--black);
+        border-radius: var(--radius-sm);
+        padding: 11px 0;
+        text-align: center; font-weight: 700; font-size: 13.5px;
+        box-shadow: 3px 3px 0 var(--black);
+        font-family: inherit;
+        color: var(--vela-ink);
+        cursor: pointer;
+        margin-top: 8px;
+        transition: transform 80ms ease, box-shadow 80ms ease;
+      }
+      .btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--black); }
+      .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--black); }
+      .btn.dark { background: var(--vela-ink); color: var(--vela-cream); }
+      .btn.ghost { background: var(--white); }
+
+      .split-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+      .split-btns .btn { margin-top: 0; }
+
+      /* Sticky CTA at bottom of canvas (above nav) */
+      .sticky-cta {
+        background: var(--vela-ink); color: var(--vela-cream);
+        border-radius: var(--radius-md);
+        padding: 10px 12px;
+        font-size: 12px; font-weight: 500;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        margin-top: 12px;
+        cursor: pointer;
+        transition: transform 80ms ease;
+      }
+      .sticky-cta:hover { transform: translateY(-1px); }
+      .sticky-cta strong { color: var(--vela-signal-green); font-weight: 700; }
+
+      /* ── Bottom nav ── */
+      .bottom-nav {
+        margin: 10px -12px 0;
+        background: var(--white);
+        border-top: var(--border-thick) solid var(--black);
+        padding: 7px 0 9px;
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        text-align: center; font-size: 10px; color: var(--gray-500);
+        font-family: "Inter", sans-serif;
+        border-radius: 0 0 22px 22px;
+      }
+      .bottom-nav .tab {
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
+        cursor: pointer; padding: 0 4px;
+      }
+      .bottom-nav .tab .ico {
+        width: 16px; height: 16px; border: 1.5px solid var(--gray-400); border-radius: 4px;
+      }
+      .bottom-nav .tab.active { color: var(--vela-ink); font-weight: 700; }
+      .bottom-nav .tab.active .ico {
+        border-color: var(--vela-ink); background: var(--vela-signal-green);
+        box-shadow: 1.5px 1.5px 0 var(--black);
+      }
+
+      /* ── Back button ── */
+      .back-btn {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 12px; color: var(--gray-700); font-weight: 600;
+        cursor: pointer;
+        margin: 0 0 8px;
+      }
+      .back-btn::before {
+        content: "←"; font-weight: 700; font-size: 14px;
+      }
+
+      /* ── Asset detail header ── */
+      .asset-header {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+      }
+      .asset-header .asset-dot { width: 36px; height: 36px; font-size: 14px; }
+      .asset-header .name { font-family: "Space Grotesk", sans-serif; font-weight: 800; font-size: 22px; }
+      .asset-header .sub { font-size: 11px; color: var(--gray-600); }
+
+      /* ── Proposal card ── */
+      .proposal {
+        background: var(--mint-50);
+        border: var(--border-thick) solid var(--black);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        box-shadow: 3px 3px 0 var(--black);
+        margin-bottom: 10px;
+      }
+      .proposal-grid {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 8px 12px; margin: 10px 0;
+      }
+      .proposal-grid .field {
+        font-size: 12px;
+      }
+      .proposal-grid .field .lbl {
+        font-size: 9.5px; color: var(--gray-600); text-transform: uppercase; letter-spacing: 0.06em;
+      }
+      .proposal-grid .field .val {
+        font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 13px; color: var(--vela-ink);
+      }
+
+      /* ── Why we think this ── */
+      .rationale {
+        background: var(--white); border: var(--border-thick) solid var(--black);
+        border-radius: var(--radius-md);
+        padding: 11px 13px; box-shadow: 3px 3px 0 var(--black);
+        font-size: 12px; line-height: 1.55; color: var(--gray-700);
+        margin-bottom: 10px;
+      }
+      .rationale .lbl {
+        font-family: "Space Grotesk", sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+        text-transform: uppercase; color: var(--gray-600); margin-bottom: 4px;
+      }
+
+      /* ── Live PnL pulse ── */
+      @keyframes pulse-pnl {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.55; }
+      }
+      .live-indicator {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 10px; color: var(--green-dark); font-weight: 600;
+      }
+      .live-indicator::before {
+        content: ""; width: 7px; height: 7px; border-radius: 50%;
+        background: var(--green-primary); animation: pulse-pnl 1.4s infinite ease-in-out;
+      }
+
+      /* ── Outcome hero ── */
+      .outcome-hero {
+        background: linear-gradient(180deg, var(--mint-50), var(--vela-cream));
+        border: var(--border-thick) solid var(--black);
+        border-radius: var(--radius-md);
+        padding: 22px 16px;
+        text-align: center;
+        margin-bottom: 12px;
+        box-shadow: 4px 4px 0 var(--black);
+      }
+      .outcome-hero .emoji { font-size: 36px; margin-bottom: 4px; }
+      .outcome-hero .pnl-big {
+        font-family: "Space Grotesk", sans-serif; font-weight: 800;
+        font-size: 28px; color: var(--green-dark); margin: 4px 0 2px; letter-spacing: -0.01em;
+      }
+      .outcome-hero .pnl-sub { font-size: 12px; color: var(--gray-700); }
+
+      /* ── Subscribe sheet (modal) ── */
+      .sheet-overlay {
+        position: absolute; inset: 0;
+        background: rgba(10, 10, 10, 0.5);
+        border-radius: 22px;
+        display: flex; align-items: flex-end;
+        z-index: 50;
+      }
+      .sheet {
+        width: 100%;
+        background: var(--vela-cream);
+        border-top: var(--border-thick) solid var(--black);
+        border-radius: 22px 22px 0 0;
+        padding: 20px 16px 18px;
+        box-shadow: 0 -4px 0 var(--black);
+      }
+      .sheet h3 { font-family: "Space Grotesk", sans-serif; font-weight: 800; margin: 0 0 6px; font-size: 18px; }
+      .sheet p { font-size: 12.5px; color: var(--gray-700); line-height: 1.5; margin: 0 0 12px; }
+      .sheet .close {
+        position: absolute; top: 14px; right: 14px;
+        background: none; border: none; cursor: pointer;
+        font-size: 18px; color: var(--gray-500);
+      }
+
+      /* ── Coachmark ── */
+      .coachmark {
+        position: absolute;
+        background: var(--vela-ink); color: var(--vela-cream);
+        padding: 9px 11px; border-radius: 10px;
+        font-size: 11.5px; font-weight: 500; line-height: 1.4;
+        max-width: 80%;
+        box-shadow: 3px 3px 0 var(--vela-signal-green);
+        z-index: 5;
+        cursor: pointer;
+      }
+      .coachmark::after {
+        content: ""; position: absolute;
+        border-left: 8px solid transparent; border-right: 8px solid transparent;
+        bottom: -8px; left: 26px; border-top: 8px solid var(--vela-ink);
+      }
+      .coachmark strong { color: var(--vela-signal-green); }
+
+      /* ── Animation: page transition ── */
+      @keyframes slide-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .view { animation: slide-in 220ms ease-out; }
+      .hidden { display: none !important; }
+
+      /* ── Toast ── */
+      .toast {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background: var(--vela-ink); color: var(--vela-cream);
+        padding: 10px 16px; border-radius: 10px;
+        box-shadow: 3px 3px 0 var(--vela-signal-green);
+        font-size: 13px; font-weight: 500;
+        z-index: 999;
+        opacity: 0; pointer-events: none;
+        transition: opacity 180ms ease, transform 180ms ease;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+
+      <!-- ── SIDEBAR ── -->
+      <aside class="sidebar">
+        <h1>Free demo prototype</h1>
+        <p>
+          Click through the demo flow as a free user would. Numbers and outcomes are scripted; the
+          interactions are real. Hard-resets between phases.
+        </p>
+        <button class="reset-btn" onclick="resetDemo()">Reset to start</button>
+
+        <div class="state-trace" id="stateTrace">
+          <h4>State</h4>
+          <div class="row"><span>View:</span> <strong id="trace-view">home</strong></div>
+          <div class="row"><span>Has approved:</span> <strong id="trace-approved">no</strong></div>
+          <div class="row"><span>Trade phase:</span> <strong id="trace-phase">—</strong></div>
+          <div class="row muted"><span>Coachmark seen:</span> <strong id="trace-coach">no</strong></div>
+        </div>
+
+        <div class="help">
+          <strong>Try this flow:</strong>
+          <ul>
+            <li>Tap the BTC signal card</li>
+            <li>Tap Approve</li>
+            <li>Watch the live position for ~20s</li>
+            <li>Outcome reveals automatically</li>
+            <li>Try Subscribe (top bar or sticky CTA)</li>
+            <li>Try Trades tab + Account tab</li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- ── PHONE ── -->
+      <div class="phone-stage">
+        <div class="phone">
+          <div class="status-bar">
+            <span>9:41</span>
+            <span>···</span>
+            <span>100%</span>
+          </div>
+          <div class="app-canvas" id="appCanvas">
+
+            <!-- HOME VIEW -->
+            <div class="view" id="view-home">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · simulated data</span>
+              </div>
+
+              <div class="v-row" style="margin-bottom: 12px;">
+                <p class="h-display" style="font-size: 26px; margin: 0;">Today</p>
+                <span class="label-sm">3 signals</span>
+              </div>
+
+              <div class="v-card mint" onclick="goToAsset('btc')">
+                <div class="v-row">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot btc">B</span>
+                    <div>
+                      <div class="heading" style="font-size: 14px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                      <div style="font-size: 10.5px; color: var(--gray-600); margin-top: 1px;">New signal · 5m ago</div>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div class="mono" style="font-size: 13px; font-weight: 700;">$71,200</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="v-card sky no-press" style="cursor: default;">
+                <div class="v-row">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot aapl">A</span>
+                    <div>
+                      <div class="heading" style="font-size: 14px;">AAPL <span class="pill wait" style="margin-left: 2px;">Wait</span></div>
+                      <div style="font-size: 10.5px; color: var(--gray-600); margin-top: 1px;">No setup yet</div>
+                    </div>
+                  </div>
+                  <div class="mono" style="font-size: 12.5px;">$182.40</div>
+                </div>
+              </div>
+
+              <div class="v-card lavender no-press" style="cursor: default;">
+                <div class="v-row">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot hype">H</span>
+                    <div>
+                      <div class="heading" style="font-size: 14px;">HYPE <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                      <div style="font-size: 10.5px; color: var(--gray-600); margin-top: 1px;">Open · 4h 30m</div>
+                    </div>
+                  </div>
+                  <div class="mono pnl-pos" style="font-size: 12.5px;">+2.8%</div>
+                </div>
+              </div>
+
+              <div class="sticky-cta" onclick="showSubscribeSheet()">
+                <span>Trade with real money</span>
+                <strong>Subscribe →</strong>
+              </div>
+            </div>
+
+            <!-- ASSET DETAIL VIEW -->
+            <div class="view hidden" id="view-asset">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · simulated data</span>
+              </div>
+
+              <div class="back-btn" onclick="goHome()">Back</div>
+
+              <div class="asset-header">
+                <span class="asset-dot btc">B</span>
+                <div>
+                  <div class="name">BTC <span class="pill long" style="font-size: 10px; vertical-align: middle;">Long</span></div>
+                  <div class="sub">Bitcoin · $71,200</div>
+                </div>
+              </div>
+
+              <div class="proposal" id="proposalCard">
+                <div class="label-sm">Pending proposal</div>
+                <p class="heading" style="font-size: 15px; margin: 4px 0 6px;">I want to open a long</p>
+                <div class="proposal-grid">
+                  <div class="field">
+                    <div class="lbl">Entry</div>
+                    <div class="val">$71,200</div>
+                  </div>
+                  <div class="field">
+                    <div class="lbl">Stop-loss</div>
+                    <div class="val">$68,500</div>
+                  </div>
+                  <div class="field">
+                    <div class="lbl">Size</div>
+                    <div class="val">$1,000</div>
+                  </div>
+                  <div class="field">
+                    <div class="lbl">Risk</div>
+                    <div class="val">3.8%</div>
+                  </div>
+                </div>
+                <div class="split-btns" id="proposalActions">
+                  <button class="btn" onclick="approveTrade()">Approve</button>
+                  <button class="btn ghost" onclick="declineTrade()">Decline</button>
+                </div>
+              </div>
+
+              <div class="coachmark" id="approveCoach">
+                Tap <strong>Approve</strong> to see what happens next.
+              </div>
+
+              <div class="rationale">
+                <div class="lbl">Why I think this</div>
+                Momentum is lining up with strong news flow on BTC. I give this a 73% chance of
+                hitting target before stop.
+              </div>
+            </div>
+
+            <!-- LIVE POSITION VIEW -->
+            <div class="view hidden" id="view-live">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · watching it play out</span>
+              </div>
+
+              <div class="v-row" style="margin-bottom: 10px;">
+                <p class="h-display" style="font-size: 22px; margin: 0;">Your position</p>
+                <span class="live-indicator">Live</span>
+              </div>
+
+              <div class="v-card mint no-press" style="cursor: default;">
+                <div class="v-row" style="margin-bottom: 6px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot btc">B</span>
+                    <div>
+                      <div class="heading" style="font-size: 14px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                      <div style="font-size: 10.5px; color: var(--gray-600); margin-top: 1px;">Open · <span id="openDuration">just now</span></div>
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div class="mono pnl-pos" style="font-size: 16px;" id="livePnlPct">+0.0%</div>
+                    <div class="mono pnl-pos" style="font-size: 11.5px;" id="livePnlDollar">+$0 profit</div>
+                  </div>
+                </div>
+                <div class="mono" style="font-size: 11px; color: var(--gray-600);">
+                  Entry $71,200 → Now <span id="livePrice">$71,200</span>
+                </div>
+              </div>
+
+              <p style="font-size: 12px; color: var(--gray-700); line-height: 1.55; margin: 12px 0;">
+                I&rsquo;m holding this until the take-profit hits, the stop trips, or the setup
+                reverses. You&rsquo;ll get a notification when it closes.
+              </p>
+
+              <p style="font-size: 11px; color: var(--gray-500); text-align: center; margin: 16px 0 0; font-style: italic;">
+                Outcome appears in <span id="countdown">20s</span>… (sped up for demo)
+              </p>
+            </div>
+
+            <!-- OUTCOME VIEW -->
+            <div class="view hidden" id="view-outcome">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · trade complete</span>
+              </div>
+
+              <div class="outcome-hero">
+                <div class="emoji">📈</div>
+                <p class="label-sm" style="margin: 0 0 2px;">Closed trade</p>
+                <div class="pnl-big">+$52 profit</div>
+                <div class="pnl-sub">+5.2% · BTC closed in 7 days (sped up)</div>
+              </div>
+
+              <div class="v-card peach no-press" style="cursor: default;">
+                <div class="v-row" style="margin-bottom: 4px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot btc">B</span>
+                    <div>
+                      <div class="heading" style="font-size: 13.5px;">BTC · Closed</div>
+                      <div style="font-size: 10px; color: var(--gray-600); margin-top: 1px;">Held 7 days</div>
+                    </div>
+                  </div>
+                  <div class="mono pnl-pos" style="font-size: 13px;">+5.2%</div>
+                </div>
+                <div class="mono" style="font-size: 10.5px; color: var(--gray-600);">
+                  $71,200 → $74,902
+                </div>
+              </div>
+
+              <p style="font-size: 12px; color: var(--gray-700); line-height: 1.55; margin: 12px 0 8px;">
+                In the real product you&rsquo;d wait days for this. I sped it up so you could see
+                the shape of it.
+              </p>
+
+              <div class="sticky-cta" onclick="showSubscribeSheet()">
+                <span>This was a demo. Want the real thing?</span>
+                <strong>Subscribe →</strong>
+              </div>
+            </div>
+
+            <!-- TRADES TAB VIEW -->
+            <div class="view hidden" id="view-trades">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · simulated data</span>
+              </div>
+
+              <div class="v-row" style="margin-bottom: 12px;">
+                <p class="h-display" style="font-size: 26px; margin: 0;">Trades</p>
+                <span class="label-sm" id="tradesCount">0 trades</span>
+              </div>
+
+              <div id="tradesEmpty">
+                <div class="v-card no-press" style="cursor: default; padding: 24px 16px; text-align: center;">
+                  <p style="font-size: 13px; color: var(--gray-600); margin: 0 0 4px;">
+                    No trades yet.
+                  </p>
+                  <p style="font-size: 11.5px; color: var(--gray-500); margin: 0;">
+                    Approve a signal to see one here.
+                  </p>
+                </div>
+              </div>
+
+              <div id="tradesList" class="hidden"></div>
+
+              <div class="sticky-cta" onclick="showSubscribeSheet()">
+                <span>Trade with real money</span>
+                <strong>Subscribe →</strong>
+              </div>
+            </div>
+
+            <!-- ACCOUNT TAB VIEW -->
+            <div class="view hidden" id="view-account">
+              <div class="demo-banner">
+                <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                  <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                </svg>
+                <span class="wordmark">vela</span>
+                <span class="right">DEMO · simulated data</span>
+              </div>
+
+              <p class="h-display" style="font-size: 26px; margin: 0 0 14px;">Account</p>
+
+              <div class="v-card no-press" style="cursor: default;">
+                <p class="label-sm" style="margin: 0 0 4px;">You&rsquo;re on the demo</p>
+                <p style="font-size: 13px; line-height: 1.55; margin: 0 0 10px; color: var(--gray-700);">
+                  I&rsquo;ll start watching real markets and trading for you the moment you
+                  subscribe. Same flow, real numbers.
+                </p>
+                <button class="btn" onclick="showSubscribeSheet()">Subscribe</button>
+              </div>
+
+              <div class="v-card no-press" style="cursor: default; margin-top: 8px;">
+                <p class="label-sm" style="margin: 0 0 4px;">Why subscribe?</p>
+                <ul style="margin: 6px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.55; color: var(--gray-700);">
+                  <li>I trade for you, 24/7</li>
+                  <li>You approve, or I run on auto</li>
+                  <li>One sentence on why, every time</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Subscribe sheet (modal overlay) -->
+            <div class="sheet-overlay hidden" id="subscribeSheet">
+              <div class="sheet" style="position: relative;">
+                <button class="close" onclick="hideSubscribeSheet()" aria-label="Close">×</button>
+                <h3>Trade for real?</h3>
+                <p>
+                  This would open the subscribe flow in the live app. For the prototype, it just
+                  closes.
+                </p>
+                <button class="btn" onclick="hideSubscribeSheet()">Got it</button>
+              </div>
+            </div>
+
+            <!-- Bottom nav (always visible) -->
+            <div class="bottom-nav">
+              <div class="tab" id="tab-signals" onclick="switchTab('home')">
+                <div class="ico"></div>Signals
+              </div>
+              <div class="tab" id="tab-trades" onclick="switchTab('trades')">
+                <div class="ico"></div>Trades
+              </div>
+              <div class="tab" id="tab-account" onclick="switchTab('account')">
+                <div class="ico"></div>Account
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      // ─────────────────────────────────────────────────────────
+      // State
+      // ─────────────────────────────────────────────────────────
+      const state = {
+        currentView: 'home',
+        approved: false,
+        tradePhase: 'pending', // pending → live → closed
+        coachSeen: false,
+        livePulseTimer: null,
+        countdownTimer: null,
+        outcomeTimer: null,
+      };
+
+      const SIM = {
+        livePriceStart: 71200,
+        livePriceEnd: 74902,
+        liveDurationMs: 20000,
+        countdownStart: 20, // seconds
+      };
+
+      // ─────────────────────────────────────────────────────────
+      // View switching
+      // ─────────────────────────────────────────────────────────
+      const views = ['home', 'asset', 'live', 'outcome', 'trades', 'account'];
+
+      function showView(name) {
+        views.forEach(v => {
+          document.getElementById(`view-${v}`).classList.toggle('hidden', v !== name);
+        });
+        state.currentView = name;
+        updateActiveTab();
+        updateTrace();
+      }
+
+      function updateActiveTab() {
+        const v = state.currentView;
+        // Signals tab: covers home, asset, live, outcome
+        const signalsActive = ['home', 'asset', 'live', 'outcome'].includes(v);
+        document.getElementById('tab-signals').classList.toggle('active', signalsActive);
+        document.getElementById('tab-trades').classList.toggle('active', v === 'trades');
+        document.getElementById('tab-account').classList.toggle('active', v === 'account');
+      }
+
+      function switchTab(tab) {
+        if (tab === 'home') {
+          // Signals tab: go back to whatever current trade view is appropriate
+          if (state.tradePhase === 'live') showView('live');
+          else if (state.tradePhase === 'closed') showView('outcome');
+          else showView('home');
+        } else if (tab === 'trades') {
+          renderTrades();
+          showView('trades');
+        } else if (tab === 'account') {
+          showView('account');
+        }
+      }
+
+      function updateTrace() {
+        document.getElementById('trace-view').textContent = state.currentView;
+        document.getElementById('trace-approved').textContent = state.approved ? 'yes' : 'no';
+        document.getElementById('trace-phase').textContent = state.approved ? state.tradePhase : '—';
+        document.getElementById('trace-coach').textContent = state.coachSeen ? 'yes' : 'no';
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Navigation
+      // ─────────────────────────────────────────────────────────
+      function goHome() {
+        if (state.tradePhase === 'live') {
+          showView('live');
+        } else if (state.tradePhase === 'closed') {
+          showView('outcome');
+        } else {
+          showView('home');
+        }
+      }
+
+      function goToAsset(symbol) {
+        // Only BTC is interactive in this prototype
+        if (symbol !== 'btc') return;
+        showView('asset');
+        // Show coachmark on first visit
+        const coach = document.getElementById('approveCoach');
+        if (!state.coachSeen) {
+          positionCoachmark();
+          coach.classList.remove('hidden');
+          coach.onclick = dismissCoach;
+        } else {
+          coach.classList.add('hidden');
+        }
+      }
+
+      function positionCoachmark() {
+        const coach = document.getElementById('approveCoach');
+        const proposal = document.getElementById('proposalCard');
+        if (!coach || !proposal) return;
+        // Anchor coachmark above the action buttons
+        const actions = document.getElementById('proposalActions');
+        if (!actions) return;
+        const canvasRect = document.getElementById('appCanvas').getBoundingClientRect();
+        const actionsRect = actions.getBoundingClientRect();
+        coach.style.left = '14px';
+        coach.style.top = (actionsRect.top - canvasRect.top - 50) + 'px';
+      }
+
+      function dismissCoach() {
+        state.coachSeen = true;
+        document.getElementById('approveCoach').classList.add('hidden');
+        updateTrace();
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Trade flow
+      // ─────────────────────────────────────────────────────────
+      function approveTrade() {
+        dismissCoach();
+        state.approved = true;
+        state.tradePhase = 'live';
+        showToast('Trade executed (demo)');
+        // Reset live PnL display
+        document.getElementById('livePnlPct').textContent = '+0.0%';
+        document.getElementById('livePnlDollar').textContent = '+$0 profit';
+        document.getElementById('livePrice').textContent = '$71,200';
+        document.getElementById('openDuration').textContent = 'just now';
+        document.getElementById('countdown').textContent = SIM.countdownStart + 's';
+        showView('live');
+        startLiveSimulation();
+      }
+
+      function declineTrade() {
+        dismissCoach();
+        showToast('Declined (demo)');
+        setTimeout(goHome, 600);
+      }
+
+      function startLiveSimulation() {
+        const start = Date.now();
+        const dollarStart = 0;
+        const dollarEnd = 52;
+
+        clearInterval(state.livePulseTimer);
+        clearInterval(state.countdownTimer);
+        clearTimeout(state.outcomeTimer);
+
+        state.livePulseTimer = setInterval(() => {
+          const elapsed = Date.now() - start;
+          const t = Math.min(1, elapsed / SIM.liveDurationMs);
+          // Ease-in-out
+          const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          // Add small jitter for "live" feel
+          const jitter = (Math.random() - 0.5) * 0.3;
+          const price = SIM.livePriceStart + (SIM.livePriceEnd - SIM.livePriceStart) * eased + jitter * 100;
+          const pctFromEntry = ((price - SIM.livePriceStart) / SIM.livePriceStart) * 100;
+          const dollar = pctFromEntry * 10; // 10x because $1000 position size
+
+          document.getElementById('livePrice').textContent = '$' + Math.round(price).toLocaleString();
+          document.getElementById('livePnlPct').textContent = (pctFromEntry >= 0 ? '+' : '') + pctFromEntry.toFixed(2) + '%';
+          document.getElementById('livePnlDollar').textContent =
+            (dollar >= 0 ? '+' : '-') + '$' + Math.abs(dollar).toFixed(0) + ' ' + (dollar >= 0 ? 'profit' : 'loss');
+
+          // Duration label
+          const secs = Math.floor(elapsed / 1000);
+          if (secs < 60) document.getElementById('openDuration').textContent = secs + 's';
+          else document.getElementById('openDuration').textContent = Math.floor(secs / 60) + 'm';
+        }, 200);
+
+        state.countdownTimer = setInterval(() => {
+          const elapsed = Date.now() - start;
+          const remaining = Math.max(0, Math.ceil((SIM.liveDurationMs - elapsed) / 1000));
+          document.getElementById('countdown').textContent = remaining + 's';
+        }, 500);
+
+        state.outcomeTimer = setTimeout(() => {
+          clearInterval(state.livePulseTimer);
+          clearInterval(state.countdownTimer);
+          state.tradePhase = 'closed';
+          showToast('Trade closed (demo)');
+          showView('outcome');
+        }, SIM.liveDurationMs);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Trades tab content
+      // ─────────────────────────────────────────────────────────
+      function renderTrades() {
+        const empty = document.getElementById('tradesEmpty');
+        const list = document.getElementById('tradesList');
+        const count = document.getElementById('tradesCount');
+        if (!state.approved) {
+          empty.classList.remove('hidden');
+          list.classList.add('hidden');
+          count.textContent = '0 trades';
+          return;
+        }
+        empty.classList.add('hidden');
+        list.classList.remove('hidden');
+        if (state.tradePhase === 'live') {
+          count.textContent = '1 open';
+          list.innerHTML = `
+            <div class="v-card mint no-press" style="cursor: default;">
+              <div class="v-row" style="margin-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="asset-dot btc">B</span>
+                  <div>
+                    <div class="heading" style="font-size: 14px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                    <div style="font-size: 10.5px; color: var(--gray-600);">Open · live</div>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="mono pnl-pos" style="font-size: 14px;">live</div>
+                  <div style="font-size: 10px; color: var(--gray-600);">Watch on Signals tab</div>
+                </div>
+              </div>
+            </div>`;
+        } else if (state.tradePhase === 'closed') {
+          count.textContent = '1 closed';
+          list.innerHTML = `
+            <div class="v-card peach no-press" style="cursor: default;">
+              <div class="v-row" style="margin-bottom: 4px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span class="asset-dot btc">B</span>
+                  <div>
+                    <div class="heading" style="font-size: 14px;">BTC · Closed</div>
+                    <div style="font-size: 10.5px; color: var(--gray-600);">Held 7 days</div>
+                  </div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="mono pnl-pos" style="font-size: 14px;">+5.2%</div>
+                  <div class="mono pnl-pos" style="font-size: 11px;">+$52 profit</div>
+                </div>
+              </div>
+              <div class="mono" style="font-size: 10.5px; color: var(--gray-600);">
+                $71,200 → $74,902
+              </div>
+            </div>`;
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Subscribe sheet
+      // ─────────────────────────────────────────────────────────
+      function showSubscribeSheet() {
+        document.getElementById('subscribeSheet').classList.remove('hidden');
+      }
+      function hideSubscribeSheet() {
+        document.getElementById('subscribeSheet').classList.add('hidden');
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Toast
+      // ─────────────────────────────────────────────────────────
+      let toastTimer = null;
+      function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+      }
+
+      // ─────────────────────────────────────────────────────────
+      // Reset
+      // ─────────────────────────────────────────────────────────
+      function resetDemo() {
+        clearInterval(state.livePulseTimer);
+        clearInterval(state.countdownTimer);
+        clearTimeout(state.outcomeTimer);
+        state.currentView = 'home';
+        state.approved = false;
+        state.tradePhase = 'pending';
+        state.coachSeen = false;
+        document.getElementById('approveCoach').classList.add('hidden');
+        hideSubscribeSheet();
+        showView('home');
+      }
+
+      // Init
+      updateTrace();
+      updateActiveTab();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Free flow: demo mode + explainer — 3 options</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;900&family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --white: #fff;
+        --black: #000;
+        --cream-base: #f5f1e8;
+        --ink: #0a0a0a;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #475569;
+        --gray-700: #374151;
+        --gray-900: #0f172a;
+        --green-primary: #0fe68c;
+        --green-dark: #059669;
+        --red-primary: #ef4444;
+        --red-dark: #b91c1c;
+        --mint-50: #f0fdf4;
+        --peach-50: #fff7ed;
+        --amber-50: #fffbeb;
+        --amber-100: #fef3c7;
+        --amber-300: #fcd34d;
+        --amber-700: #92400e;
+        --blue-50: #eff6ff;
+        --blue-600: #2563eb;
+        --shadow-sm: 3px 3px 0 var(--black);
+        --shadow-md: 4px 4px 0 var(--black);
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #eee8da;
+        color: var(--gray-900);
+      }
+      .stage { padding: 36px 24px 80px; max-width: 1480px; margin: 0 auto; }
+      h1 {
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0 0 8px; font-size: 30px; letter-spacing: -0.01em;
+      }
+      .stage-sub { color: var(--gray-700); margin: 0 0 8px; font-size: 14px; max-width: 980px; line-height: 1.55; }
+      .stage-context { color: var(--gray-500); margin: 0 0 28px; font-size: 13px; max-width: 980px; line-height: 1.55; font-style: italic; }
+
+      .compare {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        align-items: start;
+      }
+      @media (max-width: 1240px) { .compare { grid-template-columns: 1fr; gap: 40px; } }
+
+      .col {
+        background: var(--cream-base);
+        border: 2px solid var(--black);
+        border-radius: 16px;
+        padding: 20px 18px 22px;
+        box-shadow: var(--shadow-md);
+      }
+      .col h2 {
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+        font-weight: 700; font-size: 18px; margin: 0 0 4px; letter-spacing: -0.01em;
+      }
+      .col .col-sub { color: var(--gray-600); font-size: 12.5px; margin: 0 0 16px; line-height: 1.5; min-height: 36px; }
+
+      .phone {
+        width: 100%;
+        max-width: 290px;
+        margin: 0 auto 16px;
+        background: var(--cream-base);
+        border: 3px solid var(--black);
+        border-radius: 28px;
+        padding: 12px 10px 12px;
+        box-shadow: var(--shadow-md);
+      }
+      .phone-header {
+        height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px; color: var(--gray-500); margin-bottom: 6px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .screen {
+        background: var(--cream-base);
+        border-radius: 18px;
+        padding: 14px 12px;
+        margin-bottom: 12px;
+        position: relative;
+      }
+      .screen + .screen { border-top: 2px dashed var(--gray-300); padding-top: 14px; }
+      .screen-tag {
+        position: absolute; top: -10px; left: 12px;
+        background: var(--black); color: var(--cream-base);
+        padding: 2px 8px; border-radius: 6px;
+        font-family: "JetBrains Mono", monospace; font-size: 9px; letter-spacing: 0.04em;
+      }
+
+      /* In-screen UI primitives (lo-fi but Vela-tinted) */
+      .vbanner {
+        background: var(--amber-100);
+        border: 1.5px solid var(--amber-300);
+        border-radius: 8px;
+        padding: 6px 8px;
+        font-size: 10px;
+        color: var(--amber-700);
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex; align-items: center; gap: 6px;
+      }
+      .vcard {
+        background: var(--white);
+        border: 1.5px solid var(--black);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 10.5px;
+        margin-bottom: 6px;
+        box-shadow: 1.5px 1.5px 0 var(--black);
+      }
+      .vcard.green { background: var(--mint-50); }
+      .vcard.peach { background: var(--peach-50); }
+      .vcard.locked { background: var(--gray-100); color: var(--gray-500); }
+      .pill {
+        display: inline-block; padding: 1px 7px; border-radius: 4px;
+        font-size: 9px; font-weight: 700; letter-spacing: 0.03em;
+        border: 1.5px solid var(--black);
+      }
+      .pill.long { background: var(--green-primary); color: var(--black); }
+      .pill.short { background: var(--red-primary); color: var(--white); }
+      .pill.demo { background: var(--amber-300); color: var(--ink); }
+      .pill.coach { background: var(--blue-50); color: var(--blue-600); border-color: var(--blue-600); }
+      .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      .pnl-pos { color: var(--green-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+      .pnl-neg { color: var(--red-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+      .mono { font-family: "JetBrains Mono", monospace; }
+      .heading { font-family: "Instrument Sans", "Space Grotesk", sans-serif; font-weight: 700; }
+      .nav-mock {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+        border-top: 2px solid var(--black);
+        margin: 8px -12px -14px;
+        padding: 6px 10px;
+        font-size: 9px; color: var(--gray-500); text-align: center;
+        background: var(--white);
+        border-radius: 0 0 18px 18px;
+      }
+      .nav-mock .active { color: var(--ink); font-weight: 700; }
+
+      .cta-btn {
+        background: var(--green-primary);
+        border: 2px solid var(--black);
+        border-radius: 8px;
+        padding: 6px 0;
+        text-align: center;
+        font-weight: 700; font-size: 11px;
+        box-shadow: 1.5px 1.5px 0 var(--black);
+        margin-top: 6px;
+      }
+      .cta-btn.ghost { background: transparent; }
+      .sticky-cta {
+        position: relative;
+        background: var(--ink); color: var(--cream-base);
+        border-radius: 8px;
+        padding: 6px 8px;
+        font-size: 10px;
+        margin-top: 6px;
+        display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      }
+      .sticky-cta strong { color: var(--green-primary); }
+
+      .narrator {
+        color: var(--gray-700); font-size: 10.5px; line-height: 1.45;
+        margin-top: 6px; padding-top: 6px;
+        border-top: 1px solid var(--gray-300);
+        font-style: italic;
+      }
+      .narrator strong { color: var(--ink); font-style: normal; }
+
+      .coachmark {
+        position: absolute;
+        background: var(--ink); color: var(--cream-base);
+        padding: 6px 8px; border-radius: 8px; font-size: 10px;
+        max-width: 70%;
+        box-shadow: 2px 2px 0 var(--green-primary);
+      }
+      .coachmark::after {
+        content: ""; position: absolute; bottom: -6px; left: 18px;
+        border-left: 6px solid transparent; border-right: 6px solid transparent;
+        border-top: 6px solid var(--ink);
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 14px 0 6px;
+      }
+      .meta .box {
+        background: var(--white);
+        border: 1.5px solid var(--black);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
+      .meta .box h4 {
+        margin: 0 0 4px; font-size: 10px; letter-spacing: 0.05em;
+        text-transform: uppercase; color: var(--gray-600);
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+      }
+      .meta .box ul { margin: 0; padding-left: 14px; }
+      .meta .box li + li { margin-top: 2px; }
+
+      .footnotes {
+        font-size: 11.5px; line-height: 1.55; color: var(--gray-700);
+        background: var(--white); border: 2px solid var(--black);
+        border-radius: 10px; padding: 10px 12px; margin-top: 4px;
+      }
+      .footnotes h4 {
+        margin: 0 0 4px; font-size: 10px; letter-spacing: 0.05em;
+        text-transform: uppercase; color: var(--gray-600);
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+      }
+      .footnotes p { margin: 0; }
+
+      .rec {
+        margin-top: 36px;
+        background: var(--ink);
+        color: var(--cream-base);
+        border: 2px solid var(--black);
+        border-radius: 14px;
+        padding: 22px 24px;
+        box-shadow: var(--shadow-md);
+      }
+      .rec h3 {
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0 0 8px; font-size: 18px;
+      }
+      .rec h3 .pill-rec {
+        background: var(--green-primary); color: var(--ink);
+        font-size: 11px; padding: 3px 8px; border-radius: 6px; margin-left: 8px;
+        vertical-align: middle;
+      }
+      .rec p { margin: 0 0 8px; line-height: 1.55; font-size: 13.5px; }
+      .rec ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.55; }
+      .rec a { color: var(--green-primary); }
+      .questions {
+        margin-top: 16px;
+        background: var(--cream-base);
+        border: 2px solid var(--black);
+        border-radius: 12px;
+        padding: 14px 18px;
+      }
+      .questions h4 {
+        margin: 0 0 6px; font-size: 12px; letter-spacing: 0.04em;
+        text-transform: uppercase; color: var(--gray-600);
+        font-family: "Instrument Sans", "Space Grotesk", sans-serif;
+      }
+      .questions ol { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <h1>Free flow: demo mode + explainer</h1>
+      <p class="stage-sub">
+        Three holistic options for what a free user sees after declining the trial. Each combines
+        the demo experience (Q2) with where the system-triggered model gets explained (Q3, narrowed
+        to the free flow).
+      </p>
+      <p class="stage-context">
+        Context: Lota's onboarding call (2026-05-05) — current free dashboard is "useless" because
+        signals are locked, trading is gated, and the product can't demonstrate what it does.
+        Decision so far: free still exists as a tier, but the free dashboard becomes a demo.
+      </p>
+
+      <div class="compare">
+
+        <!-- ─────────────────────────────────────────────────────────
+             OPTION 1 — WALKTHROUGH-ONLY
+             ───────────────────────────────────────────────────────── -->
+        <div class="col">
+          <h2>Option 1 · Walkthrough-only</h2>
+          <p class="col-sub">
+            Static slides with annotated screenshots. Tap-through. No real interaction.
+          </p>
+
+          <div class="phone">
+            <div class="phone-header">9:41 · DEMO · 100%</div>
+
+            <div class="screen">
+              <span class="screen-tag">slide 1 / 5</span>
+              <p class="heading" style="font-size: 14px; margin: 8px 0 4px;">How Vela works</p>
+              <p style="font-size: 11px; margin: 0 0 8px; color: var(--gray-600); line-height: 1.5;">
+                A 60-second walkthrough so you know what you're paying for.
+              </p>
+              <div class="vcard" style="text-align: center; padding: 12px;">
+                <span style="font-size: 32px;">📈</span>
+                <p style="font-size: 10px; margin: 4px 0 0; color: var(--gray-600);">illustration</p>
+              </div>
+              <div class="cta-btn">Start the tour</div>
+              <p style="font-size: 9px; text-align: center; margin: 4px 0 0; color: var(--gray-500);">No signup. No real money.</p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">slide 2 / 5</span>
+              <p class="heading" style="font-size: 13px; margin: 6px 0 4px;">Vela watches markets 24/7</p>
+              <div class="vcard" style="background: var(--blue-50);">
+                <p style="margin: 0; font-size: 10px; color: var(--gray-700);">[ screenshot: signal feed with 3 cards ]</p>
+              </div>
+              <p class="narrator">
+                <strong>Vela</strong> scans crypto, equities, and commodities every 4 hours. When the
+                model spots a high-conviction setup, it sends a signal.
+              </p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">slide 3 / 5</span>
+              <p class="heading" style="font-size: 13px; margin: 6px 0 4px;">A signal arrives</p>
+              <div class="vcard green">
+                <div class="row">
+                  <span><strong>BTC</strong> · <span class="pill long">Long</span></span>
+                  <span class="mono" style="font-size: 11px;">$71,200</span>
+                </div>
+                <p style="margin: 4px 0 0; font-size: 9.5px; color: var(--gray-600);">
+                  Momentum lining up with strong news flow.
+                </p>
+              </div>
+              <p class="narrator">
+                You'll get a notification: email, push, or Telegram.
+              </p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">slide 4 / 5</span>
+              <p class="heading" style="font-size: 13px; margin: 6px 0 4px;">You approve, or it runs</p>
+              <div class="vcard">
+                <div class="row">
+                  <span style="font-size: 10px;">Semi-auto: tap to approve</span>
+                  <span class="pill" style="background: var(--white);">Default</span>
+                </div>
+              </div>
+              <div class="vcard">
+                <div class="row">
+                  <span style="font-size: 10px;">Full auto: it trades for you</span>
+                  <span class="pill" style="background: var(--green-primary);">Premium</span>
+                </div>
+              </div>
+              <p class="narrator">
+                You don't trade manually here. <strong>Vela executes</strong> when your wallet's funded.
+              </p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">slide 5 / 5</span>
+              <p class="heading" style="font-size: 13px; margin: 6px 0 4px;">A trade plays out</p>
+              <div class="vcard peach">
+                <div class="row">
+                  <span><strong>BTC</strong> · Closed</span>
+                  <span class="pnl-pos" style="font-size: 11px;">+5.2%</span>
+                </div>
+                <p style="margin: 4px 0 0; font-size: 9.5px; color: var(--gray-600);">
+                  Entry $71,200 → Exit $74,902
+                </p>
+              </div>
+              <div class="cta-btn">Subscribe to start trading</div>
+              <p style="font-size: 9px; text-align: center; margin: 4px 0 0; color: var(--gray-500);">7 days free, then $X/month</p>
+            </div>
+          </div>
+
+          <div class="meta">
+            <div class="box">
+              <h4>Pros</h4>
+              <ul>
+                <li>Cheap to build (~1-2 days)</li>
+                <li>Hard to break, no fragile mocks</li>
+                <li>Easy to update copy / illustrations</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h4>Cons</h4>
+              <ul>
+                <li>Feels like a marketing page, not a product</li>
+                <li>No "try it" feel</li>
+                <li>Can't browse around to assets they care about</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="footnotes">
+            <h4>Where the model gets explained</h4>
+            <p>Inline in slide 4 ("You approve, or it runs"). No coachmarks. No banner. The whole experience is the explainer.</p>
+          </div>
+        </div>
+
+
+        <!-- ─────────────────────────────────────────────────────────
+             OPTION 2 — INTERACTIVE MOCK + BANNER
+             ───────────────────────────────────────────────────────── -->
+        <div class="col">
+          <h2>Option 2 · Interactive mock + banner</h2>
+          <p class="col-sub">
+            Drops user into a fake home page. Real-feeling product. Persistent demo banner up top.
+          </p>
+
+          <div class="phone">
+            <div class="phone-header">9:41 · DEMO · 100%</div>
+
+            <div class="screen">
+              <span class="screen-tag">screen 1 — home (demo)</span>
+              <div class="vbanner">
+                <span class="pill demo">DEMO</span>
+                <span style="font-weight: 600;">This is what Vela does for paid users.</span>
+              </div>
+              <p class="heading" style="font-size: 12px; margin: 8px 0 4px;">Today's signals</p>
+              <div class="vcard green">
+                <div class="row">
+                  <span><strong>BTC</strong> · <span class="pill long">Long</span></span>
+                  <span class="pnl-pos">+1.4%</span>
+                </div>
+                <p style="margin: 3px 0 0; font-size: 9.5px; color: var(--gray-600);">Momentum + strong news flow</p>
+              </div>
+              <div class="vcard">
+                <div class="row">
+                  <span><strong>AAPL</strong> · <span class="pill" style="background: var(--gray-200);">Wait</span></span>
+                  <span class="mono" style="font-size: 10px;">$182.40</span>
+                </div>
+              </div>
+              <div class="vcard green">
+                <div class="row">
+                  <span><strong>HYPE</strong> · <span class="pill long">Long</span></span>
+                  <span class="pnl-pos">+0.8%</span>
+                </div>
+              </div>
+              <div class="sticky-cta">
+                <span>Like what you see?</span>
+                <strong>Subscribe →</strong>
+              </div>
+              <div class="nav-mock">
+                <span class="active">Signals</span><span>Trades</span><span>Account</span>
+              </div>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">screen 2 — asset detail (tapped BTC)</span>
+              <div class="vbanner">
+                <span class="pill demo">DEMO</span>
+                <span style="font-weight: 600;">Tap "Approve" to see what happens.</span>
+              </div>
+              <p class="heading" style="font-size: 13px; margin: 6px 0 4px;">BTC <span class="pill long" style="font-size: 9px;">Long</span></p>
+              <div class="vcard green" style="padding: 10px;">
+                <p style="margin: 0; font-size: 10.5px;"><strong>Pending proposal</strong></p>
+                <p style="margin: 4px 0 0; font-size: 10px;">Entry $71,200 · Stop $68,500 · Size $1,000</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+                  <div style="background: var(--green-primary); border: 1.5px solid var(--black); border-radius: 6px; padding: 5px; text-align: center; font-weight: 700; font-size: 10px;">Approve</div>
+                  <div style="background: var(--white); border: 1.5px solid var(--black); border-radius: 6px; padding: 5px; text-align: center; font-size: 10px;">Decline</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">screen 3 — approved → live position</span>
+              <div class="vbanner">
+                <span class="pill demo">DEMO</span>
+                <span style="font-weight: 600;">Vela executed. Watch it play out.</span>
+              </div>
+              <div class="vcard green">
+                <div class="row">
+                  <span><strong>BTC</strong> · <span class="pill long">Long</span></span>
+                  <span class="pnl-pos">+2.1%</span>
+                </div>
+                <p style="margin: 4px 0 0; font-size: 9.5px; color: var(--gray-600);">Open · Entry $71,200 → Now $72,695</p>
+              </div>
+              <p style="font-size: 10px; color: var(--gray-700); margin: 4px 0;">
+                <em>(Outcome animates over 30 seconds.)</em>
+              </p>
+              <div class="vcard peach">
+                <div class="row">
+                  <span><strong>BTC</strong> · Closed</span>
+                  <span class="pnl-pos">+5.2%</span>
+                </div>
+              </div>
+              <div class="sticky-cta">
+                <span>Try it for real</span>
+                <strong>Subscribe →</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="meta">
+            <div class="box">
+              <h4>Pros</h4>
+              <ul>
+                <li>Feels like the actual product</li>
+                <li>User can poke around, get curious</li>
+                <li>Subscribe CTA contextual + persistent</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h4>Cons</h4>
+              <ul>
+                <li>~3-5 days to build</li>
+                <li>New "demo data layer" to maintain when product changes</li>
+                <li>Banner can feel like ad-noise</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="footnotes">
+            <h4>Where the model gets explained</h4>
+            <p>In the banner copy at top of each screen + in the sticky CTA. No dedicated explainer slides. Risk: a user who skims past the banner never learns the model. Counter: the proposal-approve flow is itself a working explanation.</p>
+          </div>
+        </div>
+
+
+        <!-- ─────────────────────────────────────────────────────────
+             OPTION 3 — HYBRID (RECOMMENDED)
+             ───────────────────────────────────────────────────────── -->
+        <div class="col" style="border-color: var(--green-dark); background: var(--mint-50);">
+          <h2>Option 3 · Hybrid <span class="pill" style="background: var(--green-primary); margin-left: 6px;">Recommended</span></h2>
+          <p class="col-sub">
+            Short explainer first (3 cards). Then drops into Option 2's interactive mock with a first-tap coachmark.
+          </p>
+
+          <div class="phone">
+            <div class="phone-header">9:41 · DEMO · 100%</div>
+
+            <div class="screen">
+              <span class="screen-tag">card 1 / 3 (swipe)</span>
+              <p class="heading" style="font-size: 13px; margin: 4px 0 4px;">Vela watches markets</p>
+              <div class="vcard" style="background: var(--blue-50); padding: 16px; text-align: center;">
+                <span style="font-size: 28px;">👁️</span>
+              </div>
+              <p style="font-size: 10.5px; margin: 6px 0 0; color: var(--gray-700); line-height: 1.5;">
+                We scan crypto, equities, and commodities every 4 hours and surface what's actually
+                worth your attention.
+              </p>
+              <div class="row" style="margin-top: 8px; justify-content: center; gap: 4px;">
+                <span style="width: 14px; height: 4px; background: var(--ink); border-radius: 2px;"></span>
+                <span style="width: 4px; height: 4px; background: var(--gray-300); border-radius: 2px;"></span>
+                <span style="width: 4px; height: 4px; background: var(--gray-300); border-radius: 2px;"></span>
+              </div>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">card 2 / 3</span>
+              <p class="heading" style="font-size: 13px; margin: 4px 0 4px;">You approve, or Vela runs</p>
+              <div class="vcard"><strong>Semi-auto.</strong> You see each signal and tap Approve.</div>
+              <div class="vcard"><strong>Full-auto.</strong> Vela trades for you, 24/7.</div>
+              <p style="font-size: 10.5px; margin: 6px 0 0; color: var(--gray-700); line-height: 1.5;">
+                You don't trade manually here. Vela executes when your wallet's funded.
+              </p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">card 3 / 3</span>
+              <p class="heading" style="font-size: 13px; margin: 4px 0 4px;">Ready to see it?</p>
+              <p style="font-size: 10.5px; margin: 4px 0 0; color: var(--gray-700); line-height: 1.5;">
+                Next, you'll land on a live demo of the product. Numbers are simulated, but the flow
+                is real.
+              </p>
+              <div class="cta-btn" style="margin-top: 10px;">See the demo</div>
+              <p style="font-size: 9px; text-align: center; margin: 4px 0 0; color: var(--gray-500);">No signup needed</p>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">screen 4 — demo home (with coachmark)</span>
+              <div class="vbanner">
+                <span class="pill demo">DEMO</span>
+                <span style="font-weight: 600;">Simulated data. Real flow.</span>
+              </div>
+              <p class="heading" style="font-size: 12px; margin: 6px 0 4px;">Today's signals</p>
+              <div style="position: relative;">
+                <div class="vcard green" style="border-color: var(--blue-600); border-width: 2px;">
+                  <div class="row">
+                    <span><strong>BTC</strong> · <span class="pill long">Long</span></span>
+                    <span class="pnl-pos">+1.4%</span>
+                  </div>
+                </div>
+                <div class="coachmark" style="left: 6px; bottom: -34px;">
+                  Tap any signal to see the trade flow →
+                </div>
+              </div>
+              <div style="height: 30px;"></div>
+              <div class="vcard">
+                <div class="row">
+                  <span><strong>AAPL</strong> · <span class="pill" style="background: var(--gray-200);">Wait</span></span>
+                  <span class="mono" style="font-size: 10px;">$182.40</span>
+                </div>
+              </div>
+              <div class="sticky-cta">
+                <span>Try it for real</span>
+                <strong>Subscribe →</strong>
+              </div>
+            </div>
+
+            <div class="screen">
+              <span class="screen-tag">screen 5 — same as Option 2 from here</span>
+              <p style="font-size: 10.5px; color: var(--gray-700); line-height: 1.5; margin: 6px 0;">
+                Asset detail → tap Approve → fake position → fake outcome animates → sticky subscribe
+                CTA throughout.
+              </p>
+              <p style="font-size: 10.5px; color: var(--gray-700); line-height: 1.5; margin: 4px 0;">
+                Coachmark fires <strong>once</strong> on first signal-tap, then never again.
+              </p>
+            </div>
+          </div>
+
+          <div class="meta">
+            <div class="box">
+              <h4>Pros</h4>
+              <ul>
+                <li>Up-front model context for skimmers</li>
+                <li>Real product feel after</li>
+                <li>Coachmark is a one-shot nudge, not noise</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h4>Cons</h4>
+              <ul>
+                <li>~4-6 days to build (Option 2 + 1-2 days)</li>
+                <li>3-card explainer adds a step before the "fun part"</li>
+                <li>Skip-the-explainer button needed for returning users</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="footnotes">
+            <h4>Where the model gets explained</h4>
+            <p>Pre-demo carousel covers the model in 3 cards (signals, approval modes, automation). One-shot coachmark on first signal-tap reinforces. Banner stays as a passive reminder.</p>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ─────────────────────────────────────────────────────────
+           RECOMMENDATION + RATIONALE
+           ───────────────────────────────────────────────────────── -->
+      <div class="rec">
+        <h3>Recommendation: Option 3 · Hybrid <span class="pill-rec">my pick</span></h3>
+        <p>
+          Lota's frustration on the call wasn't only that the free dashboard was useless. It was
+          that he didn't know what the product <em>did</em>. A walkthrough alone (Option 1) tells
+          but doesn't show. An interactive mock alone (Option 2) shows but risks the user wandering
+          past the banner without registering the model. Hybrid front-loads enough context that the
+          mock makes sense, then lets the product speak for itself.
+        </p>
+        <ul>
+          <li><strong>Pre-demo carousel</strong> kept short — 3 cards max, swipeable, "skip" link visible. Don't bloat it into onboarding 2.0.</li>
+          <li><strong>Interactive mock</strong> reuses real Vela components with a hardcoded fixture layer (think: <code>useDemoData()</code> hook). Same code path as the real app, different data source.</li>
+          <li><strong>Coachmark</strong> fires only on first signal-tap. Stored in localStorage. Never blocks navigation.</li>
+          <li><strong>Sticky subscribe CTA</strong> is the only persistent up-sell. Banner is informational, not a CTA.</li>
+        </ul>
+      </div>
+
+      <div class="questions">
+        <h4>Open questions for you</h4>
+        <ol>
+          <li>
+            For the interactive mock: should "Approve" lead to a fake position that <em>always wins</em>
+            (best foot forward, but feels manipulative if the user notices) or to a randomized
+            outcome from a curated set of past wins/losses (more honest, more code)?
+          </li>
+          <li>
+            Do you want the demo data to <strong>reset on every visit</strong> (always fresh, always
+            shows the same scripted flow) or to <strong>persist for the session</strong> (user can
+            close and come back, position is still there)?
+          </li>
+          <li>
+            Coachmark wording — <em>"Tap any signal to see the trade flow"</em> reads OK but
+            arguably patronizing for a tech-fluent user like Lota. Should it be drier:
+            <em>"Try tapping a signal"</em>?
+          </li>
+          <li>
+            Banner color — amber feels like a warning. Should the demo banner be a calmer tone
+            (cream-on-ink, or mint), so it reads as informational rather than cautionary?
+          </li>
+        </ol>
+      </div>
+    </div>
+  </body>
+</html>

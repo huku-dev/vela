@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Signals — Wireframe</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #F5F0E8;
+      font-family: 'Inter', -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      align-items: center;
+      padding: 40px 24px;
+    }
+
+    .panel {
+      width: 375px;
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    /* Header row */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #0A0A0A;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #0FE68C;
+    }
+
+    .see-all {
+      font-size: 12px;
+      color: #0FE68C;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* Column headers — BEFORE */
+    .col-headers {
+      display: flex;
+      justify-content: flex-end;
+      gap: 32px;
+      padding: 0 0 6px;
+      border-bottom: 1px solid #F0EDE8;
+      margin-bottom: 4px;
+    }
+
+    .col-header {
+      font-size: 10px;
+      font-weight: 600;
+      color: #999;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      width: 56px;
+      text-align: center;
+    }
+
+    /* Signal row */
+    .signal-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #F5F2EE;
+    }
+    .signal-row:last-child { border-bottom: none; }
+
+    .asset-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #F0EDE8;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: #666;
+      margin-right: 10px;
+    }
+
+    .asset-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .asset-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0A0A0A;
+    }
+
+    .asset-sub {
+      font-size: 11px;
+      color: #999;
+      margin-top: 1px;
+    }
+
+    /* Before: two value columns */
+    .signal-cols {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .signal-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 10px;
+      border-radius: 6px;
+      width: 52px;
+      text-align: center;
+    }
+    .badge-buy { background: #E8FAF3; color: #00A86B; }
+    .badge-sell { background: #FDECEA; color: #D32F2F; }
+
+    .price-change {
+      font-size: 13px;
+      font-weight: 600;
+      width: 52px;
+      text-align: right;
+    }
+    .negative { color: #D32F2F; }
+    .positive { color: #00A86B; }
+
+    /* After: single badge column, sub carries perf */
+    .signal-col-single {
+      display: flex;
+      align-items: center;
+    }
+
+    .asset-sub-perf {
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .perf-up { color: #00A86B; }
+    .perf-down { color: #D32F2F; }
+    .perf-neutral { color: #999; }
+
+    /* Divider between panels */
+    .divider {
+      width: 1px;
+      background: #E0DBD3;
+      align-self: stretch;
+      margin: 0 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BEFORE -->
+  <div class="panel">
+    <div class="label">Before</div>
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="live-dot"></div>
+          Live Signals
+        </div>
+        <a class="see-all" href="#">See all signals →</a>
+      </div>
+
+      <div class="col-headers">
+        <div class="col-header">Signal</div>
+        <div class="col-header">Last 24h</div>
+      </div>
+
+      <!-- Gold -->
+      <div class="signal-row">
+        <div class="asset-icon">🏅</div>
+        <div class="asset-info">
+          <div class="asset-name">Gold</div>
+          <div class="asset-sub">Fired 20m ago</div>
+        </div>
+        <div class="signal-cols">
+          <div class="signal-badge badge-sell">SELL</div>
+          <div class="price-change negative">-1.1%</div>
+        </div>
+      </div>
+
+      <!-- NVIDIA -->
+      <div class="signal-row">
+        <div class="asset-icon">🟩</div>
+        <div class="asset-info">
+          <div class="asset-name">NVIDIA</div>
+          <div class="asset-sub">Fired 2d ago</div>
+        </div>
+        <div class="signal-cols">
+          <div class="signal-badge badge-buy">BUY</div>
+          <div class="price-change negative">-1.4%</div>
+        </div>
+      </div>
+
+      <!-- Bitcoin -->
+      <div class="signal-row">
+        <div class="asset-icon">₿</div>
+        <div class="asset-info">
+          <div class="asset-name">Bitcoin</div>
+          <div class="asset-sub">Fired 2d ago</div>
+        </div>
+        <div class="signal-cols">
+          <div class="signal-badge badge-buy">BUY</div>
+          <div class="price-change negative">-1.1%</div>
+        </div>
+      </div>
+
+      <!-- SK Hynix -->
+      <div class="signal-row">
+        <div class="asset-icon">SK</div>
+        <div class="asset-info">
+          <div class="asset-name">SK Hynix</div>
+          <div class="asset-sub">Fired 3d ago</div>
+        </div>
+        <div class="signal-cols">
+          <div class="signal-badge badge-buy">BUY</div>
+          <div class="price-change positive">+10.9%</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="panel">
+    <div class="label">After</div>
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">
+          <div class="live-dot"></div>
+          Live Signals
+        </div>
+        <a class="see-all" href="#">See all signals →</a>
+      </div>
+
+      <!-- No col headers — single SIGNAL column -->
+      <div class="col-headers">
+        <div class="col-header">Signal</div>
+      </div>
+
+      <!-- Gold — SELL, fired 20m ago → suppress perf (too new) -->
+      <div class="signal-row">
+        <div class="asset-icon">🏅</div>
+        <div class="asset-info">
+          <div class="asset-name">Gold</div>
+          <div class="asset-sub perf-neutral">Fired 20m ago</div>
+        </div>
+        <div class="signal-col-single">
+          <div class="signal-badge badge-sell">SELL</div>
+        </div>
+      </div>
+
+      <!-- Oil — SELL, price -3.2% = call working (inverted: +3.2% signal-relative) -->
+      <div class="signal-row">
+        <div class="asset-icon">🛢️</div>
+        <div class="asset-info">
+          <div class="asset-name">Oil <span style="font-size:10px;color:#999;font-weight:400;">(SELL signal)</span></div>
+          <div class="asset-sub perf-up">+3.2% since signal · 1d ago</div>
+        </div>
+        <div class="signal-col-single">
+          <div class="signal-badge badge-sell">SELL</div>
+        </div>
+      </div>
+
+      <!-- NVIDIA — BUY, price -1.4% = call underwater -->
+      <div class="signal-row">
+        <div class="asset-icon">🟩</div>
+        <div class="asset-info">
+          <div class="asset-name">NVIDIA</div>
+          <div class="asset-sub perf-down">-1.4% since signal · 2d ago</div>
+        </div>
+        <div class="signal-col-single">
+          <div class="signal-badge badge-buy">BUY</div>
+        </div>
+      </div>
+
+      <!-- Bitcoin — BUY, price -1.1% = call underwater -->
+      <div class="signal-row">
+        <div class="asset-icon">₿</div>
+        <div class="asset-info">
+          <div class="asset-name">Bitcoin</div>
+          <div class="asset-sub perf-down">-1.1% since signal · 2d ago</div>
+        </div>
+        <div class="signal-col-single">
+          <div class="signal-badge badge-buy">BUY</div>
+        </div>
+      </div>
+
+      <!-- SK Hynix — BUY, price +10.9% = call working -->
+      <div class="signal-row">
+        <div class="asset-icon">SK</div>
+        <div class="asset-info">
+          <div class="asset-name">SK Hynix</div>
+          <div class="asset-sub perf-up">+10.9% since signal · 3d ago</div>
+        </div>
+        <div class="signal-col-single">
+          <div class="signal-badge badge-buy">BUY</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</body>
+</html>

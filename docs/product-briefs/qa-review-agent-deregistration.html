@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: HL Agent Deregistration Auto-Recovery</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; background: #0f0f0f; color: #e8e8e8; line-height: 1.6; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 1.05rem; font-weight: 600; margin-top: 32px; margin-bottom: 10px; border-bottom: 1px solid #2a2a2a; padding-bottom: 6px; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+  .badge { padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+  .badge-red    { background: #3d1515; color: #ff6b6b; border: 1px solid #ff6b6b40; }
+  .badge-amber  { background: #3d2a00; color: #ffa940; border: 1px solid #ffa94040; }
+  .badge-gray   { background: #1e1e1e; color: #aaa; border: 1px solid #44444440; }
+  .badge-green  { background: #0d2d1a; color: #52c41a; border: 1px solid #52c41a40; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #2a2a2a; color: #aaa; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; vertical-align: top; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+  .tag-blocking { background: #3d1515; color: #ff6b6b; }
+  .tag-amber    { background: #3d2a00; color: #ffa940; }
+  .tag-nit      { background: #1e1e1e; color: #aaa; }
+  .tag-safe     { background: #0d2d1a; color: #52c41a; }
+  .finding { margin-bottom: 20px; padding: 14px 16px; border-radius: 8px; }
+  .finding-red    { background: #1a0e0e; border-left: 3px solid #ff6b6b; }
+  .finding-amber  { background: #1a1300; border-left: 3px solid #ffa940; }
+  .finding-gray   { background: #141414; border-left: 3px solid #555; }
+  .finding-green  { background: #0d1a10; border-left: 3px solid #52c41a; }
+  .finding-yellow { background: #1a1500; border-left: 3px solid #fadb14; }
+  .finding h3 { margin: 0 0 4px 0; font-size: 0.92rem; font-weight: 600; }
+  .finding .loc { font-size: 0.8rem; color: #888; font-family: monospace; margin-bottom: 6px; }
+  .finding p { margin: 6px 0 0 0; font-size: 0.88rem; }
+  code { background: #1e1e1e; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; font-family: monospace; }
+  ul { margin: 8px 0; padding-left: 20px; font-size: 0.88rem; }
+  li { margin-bottom: 4px; }
+  .meta { font-size: 0.8rem; color: #666; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: HL Agent Deregistration Auto-Recovery</h1>
+<p class="meta">Reviewer: independent subagent &nbsp;|&nbsp; Date: 2026-06-08 &nbsp;|&nbsp; Phase: 1 (implementation review)</p>
+
+<h2>Summary</h2>
+<div class="summary-bar">
+  <span class="badge badge-red">Blocking: 1</span>
+  <span class="badge badge-amber">Worth a look: 3</span>
+  <span class="badge badge-gray">Nit: 2</span>
+  <span class="badge badge-green">Safe: 6</span>
+</div>
+
+<h2>File-level Risk Matrix</h2>
+<table>
+  <tr><th>File</th><th>Highest Severity</th><th>Finding</th></tr>
+  <tr>
+    <td><code>trade-executor.ts</code></td>
+    <td><span class="tag tag-amber">Worth a look</span></td>
+    <td>Deregistration error leaks raw HL string to admin notify + Sentry; no Sentry tag distinguishes deregistration from generic failures</td>
+  </tr>
+  <tr>
+    <td><code>trade-executor.test.ts</code></td>
+    <td><span class="tag tag-amber">Worth a look</span></td>
+    <td>Source-scan tests cannot catch runtime regressions; UPDATE failure path not covered</td>
+  </tr>
+  <tr>
+    <td><code>position-monitor/index.ts</code></td>
+    <td><span class="tag tag-blocking">Blocking</span></td>
+    <td>Five <code>adapter.placeOrder</code> / <code>placeSpotOrder</code> callsites have no deregistration recovery; a deregistered wallet silently drops all position closes (stop-losses, trailing stops, ladder trims, BB2 expiry)</td>
+  </tr>
+  <tr>
+    <td><code>wallet-provisioner.ts</code></td>
+    <td><span class="tag tag-safe">Safe</span></td>
+    <td>Re-registration path looks correct</td>
+  </tr>
+  <tr>
+    <td><code>deposit-monitor/index.ts</code></td>
+    <td><span class="tag tag-safe">Safe</span></td>
+    <td>Recovery trigger fires correctly on <code>!agent_registered &amp;&amp; balance &gt; 0</code></td>
+  </tr>
+</table>
+
+<!-- ======================== BLOCKING ======================== -->
+<h2>Blocking</h2>
+
+<div class="finding finding-red">
+  <h3>B-1. position-monitor has five HL order callsites with no deregistration recovery</h3>
+  <div class="loc">position-monitor/index.ts: lines 784, 1620, 1627, 1806, 1813, 2100, 2107, 2272, 2281</div>
+  <p>
+    <strong>Symptom.</strong> When an agent wallet is deregistered on HL's side, <code>trade-executor</code> now correctly flips <code>agent_registered=false</code> on the next trade proposal. But <code>position-monitor</code> calls <code>adapter.placeOrder</code> and <code>adapter.placeSpotOrder</code> in at least five separate close-action paths (stop-loss, trailing stop, BB2 expiry, spot phantom-close, ladder trim at lines 2272/2281). None of these paths inspect the HL error for the deregistration string. When a deregistration happens mid-session, <em>all open position closes will silently fail</em>: <code>closeResult.success === false</code>, the error is logged to console, but <code>agent_registered</code> stays <code>true</code> in the DB. On the next position-monitor tick, the wallet query at line 308 filters <code>.eq("agent_registered", true)</code>, so the user's wallet is still included, and every close attempt fails again until <em>trade-executor</em> next fires for that user and happens to hit the deregistration error. If the user has no pending proposals, recovery never triggers.
+  </p>
+  <p>
+    <strong>Root cause.</strong> The fix was applied only to <code>trade-executor.ts</code>'s order failure handler. <code>position-monitor</code>'s <code>closeResult</code> failure branches (e.g. lines 1752-1755, 1906-1910) log the error but do not call the deregistration detector.
+  </p>
+  <p>
+    <strong>Fix.</strong> Extract the deregistration-detection logic into a shared helper in <code>_shared/trade-executor.ts</code> or a new <code>_shared/hl-errors.ts</code>. Call it from every <code>closeResult.success === false</code> branch in <code>position-monitor</code>. The UPDATE pattern is identical: <code>.from("user_wallets").update({ agent_registered: false }).eq("id", wallet.id)</code>. The wallet reference is already in scope at each callsite via <code>walletMap.get(userId)</code>. Consider a single helper <code>maybeHandleDeregistration(supabase, wallet, errorStr)</code> that both callers can await.
+  </p>
+</div>
+
+<!-- ======================== WORTH A LOOK ======================== -->
+<h2>Worth a Look</h2>
+
+<div class="finding finding-amber">
+  <h3>W-1. Raw HL error string sent to admin Telegram on deregistration path</h3>
+  <div class="loc">trade-executor.ts: lines 1204-1267</div>
+  <p>
+    <code>orderError</code> is set to <code>rawError</code> when <code>isAgentDeregistered</code> is true (the ternary at line 1205 only translates margin shortfalls). That raw HL string, e.g. <code>"User or API Wallet 0xefe8...does not exist."</code>, is then passed into <code>notifyTradeResult</code> at line 1267, which sends it to admin Telegram. It is also stored in <code>trade_proposals.error_message</code> at line 1234. The raw hex address leaking to Telegram is low-risk but noisy. More importantly, the admin will see a generic "order failed" notification with no signal that auto-recovery is already in progress, leading to unnecessary manual intervention.
+  </p>
+  <p>
+    <strong>Consider.</strong> Add a third branch for <code>isAgentDeregistered</code> that sets <code>orderError</code> to a plain-English string like <code>"Agent wallet deregistered on Hyperliquid. Auto-recovery triggered."</code>, or suppress the <code>notifyTradeResult</code> call entirely for this case and let the <code>console.error</code> + Sentry message be the signal.
+  </p>
+</div>
+
+<div class="finding finding-amber">
+  <h3>W-2. Sentry event for deregistration is indistinguishable from generic order failure</h3>
+  <div class="loc">trade-executor.ts: lines 1221-1231</div>
+  <p>
+    <code>captureMessage("Order failed: ...")</code> fires for <em>all</em> order failures. There is no additional Sentry tag when <code>isAgentDeregistered</code> is true. In Sentry's issue stream, a deregistration event looks identical to a leverage glitch or RPC error. This makes it impossible to write a Sentry alert rule that pages on deregistration specifically, and post-incident queries require eyeballing the message text.
+  </p>
+  <p>
+    <strong>Consider.</strong> Add a <code>deregistration: true</code> tag to the <code>captureMessage</code> call inside the <code>if (isAgentDeregistered)</code> block, or call a second <code>captureMessage</code> there with a distinct name. Cheap change, high signal value.
+  </p>
+</div>
+
+<div class="finding finding-amber">
+  <h3>W-3. UPDATE failure on <code>user_wallets</code> is silently swallowed</h3>
+  <div class="loc">trade-executor.ts: lines 1212-1218</div>
+  <p>
+    The <code>await supabase.from("user_wallets").update(...).</code> call at line 1212 destructures no <code>error</code> return. If the UPDATE fails (network blip, RLS policy mismatch, wrong <code>wallet.id</code>), execution continues silently: the console.error at line 1216 fires unconditionally, giving false confidence that recovery was triggered when in fact the DB was not updated and <code>deposit-monitor</code> will not re-register.
+  </p>
+  <p>
+    <strong>Consider.</strong> Destructure the result: <code>const { error: deregErr } = await supabase...</code>. If <code>deregErr</code> is set, log it and call <code>captureException</code> so the failure surfaces in Sentry. The console.error line should move inside the success branch.
+  </p>
+</div>
+
+<!-- ======================== NITS ======================== -->
+<h2>Nit</h2>
+
+<div class="finding finding-gray">
+  <h3>N-1. Source-scan tests are structurally weak regression guards</h3>
+  <div class="loc">trade-executor.test.ts: lines 1612-1645</div>
+  <p>
+    Both new WALLET-ADV tests read the source file as a string and assert on the presence of identifiers or substrings. This means they pass as long as the relevant code is <em>present</em> anywhere in the file, regardless of whether it is actually reachable, correctly conditional, or even commented out. A refactor that moves the deregistration block behind a feature flag, or that renames <code>isAgentDeregistered</code>, would break the behavior but keep the tests green. The tests also do not verify that the UPDATE runs after the detection, only that both strings appear in file order. Consider adding at least one behavioral test using a mock Supabase client that asserts <code>update({ agent_registered: false })</code> was called when the HL error string is returned.
+  </p>
+</div>
+
+<div class="finding finding-gray">
+  <h3>N-2. Em dash in console.error log line</h3>
+  <div class="loc">trade-executor.ts: line 1217</div>
+  <p>
+    <code>"Agent wallet deregistered on HL for ... — flagged for auto-recovery"</code> contains an em dash. Project rules ban em dashes. Replace with a comma or colon: <code>"Agent wallet deregistered on HL for ... flagged for auto-recovery"</code>.
+  </p>
+</div>
+
+<!-- ======================== MONITOR ======================== -->
+<h2>Risks to Monitor Post-Deploy</h2>
+
+<div class="finding finding-yellow">
+  <h3>M-1. Recovery depends on deposit-monitor seeing positive balance within 10 minutes</h3>
+  <p>
+    The deposit-monitor recovery path at line 652 fires only when <code>!wallet.agent_registered &amp;&amp; newBalance &gt; 0</code>. If the user's balance is exactly zero at the time deposit-monitor runs (unlikely but possible if a withdrawal just completed), re-registration is skipped that tick. The wallet stays unregistered until the next deposit. This is pre-existing behavior, not introduced by this change, but it is worth watching on the first real deregistration event post-deploy.
+  </p>
+</div>
+
+<div class="finding finding-yellow">
+  <h3>M-2. Up to 10-minute window where subsequent proposals for the same user continue to fail</h3>
+  <p>
+    After <code>agent_registered=false</code> is set, <code>deposit-monitor</code> re-registers on its next tick (up to 10 min later). If <code>run-signals</code> fires another proposal for the same user in that window, <code>trade-executor</code> will attempt the order again. The pre-flight <code>adapter.getBalance()</code> at line 344 will succeed (the wallet exists; it is just the agent registration that is gone), so the pre-flight does not block the order, and the order fails again, triggering another <code>agent_registered=false</code> UPDATE (idempotent but noisy). This is acceptable, but worth noting for triage.
+  </p>
+</div>
+
+<!-- ======================== SAFE ======================== -->
+<h2>Safe</h2>
+
+<div class="finding finding-green">
+  <ul>
+    <li><strong>Regex correctness.</strong> <code>/user or api wallet .* does not exist/i</code> matches the exact HL error string from the incident (<code>"User or API Wallet 0xefe8...does not exist."</code>). Case-insensitive, uses <code>.*</code> for the address portion. No false-positive risk against the margin-shortfall regex or trading-halted patterns.</li>
+    <li><strong>Column target.</strong> The UPDATE targets <code>user_wallets.agent_registered</code> via <code>.eq("id", wallet.id)</code>. <code>wallet</code> is confirmed non-null at this point (null-guard at line 329 throws before reaching this code path). No null-dereference risk.</li>
+    <li><strong>Race condition on concurrent failures.</strong> Two parallel proposals failing simultaneously both issue <code>UPDATE agent_registered=false</code> on the same row. This is safe: both writes are idempotent (false &rarr; false). PostgreSQL last-write-wins semantics apply; no data corruption.</li>
+    <li><strong>User-facing error message.</strong> <code>orderError</code> for the deregistration path falls through to <code>rawError</code>, which is the HL technical string. This is stored in <code>error_message</code> and passed to <code>notifyTradeResult</code> (admin-only). It is not shown to the user directly. No voice-rule violation for user-facing surfaces.</li>
+    <li><strong>deposit-monitor recovery trigger.</strong> The recovery path at line 652 is correctly guarded and already battle-tested for the initial-registration case. Reusing it for deregistration is sound.</li>
+    <li><strong>wallet-provisioner re-registration path.</strong> <code>registerAgentIfNeeded</code> is idempotent and handles the <code>existing &amp;&amp; !agent_registered</code> case already. No changes needed there.</li>
+  </ul>
+</div>
+
+</body>
+</html>

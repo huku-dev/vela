@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Phase 0 QA — Daily Brief Anti-Repetition</title>
+<style>
+  body { font-family: Inter, -apple-system, sans-serif; font-size: 14px; color: #0A0A0A; background: #FFFBF5; margin: 0; padding: 32px; line-height: 1.55; }
+  h1 { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  h2 { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin: 32px 0 12px; border-top: 2px solid #E8E2D8; padding-top: 14px; }
+  h3 { font-size: 14px; font-weight: 700; margin: 18px 0 4px; }
+  .summary-bar { display: flex; gap: 12px; margin: 20px 0 28px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+  .red { background: #FDECEA; color: #C0392B; border: 1.5px solid #E57373; }
+  .amber { background: #FFF8E1; color: #B45309; border: 1.5px solid #F6A623; }
+  .gray { background: #F5F5F5; color: #555; border: 1.5px solid #CCC; }
+  .green { background: #E8F5E9; color: #2E7D32; border: 1.5px solid #66BB6A; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
+  th { background: #F0EBE3; text-align: left; padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  td { padding: 8px 12px; border-bottom: 1px solid #E8E2D8; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .finding { background: #fff; border: 1.5px solid #E8E2D8; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .finding.blocking { border-left: 4px solid #C0392B; }
+  .finding.amber { border-left: 4px solid #F6A623; }
+  .finding.nit { border-left: 4px solid #AAA; }
+  code { font-family: 'Fira Mono', monospace; font-size: 12.5px; background: #F0EBE3; padding: 1px 5px; border-radius: 3px; }
+  .loc { font-size: 12px; color: #777; font-family: monospace; margin-bottom: 6px; }
+  .label { font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+  .label.red { color: #C0392B; background: none; border: none; padding: 0; }
+  .label.amber { color: #B45309; background: none; border: none; padding: 0; }
+  .label.nit-lbl { color: #666; background: none; border: none; padding: 0; }
+  p { margin: 6px 0; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  .intro { color: #555; font-size: 13.5px; margin-bottom: 24px; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA: Daily Brief Anti-Repetition + Header Improvements</h1>
+<p class="intro">Adversarial vetting of four proposed changes before any code is written. Reviewer has no prior context on this work. All line citations are from the code as read.</p>
+
+<!-- ── Summary bar ── -->
+<div class="summary-bar">
+  <span class="badge red">Blocking 3</span>
+  <span class="badge amber">Worth a look 5</span>
+  <span class="badge gray">Nit 3</span>
+  <span class="badge green">Safe 4</span>
+</div>
+
+<!-- ── Risk matrix ── -->
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Change</th>
+      <th>Risk</th>
+      <th>Reason</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>signal-persistence.ts</code></td>
+      <td>Change 1</td>
+      <td style="color:#C0392B;font-weight:700;">HIGH</td>
+      <td><code>persistDailyDigest</code> signature change needed but proposal says "no migration needed" — the call-site cannot write <code>themeLine</code> into <code>detail</code> without touching the signature or caller.</td>
+    </tr>
+    <tr>
+      <td><code>brief-generator.ts</code></td>
+      <td>Changes 1 &amp; 3</td>
+      <td style="color:#B45309;font-weight:700;">MEDIUM</td>
+      <td>Yesterday-brief query adds DB round-trip inside a function already under 150s budget. Anti-variety prompt sent to a model with a structural crypto-first ordering bias.</td>
+    </tr>
+    <tr>
+      <td><code>notify.ts</code></td>
+      <td>Changes 2 &amp; 4</td>
+      <td style="color:#B45309;font-weight:700;">MEDIUM</td>
+      <td>Preheader placeholder leak (Change 2). <code>SUMMARY_CAP</code> raise (Change 4) is safe in isolation but interaction with legacy rows needs confirmation.</td>
+    </tr>
+    <tr>
+      <td><code>news-classifier.ts</code></td>
+      <td>Change 4</td>
+      <td style="color:#2E7D32;font-weight:700;">LOW</td>
+      <td>Prompt tightening and lower code backstop. No schema change. Risk is length calibration, not correctness.</td>
+    </tr>
+    <tr>
+      <td><code>daily-digest/index.ts</code></td>
+      <td>Change 1</td>
+      <td style="color:#B45309;font-weight:700;">MEDIUM</td>
+      <td>Call site for <code>persistDailyDigest</code> would need updating. Run-signals has a parallel call site that must also be updated simultaneously.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ── BLOCKING ── -->
+<h2>Blocking</h2>
+
+<div class="finding blocking">
+  <div class="loc">signal-persistence.ts line 700 / daily-digest/index.ts line 371 / run-signals (parallel call site)</div>
+  <span class="label red">Blocking 1</span>
+  <h3>Change 1: <code>persistDailyDigest</code> cannot write <code>themeLine</code> at the call site without a signature or caller change — and there are TWO call sites</h3>
+  <p><strong>Symptom.</strong> The proposal says "no migration needed — <code>detail</code> is already JSONB" and that <code>themeLine</code> can be written "at the call site." But look at the actual call in <code>daily-digest/index.ts</code> line 371–374:</p>
+  <p><code>persistDailyDigest(supabase, digestNarrative, digestItems, { mode, detail: { marketPulse } })</code></p>
+  <p>The <code>detail</code> object is built right here from <code>marketPulse</code>. Writing <code>themeLine</code> into it at this call site is straightforward: add <code>themeLine</code> to the object literal. BUT there is a second call site inside <code>run-signals/index.ts</code> (the recovery path). If only <code>daily-digest/index.ts</code> is updated, the recovery path will never write <code>themeLine</code>, meaning tomorrow's anti-repetition query returns <code>null</code> for any brief generated via the recovery path. Anti-repetition then silently degrades for ~30% of production briefs with no log warning.</p>
+  <p><strong>Root cause.</strong> There are two callers of <code>persistDailyDigest</code> — one in <code>daily-digest/index.ts</code> and one in <code>run-signals</code>'s inline digest path — and the proposal only identified one.</p>
+  <p><strong>Fix.</strong> Search for all calls to <code>persistDailyDigest</code> before writing any code. Update both call sites in the same commit to pass <code>themeLine</code> into the <code>detail</code> object. Add a log line at the query side: "yesterday's theme_line absent" so coverage gaps are visible.</p>
+</div>
+
+<div class="finding blocking">
+  <div class="loc">notify.ts line 1688–1695 / line 1738</div>
+  <span class="label red">Blocking 2</span>
+  <h3>Change 2: Placeholder leak in the proposed preheader logic — no <code>isPlaceholder</code> guard</h3>
+  <p><strong>Symptom.</strong> The proposed preheader code is:</p>
+  <p><code>const preheader = options?.briefHeader?.themeLine &amp;&amp; options?.briefHeader?.subhead ? `${themeLine}. ${subhead}` : options?.briefHeader?.themeLine ?? paragraphs[0]?.slice(0,100) ?? ""</code></p>
+  <p>The email body already guards against placeholder theme lines at lines 1688–1695 via the <code>placeholderHeadlines</code> Set (<code>"Daily Market Digest"</code>, <code>"Evening Market Wrap"</code>). When <code>isPlaceholder</code> is true, <code>themeLineHtml</code> renders as empty string. But the proposed preheader code does NOT check <code>isPlaceholder</code>. If the narrative rewriter returns <code>themeLine="Daily Market Digest"</code> (which it won't ordinarily, but CAN on LLM degradation — the Sonnet prompt at line 800 says "think newspaper cover" but provides "Daily Market Digest" as the fallback heading string that signal-persistence writes), the preheader becomes <code>"Daily Market Digest. [subhead]"</code> — a worse preheader than the current first-100-chars-of-prose fallback.</p>
+  <p><strong>Root cause.</strong> The <code>isPlaceholder</code> guard exists in the body rendering path but was not ported to the proposed preheader path.</p>
+  <p><strong>Fix.</strong> Mirror the existing <code>isPlaceholder</code> check from line 1695 into the preheader logic. When <code>isPlaceholder</code> is true, fall through directly to <code>paragraphs[0]?.slice(0,100) ?? ""</code>. Reuse the <code>placeholderHeadlines</code> Set already defined at line 1688 rather than duplicating the check.</p>
+</div>
+
+<div class="finding blocking">
+  <div class="loc">brief-generator.ts lines 788–796 / news-fetcher.ts lines 795–823</div>
+  <span class="label red">Blocking 3</span>
+  <h3>Change 3: The news feed has a structural CRYPTO-FIRST ordering bias that the proposed prompt additions cannot overcome</h3>
+  <p><strong>Symptom.</strong> <code>formatNewsForPrompt</code> in <code>news-fetcher.ts</code> outputs sections in a hardcoded order: <code>CRYPTO NEWS</code> first, then <code>ECONOMY &amp; MACRO</code>, then <code>STOCK MARKET</code>, then <code>COMMODITIES</code>. The LLM sees crypto items at the top of the context window. The existing prompt at line 606 says "the first sentence should be the most impactful event" — but the proposed fix adds "not just crypto" as a soft correction to an ordering problem that is structural in the formatter.</p>
+  <p>The proposed instruction "check the full ranked list above — if a tracked asset other than BTC, SPX, or Oil has a top-ranked item" is especially problematic. Read <code>formatNewsForPrompt</code> at line 786–792: the function annotates items with <code>+N sources</code> (cross-source count) but does NOT expose a numeric score. The LLM cannot "check the top-ranked item" because no rank number is visible — only relative position within a category section. The item ranked #1 by score in the COMMODITIES section is rendered AFTER all CRYPTO items.</p>
+  <p><strong>Root cause.</strong> The bug is in the formatter, not the prompt. A free-tier LLM (qwen/llama) instructed to "check the full ranked list" will see items in crypto-first categorical order. Without reordering the formatter output, the prompt instruction is noise.</p>
+  <p><strong>Fix.</strong> Either: (a) change <code>formatNewsForPrompt</code> to output items in a single list sorted by cross-source count and score, without categorical headers; or (b) if category headers must be kept, at minimum put the category with the highest-scored item first. A prompt instruction alone will not overcome formatter ordering bias in a free-tier model. Flag this as a formatter change before writing the prompt change.</p>
+</div>
+
+<!-- ── WORTH A LOOK ── -->
+<h2>Worth a Look</h2>
+
+<div class="finding amber">
+  <div class="loc">brief-generator.ts (Change 1 query) / daily-digest/index.ts runtime budget</div>
+  <span class="label amber">Worth a look 1</span>
+  <h3>Change 1: Yesterday-brief query latency is negligible BUT adds a new failure mode if the brief row is missing</h3>
+  <p>A <code>SELECT ... LIMIT 1</code> against the <code>briefs</code> table with an index on <code>(brief_type, created_at)</code> will resolve in under 10ms — not a meaningful latency concern against a 150s budget. The concern is the failure path. If the query returns no row (first-run day, or a day when the digest failed), <code>detail->>'themeLine'</code> is null. The proposal notes "there's no hard failure mode." Confirm: the fallback must be a no-op, not a warning that surfaces in Sentry. Verify that the query result being null simply skips the anti-repetition injection rather than logging an error.</p>
+</div>
+
+<div class="finding amber">
+  <div class="loc">brief-generator.ts rewriteDigestAsNarrative line 790</div>
+  <span class="label amber">Worth a look 2</span>
+  <h3>Change 1: "First sentence" extraction via <code>.split(".")</code> is fragile on real <code>summary</code> content</h3>
+  <p>Real narratives contain asset tickers (<code>BTC</code>), numbers (<code>$65,000</code>), and source citations like "U.S." that contain periods. A split on <code>"."</code> will fragment mid-sentence at "U.S." or "$65,000." — producing "U" or "$65,000" as the captured "opener" that then pollutes the anti-repetition prompt. Use a sentence boundary regex (<code>/(?&lt;=[.!?])\s+(?=[A-Z])/</code>) or, simpler, split on <code>". "</code> with a capital-letter lookahead and take the longest leading candidate up to 200 chars. Whatever approach: add a test case with "U.S. rate hike" and "$65,000." in position 0.</p>
+</div>
+
+<div class="finding amber">
+  <div class="loc">brief-generator.ts rewriteDigestAsNarrative fallback path line 816–818</div>
+  <span class="label amber">Worth a look 3</span>
+  <h3>Change 1: Anti-repetition context passed into narrative rewriter but not into items generator — where the repetition actually originates</h3>
+  <p>The proposal injects "yesterday's opener" and "yesterday's theme_line" into <code>rewriteDigestAsNarrative</code> (the Sonnet narrative step). But the repetitive opener pattern ("Markets are [X] this morning") originates in the <em>items</em> step: the free-tier LLM selects BTC/SPX/Oil and writes items that all share market-mood framing, which the narrative rewriter then inherits. Injecting anti-repetition context only at the rewrite step means the items text fed into Sonnet already embeds the same fear-opener structure, and Sonnet is constrained by the rule "Do not add any information that isn't in the items below" (line 770). The fix addresses the symptom at the wrong layer. Consider also passing the anti-repetition context into the <code>generateDailyDigest</code> items prompt, or explicitly — to Sonnet — "the opening mood framing may not match the prior day even if the items text implies fear."</p>
+</div>
+
+<div class="finding amber">
+  <div class="loc">notify.ts line 1738 / Change 2</div>
+  <span class="label amber">Worth a look 4</span>
+  <h3>Change 2: Combined preheader at 130-160 chars truncates mid-subhead in all major email clients</h3>
+  <p>Gmail desktop clips preheader at ~85-90 chars. Apple Mail shows ~100-110. <code>theme_line</code> (3-6 words) + ". " + <code>subhead</code> (up to 22 words at ~120 chars) = 130-160 chars in the worst case. The preheader will be clipped mid-subhead, often at a natural pause if the subhead is long. This isn't a correctness bug, but it means the subhead — the more informative part — will frequently be cut. Consider reversing the order: <code>subhead. theme_line</code> or using only <code>theme_line</code> if under 85 chars (which it is by construction at 3-6 words/20-35 chars) followed by the subhead truncated to fit. Alternatively, limit the preheader to <code>theme_line</code> alone when it's available — it's purpose-built to be punchy and stands alone.</p>
+</div>
+
+<div class="finding amber">
+  <div class="loc">news-classifier.ts line 128–129</div>
+  <span class="label amber">Worth a look 5</span>
+  <h3>Change 4: Raising <code>renderNewsModule</code> SUMMARY_CAP to 150 exposes a mismatch with the existing word-boundary threshold</h3>
+  <p>The current <code>renderNewsModule</code> truncation at line 1804–1808 uses <code>lastSpace > 80</code> as the word-boundary threshold — meaning: only use the word boundary if it's after position 80 in the 110-char slice. If the cap is raised to 150, the threshold (<code>lastSpace > 80</code>) needs to scale proportionally (to ~120 or so), otherwise the code can still hard-cut at 80 chars on rows where the last space before position 150 is between positions 80-120. The comment says this cap exists to keep summaries to 2 lines at 14px. At 150 chars, that assumption breaks for narrower email viewports (~270px, ~16 chars/line). Confirm the new cap matches the intent (render legacy rows without truncation) before raising it.</p>
+</div>
+
+<!-- ── NITS ── -->
+<h2>Nits</h2>
+
+<div class="finding nit">
+  <div class="loc">news-classifier.ts line 129 calibration example</div>
+  <span class="label nit-lbl">Nit 1</span>
+  <h3>Change 4: Calibration examples in the classifier prompt don't reinforce 40-85 chars</h3>
+  <p>The current example at line 129 cites <code>"The Fed held rates steady..." = 91 chars (good)</code>. That example will still be in the prompt after lowering the target to 40-85 chars. Add or replace with a fresh example that lands in the 65-80 char sweet-spot so the model has a calibrated anchor. Leaving a 91-char "good" example contradicts the new 85-char hard limit.</p>
+</div>
+
+<div class="finding nit">
+  <div class="loc">brief-generator.ts rewriteDigestAsNarrative system prompt line 768</div>
+  <span class="label nit-lbl">Nit 2</span>
+  <h3>Change 1: Anti-repetition instruction placement — put it in the system prompt, not the user turn</h3>
+  <p>The proposal adds "Yesterday's brief opened with X. Use different structural framing today" to the user prompt. But the narrative rewriter's system prompt at line 768 already governs structural framing ("Open with 1 sentence that captures the overall market mood"). Putting the anti-repetition context in the user prompt creates a possible conflict between the system-level instruction (mood-capture opener) and the user-level instruction (don't echo yesterday). Move anti-repetition context to the system prompt where it governs the same layer as the rule it modifies.</p>
+</div>
+
+<div class="finding nit">
+  <div class="loc">news-classifier.ts line 278 / notify.ts line 1802</div>
+  <span class="label nit-lbl">Nit 3</span>
+  <h3>Change 4: The <code>SUMMARY_MAX</code> constant in <code>news-classifier.ts</code> and <code>SUMMARY_CAP</code> in <code>renderNewsModule</code> are independent; name them clearly in the commit</h3>
+  <p>Both constants do the same job at different layers (write-side vs render-side). Lowering one and raising the other is intentional, but the asymmetry will confuse future readers unless the commit message explains the design: "classifier writes short; renderer accepts legacy-length rows without truncation." Add a comment to <code>SUMMARY_CAP</code> in <code>notify.ts</code> explaining the legacy-row context so this isn't silently reverted.</p>
+</div>
+
+<!-- ── POST-DEPLOY MONITORING ── -->
+<h2>Risks to Monitor Post-Deploy</h2>
+<ul>
+  <li><strong>Anti-repetition coverage (Change 1):</strong> Log "anti-rep: yesterday's opener=[X]" and "anti-rep: no previous brief found" at the query site. Check logs the first 5 mornings to confirm the query is returning rows and the context is being injected. A silent null means the feature is no-op.</li>
+  <li><strong>Brief diversity (Change 3):</strong> After deploying the prompt change, audit 7 consecutive digest items for asset variety. If BTC/SPX/Oil still appear in all 3 positions, the formatter ordering bias has not been addressed and the prompt change provided no benefit.</li>
+  <li><strong>Preheader render (Change 2):</strong> Send a test email to a Gmail address and Apple Mail address and check the inbox preview string before deploying to all subscribers. A 2-minute manual check prevents a bad first impression for all users on day 1.</li>
+  <li><strong>Classifier summary length distribution (Change 4):</strong> After deploying the 40-85 char prompt change, query <code>SELECT avg(length(summary)), min(length(summary)), max(length(summary)) FROM news_cache WHERE created_at > now() - interval '24h'</code> the next morning. If avg is still above 100, the LLM is not respecting the new target and the code backstop at 85 is doing all the work (producing truncated summaries).</li>
+</ul>
+
+<!-- ── SAFE ── -->
+<h2>Safe</h2>
+<ul>
+  <li><strong>Change 1, DB query latency:</strong> A <code>SELECT ... LIMIT 1 ORDER BY created_at DESC</code> against an indexed column is negligible (~5-10ms) and does not threaten the 150s budget.</li>
+  <li><strong>Change 1, <code>detail</code> JSONB shape:</strong> Adding <code>themeLine</code> to the existing JSONB object is additive and non-breaking. No migration needed. The read path using <code>detail->>'themeLine'</code> returns null for rows written before this change, which is the correct fallback.</li>
+  <li><strong>Change 2, fallback path when <code>briefHeader</code> is undefined:</strong> The proposed fallback chain is <code>options?.briefHeader?.themeLine ?? paragraphs[0]?.slice(0,100) ?? ""</code> — this correctly falls through to the current preheader behavior when Sonnet fails and the brief has no header. The fallback is safe.</li>
+  <li><strong>Change 4, raising <code>SUMMARY_CAP</code> for existing 110-char rows:</strong> Rows written under the old 110-char target are complete sentences; rendering them without the truncation ellipsis is strictly better for users. The concern in Worth-a-look 5 is about the threshold math, not about whether removing truncation from these rows is correct — it is.</li>
+</ul>
+
+<hr style="margin:32px 0;border:none;border-top:1px solid #E8E2D8;" />
+<p style="font-size:12px;color:#888;">Phase 0 QA · Daily Brief Anti-Repetition · 2026-06-04 · Read-only adversarial review</p>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: Stale Reminder Regression Fix + Diagnostic Logs</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; background: #FFFBF5; color: #0A0A0A; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .meta { font-size: 13px; color: #6B7280; margin-bottom: 28px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .badge { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 6px; font-weight: 700; font-size: 15px; }
+  .badge-red { background: #FEE2E2; color: #991B1B; }
+  .badge-amber { background: #FEF3C7; color: #92400E; }
+  .badge-gray { background: #F3F4F6; color: #374151; }
+  .badge-green { background: #D1FAE5; color: #065F46; }
+  .count { font-size: 26px; font-weight: 800; }
+  .section { margin-bottom: 36px; }
+  .section h2 { font-size: 16px; font-weight: 700; padding: 8px 14px; border-radius: 4px; margin: 0 0 16px; }
+  .h2-red { background: #FEE2E2; color: #991B1B; }
+  .h2-amber { background: #FEF3C7; color: #92400E; }
+  .h2-gray { background: #F3F4F6; color: #374151; }
+  .h2-green { background: #D1FAE5; color: #065F46; }
+  .finding { border: 1px solid #E5E7EB; border-radius: 6px; padding: 16px 18px; margin-bottom: 14px; background: #fff; }
+  .finding h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; }
+  .finding p { margin: 0 0 8px; font-size: 14px; line-height: 1.6; }
+  .finding p:last-child { margin-bottom: 0; }
+  code { font-family: 'Menlo', 'Consolas', monospace; font-size: 12px; background: #F3F4F6; padding: 1px 5px; border-radius: 3px; }
+  .ref { font-size: 12px; color: #6B7280; font-style: italic; }
+  .verdict { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 3px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .verdict-red { background: #FEE2E2; color: #991B1B; }
+  .verdict-amber { background: #FEF3C7; color: #92400E; }
+  .verdict-gray { background: #F3F4F6; color: #374151; }
+  .verdict-green { background: #D1FAE5; color: #065F46; }
+  hr { border: none; border-top: 1px solid #E5E7EB; margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Stale Reminder Regression Fix + Diagnostic Logs</h1>
+<p class="meta">Reviewer: independent QA agent &middot; Date: 2026-05-29 &middot; Scope: notify.ts stale reminder email, run-signals/index.ts diagnostic logging</p>
+
+<div class="summary-bar">
+  <div class="badge badge-red"><span class="count">0</span> Blocking</div>
+  <div class="badge badge-amber"><span class="count">1</span> Worth a look</div>
+  <div class="badge badge-gray"><span class="count">1</span> Nit</div>
+  <div class="badge badge-green"><span class="count">7</span> Safe</div>
+</div>
+
+<!-- BLOCKING -->
+<div class="section">
+  <h2 class="h2-red">Blocking (0)</h2>
+  <p style="color: #6B7280; font-size: 14px;">No blocking issues found.</p>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="section">
+  <h2 class="h2-amber">Worth a look (1)</h2>
+
+  <div class="finding">
+    <span class="verdict verdict-amber">Worth a look</span>
+    <h3>Diagnostic log fires inside staging-guarded block, but staging path never reaches it</h3>
+    <p>
+      The first diagnostic log (<code>[run-signals] ${asset.symbol}: N deferred proposal email(s) queued</code>) is placed at line 399–403, which is inside the block guarded by <code>if (signalResult.signalChanged &amp;&amp; signalResult.signal.color !== "grey" &amp;&amp; signalId &amp;&amp; !IS_STAGING)</code> (line 386). On staging, proposal generation is skipped entirely, so <code>proposalResult</code> doesn't exist and the log never fires. That is functionally correct (the log would be meaningless with zero proposals on staging), but it means the first log provides zero observability on staging runs. The second log at line 557 correctly fires unconditionally and notes <code>(staging — skipping)</code>, so post-loop visibility is present. The asymmetry is fine in practice, but worth confirming this is the intended behavior: no per-asset deferred-email logging on staging.
+    </p>
+    <p>No action required unless per-asset staging observability is desired. Confirm intentional.</p>
+    <p class="ref">run-signals/index.ts:386, 399</p>
+  </div>
+</div>
+
+<!-- NITS -->
+<div class="section">
+  <h2 class="h2-gray">Nit (1)</h2>
+
+  <div class="finding">
+    <span class="verdict verdict-gray">Nit</span>
+    <h3>Second diagnostic log uses local <code>isStaging</code> rather than module-level <code>IS_STAGING</code> in adjacent scope</h3>
+    <p>
+      Lines 557–560 correctly use the module-level <code>IS_STAGING</code> constant for the dispatch log and the dispatch guard (line 561). However, three lines later at line 586, a second local variable <code>isStaging</code> is declared with identical semantics for the digest path. This is pre-existing code, not introduced by this diff. The introduced log at line 559 uses <code>IS_STAGING</code>, which is correct and consistent with the dispatch guard above it. No bug here. The nit is that two variables with the same value exist in the same function scope, which is mildly confusing to read. Not introduced by this change; deferred cleanup only.
+    </p>
+    <p class="ref">run-signals/index.ts:13, 559, 586</p>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+  <h2 class="h2-green">Safe (7)</h2>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>Removed line is gone, no orphan references remain</h3>
+    <p>
+      The removed <code>&lt;p&gt;Or &lt;a&gt;review on Vela&lt;/a&gt; first.&lt;/p&gt;</code> line is absent from <code>formatStaleReminder</code>. A grep across the full <code>notify.ts</code> file for the strings <code>review on Vela first</code> and <code>Or.*review</code> returns zero results. No dangling copy.
+    </p>
+    <p class="ref">notify.ts:3082–3169</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>Remaining email footer is coherent without the removed line</h3>
+    <p>
+      Both the single-proposal (line 3130) and multi-proposal (line 3160) stale reminder bodies end with the "Enable full auto" footer paragraph at <code>margin: 16px 0 0</code>. The primary CTA button ("Review on Vela" / "Review all on Vela") immediately above it already directs the user to the trades page. The removed "Or review on Vela first" line was redundant with that CTA. The email is complete and not confusing without it.
+    </p>
+    <p class="ref">notify.ts:3127–3130, 3157–3160</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>Margin update is consistent across both reminder variants</h3>
+    <p>
+      Both the single-proposal footer (line 3130) and the multi-proposal footer (line 3160) use <code>margin: 16px 0 0</code>. The margin on the preceding CTA <code>&lt;div&gt;</code> is <code>margin: 24px 0</code> in both cases. The spacing is symmetric and matches the pattern used in the batch proposal email template (line 2403).
+    </p>
+    <p class="ref">notify.ts:3130, 3160</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3><code>proposalResult.pendingEmails</code> is always initialized</h3>
+    <p>
+      <code>generateTradeProposals</code> initializes <code>pendingEmails: []</code> at every early-return path in <code>proposal-generator.ts</code> (lines 152, 199, 1190, 1209, 1440, 1679). Accessing <code>.length</code> on it at run-signals line 399 cannot throw. The edge case of an undefined <code>proposalResult</code> is impossible: the call is inside a <code>const proposalResult = await generateTradeProposals(...</code> assignment that rejects on error (and the outer <code>try/catch</code> handles that).
+    </p>
+    <p class="ref">proposal-generator.ts:152, 199; run-signals/index.ts:387–399</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>First diagnostic log position is correct</h3>
+    <p>
+      The log at lines 399–403 fires immediately after <code>proposalResult</code> is bound and before the <code>for...of</code> loop that collects into <code>pendingEmailsByUser</code>. This is the right place: it reports what <code>generateTradeProposals</code> returned for this asset before any mutation to the map. The <code>if (proposalResult.pendingEmails.length &gt; 0)</code> guard suppresses noise on assets with no pending emails.
+    </p>
+    <p class="ref">run-signals/index.ts:399–403</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>Second diagnostic log position is correct and unconditional</h3>
+    <p>
+      The post-loop log at lines 557–560 fires after the asset loop closes and before the <code>if (pendingEmailsByUser.size &gt; 0 &amp;&amp; !IS_STAGING)</code> dispatch block. This is the right position: it shows the total map size after all assets are processed, before any dispatch attempt. The staging annotation in the log string matches the actual dispatch guard immediately below it. No off-by-one or scope issue.
+    </p>
+    <p class="ref">run-signals/index.ts:557–561</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>Log prefixes match the existing convention</h3>
+    <p>
+      All existing logs in the file use the <code>[run-signals]</code> prefix (e.g., lines 407, 563, 568). Both introduced logs use the same prefix. No deviation.
+    </p>
+    <p class="ref">run-signals/index.ts:400, 558</p>
+  </div>
+
+  <div class="finding">
+    <span class="verdict verdict-green">Safe</span>
+    <h3>No security risk from the log additions</h3>
+    <p>
+      The first log emits asset symbol (public) and a count. The second emits a user count and a staging flag. Neither log emits user IDs, emails, proposal IDs, HMAC tokens, or financial amounts. The existing error log at line 568 already slices the userId to 12 chars for partial observability with privacy. The new logs add no sensitive surface.
+    </p>
+    <p class="ref">run-signals/index.ts:400–402, 557–559</p>
+  </div>
+</div>
+
+<hr>
+<p style="font-size: 12px; color: #9CA3AF; text-align: center;">Independent QA pass. No author context carried into this review.</p>
+</body>
+</html>

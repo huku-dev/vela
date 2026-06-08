@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: position-monitor Sentry + tradeable-assets</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e8e8e8; margin: 0; padding: 24px; line-height: 1.6; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; color: #fff; }
+  .meta { font-size: 0.82rem; color: #888; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+  .badge { padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+  .blocking { background: #3d0c0c; color: #ff6b6b; border: 1px solid #6b2020; }
+  .amber { background: #2e2000; color: #ffb347; border: 1px solid #5a3d00; }
+  .nit { background: #1e1e1e; color: #a0a0a0; border: 1px solid #333; }
+  .safe { background: #0a2e1a; color: #4ade80; border: 1px solid #1a5c35; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #2a2a2a; }
+  h2.blocking { color: #ff6b6b; border-color: #4a1a1a; }
+  h2.amber { color: #ffb347; border-color: #4a3000; }
+  h2.nit { color: #a0a0a0; border-color: #2a2a2a; }
+  h2.safe { color: #4ade80; border-color: #1a4a2a; }
+  .finding { background: #171717; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .finding.blocking-border { border-left: 3px solid #ff6b6b; }
+  .finding.amber-border { border-left: 3px solid #ffb347; }
+  .finding.nit-border { border-left: 3px solid #555; }
+  .finding.safe-border { border-left: 3px solid #4ade80; }
+  .finding-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 8px; }
+  .loc { font-family: monospace; font-size: 0.8rem; color: #888; margin-bottom: 6px; }
+  .label { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; margin-right: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .label-block { background: #3d0c0c; color: #ff6b6b; }
+  .label-amber { background: #2e2000; color: #ffb347; }
+  .label-nit { background: #1e1e1e; color: #a0a0a0; }
+  .label-safe { background: #0a2e1a; color: #4ade80; }
+  code { font-family: monospace; background: #222; padding: 1px 5px; border-radius: 3px; font-size: 0.85em; }
+  .fix-box { background: #0d1a0d; border: 1px solid #1a4a1a; border-radius: 5px; padding: 10px 14px; margin-top: 10px; font-size: 0.88rem; }
+  .fix-label { font-size: 0.75rem; font-weight: 700; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  pre { background: #111; border: 1px solid #2a2a2a; border-radius: 5px; padding: 12px; font-size: 0.82rem; overflow-x: auto; white-space: pre-wrap; margin: 8px 0 0; }
+  .risk-box { background: #1a1a0a; border: 1px solid #3a3a00; border-radius: 8px; padding: 14px 18px; }
+  .risk-box h3 { font-size: 0.9rem; color: #ffb347; margin: 0 0 10px; }
+  ul { margin: 0; padding-left: 18px; }
+  li { margin-bottom: 6px; font-size: 0.88rem; }
+  p { margin: 6px 0; font-size: 0.88rem; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: position-monitor Sentry instrumentation + tradeable-assets update</h1>
+<div class="meta">Reviewed 2026-05-27 &nbsp;·&nbsp; Files: position-monitor/index.ts, position-monitor.test.ts, _shared/tradeable-assets.ts, _shared/sentry.ts</div>
+
+<div class="summary-bar">
+  <div class="badge blocking">1 Blocking</div>
+  <div class="badge amber">2 Worth-a-look</div>
+  <div class="badge nit">1 Nit</div>
+  <div class="badge safe">4 Safe</div>
+</div>
+
+<!-- BLOCKING -->
+<section>
+<h2 class="blocking">Blocking</h2>
+
+<div class="finding blocking-border">
+  <div class="finding-title"><span class="label label-block">Blocking</span> captureException is a no-op: initSentry is never called in position-monitor</div>
+  <div class="loc">position-monitor/index.ts line 35 (import), lines 1805 and 1849 (call sites)</div>
+  <p>
+    <code>captureException</code> is guarded by <code>if (!initialized || !Sentry) return;</code> in <code>_shared/sentry.ts:59</code>.
+    <code>initialized</code> is set to <code>true</code> only inside <code>initSentry()</code>.
+    <code>position-monitor/index.ts</code> imports <code>captureException</code> but never imports or calls <code>initSentry</code>, and does not use the <code>withSentry</code> wrapper.
+    The entire function uses a bare <code>Deno.serve(async (req) =&gt; { ... })</code> at line 243 with no Sentry setup.
+    Both new <code>captureException</code> calls will silently no-op on every invocation.
+    The HYPE incident that motivated this change would produce zero Sentry events after deploy.
+  </p>
+  <p>
+    Comparable functions that correctly instrument Sentry: <code>run-signals/index.ts</code> calls <code>await initSentry("run-signals")</code> at the top of its handler (line 70) and imports <code>flush</code> for end-of-invocation flush. <code>trade-webhook/index.ts</code> calls <code>await initSentry("trade-webhook")</code> at line 826.
+    Neither pattern is present in <code>position-monitor</code>.
+  </p>
+  <p>
+    Secondary issue: even if <code>initSentry</code> is added, there is no <code>flush()</code> call before the function returns at lines 372-375. Supabase edge functions terminate the isolate quickly; without a flush, events queued by the Sentry SDK may be dropped before they reach the network. <code>run-signals</code> calls <code>sentryFlush</code> before returning.
+  </p>
+  <div class="fix-box">
+    <div class="fix-label">Fix</div>
+    Add the missing import and init at the top of the handler. Also add a flush before the final return.
+    <pre>// line 35 — change the import to:
+import { initSentry, captureException, flush as sentryFlush } from "../_shared/sentry.ts";
+
+// line 246, immediately after verifyCronAuth passes — add:
+await initSentry("position-monitor");
+
+// line 372, before the final return new Response — add:
+await sentryFlush();</pre>
+  </div>
+</div>
+</section>
+
+<!-- WORTH-A-LOOK -->
+<section>
+<h2 class="amber">Worth-a-look</h2>
+
+<div class="finding amber-border">
+  <div class="finding-title"><span class="label label-amber">Worth-a-look</span> Change A fires every 2-minute cycle during an HL API outage: no rate limiting on Sentry events</div>
+  <div class="loc">position-monitor/index.ts lines 1802-1808</div>
+  <p>
+    <code>placeTriggerOrder</code> is called every 2-minute cycle per active trailing-stop position.
+    Change A emits a <code>captureException</code> on every failed attempt.
+    With N positions in trailing-stop state and a sustained HL API outage, this emits <code>N * 30</code> Sentry events per hour.
+    Sentry's default SDK-level deduplication does not apply across separate invocations of a short-lived function (each cold start has a fresh SDK state).
+    During the HYPE incident (10 hours), this would have produced ~300 events for a single position.
+    This is a noise risk, not a correctness risk, but it could obscure real errors in the Sentry feed and hit Sentry rate limits.
+  </p>
+  <p>
+    Change B (the perp-with-no-trigger alert at line 1848) fires only at close, so it emits at most once per position. No rate concern there.
+  </p>
+  <div class="fix-box">
+    <div class="fix-label">Suggestion (non-blocking)</div>
+    Consider replacing Change A's <code>captureException</code> with <code>captureMessage(..., { level: "warning" })</code> and using Sentry's "group by fingerprint" or a per-position-per-hour counter to deduplicate. Alternatively, only emit on the first failure per position (check <code>!pos.exchange_sl_order_id</code> as a proxy for "never placed") and rely on Change B for the close-time alert. The simplest immediate fix: change <code>captureException(new Error(triggerErr))</code> to <code>captureMessage(triggerErr, { level: "warning", tags: { ... } })</code> with a Sentry fingerprint including <code>pos.id</code> so duplicates collapse.
+  </div>
+</div>
+
+<div class="finding amber-border">
+  <div class="finding-title"><span class="label label-amber">Worth-a-look</span> Two new source-inspection tests match on surrounding context, not the precise call shape</div>
+  <div class="loc">position-monitor.test.ts lines 1000-1012</div>
+  <p>
+    Both tests use <code>[\s\S]*?</code> (lazy any-char) between the condition and the call, meaning they pass as long as both substrings exist somewhere in the file with the condition appearing before the call, not necessarily in the same block or even the same function.
+    For example, Test 1 (<code>triggerResult.error</code> ... <code>captureException(new Error(triggerErr)</code>) would still pass if someone moved the <code>captureException</code> to a different branch as long as it remained after <code>triggerResult.error</code> in the source.
+    Test 3 (<code>!isSpot && !pos.exchange_sl_order_id</code> ... <code>captureException</code>) would pass even if the <code>captureException</code> inside the block was removed and a different <code>captureException</code> existed later in the file (the current file has one at line 1805 which appears after the condition at 1830).
+  </p>
+  <p>
+    Importantly, running the tests right now confirms all four assertions pass against the real source, so they do detect the current code. The fragility is for future regressions where the call is moved rather than deleted.
+  </p>
+  <div class="fix-box">
+    <div class="fix-label">Suggestion (non-blocking)</div>
+    Tighten the regexes to require the condition and call to be on adjacent lines or within a small character window. For Test 3, anchor closer: <code>/if \(!isSpot && !pos\.exchange_sl_order_id\)[\s\S]{0,200}?captureException/</code> with a character budget prevents false passes from unrelated later calls.
+  </div>
+</div>
+</section>
+
+<!-- NIT -->
+<section>
+<h2 class="nit">Nit</h2>
+
+<div class="finding nit-border">
+  <div class="finding-title"><span class="label label-nit">Nit</span> tradeable-assets.ts: SPCX listed as enabled but was added with enabled=false (pre-launch)</div>
+  <div class="loc">_shared/tradeable-assets.ts line 36</div>
+  <p>
+    Per project memory (MEMORY.md): "SPCX enabled=false (pre-launch, auto-flip poller running)". The FALLBACK_TRADEABLE_ASSETS list includes <code>spcx</code> unconditionally. The fallback is used when the DB is unreachable, so on a DB outage the breaking-news quality gate would count SPCX chips as valid when SPCX is actually disabled. This is a minor edge case (DB outage + SPCX news during the pre-launch window) and the DB is the source of truth, but the comment claims the list is "verified 2026-05-27" matching DB state, which is inaccurate for SPCX.
+  </p>
+  <p>
+    Either remove <code>spcx</code> from the fallback until it goes live, or add a comment noting the intended state mismatch.
+  </p>
+</div>
+</section>
+
+<!-- SAFE -->
+<section>
+<h2 class="safe">Safe</h2>
+
+<div class="finding safe-border">
+  <div class="finding-title"><span class="label label-safe">Safe</span> Change B false-positive analysis: no race with native-fill path</div>
+  <p>
+    The concern was: could Change B fire on a position where a native trigger WAS placed and filled by HL, if the close routine cleared <code>exchange_sl_order_id</code> to null before reaching this code?
+    Answer: no. When HL fills a native trigger, the position disappears from the exchange. On the next 2-minute tick, <code>!exchangePos</code> is true (line 761), and the function enters the "position missing from exchange" reconciliation path (lines 755-1200). That path calls <code>return</code> / <code>continue</code> before ever reaching the trailing-stop retrace check at line 1822. The <code>exchange_sl_order_id: null</code> write inside the native-fill path (lines 840, 969, 1197) happens in that separate branch. The software fallback path at line 1848 is only reachable when the position still exists on the exchange AND the retrace threshold is met, meaning HL has NOT filled a native trigger. The change B condition is logically sound.
+  </p>
+</div>
+
+<div class="finding safe-border">
+  <div class="finding-title"><span class="label label-safe">Safe</span> fallback asset list correctness for the 7 new assets</div>
+  <p>
+    All 7 assets (<code>zec</code>, <code>silver</code>, <code>copper</code>, <code>intc</code>, <code>skhx</code>, <code>spcx</code>, <code>xyz100</code>) were added in prior documented sessions (MEMORY.md completed work log). Their lowercase IDs match the project convention (asset IDs are always lowercase symbol strings). The comment on line 23 correctly describes the fallback semantics and drift risk.
+  </p>
+</div>
+
+<div class="finding safe-border">
+  <div class="finding-title"><span class="label label-safe">Safe</span> tradeable-assets.ts Sentry usage is guarded with try/catch</div>
+  <p>
+    The existing <code>captureException</code> in <code>getTradeableAssetIds</code> is already wrapped in a <code>try/catch</code> (lines 65-72) with a comment explaining that Sentry init failure should not block the fallback return. This file calls <code>captureException</code> directly without <code>initSentry</code>, which will also no-op silently since <code>initialized</code> is false. The no-op is harmless here because the fallback behavior (return hardcoded set) is correct regardless of whether Sentry captures the event.
+  </p>
+</div>
+
+<div class="finding safe-border">
+  <div class="finding-title"><span class="label label-safe">Safe</span> Change B does not double-fire at position close: ordering is correct</div>
+  <p>
+    Change B fires before the software close executes (line 1848 precedes the <code>placeOrder</code> call at line 1879). The <code>exchange_sl_order_id: null</code> write at line 1919 is inside the <code>if (closeResult.success)</code> block, after the close. So the Sentry event captures the state before any DB mutation, and the null write happens only on a successful close. No risk of reading stale state.
+  </p>
+</div>
+</section>
+
+<!-- POST-DEPLOY RISKS -->
+<section>
+<div class="risk-box">
+  <h3>Post-deploy risks to monitor</h3>
+  <ul>
+    <li><strong>Sentry silence after deploy:</strong> If the blocking fix is applied but events still don't appear in Sentry after a cycle where trailing stop trigger placement fails, check: (1) <code>SENTRY_DSN</code> env var is set for position-monitor on staging/prod, (2) <code>flush()</code> is completing before the response returns.</li>
+    <li><strong>Sentry event flood on HL API degradation:</strong> After deploy, watch the Sentry "trailing-stop" flow tag for event count. If a single position generates more than one event per minute, consider the rate-limiting suggestion in Worth-a-look finding 1.</li>
+    <li><strong>SPCX in fallback list:</strong> If SPCX goes live via the auto-flip poller, verify the fallback list stays in sync per the asset-lifecycle runbook.</li>
+    <li><strong>Test regression coverage:</strong> The two new tests pass today. After any refactor that moves the Sentry calls to a helper function, re-run and verify the source-inspection regexes still match the new call site locations.</li>
+  </ul>
+</div>
+</section>
+
+</body>
+</html>

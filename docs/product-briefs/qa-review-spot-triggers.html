@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: Spot Trigger Orders + HL_STRING_STATUS</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1.5rem; background: #0f0f0f; color: #e0e0e0; }
+  h1 { font-size: 1.4rem; color: #fff; margin-bottom: 0.25rem; }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 2rem; }
+  .summary-bar { display: flex; gap: 1rem; margin-bottom: 2rem; }
+  .badge { padding: 0.4rem 1rem; border-radius: 6px; font-weight: 700; font-size: 0.95rem; }
+  .red    { background: #3d1212; color: #f87171; border: 1px solid #7f2020; }
+  .amber  { background: #2d2000; color: #fbbf24; border: 1px solid #6b4c00; }
+  .gray   { background: #1f1f1f; color: #9ca3af; border: 1px solid #444; }
+  .green  { background: #0d2d1a; color: #34d399; border: 1px solid #145c33; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem; }
+  th { background: #1a1a1a; color: #aaa; text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #333; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #222; vertical-align: top; }
+  h2 { font-size: 1.1rem; color: #fff; margin-top: 2rem; border-bottom: 1px solid #2a2a2a; padding-bottom: 0.4rem; }
+  .finding { background: #161616; border: 1px solid #2a2a2a; border-radius: 6px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+  .finding.block  { border-left: 3px solid #f87171; }
+  .finding.amber  { border-left: 3px solid #fbbf24; }
+  .finding.nit    { border-left: 3px solid #555; }
+  .finding h3 { margin: 0 0 0.5rem 0; font-size: 0.95rem; }
+  .block-title  { color: #f87171; }
+  .amber-title  { color: #fbbf24; }
+  .nit-title    { color: #9ca3af; }
+  code { background: #222; padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; font-family: monospace; color: #93c5fd; }
+  .loc { color: #6b7280; font-size: 0.8rem; font-family: monospace; }
+  ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+  li { margin-bottom: 0.3rem; }
+  .fix { margin-top: 0.6rem; background: #0f1f12; border: 1px solid #1a3d22; border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+  .fix strong { color: #34d399; }
+  .monitor { background: #1a1a0a; border: 1px solid #4a4a00; border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Spot Trigger Orders + HL_STRING_STATUS Suppression</h1>
+<p class="subtitle">Phase 1 adversarial review &mdash; 2026-05-28 &mdash; cold read, no prior context</p>
+
+<div class="summary-bar">
+  <div class="badge red">Blocking: 1</div>
+  <div class="badge amber">Worth-a-look: 4</div>
+  <div class="badge gray">Nit: 3</div>
+  <div class="badge green">Safe: 7</div>
+</div>
+
+<h2>File-level risk matrix</h2>
+<table>
+  <tr>
+    <th>File</th><th>Change scope</th><th>Risk</th><th>Verdict</th>
+  </tr>
+  <tr>
+    <td><code>hyperliquid-adapter.ts</code></td>
+    <td>Spot trigger branch, <code>_parseTriggerOrderResponse</code>, <code>cancelTriggerOrder</code></td>
+    <td>High (wire format, dual-listed assets)</td>
+    <td style="color:#fbbf24">1 worth-a-look</td>
+  </tr>
+  <tr>
+    <td><code>exchange-adapter.ts</code></td>
+    <td>Interface additions: <code>isSpot</code>, <code>sizeInAsset</code> docs</td>
+    <td>Low</td>
+    <td style="color:#34d399">Safe</td>
+  </tr>
+  <tr>
+    <td><code>trade-executor.ts</code></td>
+    <td>SL/TP placement with spot flags, M2 cancel guard, spot TP sizeInAsset</td>
+    <td>High (financial flow, size field)</td>
+    <td style="color:#f87171">1 blocking</td>
+  </tr>
+  <tr>
+    <td><code>position-monitor/index.ts</code></td>
+    <td>M1 spot SL fill check, trailing trigger cancel+replace, HL_STRING_STATUS</td>
+    <td>Medium</td>
+    <td style="color:#fbbf24">2 worth-a-look</td>
+  </tr>
+  <tr>
+    <td><code>e2e-testnet-test/index.ts</code></td>
+    <td>T14/T15/T16 new test blocks</td>
+    <td>Low (test infrastructure)</td>
+    <td style="color:#fbbf24">1 worth-a-look</td>
+  </tr>
+  <tr>
+    <td><code>hyperliquid-adapter.test.ts</code></td>
+    <td>TRIGGER-ADV source-grep tests</td>
+    <td>Low</td>
+    <td style="color:#34d399">Safe (coverage adequate)</td>
+  </tr>
+  <tr>
+    <td><code>position-monitor.test.ts</code></td>
+    <td>NATIVE-TRAIL-ADV source-grep tests</td>
+    <td>Low</td>
+    <td style="color:#34d399">Safe (coverage adequate)</td>
+  </tr>
+</table>
+
+<h2>Blocking</h2>
+
+<div class="finding block">
+  <h3 class="block-title">B1. Spot TP ladder passes <code>sizeInAsset</code> without asserting it is &gt; 0 before placement</h3>
+  <p class="loc">trade-executor.ts ~line 1696–1706</p>
+  <p>
+    The TP loop computes <code>sizeInAsset = (orderResult.fill_size ?? 0) * PROFIT_LADDER_FRACTIONS[i]</code>
+    and passes it into <code>placeTriggerOrder({ ..., sizeInAsset })</code> with the spot spread.
+    The outer guard at line 1686 checks <code>(orderResult.fill_size ?? 0) &gt; 0</code>, but it does not
+    prevent <code>sizeInAsset</code> from resolving to a negligibly small float (e.g. if fill_size is
+    unexpectedly tiny). More importantly, the adapter's spot-trigger guard at line 1239 reads
+    <code>if (!request.sizeInAsset || request.sizeInAsset &lt;= 0)</code> — this guard fires if
+    <code>sizeInAsset</code> rounds to zero after <code>roundToWire</code>. When it fires the adapter
+    returns <code>success: false</code>, the TP is silently skipped (only a <code>console.warn</code>),
+    and the DB position is written with a partial or empty <code>exchange_tp_order_ids</code> array
+    without any Sentry alert. For a spot position whose fill_size is at the minimum tick boundary
+    and the smallest ladder fraction (PROFIT_LADDER_FRACTIONS[0], presumably ~0.33) the product
+    could round to zero on low-decimal assets (e.g. HYPE szDecimals=2 at very low price).
+  </p>
+  <p>
+    The more acute risk is the interaction with <code>roundToWire</code>: the outer guard passes
+    a positive float, the adapter guard passes, but <code>roundToWire</code> returns <code>"0"</code>
+    for a sub-tick size. HL will then reject the order with a size error, but the code path only
+    <code>console.warn</code>s the failure and moves on. No Sentry capture, no audit row. The native
+    TP is silently absent and position-monitor's retrace path has no native trigger to defer to.
+    For a full-size SL-only position this is acceptable, but the TP ladder is advertised as active
+    protection.
+  </p>
+  <div class="fix">
+    <strong>Fix:</strong> Add a minimum-size guard before TP placement:
+    <code>if (sizeInAsset &lt; MIN_SPOT_ORDER_SIZE) { console.warn(...); continue; }</code>
+    where <code>MIN_SPOT_ORDER_SIZE</code> is derived from the asset's <code>szDecimals</code> (1 tick).
+    Alternatively, assert <code>roundToWire(sizeInAsset, szDecimals) !== "0"</code> before calling
+    <code>placeTriggerOrder</code>. Escalate a Sentry <code>captureException</code> (not just
+    <code>console.warn</code>) when a TP placement fails on a spot position, matching the treatment
+    of the SL placement failure at line 1665.
+  </div>
+</div>
+
+<h2>Worth-a-look</h2>
+
+<div class="finding amber">
+  <h3 class="amber-title">W1. <code>cancelTriggerOrder</code> silently falls back to perp index when <code>isSpot=true</code> but asset is absent from spot meta</h3>
+  <p class="loc">hyperliquid-adapter.ts lines 1432–1435</p>
+  <p>
+    The logic is <code>const assetIndex = useSpotIndex &amp;&amp; spotToken ? spotToken.index : (await this.resolveAsset(asset)).index</code>.
+    If a caller passes <code>isSpot=true</code> explicitly but <code>getSpotMeta()</code> does not
+    return the asset (e.g. HL spot meta fetch returns a stale or empty result due to a transient API
+    error, or the asset was recently delisted from spot), <code>spotToken</code> is <code>undefined</code>,
+    <code>useSpotIndex &amp;&amp; spotToken</code> is falsy, and the code silently falls back to the
+    perp index. The cancel is sent to the wrong market. The order stays live on the spot market,
+    position-monitor never sees it cancelled, and the native SL fires on the now-closed position
+    (which would be a no-op on HL, but could cause phantom reconciliation confusion).
+  </p>
+  <p>
+    The doc comment says "When true, always use spot index even if the asset isn't in spot meta
+    (shouldn't happen in practice)" — but the implementation does the opposite of "always use".
+  </p>
+  <div class="fix">
+    <strong>Fix:</strong> When <code>isSpot === true</code> and <code>spotToken</code> is undefined,
+    return <code>{ success: false, error: "isSpot=true but asset not found in spot meta — cannot determine spot index" }</code>
+    rather than silently using perp index. This surfaces the getSpotMeta failure rather than hiding it.
+  </div>
+</div>
+
+<div class="finding amber">
+  <h3 class="amber-title">W2. <code>HL_STRING_STATUS</code> suppression does not distinguish known-benign strings from genuine error strings</h3>
+  <p class="loc">hyperliquid-adapter.ts lines 1360–1365; position-monitor/index.ts lines 2011–2013</p>
+  <p>
+    The bare-string guard fires on <code>typeof status === "string"</code> and prefixes whatever
+    string HL returned: <code>HL_STRING_STATUS:${status}</code>. Position-monitor then checks
+    <code>triggerResult.error?.startsWith("HL_STRING_STATUS:")</code> and suppresses Sentry for
+    the entire class. If HL returns a string like <code>"error: position would exceed leverage limits"</code>
+    or <code>"rejected"</code> (both plausible string error responses from HL's L1), the Sentry
+    alert is also suppressed. The trigger was NOT placed in that case but position-monitor logs it
+    as "HL accepted, no oid echoed" and continues with software fallback — without alerting.
+  </p>
+  <p>
+    The original Sentry noise was caused specifically by <code>"waitingForTrigger"</code> being
+    returned as a string. A tighter guard would be <code>status === "waitingForTrigger"</code>
+    (or a small set of known-benign strings) rather than all strings.
+  </p>
+  <div class="fix">
+    <strong>Fix:</strong> Change the string guard to check for the specific known-benign value:
+    <code>if (status === "waitingForTrigger")</code>. Return <code>HL_STRING_STATUS:waitingForTrigger</code>
+    only for that case. For any other string value, return a plain <code>error: String(status)</code>
+    so Sentry fires normally. If additional benign strings are discovered, add them explicitly to
+    an allowlist rather than suppressing all strings.
+  </div>
+</div>
+
+<div class="finding amber">
+  <h3 class="amber-title">W3. <code>earliestOpenMs</code> snapshot is stale if a new position opened between the cache seed and the spot-fill check</h3>
+  <p class="loc">position-monitor/index.ts lines 420–422, 589–596</p>
+  <p>
+    <code>earliestOpenMs</code> is computed from <code>positions.map(p =&gt; new Date(p.opened_at).getTime())</code>
+    before the position loop. If a position opened after this snapshot but before the fills
+    cache is populated (i.e. its <code>opened_at</code> is newer than <code>earliestOpenMs</code>),
+    <code>getUserFills</code> will be called with the older timestamp, which still covers the new
+    position's fills. This is safe.
+  </p>
+  <p>
+    The inverse risk: if a position was opened <em>during a prior monitor run</em> with a very
+    recent <code>opened_at</code>, and the cache was populated in a <em>previous</em> invocation
+    (module-level cache reuse), the shared cache might not include fills from that position's
+    open. However, <code>userFillsCache</code> is declared inside the per-user function call
+    (not at module level), so it is freshly populated each monitor run. No stale-cache issue.
+  </p>
+  <p>
+    The real residual risk: <code>userFillsCache</code> is populated on the first spot position
+    that needs it and then reused for all subsequent spot positions in the same user-loop. The
+    cache is keyed only by <code>earliestOpenMs</code>. If two spot positions exist for the same
+    user and the second position was opened after the first position's SL fill, the cache
+    (seeded from <code>earliestOpenMs</code> = the older position) includes fills from both SL
+    events. oid-based matching prevents a false match, but the comment at line 588 should state
+    explicitly that oid uniqueness is the safety property being relied on, not just coin-level
+    deduplication.
+  </p>
+  <div class="fix">
+    <strong>Low urgency.</strong> No code change required. Add a comment at cache-population site
+    making explicit that oid-based matching is the cross-position safety guarantee, not coin.
+    This prevents a future refactor from removing oid matching and breaking the assumption.
+  </div>
+</div>
+
+<div class="finding amber">
+  <h3 class="amber-title">W4. T16 asserts <code>passed = closed || priceUpdated</code> — a price-only update passes the test even if close_reason is wrong or position remains open</h3>
+  <p class="loc">e2e-testnet-test/index.ts lines 1444–1453</p>
+  <p>
+    The pass condition is <code>closed || priceUpdated</code> where <code>priceUpdated</code> is
+    <code>pos?.current_price != null &amp;&amp; Math.abs(Number(pos.current_price) - spotPrice) &gt; 0.001</code>.
+    If position-monitor runs, updates <code>current_price</code> but does not close the position
+    (e.g. the stop_loss_price check failed, or it closed with <code>close_reason="phantom_reconciled"</code>
+    instead of <code>"stop_loss"</code>), the test still returns <code>passed: true</code> with the
+    amber-toned message "Spot price updated... status=..." rather than failing. This masks a
+    real position-monitor regression where the stop-loss path did not fire.
+  </p>
+  <div class="fix">
+    <strong>Fix:</strong> Remove the <code>priceUpdated</code> fallback from the pass condition.
+    Require <code>closed</code> (<code>status === "closed" &amp;&amp; close_reason === "stop_loss"</code>).
+    Price-update-only should be a failing result with a descriptive error. The priceUpdated
+    fallback was appropriate during initial test development but is too loose for a regression gate.
+  </div>
+</div>
+
+<h2>Nit</h2>
+
+<div class="finding nit">
+  <h3 class="nit-title">N1. T14's wrong-index cancel result is logged but not asserted — the "index correctness proof" comment overstates what is actually proven</h3>
+  <p class="loc">e2e-testnet-test/index.ts lines 1113–1118</p>
+  <p>
+    The comment says Step A proves "no-op on HL spot market" but the code explicitly says "Result
+    (success or failure) is logged but NOT asserted — both outcomes are acceptable." The proof
+    that the trigger survived Step A rests entirely on Step B succeeding. If HL returns
+    <code>success: true</code> for a wrong-index cancel-of-nonexistent AND Step B also
+    succeeds (because a new oid was assigned), the wrong-index cancel could have worked without
+    detection. The proof relies on HL never assigning the same oid twice in a test run, which is
+    reasonable but not formally verified. Consider a comment clarifying that the oid uniqueness
+    assumption underlies the proof.
+  </p>
+</div>
+
+<div class="finding nit">
+  <h3 class="nit-title">N2. <code>TRIGGER-ADV: No raw floatToWire</code> only scans the first 1500 bytes of <code>placeTriggerOrder</code>, missing the perp branch entirely</h3>
+  <p class="loc">hyperliquid-adapter.test.ts lines 413–418</p>
+  <p>
+    The spot branch and the perp branch together span ~1300 chars in the source. The 1500-char
+    window catches the spot branch but the perp branch starts around char 1100 and its price
+    fields are at chars ~1280–1380. At the edge of the window, <code>priceToWire</code> calls
+    in the perp branch may be scanned or may not, depending on surrounding whitespace. Other
+    TRIGGER-ADV tests use 4000-char windows for this method. Increase this test's window to 4000
+    to match, so a regression in the perp path's price field handling is also caught.
+  </p>
+</div>
+
+<div class="finding nit">
+  <h3 class="nit-title">N3. T16: 1500 ms settle delay after perp-to-spot transfer is hardcoded and may be insufficient on loaded testnet</h3>
+  <p class="loc">e2e-testnet-test/index.ts line 1337</p>
+  <p>
+    The comment notes this is to "let transfer settle." On testnet, HL's spot pool update can
+    occasionally lag more than 1.5s under load. If the buy executes before the USDC is visible
+    in the spot pool, the order fails with "insufficient balance" and T16 throws. The outer
+    catch block cleans up correctly, so this is not a correctness issue — just a flaky-test
+    risk. A warning log before the buy confirming the spot balance covers the expected $20 would
+    make intermittent failures easier to diagnose.
+  </p>
+</div>
+
+<h2>Risks to monitor post-deploy</h2>
+
+<div class="monitor">
+  <strong>1. Spot TP fill detection not yet implemented in position-monitor M1.</strong>
+  The M1 fill-check block at line 572 handles <code>exchange_sl_order_id</code> (SL + trailing stop).
+  Native TP fills on spot go through the <code>exchange_tp_order_ids</code> path (separate code section
+  not in this diff's review scope). Confirm that path exists and handles spot positions, otherwise
+  spot TP fills will be detected only via balance reconciliation (phantom path), potentially with a
+  10-minute delay.
+</div>
+
+<div class="monitor" style="margin-top:0.75rem">
+  <strong>2. AMZN and other equity perps with bare-string status: exchange_sl_order_id remains null.</strong>
+  When HL returns <code>"waitingForTrigger"</code> as a bare string (no oid), <code>slResult.success</code>
+  is <code>false</code> and <code>exchange_sl_order_id</code> is never written. Software fallback is
+  the only protection for these positions. Monitor Sentry for <code>"Native SL placement failed:
+  HL_STRING_STATUS:waitingForTrigger"</code> — if it fires frequently, the right fix is a retry
+  loop (wait 500ms, re-fetch the resting orders to extract the oid), not continued suppression.
+</div>
+
+<div class="monitor" style="margin-top:0.75rem">
+  <strong>3. Spot trailing trigger cancel+replace window.</strong>
+  The gap between cancel and re-place on spot is acknowledged in the code (comment at line 1939).
+  If the price drops past the trail level during this window, the software retrace check at line
+  2038 is the backstop. Monitor trailing-stop events on spot positions for cases where
+  <code>close_reason="trailing_stop"</code> without a preceding <code>oid</code> in the audit log
+  (would indicate software path fired, not native).
+</div>
+
+<h2>Safe</h2>
+<ul>
+  <li><strong>Wire field <code>r: false</code> for spot and <code>r: true</code> for perp</strong> are correctly set and the TRIGGER-ADV source-grep test covers both unconditionally.</li>
+  <li><strong><code>grouping: "na"</code> for spot</strong> is correctly applied and does not regress the perp <code>"positionTpsl"</code> path.</li>
+  <li><strong>Spot asset index (<code>spotToken.index</code>, not <code>SPOT_INDEX_OFFSET + X</code>)</strong> is correctly taken from HL's own spot meta rather than a hardcoded offset calculation.</li>
+  <li><strong><code>b: request.side === "long"</code></strong> is correct for closing triggers: a long SL is a sell (b=false), a short SL is a buy (b=true). The perp branch uses the same expression and has been in production.</li>
+  <li><strong>M2 cancel in trade-executor</strong> (lines 1002–1050) correctly passes <code>isSpotClose</code> explicitly for both SL and TP cancels, preventing dual-listed asset index confusion.</li>
+  <li><strong><code>_parseTriggerOrderResponse</code></strong> is shared by both paths and handles all four cases (resting, waitingForTrigger, bare string, error) correctly. The <code>oid !== "number"</code> type guard on both success paths prevents undefined orderId from being stored.</li>
+  <li><strong>T14 two-cancel proof design</strong> is sound: Step B failing after Step A would catch a wrong-index-actually-cancelled regression.</li>
+</ul>
+
+<hr style="border-color:#2a2a2a; margin-top:2rem">
+<p style="color:#555; font-size:0.8rem">
+  Cold review &mdash; no prior context &mdash; generated 2026-05-28
+</p>
+
+</body>
+</html>

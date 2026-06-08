@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: Telegram/Email Decoupling in notify.ts</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 820px; margin: 40px auto; padding: 0 24px; background: #0A0A0A; color: #F0F0F0; line-height: 1.6; }
+  h1 { font-size: 1.3rem; color: #FFFBF5; border-bottom: 1px solid #333; padding-bottom: 12px; }
+  .summary { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+  .badge { padding: 6px 16px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+  .block { background: #5c1010; color: #f88; }
+  .amber { background: #4a3500; color: #ffc94d; }
+  .nit { background: #1e1e1e; color: #aaa; }
+  .safe { background: #0d2e1a; color: #0FE68C; }
+  h2 { font-size: 1rem; margin-top: 28px; margin-bottom: 8px; }
+  .blocking h2 { color: #f88; }
+  .amber-section h2 { color: #ffc94d; }
+  .nit-section h2 { color: #aaa; }
+  .safe-section h2 { color: #0FE68C; }
+  .finding { background: #141414; border-left: 3px solid #333; padding: 12px 16px; margin: 12px 0; border-radius: 0 4px 4px 0; }
+  .finding.block-item { border-left-color: #f88; }
+  .finding.amber-item { border-left-color: #ffc94d; }
+  .finding.nit-item { border-left-color: #555; }
+  .finding.safe-item { border-left-color: #0FE68C; }
+  code { background: #1e1e1e; padding: 2px 6px; border-radius: 3px; font-size: 0.88em; font-family: "SF Mono", Menlo, monospace; color: #e0e0e0; }
+  .loc { font-size: 0.8rem; color: #888; margin-bottom: 4px; }
+  p { margin: 6px 0; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA: Telegram/Email Decoupling in <code>notify.ts</code></h1>
+<p style="color:#888;font-size:0.85rem;">Reviewed: <code>notifyBatchProposals</code> + <code>notifyTradeProposal</code> — 2026-05-29</p>
+
+<div class="summary">
+  <span class="badge block">0 Blocking</span>
+  <span class="badge amber">1 Worth a look</span>
+  <span class="badge nit">1 Nit</span>
+  <span class="badge safe">Safe to deploy</span>
+</div>
+
+<!-- BLOCKING -->
+<div class="blocking">
+  <h2>Blocking</h2>
+  <p style="color:#888;font-size:0.85rem;">None. Core decoupling is correct.</p>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="amber-section">
+  <h2>Worth a look</h2>
+
+  <div class="finding amber-item">
+    <div class="loc">notify.ts ~2477 — <code>notifyBatchProposals</code> email try/catch</div>
+    <p><strong>Silent email skip in development, zero signal in production-like envs.</strong> When <code>APP_BASE_URL</code> is localhost and <code>ENVIRONMENT === "development"</code>, the inner <code>if</code> falls through without throwing. The email section continues to <code>formatBatchProposalEmail</code> with a broken base URL (localhost links). In practice this only fires locally so no real user impact, but the intent reads as "skip email silently" and the code reads as "continue with a bad URL". A <code>return</code> or explicit <code>console.warn + return</code> inside the <code>if (env !== "development")</code> block would make the localhost short-circuit explicit rather than an implicit fall-through.</p>
+    <p>No test covers this path today. If someone runs the function with <code>ENVIRONMENT=development</code> on a real staging DB, batch emails go out with localhost hrefs.</p>
+  </div>
+</div>
+
+<!-- NITS -->
+<div class="nit-section">
+  <h2>Nits</h2>
+
+  <div class="finding nit-item">
+    <div class="loc">notify.ts ~2501 — email catch log message</div>
+    <p>The catch message says "Telegram still sent" unconditionally: <code>"Batch email failed ... — Telegram still sent"</code>. If <code>getUserTelegramChatId</code> also threw (caught in the outer try at ~2470) and pushed zero TG tasks, this message is misleading: Telegram was NOT sent, yet the log claims it was. Low operational impact, but confusing during incident triage. Consider: "Telegram attempted above (check logs); email failed:".</p>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="safe-section">
+  <h2>Safe</h2>
+
+  <div class="finding safe-item">
+    <p><strong>Decoupling invariant holds.</strong> <code>tasks</code> is declared at line 2448 (before both try/catch blocks) in <code>notifyBatchProposals</code> and at line 2819 in <code>notifyTradeProposal</code>. Both Telegram and email try/catch blocks share the same <code>tasks</code> array; neither re-throws. <code>Promise.allSettled(tasks)</code> is always reached.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong><code>getUserTelegramChatId</code> throw is caught.</strong> The outer try/catch at lines 2452–2472 wraps the entire Telegram block including the <code>getUserTelegramChatId</code> await. A thrown error logs and falls through to the email section — email still attempts.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>Per-proposal inner try/catch is correct.</strong> Each proposal's <code>formatProposalTelegram</code> call in <code>notifyBatchProposals</code> is wrapped in its own try/catch (lines 2456–2467). A format failure for one proposal logs and skips, leaving remaining proposals' TG tasks intact.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>No Telegram failure can block email.</strong> Both Telegram paths (user chatId and fallback admin) only <code>push</code> to <code>tasks</code>; they never await before the email section begins. The email try/catch is structurally independent.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>chatId = null is handled.</strong> In both functions, a null chatId from <code>getUserTelegramChatId</code> results in zero TG tasks pushed; execution falls through to the email section normally.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>n=1 and n&gt;MAX delegation unchanged.</strong> The <code>proposals.length === 1</code> path at line 2424 delegates to <code>notifyTradeProposal</code> before the refactored code is reached. The <code>n &gt; MAX_BATCH_SIZE</code> loop at line 2438 similarly returns before <code>tasks</code> is initialized. Neither path is touched.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>notification_log insert still fires after <code>allSettled</code>.</strong> In both functions, the audit insert is positioned after <code>await Promise.allSettled(tasks)</code> and is itself wrapped in try/catch — correctly non-fatal. Email/Telegram failure does not skip the log row.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>Existing source-grep tests still pass.</strong> All 43 tests check string literals and structural patterns that are unchanged by this refactor: <code>IS_STAGING</code> gate presence, <code>trade_proposal_batch</code> channel string, <code>batch_count: proposals.length</code>, <code>notification_log write failed (non-fatal)</code>, <code>proposals.length === 1</code> delegation pattern, <code>proposals.length &gt; MAX_BATCH_SIZE</code> fallback, and <code>Promise.allSettled</code> usage — all present in the new code at the same grep-matchable positions.</p>
+  </div>
+
+  <div class="finding safe-item">
+    <p><strong>Admin email fallback preserved.</strong> If <code>profile?.email</code> is null, both functions fall back to <code>sendEmail</code> (admin). No regression.</p>
+  </div>
+</div>
+
+</body>
+</html>

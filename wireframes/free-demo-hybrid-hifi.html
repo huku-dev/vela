@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hybrid demo flow — high-fidelity variants</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Vela tokens — pulled directly from src/styles/vela-design-system.css */
+        --white: #ffffff;
+        --black: #000000;
+        --cream-base: #f5f1e8;
+        --vela-cream: #fffbf5;
+        --vela-ink: #0a0a0a;
+        --vela-signal-green: #0fe68c;
+
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #94a3b8;
+        --gray-500: #6b7280;
+        --gray-600: #475569;
+        --gray-700: #374151;
+        --gray-900: #0f172a;
+
+        --green-primary: #10b981;
+        --green-dark: #059669;
+        --green-light: #d1fae5;
+        --green-bg: #ecfdf5;
+        --green-tint: #f0fdf6;
+
+        --red-primary: #ef4444;
+        --red-dark: #dc2626;
+        --red-bg: #fef2f2;
+
+        --amber-primary: #f59e0b;
+        --amber-light: #fde68a;
+        --amber-bg: #fffbeb;
+
+        --mint-50: #f0fdf4;
+        --mint-100: #dcfce7;
+        --peach-50: #fff7ed;
+        --peach-100: #ffedd5;
+        --sky-50: #f0f9ff;
+        --sky-100: #e0f2fe;
+        --lavender-50: #f5f3ff;
+        --lavender-100: #ede9fe;
+
+        --warm-cream: #fff8e7;
+        --warm-cream-border: #f5e6c8;
+
+        --blue-primary: #2563eb;
+        --blue-light: #dbeafe;
+        --blue-bg: #eff6ff;
+
+        --border-thin: 1px;
+        --border-medium: 2px;
+        --border-thick: 3px;
+
+        --radius-sm: 0.5rem;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+        --radius-xl: 1.5rem;
+
+        --space-1: 0.25rem;
+        --space-2: 0.5rem;
+        --space-3: 0.75rem;
+        --space-4: 1rem;
+        --space-5: 1.25rem;
+        --space-6: 1.5rem;
+        --space-8: 2rem;
+
+        --shadow-xs: 1.5px 1.5px 0 var(--black);
+        --shadow-sm: 3px 3px 0 var(--black);
+        --shadow-md: 4px 4px 0 var(--black);
+        --shadow-lg: 6px 6px 0 var(--black);
+      }
+
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        font-family: "Inter", system-ui, sans-serif;
+        background: #eee8da;
+        color: var(--gray-900);
+      }
+      body { padding-bottom: 80px; }
+
+      .stage { padding: 36px 28px 0; max-width: 1480px; margin: 0 auto; }
+      h1 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0 0 8px; font-size: 30px; letter-spacing: -0.01em;
+      }
+      .stage-sub { color: var(--gray-700); margin: 0 0 28px; font-size: 14px; max-width: 1080px; line-height: 1.55; }
+      .stage-context { color: var(--gray-500); font-style: italic; }
+
+      .section {
+        margin: 56px 0 0;
+        padding: 28px 30px 32px;
+        background: var(--cream-base);
+        border: var(--border-medium) solid var(--black);
+        border-radius: 18px;
+        box-shadow: var(--shadow-md);
+      }
+      .section-head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        margin: 0 0 6px; gap: 18px; flex-wrap: wrap;
+      }
+      .section-head h2 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0; font-size: 22px; letter-spacing: -0.005em;
+      }
+      .section-head .step-tag {
+        font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--gray-600);
+        background: var(--white); border: var(--border-thin) solid var(--black);
+        padding: 3px 8px; border-radius: 4px;
+      }
+      .section-sub { color: var(--gray-700); margin: 0 0 22px; font-size: 13.5px; max-width: 1000px; line-height: 1.55; }
+
+      .variants {
+        display: grid;
+        gap: 22px;
+        align-items: start;
+      }
+      .variants-3 { grid-template-columns: repeat(3, 1fr); }
+      .variants-2 { grid-template-columns: repeat(2, 1fr); }
+      @media (max-width: 1180px) {
+        .variants-3, .variants-2 { grid-template-columns: 1fr; }
+      }
+
+      .variant-col {
+        background: var(--white);
+        border: var(--border-medium) solid var(--black);
+        border-radius: 14px;
+        padding: 18px 16px;
+        box-shadow: var(--shadow-sm);
+      }
+      .variant-col h3 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; margin: 0 0 4px; font-size: 15px;
+      }
+      .variant-col .tagline { font-size: 11.5px; color: var(--gray-600); margin: 0 0 14px; line-height: 1.5; min-height: 32px; }
+
+      /* ─────────  Phone frame  ───────── */
+      .phone {
+        width: 100%;
+        max-width: 296px;
+        margin: 0 auto;
+        background: var(--vela-cream);
+        border: var(--border-thick) solid var(--black);
+        border-radius: 28px;
+        padding: 12px 12px 0;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+        overflow: hidden;
+      }
+      .status-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        height: 18px; margin-bottom: 8px;
+        font-family: "JetBrains Mono", monospace; font-size: 9px; color: var(--gray-600);
+      }
+      .app-canvas {
+        background: var(--vela-cream);
+        border-radius: 18px;
+        padding: 12px 12px 14px;
+      }
+      /* Brand strip — logomark + lowercase "vela" wordmark, sits above page content */
+      .brand-strip {
+        display: flex; align-items: center; gap: 7px;
+        padding: 4px 2px 8px;
+        margin-bottom: 4px;
+        border-bottom: 1.5px solid var(--gray-200);
+      }
+      .brand-strip svg { display: block; }
+      .brand-wordmark {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: -0.03em;
+        color: var(--vela-ink);
+      }
+      .brand-strip .right {
+        margin-left: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 9px; color: var(--gray-500);
+      }
+
+      /* ─────────  Vela primitives (high-fidelity reproductions)  ───────── */
+
+      .v-card {
+        background: var(--white);
+        /* Brand checklist: borders 3-4px black */
+        border: var(--border-thick) solid var(--black);
+        border-radius: 12px;
+        padding: 10px 12px;
+        box-shadow: 3px 3px 0 var(--black);
+        margin-bottom: var(--space-2);
+      }
+      .v-card.mint { background: var(--mint-50); }
+      .v-card.peach { background: var(--peach-50); }
+      .v-card.sky { background: var(--sky-50); }
+      .v-card.lavender { background: var(--lavender-50); }
+      .v-card.warm { background: var(--warm-cream); border-color: var(--warm-cream-border); }
+      .v-card.compact { padding: 8px 10px; }
+      .v-card.locked { background: var(--gray-100); color: var(--gray-500); }
+
+      .v-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+
+      .pill {
+        display: inline-block;
+        padding: 1.5px 7px;
+        border-radius: var(--radius-sm);
+        font-size: 9.5px; font-weight: 700; letter-spacing: 0.02em;
+        border: 1.5px solid var(--black);
+        line-height: 1.3;
+      }
+      .pill.long { background: var(--green-primary); color: var(--white); }
+      .pill.short { background: var(--red-primary); color: var(--white); }
+      .pill.wait { background: var(--gray-200); color: var(--gray-700); }
+      .pill.demo { background: var(--amber-light); color: var(--vela-ink); border-color: var(--amber-primary); }
+      .pill.cream { background: var(--vela-cream); color: var(--vela-ink); }
+      .pill.dark { background: var(--vela-ink); color: var(--vela-cream); border-color: var(--vela-ink); }
+      .pill.signal { background: var(--vela-signal-green); color: var(--vela-ink); border-color: var(--vela-ink); }
+
+      .heading {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+      }
+      .label-sm {
+        font-family: "Space Grotesk", sans-serif;
+        font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em;
+        text-transform: uppercase; color: var(--gray-600);
+      }
+      .mono { font-family: "JetBrains Mono", monospace; }
+      .pnl-pos { color: var(--green-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+      .pnl-neg { color: var(--red-dark); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+
+      /* Avatar / asset icon dot */
+      .asset-dot {
+        width: 26px; height: 26px; border-radius: 50%;
+        border: 2px solid var(--black);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 11px; flex-shrink: 0;
+      }
+      .asset-dot.btc { background: linear-gradient(135deg, #f7931a, #ffaf3c); color: var(--white); }
+      .asset-dot.eth { background: linear-gradient(135deg, #627eea, #8aa1ee); color: var(--white); }
+      .asset-dot.aapl { background: var(--vela-ink); color: var(--white); }
+      .asset-dot.hype { background: linear-gradient(135deg, #0fe68c, #059669); color: var(--vela-ink); }
+      .asset-dot.spx { background: linear-gradient(135deg, #2563eb, #3b82f6); color: var(--white); }
+
+      /* CTAs */
+      .btn {
+        display: block; width: 100%;
+        background: var(--vela-signal-green);
+        border: var(--border-medium) solid var(--black);
+        border-radius: var(--radius-sm);
+        padding: 9px 0;
+        text-align: center; font-weight: 700; font-size: 12.5px;
+        box-shadow: 2px 2px 0 var(--black);
+        font-family: "Inter", sans-serif;
+        color: var(--vela-ink);
+      }
+      .btn.dark { background: var(--vela-ink); color: var(--vela-cream); }
+      .btn.ghost { background: var(--white); }
+      .btn.split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0; box-shadow: none; border: none; }
+      .btn.split > div {
+        padding: 8px 0; text-align: center; font-weight: 700; font-size: 11.5px;
+        border: 2px solid var(--black); border-radius: var(--radius-sm);
+        box-shadow: 2px 2px 0 var(--black);
+      }
+      .btn.split .approve { background: var(--vela-signal-green); }
+      .btn.split .decline { background: var(--white); }
+
+      /* Bottom sticky CTA bar (inside phone canvas) */
+      .sticky-bar {
+        background: var(--vela-ink); color: var(--vela-cream);
+        border-radius: var(--radius-md);
+        padding: 9px 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        font-size: 11px;
+        margin-top: 8px;
+      }
+      .sticky-bar strong { color: var(--vela-signal-green); font-size: 11.5px; }
+
+      /* Bottom nav (3 tabs) */
+      .bottom-nav {
+        margin: 8px -12px 0;
+        background: var(--white);
+        border-top: var(--border-medium) solid var(--black);
+        padding: 7px 0 8px;
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        text-align: center; font-size: 9.5px; color: var(--gray-500);
+        font-family: "Inter", sans-serif;
+        border-radius: 0 0 18px 18px;
+      }
+      .bottom-nav .tab {
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+      }
+      .bottom-nav .tab .ico {
+        width: 14px; height: 14px; border: 1.5px solid var(--gray-400); border-radius: 3px;
+      }
+      .bottom-nav .tab.active { color: var(--vela-ink); font-weight: 700; }
+      .bottom-nav .tab.active .ico { border-color: var(--vela-ink); background: var(--vela-signal-green); }
+
+      /* Demo banner variants */
+      .demo-banner {
+        border-radius: var(--radius-sm);
+        padding: 6px 10px;
+        font-size: 11px; font-weight: 600;
+        margin-bottom: var(--space-3);
+        display: flex; align-items: center; gap: 8px;
+      }
+      .demo-banner.amber {
+        background: var(--amber-light); border: 1.5px solid var(--amber-primary);
+        color: #7a4f00;
+      }
+      .demo-banner.ink {
+        background: var(--vela-ink); color: var(--vela-cream);
+      }
+      .demo-banner.mint {
+        background: var(--mint-100); border: 1.5px solid var(--green-primary);
+        color: var(--green-dark);
+      }
+      .demo-banner.cream {
+        background: var(--warm-cream); border: 1.5px solid var(--warm-cream-border);
+        color: #6b4d11;
+      }
+
+      /* Carousel dots */
+      .dots { display: flex; justify-content: center; gap: 5px; margin-top: 12px; }
+      .dots span { width: 6px; height: 6px; background: var(--gray-300); border-radius: 50%; }
+      .dots span.on { background: var(--vela-ink); width: 18px; border-radius: 3px; }
+
+      /* Coachmark */
+      .coachmark {
+        position: absolute;
+        background: var(--vela-ink); color: var(--vela-cream);
+        padding: 8px 10px; border-radius: 10px;
+        font-size: 10.5px; font-weight: 500; line-height: 1.4;
+        max-width: 75%;
+        box-shadow: 3px 3px 0 var(--vela-signal-green);
+        z-index: 5;
+      }
+      .coachmark::after {
+        content: ""; position: absolute;
+        border-left: 7px solid transparent; border-right: 7px solid transparent;
+      }
+      .coachmark.below::after { top: -7px; left: 22px; border-bottom: 7px solid var(--vela-ink); }
+      .coachmark.above::after { bottom: -7px; left: 22px; border-top: 7px solid var(--vela-ink); }
+
+      /* Skip link */
+      .skip-link {
+        position: absolute; top: 16px; right: 18px;
+        font-size: 11px; color: var(--gray-600); font-weight: 600;
+        text-decoration: underline;
+      }
+
+      /* Notes block */
+      .notes {
+        margin-top: 14px;
+        background: var(--cream-base); border: 1.5px dashed var(--gray-400);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 12px; line-height: 1.5; color: var(--gray-700);
+      }
+      .notes strong { color: var(--vela-ink); }
+
+      /* Open questions block */
+      .open-q {
+        margin-top: 36px;
+        background: var(--vela-ink); color: var(--vela-cream);
+        border-radius: 14px; padding: 22px 26px;
+        box-shadow: var(--shadow-md);
+      }
+      .open-q h3 {
+        margin: 0 0 8px; font-family: "Space Grotesk", sans-serif;
+        font-weight: 700; font-size: 18px;
+      }
+      .open-q ol { margin: 8px 0 0; padding-left: 20px; line-height: 1.6; font-size: 13.5px; }
+      .open-q li + li { margin-top: 10px; }
+      .open-q strong { color: var(--vela-signal-green); }
+
+      .recommend {
+        display: inline-block;
+        background: var(--vela-signal-green); color: var(--vela-ink);
+        font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+        padding: 3px 9px; border-radius: 6px; margin-left: 8px; vertical-align: middle;
+        border: 1.5px solid var(--black);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <h1>Hybrid demo flow — high-fidelity variants</h1>
+      <p class="stage-sub">
+        Locked the direction at hybrid. Now exploring how each surface should actually look at
+        production fidelity. Each section below shows variants for one screen / decision so we can
+        compare the feel side-by-side, not just the structure.
+        <br /><br />
+        <span class="stage-context">
+          Headings in Space Grotesk 800. Body in Inter. 3-4px black borders, solid neobrutalist
+          shadows. Three-pillar voice (Always Watching · You Stay in Control · Plain English),
+          first-person ("I" for Vela). Logomark + lowercase wordmark per ADR-006. Tagline:
+          <strong>"Smarter trading starts here."</strong>
+        </span>
+      </p>
+
+      <!-- ────────────────────────────────────────────────────────────
+           SECTION 1: PRE-DEMO EXPLAINER CAROUSEL — 3 visual treatments
+           ──────────────────────────────────────────────────────────── -->
+      <div class="section">
+        <div class="section-head">
+          <h2>1 · Pre-demo explainer carousel</h2>
+          <span class="step-tag">step 1 of 2 — before the interactive demo</span>
+        </div>
+        <p class="section-sub">
+          Three visual takes on the 3-card "How Vela works" carousel. Each shows card 1 of 3 (Vela
+          watches markets); copy structure on cards 2 and 3 stays consistent within a variant.
+          <strong>Pick a tone, then we'll write the other two cards in the same voice.</strong>
+        </p>
+
+        <div class="variants variants-3">
+
+          <!-- Variant A: real-product preview embedded -->
+          <div class="variant-col">
+            <h3>A · Show, don't tell <span class="recommend" style="background: var(--lavender-100); color: var(--vela-ink);">Pillar 1 / 3 · Always Watching</span></h3>
+            <p class="tagline">Each card embeds a real-looking signal. The product itself is the illustration.</p>
+            <div class="phone">
+              <div class="status-bar">
+                <span>9:41</span>
+                <span>···</span>
+                <span>100%</span>
+              </div>
+              <div class="app-canvas" style="position: relative;">
+                <div class="brand-strip">
+                  <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span class="brand-wordmark">vela</span>
+                  <span class="right">DEMO</span>
+                </div>
+                <a class="skip-link" href="#">Skip</a>
+                <div style="height: 6px;"></div>
+                <p class="label-sm" style="margin: 0 0 6px;">How I work</p>
+                <p class="heading" style="font-size: 19px; line-height: 1.25; margin: 0 0 14px;">
+                  I watch markets so you don&rsquo;t have to.
+                </p>
+                <div class="v-card mint">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Just now</div>
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div class="mono" style="font-size: 12.5px; font-weight: 700;">$71,200</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="v-card sky">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot aapl">A</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">AAPL <span class="pill wait" style="margin-left: 2px;">Wait</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">2h ago</div>
+                      </div>
+                    </div>
+                    <div class="mono" style="font-size: 12px;">$182.40</div>
+                  </div>
+                </div>
+                <p style="font-size: 11.5px; color: var(--gray-700); line-height: 1.5; margin: 12px 0 0;">
+                  Crypto, stocks, commodities. I scan every 4 hours and only ping you when a real
+                  setup shows up.
+                </p>
+                <div class="dots"><span class="on"></span><span></span><span></span></div>
+                <div class="bottom-nav">
+                  <div class="tab"><div class="ico"></div>Signals</div>
+                  <div class="tab"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+            <div class="notes">
+              <strong>Tone:</strong> confident, product-forward. Cards 2 and 3 would show a proposal
+              UI and a closed-trade card respectively.
+              <br /><strong>Risk:</strong> can read as repetitive of the demo that comes next.
+            </div>
+          </div>
+
+          <!-- Variant B: editorial / metaphor -->
+          <div class="variant-col">
+            <h3>B · Editorial <span class="recommend" style="background: var(--lavender-100); color: var(--vela-ink);">Pillar 1 / 3 · Always Watching</span></h3>
+            <p class="tagline">Big bold statement. One supporting visual. Reads like a magazine spread, not an app.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas" style="position: relative;">
+                <div class="brand-strip">
+                  <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span class="brand-wordmark">vela</span>
+                  <span class="right">DEMO</span>
+                </div>
+                <a class="skip-link" href="#">Skip</a>
+                <div style="height: 6px;"></div>
+                <p class="label-sm" style="margin: 0 0 6px;">01 / 03</p>
+                <p class="heading" style="font-size: 26px; line-height: 1.1; margin: 0 0 18px; letter-spacing: -0.015em;">
+                  The market never sleeps.<br />Neither do I.
+                </p>
+                <div style="background: var(--vela-ink); border-radius: 14px; padding: 28px 18px; text-align: center; color: var(--vela-cream);">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.15em; opacity: 0.6; margin-bottom: 10px;">SCANNING</div>
+                  <div style="display: flex; justify-content: space-around; align-items: end; height: 56px; gap: 4px;">
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 24%;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 38%;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 52%; opacity: 0.7;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 68%;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 82%;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 96%;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 74%; opacity: 0.7;"></div>
+                    <div style="width: 6px; background: var(--vela-signal-green); height: 88%;"></div>
+                  </div>
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.05em; margin-top: 12px;">24 / 7 · 12 ASSETS</div>
+                </div>
+                <p style="font-size: 12.5px; color: var(--gray-700); line-height: 1.55; margin: 16px 0 0;">
+                  I scan crypto, stocks, and commodities every four hours. When something real
+                  shows up, you&rsquo;ll be the first to know.
+                </p>
+                <div class="dots"><span class="on"></span><span></span><span></span></div>
+              </div>
+            </div>
+            <div class="notes">
+              <strong>Tone:</strong> brand-led, premium. Treats this like a marketing moment.
+              <br /><strong>Risk:</strong> further from the product than A. Skim-readers may not
+              learn the model in this card.
+            </div>
+          </div>
+
+          <!-- Variant C: utilitarian / direct -->
+          <div class="variant-col">
+            <h3>C · Direct <span class="recommend" style="background: var(--lavender-100); color: var(--vela-ink);">All 3 pillars on one screen</span></h3>
+            <p class="tagline">No metaphor. Three short lines that explain the model. Done in 8 seconds.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas" style="position: relative;">
+                <div class="brand-strip">
+                  <svg width="22" height="12" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#0A0A0A" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span class="brand-wordmark">vela</span>
+                  <span class="right">DEMO</span>
+                </div>
+                <a class="skip-link" href="#">Skip</a>
+                <div style="height: 6px;"></div>
+                <p class="label-sm" style="margin: 0 0 4px;">How I work</p>
+                <p class="heading" style="font-size: 22px; line-height: 1.2; margin: 0 0 20px;">
+                  Three things to know
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                  <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="background: var(--vela-signal-green); border: 2.5px solid var(--black); width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0;">1</div>
+                    <div>
+                      <div class="heading" style="font-size: 13px; margin-bottom: 2px;">I always watch</div>
+                      <div style="font-size: 11.5px; color: var(--gray-700); line-height: 1.4;">12 assets, every 4 hours, 24/7.</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="background: var(--vela-signal-green); border: 2.5px solid var(--black); width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0;">2</div>
+                    <div>
+                      <div class="heading" style="font-size: 13px; margin-bottom: 2px;">You stay in control</div>
+                      <div style="font-size: 11.5px; color: var(--gray-700); line-height: 1.4;">Approve each trade, or let me run on auto. Your call.</div>
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 12px; align-items: flex-start;">
+                    <div style="background: var(--vela-signal-green); border: 2.5px solid var(--black); width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0;">3</div>
+                    <div>
+                      <div class="heading" style="font-size: 13px; margin-bottom: 2px;">Plain English, always</div>
+                      <div style="font-size: 11.5px; color: var(--gray-700); line-height: 1.4;">Every signal comes with one sentence on why.</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="margin-top: 16px;"><div class="btn dark">See the demo</div></div>
+              </div>
+            </div>
+            <div class="notes">
+              <strong>Tone:</strong> utilitarian, no-bs. All 3 cards become 1 numbered list — could
+              even collapse to a single screen if we want.
+              <br /><strong>Risk:</strong> reads as flat compared to A's product-feel.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ────────────────────────────────────────────────────────────
+           SECTION 2: DEMO BANNER TREATMENT — 3 variants
+           ──────────────────────────────────────────────────────────── -->
+      <div class="section">
+        <div class="section-head">
+          <h2>2 · Demo banner treatment</h2>
+          <span class="step-tag">step 2 of 2 — inside the interactive demo</span>
+        </div>
+        <p class="section-sub">
+          The banner is the persistent "you are in demo mode" signal. Three approaches: an amber
+          warning, an ink-dark informational strip, or no banner at all (a small "Demo" pill next
+          to the page title).
+        </p>
+
+        <div class="variants variants-3">
+
+          <!-- Variant A: amber warning -->
+          <div class="variant-col">
+            <h3>A · Amber warning</h3>
+            <p class="tagline">Cautionary tone. Hard to miss. Slight ad-energy, can read as nag if it's everywhere.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas">
+                <div class="demo-banner amber">
+                  <svg width="20" height="11" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#7a4f00" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span><strong>Demo.</strong> Simulated data, real flow.</span>
+                </div>
+                <div class="v-row" style="margin-bottom: 10px;">
+                  <p class="heading" style="font-size: 22px; margin: 0;">Today</p>
+                  <span class="label-sm">3 signals</span>
+                </div>
+                <div class="v-card mint">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 1h 12m</div>
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div class="mono pnl-pos" style="font-size: 12.5px;">+1.4%</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="v-card sky">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot aapl">A</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">AAPL <span class="pill wait" style="margin-left: 2px;">Wait</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">No signal yet</div>
+                      </div>
+                    </div>
+                    <div class="mono" style="font-size: 12px;">$182.40</div>
+                  </div>
+                </div>
+                <div class="v-card lavender">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot hype">H</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">HYPE <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 4h 30m</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+2.8%</div>
+                  </div>
+                </div>
+                <div class="sticky-bar">
+                  <span>Trade for real</span>
+                  <strong>Subscribe →</strong>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab active"><div class="ico"></div>Signals</div>
+                  <div class="tab"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variant B: ink informational -->
+          <div class="variant-col">
+            <h3>B · Ink informational</h3>
+            <p class="tagline">Calmer tone. Reads as branding, not warning. Pairs with the sticky CTA.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas">
+                <div class="demo-banner ink">
+                  <svg width="20" height="11" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.03em;">vela</span>
+                  <span style="margin-left: auto; opacity: 0.85;">DEMO · simulated data</span>
+                </div>
+                <div class="v-row" style="margin-bottom: 10px;">
+                  <p class="heading" style="font-size: 22px; margin: 0;">Today</p>
+                  <span class="label-sm">3 signals</span>
+                </div>
+                <div class="v-card mint">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 1h 12m</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+1.4%</div>
+                  </div>
+                </div>
+                <div class="v-card sky">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot aapl">A</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">AAPL <span class="pill wait" style="margin-left: 2px;">Wait</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">No signal yet</div>
+                      </div>
+                    </div>
+                    <div class="mono" style="font-size: 12px;">$182.40</div>
+                  </div>
+                </div>
+                <div class="v-card lavender">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot hype">H</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">HYPE <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 4h 30m</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+2.8%</div>
+                  </div>
+                </div>
+                <div class="sticky-bar">
+                  <span>Trade with real money</span>
+                  <strong>Subscribe →</strong>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab active"><div class="ico"></div>Signals</div>
+                  <div class="tab"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variant C: no banner, inline pill -->
+          <div class="variant-col">
+            <h3>C · No banner, inline pill</h3>
+            <p class="tagline">Quietest. "Demo" is just a pill next to the page title. Ink CTA at the bottom does the up-sell.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas">
+                <div class="v-row" style="margin-bottom: 10px;">
+                  <p class="heading" style="font-size: 22px; margin: 0;">
+                    Today <span class="pill demo" style="font-size: 9px; vertical-align: middle; margin-left: 4px;">DEMO</span>
+                  </p>
+                  <span class="label-sm">3 signals</span>
+                </div>
+                <div class="v-card mint">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 1h 12m</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+1.4%</div>
+                  </div>
+                </div>
+                <div class="v-card sky">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot aapl">A</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">AAPL <span class="pill wait" style="margin-left: 2px;">Wait</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">No signal yet</div>
+                      </div>
+                    </div>
+                    <div class="mono" style="font-size: 12px;">$182.40</div>
+                  </div>
+                </div>
+                <div class="v-card lavender">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot hype">H</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">HYPE <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Open · 4h 30m</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+2.8%</div>
+                  </div>
+                </div>
+                <div class="v-card spx" style="background: var(--peach-50);">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot spx">S</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">SPX <span class="pill short" style="margin-left: 2px;">Short</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600); margin-top: 1px;">Closed · +5.2%</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+$52</div>
+                  </div>
+                </div>
+                <div class="sticky-bar">
+                  <span>Ready for the real thing?</span>
+                  <strong>Subscribe →</strong>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab active"><div class="ico"></div>Signals</div>
+                  <div class="tab"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ────────────────────────────────────────────────────────────
+           SECTION 3: DEMO ASSET DETAIL + APPROVE FLOW — 2 variants
+           ──────────────────────────────────────────────────────────── -->
+      <div class="section">
+        <div class="section-head">
+          <h2>3 · Approve flow inside the demo</h2>
+          <span class="step-tag">moment of "aha"</span>
+        </div>
+        <p class="section-sub">
+          When a user taps a signal in the demo, this is what they see. The whole point of the
+          demo is this screen. Two takes: an inline coachmark on first visit, or a one-screen
+          modal that pauses navigation until they approve.
+        </p>
+
+        <div class="variants variants-2">
+
+          <!-- Variant A: inline coachmark -->
+          <div class="variant-col">
+            <h3>A · Inline coachmark <span class="recommend">Lean</span></h3>
+            <p class="tagline">Asset detail looks like the real product. A small coachmark points at the Approve button. Dismissable.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas" style="position: relative;">
+                <div class="demo-banner ink">
+                  <svg width="20" height="11" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.03em;">vela</span>
+                  <span style="margin-left: auto; opacity: 0.85;">DEMO · simulated data</span>
+                </div>
+                <div class="v-row" style="margin-bottom: 8px;">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="asset-dot btc" style="width: 32px; height: 32px; font-size: 13px;">B</span>
+                    <div>
+                      <div class="heading" style="font-size: 18px;">BTC <span class="pill long" style="font-size: 10px; vertical-align: middle;">Long</span></div>
+                      <div style="font-size: 10.5px; color: var(--gray-600);">Bitcoin · $71,200</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="v-card mint">
+                  <p class="label-sm" style="margin: 0 0 4px;">Pending proposal</p>
+                  <p class="heading" style="font-size: 14px; margin: 0 0 6px;">I want to open a long</p>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11.5px; margin-bottom: 8px;">
+                    <div>
+                      <div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;">Entry</div>
+                      <div class="mono" style="font-weight: 700;">$71,200</div>
+                    </div>
+                    <div>
+                      <div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;">Stop</div>
+                      <div class="mono" style="font-weight: 700;">$68,500</div>
+                    </div>
+                    <div>
+                      <div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;">Size</div>
+                      <div class="mono" style="font-weight: 700;">$1,000</div>
+                    </div>
+                    <div>
+                      <div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;">Risk</div>
+                      <div class="mono" style="font-weight: 700;">3.8%</div>
+                    </div>
+                  </div>
+                  <div class="btn split">
+                    <div class="approve">Approve</div>
+                    <div class="decline">Decline</div>
+                  </div>
+                </div>
+                <div class="coachmark below" style="left: 12px; top: 248px;">
+                  Tap <strong style="color: var(--vela-signal-green);">Approve</strong> to see what happens next.
+                </div>
+                <div style="height: 60px;"></div>
+                <p class="label-sm" style="margin: 0 0 4px;">Why this signal?</p>
+                <div class="v-card" style="font-size: 11.5px; line-height: 1.5; color: var(--gray-700);">
+                  Momentum is lining up with strong news flow. I give this a 73% chance of hitting
+                  target before stop.
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab"><div class="ico"></div>Signals</div>
+                  <div class="tab active"><div class="ico"></div>BTC</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+            <div class="notes">
+              Coachmark fires <strong>once</strong> on first signal-tap (localStorage flag).
+              Dismissable. Doesn&rsquo;t block scroll or other interactions.
+            </div>
+          </div>
+
+          <!-- Variant B: pause modal -->
+          <div class="variant-col">
+            <h3>B · Pause modal</h3>
+            <p class="tagline">Modal overlay forces a pause: "Tap Approve" with the rest dimmed. Higher conversion to the next step, but more controlling.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas" style="position: relative;">
+                <div style="filter: brightness(0.55);">
+                  <div class="demo-banner ink">
+                    <span class="pill signal">DEMO</span>
+                    <span>Simulated data. Real flow.</span>
+                  </div>
+                  <div class="v-row" style="margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <span class="asset-dot btc" style="width: 32px; height: 32px; font-size: 13px;">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 18px;">BTC <span class="pill long" style="font-size: 10px; vertical-align: middle;">Long</span></div>
+                        <div style="font-size: 10.5px; color: var(--gray-600);">Bitcoin · $71,200</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="v-card mint">
+                    <p class="label-sm" style="margin: 0 0 4px;">Pending proposal</p>
+                    <p class="heading" style="font-size: 14px; margin: 0 0 6px;">I want to open a long</p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11.5px; margin-bottom: 8px;">
+                      <div><div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase;">Entry</div><div class="mono">$71,200</div></div>
+                      <div><div style="color: var(--gray-600); font-size: 9.5px; text-transform: uppercase;">Stop</div><div class="mono">$68,500</div></div>
+                    </div>
+                    <div class="btn split">
+                      <div class="approve">Approve</div>
+                      <div class="decline">Decline</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Modal overlay -->
+                <div style="position: absolute; left: 14px; right: 14px; top: 200px; background: var(--vela-cream); border: 3px solid var(--black); border-radius: 14px; padding: 16px; box-shadow: 5px 5px 0 var(--vela-signal-green);">
+                  <p class="heading" style="font-size: 15px; margin: 0 0 4px;">This is where Vela earns its keep.</p>
+                  <p style="font-size: 11.5px; color: var(--gray-700); line-height: 1.5; margin: 0 0 12px;">
+                    Tap <strong>Approve</strong> below to see how a trade plays out. We&rsquo;ll
+                    walk you through it.
+                  </p>
+                  <div style="display: flex; justify-content: space-between; gap: 8px;">
+                    <div style="font-size: 10.5px; color: var(--gray-600); align-self: center;">Or skip the demo →</div>
+                    <div style="background: var(--vela-signal-green); border: 2px solid var(--black); padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 12px; box-shadow: 2px 2px 0 var(--black);">Got it</div>
+                  </div>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab"><div class="ico"></div>Signals</div>
+                  <div class="tab active"><div class="ico"></div>BTC</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+            <div class="notes">
+              Modal pauses navigation until dismissed. Higher conversion to "Approve" but feels
+              hand-holdy and slows the user down. Tap-anywhere to dismiss; "Skip the demo" exits
+              the demo entirely.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ────────────────────────────────────────────────────────────
+           SECTION 4: POST-APPROVE OUTCOME ANIMATION — 2 variants
+           ──────────────────────────────────────────────────────────── -->
+      <div class="section">
+        <div class="section-head">
+          <h2>4 · After Approve — what plays out</h2>
+          <span class="step-tag">payoff moment</span>
+        </div>
+        <p class="section-sub">
+          Once they tap Approve, what do they see? The point of the demo is for them to feel that
+          Vela <em>does the thing it says it does</em>. Two pacing options.
+        </p>
+
+        <div class="variants variants-2">
+
+          <!-- Variant A: live + closed (split view) -->
+          <div class="variant-col">
+            <h3>A · Live position → closes after 30s</h3>
+            <p class="tagline">Position appears as live with ticking PnL. After 30 seconds it closes with a "+5.2% profit" reveal.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas">
+                <div class="demo-banner ink">
+                  <svg width="20" height="11" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.03em;">vela</span>
+                  <span style="margin-left: auto; opacity: 0.85;">DEMO · watching it play out</span>
+                </div>
+                <p class="label-sm" style="margin: 0 0 6px;">Open positions · 1</p>
+                <div class="v-card mint">
+                  <div class="v-row" style="margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13.5px;">BTC <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 10px; color: var(--gray-600); margin-top: 1px;">Open · 12s</div>
+                      </div>
+                    </div>
+                    <div style="text-align: right;">
+                      <div class="mono pnl-pos" style="font-size: 14px;">+1.8%</div>
+                      <div class="mono pnl-pos" style="font-size: 11px;">+$18 profit</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 11px; color: var(--gray-600); font-family: 'JetBrains Mono', monospace;">
+                    Entry $71,200 → Now $72,482
+                  </div>
+                </div>
+                <p style="font-size: 11.5px; color: var(--gray-700); line-height: 1.5; margin: 12px 0;">
+                  I&rsquo;m holding this until the take-profit hits, the stop trips, or the setup
+                  reverses. You&rsquo;ll get a notification when it closes.
+                </p>
+                <p class="label-sm" style="margin: 12px 0 6px;">Recently closed</p>
+                <div class="v-card peach" style="opacity: 0.5;">
+                  <div class="v-row">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot hype">H</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">HYPE <span class="pill long" style="margin-left: 2px;">Long</span></div>
+                        <div style="font-size: 9.5px; color: var(--gray-600);">Closed · 2 days ago</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12px;">+5.2%</div>
+                  </div>
+                </div>
+                <div class="sticky-bar">
+                  <span>Trade BTC for real</span>
+                  <strong>Subscribe →</strong>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab"><div class="ico"></div>Signals</div>
+                  <div class="tab active"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+            <div class="notes">
+              <strong>Pacing:</strong> position lives for ~30 seconds with PnL animating up, then
+              closes at +5.2% with a small celebration. Reset on demo exit.
+              <br /><strong>Trust:</strong> Open question 1 below — always-win or randomized.
+            </div>
+          </div>
+
+          <!-- Variant B: instant skip -->
+          <div class="variant-col">
+            <h3>B · Fast-forward to outcome</h3>
+            <p class="tagline">Tap Approve. Confetti. Closed-position card appears immediately. Skips the live-position phase.</p>
+            <div class="phone">
+              <div class="status-bar"><span>9:41</span><span>···</span><span>100%</span></div>
+              <div class="app-canvas">
+                <div class="demo-banner ink">
+                  <svg width="20" height="11" viewBox="-65 -33 130 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <polygon points="-55,0 0,-28 55,0 0,28" stroke="#FFFBF5" stroke-width="6" fill="none" stroke-linejoin="miter"/>
+                    <rect x="-9" y="-9" width="18" height="18" rx="2" transform="rotate(45)" fill="#0FE68C"/>
+                  </svg>
+                  <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 800; letter-spacing: -0.03em;">vela</span>
+                  <span style="margin-left: auto; opacity: 0.85;">DEMO · trade complete</span>
+                </div>
+                <div style="background: linear-gradient(180deg, var(--mint-50), var(--vela-cream)); border-radius: 14px; padding: 18px 14px; text-align: center; margin-bottom: 12px;">
+                  <div style="font-size: 28px; margin-bottom: 4px;">📈</div>
+                  <p class="heading" style="font-size: 18px; margin: 0 0 2px;">+$52 profit</p>
+                  <p style="font-size: 11px; color: var(--gray-600); margin: 0;">+5.2% · Closed in 7 days</p>
+                </div>
+                <div class="v-card peach">
+                  <div class="v-row" style="margin-bottom: 4px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="asset-dot btc">B</span>
+                      <div>
+                        <div class="heading" style="font-size: 13px;">BTC · Closed</div>
+                        <div style="font-size: 9.5px; color: var(--gray-600);">Held 7 days</div>
+                      </div>
+                    </div>
+                    <div class="mono pnl-pos" style="font-size: 12.5px;">+5.2%</div>
+                  </div>
+                  <div style="font-size: 10.5px; color: var(--gray-600); font-family: 'JetBrains Mono', monospace;">
+                    $71,200 → $74,902
+                  </div>
+                </div>
+                <p style="font-size: 11.5px; color: var(--gray-700); line-height: 1.5; margin: 14px 0 0;">
+                  In the real product you&rsquo;d wait for this to play out. We sped it up so you
+                  can see the shape of it.
+                </p>
+                <div class="sticky-bar" style="margin-top: 14px;">
+                  <span>This was a demo. Want the real thing?</span>
+                  <strong>Subscribe →</strong>
+                </div>
+                <div class="bottom-nav">
+                  <div class="tab"><div class="ico"></div>Signals</div>
+                  <div class="tab active"><div class="ico"></div>Trades</div>
+                  <div class="tab"><div class="ico"></div>Account</div>
+                </div>
+              </div>
+            </div>
+            <div class="notes">
+              <strong>Pacing:</strong> instant. No 30-second wait, no PnL animation. Honest about
+              the time-skip in the closing copy.
+              <br /><strong>Trade-off:</strong> less product-feel than A. But faster to demo-fatigue.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- ────────────────────────────────────────────────────────────
+           OPEN QUESTIONS
+           ──────────────────────────────────────────────────────────── -->
+      <div class="open-q">
+        <h3>Open questions for you</h3>
+        <ol>
+          <li>
+            <strong>Section 1 (carousel):</strong> A, B, or C? Reconsidered after the brand pass —
+            <strong>C now my pick</strong> because it explicitly maps all three pillars (Always
+            Watching, You Stay in Control, Plain English) on one screen, in the brand's first-person
+            voice. A is still strong if we want product-feel up front. B is brand-led but most
+            removed from the model.
+          </li>
+          <li>
+            <strong>Section 2 (banner):</strong> A, B, or C? Amber feels like a warning; ink-dark
+            reads as branding; pill-only is the quietest. My pick is <strong>B</strong> (ink) — pairs
+            naturally with the sticky CTA.
+          </li>
+          <li>
+            <strong>Section 3 (approve flow):</strong> Inline coachmark or pause modal? My pick is
+            <strong>A (inline)</strong>. Modal is patronizing for a tech-fluent ICP.
+          </li>
+          <li>
+            <strong>Section 4 (outcome pacing):</strong> Live-and-resolve over 30s, or fast-forward
+            to closed? My pick is <strong>A</strong> — the 30s wait is the moment Lota was missing
+            ("the system has to prove to you that it works"). But B is faster + simpler to build.
+          </li>
+          <li>
+            <strong>Always-win vs randomized outcome:</strong> still open from the previous
+            wireframe. Curated set of past wins (and a couple of cleanly-stopped losses) feels most
+            honest. Suggestion: ship always-win first, add randomized in v2 if it's a real concern.
+          </li>
+          <li>
+            <strong>Reset on visit vs persist for session:</strong> still open. Suggestion: persist
+            for the session via localStorage, fresh on a new device. Returning users land back in
+            "watching it play out" instead of starting over.
+          </li>
+        </ol>
+      </div>
+    </div>
+  </body>
+</html>

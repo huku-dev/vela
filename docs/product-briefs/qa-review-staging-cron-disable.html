@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: Staging Cron Disable Migration</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0A0A0A; color: #E5E5E5; margin: 0; padding: 24px; }
+  h1 { color: #FFFBF5; font-size: 20px; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .badge { padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  .red { background: #3d0f0f; color: #ff6b6b; border: 1px solid #ff6b6b44; }
+  .amber { background: #3d2a00; color: #f0a500; border: 1px solid #f0a50044; }
+  .gray { background: #1e1e1e; color: #aaa; border: 1px solid #aaa44; }
+  .green { background: #0a2a1a; color: #0FE68C; border: 1px solid #0FE68C44; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #222; }
+  .section-title.red { color: #ff6b6b; border-color: #ff6b6b33; }
+  .section-title.amber { color: #f0a500; border-color: #f0a50033; }
+  .section-title.gray { color: #aaa; border-color: #aaa33; }
+  .section-title.green { color: #0FE68C; border-color: #0FE68C33; }
+  .finding { background: #111; border-left: 3px solid #333; padding: 12px 16px; margin-bottom: 12px; border-radius: 4px; }
+  .finding.blocking { border-color: #ff6b6b; }
+  .finding.amber { border-color: #f0a500; }
+  .finding.nit { border-color: #555; }
+  .finding.safe { border-color: #0FE68C; }
+  .finding-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .finding-body { font-size: 13px; color: #bbb; line-height: 1.6; }
+  code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 12px; color: #ddd; }
+  .file-ref { color: #888; font-size: 11px; margin-top: 6px; font-family: "SF Mono", Monaco, monospace; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Staging Cron Disable Migration</h1>
+<div class="subtitle">Phase 0 adversarial vet — approach review before code is written. 2026-05-28.</div>
+
+<div class="summary-bar">
+  <div class="badge red">0 Blocking</div>
+  <div class="badge amber">3 Worth a Look</div>
+  <div class="badge gray">1 Nit</div>
+  <div class="badge green">8 Safe</div>
+</div>
+
+<!-- BLOCKING -->
+<div class="section">
+  <div class="section-title red">Blocking (0)</div>
+  <div class="finding safe">
+    <div class="finding-title" style="color:#0FE68C;">No blocking issues found.</div>
+    <div class="finding-body">The migration is structurally safe to write. Proceed with the three amber items in mind.</div>
+  </div>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="section">
+  <div class="section-title amber">Worth a Look (3)</div>
+
+  <div class="finding amber">
+    <div class="finding-title">1. health-check is already a no-op on staging — but future devs won't know that</div>
+    <div class="finding-body">
+      <strong>Finding:</strong> health-check has an unconditional early-exit guard at the top of its handler: <code>if (environment === "staging") { return skipped }</code>. So disabling position-monitor and deposit-monitor on staging will <em>not</em> cause false-positive health alerts — health-check never runs its heartbeat checks there.
+      <br><br>
+      <strong>Why it's amber:</strong> This is load-bearing institutional knowledge that is not documented in the proposed migration. The PR comment says "Safe to leave active on staging: position-monitor, deposit-monitor, health-check" (from <code>20260527000001</code>) without explaining why health-check won't fire false alerts. A future developer disabling position-monitor on staging without this context might worry they're causing noise.
+      <br><br>
+      <strong>Action:</strong> Add a one-line comment to the new migration referencing the staging early-exit: <code>-- health-check skips entirely on staging (ENVIRONMENT=staging guard at handler top)</code>
+    </div>
+    <div class="file-ref">health-check/index.ts lines 160-167 | 20260527000001_staging_disable_llm_crons.sql</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-title">2. E2E test T7 depends on position-monitor running on staging — confirm no E2E usage during disable window</div>
+    <div class="finding-body">
+      <strong>Finding:</strong> position-monitor has an explicit E2E bypass for the user <code>e2e-staging-position-test</code>. The comment at line 268-269 says: "staging E2E user is NOT excluded — T7 E2E test depends on position-monitor processing it." Disabling the cron breaks T7.
+      <br><br>
+      <strong>Why it's amber:</strong> If <code>deploy.sh --staging</code> runs the E2E testnet suite (tests T1-T16) as part of the staging verify step, T7 will fail silently because position-monitor won't be running. The test may pass if it manually invokes the function via HTTP rather than waiting for the cron, but this needs to be confirmed.
+      <br><br>
+      <strong>Action:</strong> Before writing the migration, check whether T7 in the E2E suite directly calls the edge function via HTTP (safe) or relies on the pg_cron schedule (broken). If it relies on the cron, T7 must be skipped or excluded from the staging CI run, not just left to fail silently.
+    </div>
+    <div class="file-ref">position-monitor/index.ts lines 268-269, 425-439 | memory/e2e-tests.md</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-title">3. market-context-refresh, position-monitor, and deposit-monitor were all reset to active=true by 20260507 — this pattern will recur</div>
+    <div class="finding-body">
+      <strong>Finding:</strong> <code>20260507000001_cron_shared_secret_header.sql</code> does <code>cron.unschedule + cron.schedule</code> on position-monitor, deposit-monitor, volatility-check, market-context-refresh, signal-performance-tracker, signal-review-weekly, and social-engagement — <strong>without any staging guard and without a follow-up <code>alter_job(active := false)</code></strong>. This is exactly the pattern that CLAUDE.md warns causes <code>active=true</code> resets on staging. Every cron proposed for disabling in this batch was re-enabled by that migration, which is why <code>20260527000001</code> had to re-disable some of them.
+      <br><br>
+      <strong>Why it's amber:</strong> The proposed migration will correctly use <code>cron.alter_job(jobid, active := false)</code> to disable. But the next migration that reschedules any of these crons (e.g., a future auth header change, a schedule tweak) without a staging guard will silently re-enable them again. The fix is narrow: the new migration should be written and it will work, but it does not solve the structural drift risk.
+      <br><br>
+      <strong>Action (for this migration):</strong> In the migration comment, call out which crons in this list were previously disabled by <code>20260410000002</code> or <code>20260527000001</code> and were re-enabled by <code>20260507000001</code>. This documents the re-enable risk for the next developer who reschedules one of them.
+      <br><br>
+      <strong>Action (follow-up, not this PR):</strong> Consider a linter rule or a post-<code>cron.schedule</code> pattern that always follows with a staging-conditional <code>alter_job(active := false)</code> in migrations that reschedule existing crons.
+    </div>
+    <div class="file-ref">20260507000001_cron_shared_secret_header.sql lines 42-55 | 20260410000002_staging_cron_hygiene.sql | CLAUDE.md "cron.unschedule + cron.schedule resets active=true"</div>
+  </div>
+</div>
+
+<!-- NITS -->
+<div class="section">
+  <div class="section-title gray">Nit (1)</div>
+
+  <div class="finding nit">
+    <div class="finding-title">4. The prior staging-disable migration (20260527) omitted position-monitor and deposit-monitor from its disable list — and this one now targets them</div>
+    <div class="finding-body">
+      <code>20260527000001_staging_disable_llm_crons.sql</code> explicitly says "Safe to leave active on staging: position-monitor, deposit-monitor." This migration reverses that judgment without updating the comment. Not a correctness issue — the judgment has changed (no real staging positions, no real staging deposits expected) — but a future reader will see a contradiction between the two migration files without context.
+      <br><br>
+      Add a comment in the new migration: <code>-- Reversing 20260527 judgment: position-monitor / deposit-monitor also unnecessary on staging (no real users, no real testnet positions expected outside E2E windows)</code>
+    </div>
+    <div class="file-ref">20260527000001_staging_disable_llm_crons.sql line 12</div>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+  <div class="section-title green">Safe (8)</div>
+
+  <div class="finding safe">
+    <div class="finding-title">health-check false-alert risk: None</div>
+    <div class="finding-body">health-check exits immediately on staging (<code>ENVIRONMENT=staging</code>). Disabling position-monitor and deposit-monitor will not cause any health alerts. Confirmed by reading health-check/index.ts lines 161-167.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">position-monitor idle behavior: No heartbeat row written</div>
+    <div class="finding-body">When position-monitor finds zero open positions (lines 280-286), it returns immediately without writing to any heartbeat table, health_check_acks, or downstream artifact. The health-check monitors <code>MAX(updated_at) FROM positions WHERE status='open'</code> — if there are no open positions, the query returns null and the check is skipped entirely (lines 213-228 of health-check). Zero false alerts from this path.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">deposit-monitor idle behavior: health-check conditionally skips</div>
+    <div class="finding-body">health-check reads <code>MAX(updated_at) FROM user_wallets</code> and only fires if <code>latestWallet?.updated_at</code> is non-null (lines 238-251). On staging with no active wallets, this will return null and the stale-wallet alert will never fire. Safe to disable deposit-monitor.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">volatility-check dependency: None for active staging crons</div>
+    <div class="finding-body">run-signals reads <code>volatility_state</code> but run-signals is already disabled on staging (by <code>20260410000002</code>). No other active staging cron reads volatility state. Stale volatility data has no downstream effect on staging.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">market-context-refresh dependency: None for active staging crons</div>
+    <div class="finding-body">run-signals calls <code>readMarketContext(supabase)</code> (line 733) but run-signals is already disabled on staging. signal-persistence imports <code>readMarketContext</code> but only within run-signals's call stack. No active staging cron reads market_context. Stale data is inert.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">sec-edgar-poll / earnings-calendar-sync: No active downstream on staging</div>
+    <div class="finding-body">These write to tables read by run-signals and brief-generator. Both are already disabled on staging. Tables going stale will not affect any active staging cron or E2E test flow.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">expire-pending-proposals (kept active): No dependency on disabled crons</div>
+    <div class="finding-body">expire-pending-proposals is a pure DB sweep — it sets proposals from <code>pending</code> to <code>expired</code> based on <code>expires_at</code> timestamp. It has no dependency on position-monitor, deposit-monitor, or any of the disabled crons. Test trade proposal flows will not be affected.</div>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">Migration technique: cron.alter_job is correct</div>
+    <div class="finding-body"><code>SELECT cron.alter_job(jobid, active := false)</code> is the correct approach. It modifies the existing job record in place without resetting any other fields. It is idempotent (disabling an already-disabled job is a no-op). The staging-guard pattern via vault <code>project_url</code> ILIKE is the established convention in this codebase (used by three prior staging migrations). Using this pattern will not re-enable jobs on production.</div>
+  </div>
+</div>
+
+</body>
+</html>

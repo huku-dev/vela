@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Review — Agent Deregistration Pass 3</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 900px; margin: 0 auto; padding: 32px 24px; color: #0A0A0A; background: #FFFBF5; }
+    h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .meta { color: #555; font-size: 0.875rem; margin-bottom: 32px; }
+
+    /* Summary bar */
+    .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+    .pill { padding: 8px 18px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; }
+    .red    { background: #FDECEA; color: #B91C1C; border: 1.5px solid #F87171; }
+    .amber  { background: #FEF3C7; color: #92400E; border: 1.5px solid #FBBF24; }
+    .gray   { background: #F1F5F9; color: #475569; border: 1.5px solid #94A3B8; }
+    .green  { background: #ECFDF5; color: #065F46; border: 1.5px solid #34D399; }
+    .yellow { background: #FFFBEB; color: #78350F; border: 1.5px solid #F59E0B; }
+
+    /* Risk matrix */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 0.875rem; }
+    th { text-align: left; padding: 8px 12px; background: #F8F8F4; font-weight: 700; border-bottom: 2px solid #E5E7EB; }
+    td { padding: 8px 12px; border-bottom: 1px solid #E5E7EB; }
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.78rem; font-weight: 700; }
+    .badge-safe   { background: #ECFDF5; color: #065F46; }
+    .badge-nit    { background: #F1F5F9; color: #475569; }
+    .badge-amber  { background: #FEF3C7; color: #92400E; }
+    .badge-red    { background: #FDECEA; color: #B91C1C; }
+
+    /* Sections */
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 32px 0 12px; padding-bottom: 4px; border-bottom: 2px solid #E5E7EB; }
+    .finding { background: #fff; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px; }
+    .finding.red    { border-left: 4px solid #EF4444; }
+    .finding.amber  { border-left: 4px solid #F59E0B; }
+    .finding.gray   { border-left: 4px solid #94A3B8; }
+    .finding.yellow { border-left: 4px solid #FBBF24; }
+    .finding.green  { border-left: 4px solid #34D399; }
+    .finding h3 { margin: 0 0 6px; font-size: 0.95rem; }
+    .ref { font-family: monospace; font-size: 0.82rem; color: #6B7280; display: block; margin-bottom: 6px; }
+    .fix { margin-top: 8px; font-weight: 600; }
+    ul { margin: 6px 0 0 18px; padding: 0; }
+    li { margin-bottom: 4px; }
+    code { background: #F3F4F6; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+
+<h1>QA Review: Agent Deregistration Observability — Pass 3</h1>
+<div class="meta">Scope: W-1 (wallet-provisioner.ts captureException) + W-2 (position-monitor 5 callsites captureMessage) &middot; Reviewer: independent cold read &middot; 2026-06-08</div>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <span class="pill red">Blocking: 0</span>
+  <span class="pill amber">Worth a look: 1</span>
+  <span class="pill gray">Nit: 2</span>
+  <span class="pill green">Safe: 8</span>
+</div>
+
+<!-- Risk matrix -->
+<h2>File-level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr><th>File</th><th>Highest finding</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_shared/wallet-provisioner.ts</code></td>
+      <td><span class="badge badge-amber">Worth a look</span></td>
+      <td>No test covers the new captureException branch</td>
+    </tr>
+    <tr>
+      <td><code>position-monitor/index.ts</code></td>
+      <td><span class="badge badge-nit">Nit</span></td>
+      <td>Duplicate message string across 5 callsites; conditional guard is correct</td>
+    </tr>
+    <tr>
+      <td><code>_shared/sentry.ts</code></td>
+      <td><span class="badge badge-safe">Safe</span></td>
+      <td>Both captureException and captureMessage signatures match usage</td>
+    </tr>
+    <tr>
+      <td><code>_shared/wallet-provisioner.test.ts</code></td>
+      <td><span class="badge badge-amber">Worth a look</span></td>
+      <td>DB-error branch of maybeHandleDeregistration has no behavioral assertion</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Worth a look -->
+<h2>Worth a Look (Amber)</h2>
+
+<div class="finding amber">
+  <h3>A-1: No test asserts that captureException is called on DB write failure</h3>
+  <span class="ref">_shared/wallet-provisioner.test.ts (no such test) + wallet-provisioner.ts:495</span>
+  <p>
+    The three existing tests in <code>wallet-provisioner.test.ts</code> cover: regex matching, the <code>agent_registered: false</code> update, the <code>dbErr</code> destructure, and the export. None of them assert that <code>captureException</code> is called when <code>dbErr</code> is truthy. The new Sentry call is the entire point of W-1 and it has zero coverage. If a future refactor accidentally removes or gates the call, no test will catch it.
+  </p>
+  <p class="fix">Add a test: <code>WALLET-ADV: maybeHandleDeregistration calls captureException on DB write failure</code>. Source-grep the function body for <code>captureException</code> inside the <code>dbErr</code> block, the same pattern the existing tests use for <code>dbErr</code> and <code>agent_registered: false</code>. This is a one-liner assertion consistent with the existing test style.</p>
+</div>
+
+<!-- Nits -->
+<h2>Nit (Gray)</h2>
+
+<div class="finding gray">
+  <h3>Nit-1: Identical message string duplicated across all 5 captureMessage callsites</h3>
+  <span class="ref">position-monitor/index.ts:805, 1755, 1912, 2206, 2369</span>
+  <p>
+    Every callsite emits <code>"Agent wallet deregistered on HL for &lt;userId&gt;: recovery triggered"</code> with identical tags. This is not wrong, but if the message text ever needs to change, it must be updated in 5 places. It also means the Sentry issue title doesn't indicate which code path fired.
+  </p>
+  <p class="fix">Consider extracting a helper <code>function emitDeregistrationEvent(userId: string, context: string)</code> that calls <code>captureMessage</code> with the context label appended (e.g. <code>"trailing_stop_close"</code>, <code>"profit_ladder_trim"</code>). One change point, and Sentry groups by meaningful context labels instead of collapsing all 5 paths into one issue.</p>
+</div>
+
+<div class="finding gray">
+  <h3>Nit-2: W-1 captureException passes user_id as a tag string, not in the Sentry user context</h3>
+  <span class="ref">wallet-provisioner.ts:496</span>
+  <p>
+    <code>captureException(..., { tags: { ..., user_id: wallet.user_id } })</code> puts the user ID in the tag bag. Sentry has a dedicated user context (<code>setUser</code>) that enables person-level search and privacy controls. The existing <code>sentry.ts</code> exports <code>setUser(userId)</code> for exactly this. This is low-severity (tag is still visible in Sentry), but inconsistent with how user context is surfaced elsewhere.
+  </p>
+  <p class="fix">Consider calling <code>setUser(wallet.user_id)</code> before <code>captureException</code>, or at minimum removing <code>user_id</code> from tags (Sentry user context is the canonical place).</p>
+</div>
+
+<!-- Risks to monitor -->
+<h2>Risks to Monitor Post-Deploy</h2>
+
+<div class="finding yellow">
+  <h3>R-1: trade-executor emits a captureMessage for the same deregistration event without a deregistration-specific Sentry event</h3>
+  <span class="ref">_shared/trade-executor.ts:1204, 1209</span>
+  <p>
+    When a trade-executor order fails and <code>maybeHandleDeregistration</code> returns <code>true</code>, trade-executor emits a generic <code>"Order failed: ..."</code> captureMessage with <code>tags.deregistration = "true"</code>. It does NOT emit a separate deregistration event. Position-monitor now emits its own dedicated <code>captureMessage</code> with <code>event: "agent_deregistration"</code>. These are different Sentry issues: trade-executor's event is tagged but not named the same way.
+  </p>
+  <p>
+    This is not a double-fire risk (they're on different code paths: trade-executor handles open proposals, position-monitor handles close/trim failures). However, a deregistration that triggers both a trade open AND a monitored close will appear in Sentry as two separate issues with different formats. Watch for this inconsistency causing confusion when triaging; consider aligning trade-executor to emit the same <code>event: "agent_deregistration"</code> tag and message format in a follow-up.
+  </p>
+</div>
+
+<!-- Safe -->
+<h2>Safe (Green)</h2>
+
+<div class="finding green">
+  <ul>
+    <li><strong>W-1 correctness:</strong> <code>captureException</code> fires after the <code>if (dbErr)</code> guard at wallet-provisioner.ts:491. The error argument is a real <code>Error</code> object with a meaningful message. The function returns <code>false</code> after capturing, so the caller correctly treats recovery as not triggered.</li>
+    <li><strong>captureException import:</strong> Correctly imported from <code>./sentry.ts</code> at line 21. Matches the exported signature <code>captureException(err: unknown, context?)</code>.</li>
+    <li><strong>W-2 conditional guard:</strong> All 5 callsites wrap <code>captureMessage</code> in <code>if (wasDeregistered)</code>. No unconditional fire.</li>
+    <li><strong>userId in scope:</strong> All 5 callsites are inside the <code>for (const [userId, positions] of userGroups)</code> loop (line 326). <code>userId</code> is always defined.</li>
+    <li><strong>No double-fire:</strong> trade-executor and position-monitor are separate code paths (open vs close). A single trade can only be in one path at a time. No overlap.</li>
+    <li><strong>Sentry lazy-load / initSentry ordering:</strong> <code>initSentry("position-monitor")</code> is called at line 247, inside <code>Deno.serve</code>, before any <code>captureMessage</code> callsite is reachable. Order is correct.</li>
+    <li><strong>captureMessage import:</strong> Added correctly to the existing import at line 35. <code>flush as sentryFlush</code> was already present. No orphaned imports.</li>
+    <li><strong>tags structure:</strong> Both <code>flow: "position-monitor"</code> and <code>event: "agent_deregistration"</code> are string values. Matches <code>Record&lt;string, string&gt;</code> signature in sentry.ts:74.</li>
+  </ul>
+</div>
+
+<hr style="margin-top:40px; border:none; border-top:1px solid #E5E7EB;">
+<p style="color:#888; font-size:0.8rem;">Generated by independent QA pass &mdash; no prior context from author. Adversarial read. 2026-06-08.</p>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QA Review: Agent Deregistration Recovery (Pass 2)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e0e0e0; padding: 24px; line-height: 1.6; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; color: #fff; }
+    .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 24px; }
+    .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+    .summary-pill { padding: 8px 18px; border-radius: 6px; font-size: 0.9rem; font-weight: 600; }
+    .pill-blocking { background: #5c1a1a; color: #ff8080; border: 1px solid #8b2222; }
+    .pill-amber { background: #4a3a00; color: #ffc14d; border: 1px solid #7a6200; }
+    .pill-nit { background: #2a2a2a; color: #aaa; border: 1px solid #444; }
+    .pill-safe { background: #0d3320; color: #4cdc8c; border: 1px solid #1a6640; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 0.88rem; }
+    th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #999; font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 1px solid #333; }
+    td { padding: 8px 12px; border-bottom: 1px solid #222; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+    .badge-safe { background: #0d3320; color: #4cdc8c; }
+    .badge-amber { background: #4a3a00; color: #ffc14d; }
+    .badge-nit { background: #2a2a2a; color: #999; }
+    .badge-monitor { background: #3a2d00; color: #f0b040; }
+
+    h2 { font-size: 1.05rem; font-weight: 700; margin: 28px 0 12px; color: #fff; padding-bottom: 6px; border-bottom: 1px solid #2a2a2a; }
+    .finding { background: #141414; border-radius: 8px; padding: 16px; margin-bottom: 14px; border-left: 4px solid transparent; }
+    .finding-blocking { border-left-color: #c03030; }
+    .finding-amber { border-left-color: #c08000; }
+    .finding-nit { border-left-color: #444; }
+    .finding-monitor { border-left-color: #b07800; }
+    .finding-safe { border-left-color: #1a8040; }
+    .finding-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+    .finding-title-blocking { color: #ff8080; }
+    .finding-title-amber { color: #ffc14d; }
+    .finding-title-nit { color: #aaa; }
+    .finding-title-monitor { color: #f0b040; }
+    .finding-title-safe { color: #4cdc8c; }
+    .citation { font-family: "SF Mono", "Fira Code", monospace; font-size: 0.78rem; color: #7a9cc0; margin-bottom: 8px; }
+    .symptom, .cause, .fix, .detail { font-size: 0.88rem; margin-bottom: 4px; }
+    .label { font-weight: 600; color: #888; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    code { font-family: "SF Mono", "Fira Code", monospace; background: #1e1e1e; padding: 1px 5px; border-radius: 3px; font-size: 0.82em; color: #d4a0ff; }
+    ul { margin: 4px 0 0 18px; }
+    li { font-size: 0.88rem; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+<h1>QA Review: Agent Deregistration Recovery (Pass 2)</h1>
+<p class="subtitle">Reviewer: independent cold read &nbsp;|&nbsp; Date: 2026-06-08 &nbsp;|&nbsp; Scope: maybeHandleDeregistration extraction + 5 new position-monitor callsites</p>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <div class="summary-pill pill-blocking">0 Blocking</div>
+  <div class="summary-pill pill-amber">2 Worth a look</div>
+  <div class="summary-pill pill-nit">2 Nits</div>
+  <div class="summary-pill pill-safe">Safe to merge</div>
+</div>
+
+<!-- File-level risk matrix -->
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Role</th>
+      <th>Highest finding</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_shared/wallet-provisioner.ts</code></td>
+      <td>Helper implementation</td>
+      <td><span class="badge badge-safe">Safe</span></td>
+    </tr>
+    <tr>
+      <td><code>_shared/trade-executor.ts</code></td>
+      <td>Primary callsite (open order path)</td>
+      <td><span class="badge badge-amber">Amber</span> — misleading Sentry tag on DB error</td>
+    </tr>
+    <tr>
+      <td><code>position-monitor/index.ts</code></td>
+      <td>5 new callsites (close/trim failures)</td>
+      <td><span class="badge badge-amber">Amber</span> — deregistration on close path is silent (no Sentry)</td>
+    </tr>
+    <tr>
+      <td><code>_shared/wallet-provisioner.test.ts</code></td>
+      <td>New tests</td>
+      <td><span class="badge badge-nit">Nit</span> — all 4 tests are source-scan only</td>
+    </tr>
+    <tr>
+      <td><code>_shared/trade-executor.test.ts</code></td>
+      <td>Updated tests</td>
+      <td><span class="badge badge-nit">Nit</span> — same source-scan pattern</td>
+    </tr>
+    <tr>
+      <td><code>deposit-monitor/index.ts</code></td>
+      <td>Recovery trigger (reads agent_registered)</td>
+      <td><span class="badge badge-safe">Safe</span> — reads fresh from DB each tick</td>
+    </tr>
+    <tr>
+      <td><code>scanner-30m</code> / <code>trade-webhook</code></td>
+      <td>Indirect paths via executeTradeProposal</td>
+      <td><span class="badge badge-safe">Safe</span> — no direct placeOrder calls; deregistration covered transitively</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- Worth a look -->
+<h2>Worth a Look (Amber)</h2>
+
+<div class="finding finding-amber">
+  <div class="finding-title finding-title-amber">1. Sentry tag reads "false" when deregistration occurred but DB write failed</div>
+  <div class="citation">trade-executor.ts:1204 &amp; wallet-provisioner.ts:490–494</div>
+  <div class="symptom"><span class="label">Symptom:</span> <code>maybeHandleDeregistration</code> returns <code>false</code> in two distinct situations: (a) the error string is not a deregistration error, and (b) the error IS a deregistration error but the DB <code>UPDATE</code> failed. Both cases result in <code>isAgentDeregistered = false</code>, so the Sentry tag <code>deregistration: "false"</code> and the plain admin notification are emitted even though the agent is deregistered. Ops sees no "auto-recovery triggered" message, does not know re-registration is pending, and may start manual intervention unnecessarily.</div>
+  <div class="cause"><span class="label">Root cause:</span> The helper conflates "no match" and "match but DB failure" into a single <code>false</code> return. The caller has no way to distinguish the two.</div>
+  <div class="fix"><span class="label">Fix:</span> Return a three-valued result (<code>"no_match" | "flagged" | "db_error"</code>), or return an object <code>{ matched: boolean; flagged: boolean }</code>. In trade-executor, use <code>matched</code> for the Sentry tag and admin-notification branch, and <code>flagged</code> for the "auto-recovery triggered" suffix. This is a small refactor, not a rewrite — the helper body changes by 2 lines and both callers get more precise information. Without it, a Supabase hiccup silently swallows a deregistration event from all monitoring.</div>
+</div>
+
+<div class="finding finding-amber">
+  <div class="finding-title finding-title-amber">2. Deregistration on position-close and trim paths emits no Sentry event and no admin alert</div>
+  <div class="citation">position-monitor/index.ts:804, 1753, 1909, 2202, 2364</div>
+  <div class="symptom"><span class="label">Symptom:</span> All 5 position-monitor callsites discard the return value of <code>maybeHandleDeregistration</code>. If a stop-loss or trailing-stop order fails because the agent is deregistered, the flag is written to the DB (recovery will start), but no Sentry event and no admin Telegram message are sent. The only signal ops gets is <code>console.error</code>, which only surfaces in Supabase function logs — not in Sentry or Telegram. Meanwhile, a position that should be closing is sitting open on exchange.</div>
+  <div class="cause"><span class="label">Root cause:</span> The return value is intentionally ignored on position-monitor callsites. The trade-executor callsite was designed with Sentry tagging; the position-monitor callsites were not given equivalent observability.</div>
+  <div class="fix"><span class="label">Fix:</span> Capture the return value at each position-monitor callsite. When <code>true</code>, call <code>captureMessage</code> with a <code>deregistration: true</code> tag and, optionally, fire the same admin Telegram fragment used in trade-executor ("agent deregistered — auto-recovery triggered"). The message is low-noise (fires once per deregistration event, not per tick) and prevents a silent open position.</div>
+</div>
+
+<!-- Nits -->
+<h2>Nits (Gray)</h2>
+
+<div class="finding finding-nit">
+  <div class="finding-title finding-title-nit">3. All tests are source-scan tests — zero behavioral coverage</div>
+  <div class="citation">wallet-provisioner.test.ts:11–65, trade-executor.test.ts:1612–1650</div>
+  <div class="detail"><span class="label">Consider:</span> All 4 new tests (and the 2 executor tests) read the source file as a string and <code>includes()</code> for substring presence. They pass even if the function body is dead code, if the regex is syntactically correct but semantically wrong, or if the boolean returns are inverted. Add at least one behavioral test that constructs a mock Supabase client (a simple object with an <code>from()</code> stub that returns a canned error or success), calls <code>maybeHandleDeregistration</code> directly, and asserts the return value for each of the 3 branches: no match, match+DB success, match+DB failure. This is ~25 lines and would have caught the class of bug described in finding #1 above.</div>
+</div>
+
+<div class="finding finding-nit">
+  <div class="finding-title finding-title-nit">4. Perp ladder failure path does not log the deregistration detection result</div>
+  <div class="citation">position-monitor/index.ts:2364–2367</div>
+  <div class="detail"><span class="label">Consider:</span> The profit-ladder trim failure path calls <code>maybeHandleDeregistration</code> then logs the raw error via <code>console.error</code>. If deregistration is detected, the log says "Profit ladder trim failed ... User or API wallet X does not exist" but does not say "agent flagged for recovery". The stop-loss path at 1753 is the same. Adding a simple <code>if (wasDeregistered) console.log("...flagged for recovery")</code> makes log triage faster without touching any other logic.</div>
+</div>
+
+<!-- Risks to monitor post-deploy -->
+<h2>Risks to Monitor Post-Deploy</h2>
+
+<div class="finding finding-monitor">
+  <div class="finding-title finding-title-monitor">Double-UPDATE race is idempotent but not atomic</div>
+  <div class="citation">wallet-provisioner.ts:485–488</div>
+  <div class="detail">Two concurrent position-monitor ticks that both fail with a deregistration error will both attempt <code>UPDATE user_wallets SET agent_registered=false WHERE id=X</code>. The second write is a no-op (field already false), so correctness is preserved. However, both writes also trigger the <code>updated_at</code> timestamp change (check whether the UPDATE sets <code>updated_at</code> — if the table has an <code>updated_at</code> trigger, it fires twice). This is benign but worth confirming: no downstream logic should interpret a recent <code>updated_at</code> on <code>user_wallets</code> as "wallet was just modified for a different reason."</div>
+</div>
+
+<!-- Safe -->
+<h2>Safe (Green)</h2>
+
+<div class="finding finding-safe">
+  <ul>
+    <li><strong>Three-branch boolean logic is correct.</strong> No match returns <code>false</code> immediately. Match + DB success returns <code>true</code>. Match + DB failure returns <code>false</code> with a <code>console.error</code>. The only ambiguity is in caller interpretation (covered by finding #1).</li>
+    <li><strong><code>closeResult.error ?? ""</code> is safe.</strong> <code>ExecutionResult.error</code> is typed as <code>string | undefined</code>. The nullish coalesce produces an empty string on the success path (where <code>error</code> is undefined), and the regex does not match an empty string. No false positives.</li>
+    <li><strong><code>wallet</code> is never null at any callsite.</strong> In trade-executor, the null check is at line 329 and throws before reaching 1204. In position-monitor, the <code>if (!wallet)</code> guard at line 329 skips the user entirely, so the helper is only called inside <code>processUserPositions</code> which requires a non-null wallet parameter.</li>
+    <li><strong>Recovery loop is sound.</strong> deposit-monitor fetches wallets fresh from DB on every tick (<code>select("*")</code> at line 99), so <code>agent_registered=false</code> written by the helper is picked up on the very next deposit-monitor run (~10 min). The <code>!wallet.agent_registered &amp;&amp; newBalance &gt; 0</code> guard at line 652 correctly gates re-registration on having a positive balance, which prevents re-registration attempts for empty wallets.</li>
+    <li><strong>scanner-30m and trade-webhook are covered transitively.</strong> Both call <code>executeTradeProposal</code> from trade-executor, which contains the deregistration handler. Neither file calls <code>placeOrder</code> directly.</li>
+    <li><strong>Double-UPDATE is idempotent.</strong> Writing <code>agent_registered=false</code> twice is a no-op for the boolean field; recovery behavior is unchanged.</li>
+    <li><strong>Phantom-close timing is unaffected.</strong> On the spot phantom-close path, <code>maybeHandleDeregistration</code> is called before the phantom close update, but the phantom close writes only to the <code>positions</code> table (no HL calls), so the async DB write order is inconsequential.</li>
+    <li><strong>Convention is consistent.</strong> Helper follows the same pattern as other exported helpers in wallet-provisioner.ts: async, explicit error destructuring, <code>console.error</code> on failure, returns a typed value.</li>
+  </ul>
+</div>
+
+</body>
+</html>

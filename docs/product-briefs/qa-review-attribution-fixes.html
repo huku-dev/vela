@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Review: Attribution Fixes (position-holder-brief + digest-context)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px; background: #0f0f0f; color: #e8e6e1; line-height: 1.6; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; color: #fff; }
+    .meta { color: #888; font-size: 0.85rem; margin-bottom: 28px; }
+    .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+    .badge { padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.02em; }
+    .badge.blocking { background: #3d1515; border: 1px solid #e05252; color: #f87171; }
+    .badge.amber    { background: #2e2200; border: 1px solid #d97706; color: #fbbf24; }
+    .badge.nit      { background: #1e1e1e; border: 1px solid #555; color: #aaa; }
+    .badge.safe     { background: #0d2318; border: 1px solid #22c55e; color: #4ade80; }
+    h2 { font-size: 1.1rem; font-weight: 700; margin: 32px 0 12px; border-bottom: 1px solid #2a2a2a; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 24px; }
+    th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #aaa; font-weight: 600; border-bottom: 1px solid #333; }
+    td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; vertical-align: top; }
+    tr:hover td { background: #161616; }
+    .risk-blocking { color: #f87171; font-weight: 600; }
+    .risk-amber    { color: #fbbf24; font-weight: 600; }
+    .risk-nit      { color: #9ca3af; }
+    .risk-safe     { color: #4ade80; }
+    .finding { background: #141414; border-left: 3px solid #333; border-radius: 4px; padding: 16px 18px; margin-bottom: 16px; }
+    .finding.blocking { border-color: #e05252; }
+    .finding.amber    { border-color: #d97706; }
+    .finding.nit      { border-color: #555; }
+    .finding .loc { font-family: monospace; font-size: 0.85rem; color: #60a5fa; margin-bottom: 6px; }
+    .finding .label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+    .finding.blocking .label { color: #f87171; }
+    .finding.amber .label    { color: #fbbf24; }
+    .finding.nit .label      { color: #9ca3af; }
+    .finding h3 { font-size: 1rem; font-weight: 700; margin: 0 0 8px; color: #fff; }
+    dt { font-weight: 600; color: #aaa; margin-top: 8px; font-size: 0.85rem; }
+    dd { margin: 2px 0 0 0; }
+    code { font-family: monospace; background: #1e1e1e; padding: 1px 5px; border-radius: 3px; font-size: 0.88em; color: #e2c07e; }
+    .fix { background: #0d2010; border: 1px solid #22c55e; border-radius: 4px; padding: 10px 14px; margin-top: 10px; font-size: 0.88rem; }
+    .fix strong { color: #4ade80; }
+    ul { margin: 6px 0; padding-left: 20px; }
+    li { margin-bottom: 4px; }
+    .monitor-box { background: #1a1400; border: 1px solid #d97706; border-radius: 6px; padding: 14px 18px; margin-top: 16px; }
+    .safe-list { list-style: none; padding: 0; }
+    .safe-list li { padding: 5px 0; border-bottom: 1px solid #1e1e1e; color: #6b7280; }
+    .safe-list li::before { content: "✓ "; color: #4ade80; }
+  </style>
+</head>
+<body>
+
+<h1>QA Review: Attribution Fixes</h1>
+<div class="meta">
+  Files: <code>position-holder-brief/index.ts</code>, <code>_shared/digest-context.ts</code>, <code>_shared/llm/registry.ts</code><br>
+  Reviewer: adversarial read-only agent (zero author context) | 2026-05-25
+</div>
+
+<div class="summary-bar">
+  <div class="badge blocking">1 Blocking</div>
+  <div class="badge amber">2 Worth a look</div>
+  <div class="badge nit">2 Nit</div>
+  <div class="badge safe">6 Safe</div>
+</div>
+
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr><th>File</th><th>Change scope</th><th>Risk</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>position-holder-brief/index.ts</code></td>
+      <td>Null return from <code>rewriteCatalyst</code>, signal-flip suppression, <code>opened_at</code> days clause</td>
+      <td class="risk-blocking">BLOCKING — null path unreachable due to schema mismatch</td>
+    </tr>
+    <tr>
+      <td><code>_shared/llm/registry.ts</code></td>
+      <td>No change (read-only context). Schema for <code>position_catalyst</code> examined.</td>
+      <td class="risk-blocking">ROOT CAUSE of blocking issue</td>
+    </tr>
+    <tr>
+      <td><code>_shared/digest-context.ts</code></td>
+      <td><code>NON_RELEVANCE_PATTERNS</code> array + skip in <code>fetchRecentNews</code></td>
+      <td class="risk-amber">Amber — two pattern concerns; false-positive risk low but nonzero</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Blocking</h2>
+
+<div class="finding blocking">
+  <div class="label">Blocking</div>
+  <div class="loc">_shared/llm/registry.ts:262 + position-holder-brief/index.ts:482–487</div>
+  <h3>Schema enforces <code>type: "string"</code> on <code>clause</code>, so <code>{"clause": null}</code> always triggers schema_fail — null path unreachable, wrong-asset headlines still get through via the raw-headline fallback</h3>
+  <dl>
+    <dt>Symptom</dt>
+    <dd>
+      When the LLM correctly identifies a misattributed headline (e.g. "Solana activity hits record high" tagged to "spx") and returns <code>{"clause": null}</code>,
+      the in-process validator in <code>schema.ts:walk()</code> rejects it because <code>null</code> does not satisfy <code>{type: "string", minLength: 10}</code>.
+      The adapter sets <code>status = "schema_fail"</code> and returns. Back in <code>rewriteCatalyst</code>, line 482 reads:
+      <br><code>if (res.status !== "schema_fail" &amp;&amp; res.parsed)</code>
+      <br>When status is schema_fail this condition is false — the null check on line 485 is never reached.
+      The function falls through to the raw-headline fallback at line 500 and returns the cleaned headline string.
+      <code>pickCatalystClause</code> gets a non-null string, returns it, and the wrong-asset catalyst line appears in the message. The original bug is not fixed.
+    </dd>
+    <dt>Root cause</dt>
+    <dd>
+      <code>POSITION_CATALYST_SCHEMA</code> (registry.ts line 262) declares <code>clause: { type: "string", minLength: 10, maxLength: 120 }</code>.
+      This is correct for the happy path but does not accommodate the deliberate <code>null</code> sentinel the prompt instructs the model to return.
+      The schema has no <code>cascadeOnSchemaFail: true</code>, so a schema_fail on the primary (Groq) does NOT cascade to the fallback; it returns with status schema_fail immediately.
+      The combined effect: the null path defined in the prompt and in <code>rewriteCatalyst</code>'s code is 100% unreachable in production.
+    </dd>
+    <dt>Evidence chain</dt>
+    <dd>
+      <ul>
+        <li><code>schema.ts:22-26</code>: <code>typeMatches(null, "string")</code> returns false; error pushed, validation fails.</li>
+        <li><code>openai-compatible.ts:113-116</code>: <code>status = "schema_fail"</code> set; <code>parsed</code> is set to the raw extracted JSON object.</li>
+        <li><code>rewriteCatalyst line 482</code>: condition gates on <code>res.status !== "schema_fail"</code> — short-circuits to false.</li>
+        <li><code>rewriteCatalyst line 500</code>: fallback returns <code>ensureTrailingPeriod(shortHeadline(title))</code> — the wrong-asset headline, cleaned but still wrong.</li>
+      </ul>
+    </dd>
+  </dl>
+  <div class="fix">
+    <strong>Fix (two options, pick one):</strong>
+    <br><br>
+    <strong>Option A — Fix the schema (preferred).</strong> Change <code>POSITION_CATALYST_SCHEMA</code> in <code>registry.ts</code> to allow null:
+    <br><code>clause: { oneOf: [{ type: "string", minLength: 10, maxLength: 120 }, { type: "null" }] }</code>
+    <br>Note: the home-grown validator in <code>schema.ts</code> may not support <code>oneOf</code>. Verify first. If not, use an enum approach: remove <code>type</code> from the clause property and add <code>enum</code> validation is skipped for non-enum fields — or expand <code>schema.ts</code> to handle <code>type: ["string", "null"]</code> union. Simplest: add <code>type: "null"</code> as a secondary pass or change the schema property to have no <code>type</code> field and only enforce presence of the key.
+    <br><br>
+    <strong>Option B — Change the fallback in <code>rewriteCatalyst</code>.</strong> Instead of guarding on <code>res.status !== "schema_fail"</code>, also check <code>res.parsed</code> when schema_fail occurs:
+    <pre style="margin:8px 0;background:#0a1a0a;padding:8px;border-radius:4px;font-size:0.82rem;overflow-x:auto;">
+// After the try block:
+if (res.status === "schema_fail" && res.parsed) {
+  const parsed = res.parsed as { clause?: string | null };
+  if (parsed.clause === null) return null;
+}
+// Then fall through to raw headline</pre>
+    This is the minimal diff: it peeks at the schema_fail parsed payload before giving up on the null path. Option A is cleaner long-term; Option B ships faster.
+    <br><br>
+    Also add <code>cascadeOnSchemaFail: true</code> to the <code>position_catalyst</code> task in <code>registry.ts</code> so that if Groq schema-fails on a legitimate rewrite attempt (not a null), the fallback chain fires instead of silently swallowing the failure.
+  </div>
+</div>
+
+<h2>Worth a Look</h2>
+
+<div class="finding amber">
+  <div class="label">Worth a Look</div>
+  <div class="loc">_shared/digest-context.ts:481 — <code>NON_RELEVANCE_PATTERNS[0]</code></div>
+  <h3>Pattern <code>/\bno direct impact\b/i</code> can false-positive on legitimate macro summaries for certain assets</h3>
+  <dl>
+    <dt>Concern</dt>
+    <dd>
+      The phrase "no direct impact" appears in legitimate analyst summaries for assets that are genuinely insulated from a macro event. Example: "The rate hike has no direct impact on Bitcoin's supply schedule, but sentiment may shift." This is an accurate, relevant Vela summary for BTC — it tells the user the asset is unaffected by the event, which IS useful context. The pattern would drop this card entirely.
+    </dd>
+    <dt>Concrete reproduction path</dt>
+    <dd>
+      A news-classifier summary for BTC tagged with <code>relevant_assets: ["btc"]</code> that reads "The Fed rate decision has no direct impact on BTC's on-chain dynamics, but risk-off sentiment could weigh on price" — importance 4, primary asset BTC — gets silently dropped by line 488.
+    </dd>
+    <dt>Counterargument</dt>
+    <dd>
+      The original problem was summaries that explained WHY the asset is irrelevant ("The headline concerns Zoom, not Amazon..."). The pattern targets that. The "rate hike has no direct impact on BTC supply" case is a different meaning of the phrase. The risk is real but may be rare in practice depending on how the classifier phrases its summaries.
+    </dd>
+  </dl>
+  <div class="fix">
+    <strong>Consider:</strong> Tighten the pattern to match the classifier's actual output format. The Zoom/Amazon case reads like "no direct impact on [asset]" or "the tagged asset sees no direct impact". Change the first pattern from <code>/\bno direct impact\b/i</code> to <code>/\btagged asset sees no direct impact\b/i</code> or anchor to the classifier's templated phrasing. Alternatively, combine with the <code>concerns .{1,40}, not</code> pattern as a required co-occurrence.
+  </div>
+</div>
+
+<div class="finding amber">
+  <div class="label">Worth a Look</div>
+  <div class="loc">position-holder-brief/index.ts:424–428 — <code>normCandidate</code> search scope</div>
+  <h3><code>normCandidate</code> searches only <code>highRows</code> (48h window), not a fresh 24h query — could miss importance=3 stories published between 24h and 48h ago that aren't in the 20-row limit</h3>
+  <dl>
+    <dt>Concern</dt>
+    <dd>
+      <code>highRows</code> is fetched with <code>.gte("published_at", sinceHigh)</code> (48h) and <code>.limit(20)</code>. The importance=4 search uses this full set. The <code>normCandidate</code> search then re-filters <code>highRows</code> to only rows within the 24h window. This is logically correct: any importance=3 story within the last 24h that exists in the DB will appear in <code>highRows</code> IF the 20-row limit wasn't hit. If there are more than 20 news rows in the last 48h for a popular asset (e.g. BTC during a volatile week), the 20-row limit cuts off older rows — and since results are ordered <code>published_at DESC</code>, older rows (including those in the 24–48h band, plus some 0–24h rows near the cutoff) may be excluded.
+    </dd>
+    <dt>Practical severity</dt>
+    <dd>
+      For high-activity assets (BTC, ETH) during market events, 20 rows in 48h is reachable. If the 24h window has 15 importance=3 rows near the boundary and 5 importance=4 rows dominate the top, the limit is fine. But if all 20 rows are from the past 6h, importance=3 stories from 20h ago are invisible to <code>normCandidate</code>. The position brief may show no catalyst line when one existed. This is a silent degradation, not an incorrect line.
+    </dd>
+  </dl>
+  <div class="fix">
+    <strong>Consider:</strong> Issue a separate query for the normal-importance candidate with <code>.gte("published_at", sinceNormal)</code> and <code>.limit(5)</code>, independent of <code>highRows</code>. Or increase <code>highRows</code> limit to 50. Low urgency — silent miss, not wrong output.
+  </div>
+</div>
+
+<h2>Nits</h2>
+
+<div class="finding nit">
+  <div class="label">Nit</div>
+  <div class="loc">_shared/digest-context.ts:480 — <code>NON_RELEVANCE_PATTERNS</code> declared inside loop</div>
+  <h3>Recompiles regex array on every iteration — move to module scope</h3>
+  <dl>
+    <dt>Detail</dt>
+    <dd>
+      <code>NON_RELEVANCE_PATTERNS</code> is declared with <code>const</code> inside the <code>for (const r of rows)</code> loop. JavaScript re-creates the array and compiles each RegExp on every iteration. For <code>limit=30</code> rows this is ~180 regex compiles per <code>fetchRecentNews</code> call. No functional bug; purely a performance nit. Move the constant to module scope above <code>fetchRecentNews</code>.
+    </dd>
+  </dl>
+</div>
+
+<div class="finding nit">
+  <div class="label">Nit</div>
+  <div class="loc">position-holder-brief/index.ts:597–604 — days-in-position branch</div>
+  <h3><code>days >= 1</code> guard means a position opened &lt;24h ago silently drops the action clause entirely when no other clause fires</h3>
+  <dl>
+    <dt>Detail</dt>
+    <dd>
+      A brand-new position (same-day open, <code>days = 0</code>) with no stop proximity, no RSI extreme, and no signal flip returns <code>null</code> from <code>pickActionClause</code>. The message header is enough for day-zero, but there's no guarantee the caller's materiality check reflects this — the position must pass via price move or catalyst, not action clause. This is consistent with current logic (day-zero positions are intentionally quiet). Documenting it for clarity: the comment says "steady-state with no temporal data" which is accurate for 0-day, but calling it "no temporal data" is slightly misleading given <code>opened_at</code> IS present.
+    </dd>
+  </dl>
+</div>
+
+<h2>Risks to Monitor Post-Deploy</h2>
+
+<div class="monitor-box">
+  <strong style="color:#fbbf24;">If Fix 1 is applied (schema fix):</strong>
+  <ul>
+    <li>Monitor <code>llm_call_log</code> for <code>position_catalyst</code> <code>schema_fail</code> rate. Before the fix, every null-return was a schema_fail silently swallowed. After the fix, null-return should be <code>status=ok</code>. If you see a spike in raw headline fallback use (no LLM-rewrite), that's a signal the null path is firing more often than expected — check whether the tagging pipeline is over-tagging assets.</li>
+    <li>Add <code>cascadeOnSchemaFail: true</code> to <code>position_catalyst</code> at the same time — without it, a legitimate rewrite attempt that fails schema (e.g. LLM over-produces, violates maxLength) silently swallows rather than cascading to Groq fallback.</li>
+    <li>The NVIDIA qwen fallback does not have <code>additionalProperties: false</code> bypassed for this task. If qwen is used as fallback after fixing, its extra-key habit (adding "reasoning", "_meta") will hit <code>additionalProperties: false</code> in the schema and produce schema_fail again. Consider also setting <code>additionalProperties: true</code> on <code>POSITION_CATALYST_SCHEMA</code> (consistent with the NVIDIA-safe pattern used on other tasks).</li>
+  </ul>
+  <strong style="color:#fbbf24;">Pattern monitoring for NON_RELEVANCE_PATTERNS:</strong>
+  <ul>
+    <li>There is no logging when a row is dropped by <code>NON_RELEVANCE_PATTERNS</code>. A false-positive drop is invisible. Add a <code>console.log("[digest-context] skipped non-relevance row: ...", r.id, primary.symbol)</code> so it's diagnosable via Supabase log viewer after deploy.</li>
+    <li>After first deploy, scan the logs for any unexpectedly dropped rows for BTC, ETH, SOL — assets with high news volume most likely to trigger the "no direct impact" pattern on legitimate macro summaries.</li>
+  </ul>
+</div>
+
+<h2>Safe</h2>
+
+<ul class="safe-list">
+  <li><strong>Fix 2 (signal-flip suppression):</strong> <code>isSameDirection</code> logic at lines 589–594 is correct. Long+Buy and Short+Sell both suppressed. All other combinations (Long+Sell, Long+Wait, Short+Buy, Short+Wait) pass through and render the flip label. No edge case missed.</li>
+  <li><strong>Priority 5 (days in position):</strong> Math is correct. <code>Math.floor((Date.now() - new Date(pos.opened_at).getTime()) / 86_400_000)</code> handles DST correctly (UTC milliseconds, no timezone arithmetic). Singular/plural handled. <code>opened_at</code> is in the SELECT at line 204 and defined in <code>PositionRow</code> at line 59 as <code>string | null</code> — the optional guard <code>if (pos.opened_at)</code> at line 599 is correct.</li>
+  <li><strong><code>opened_at</code> column exists:</strong> Confirmed in <code>fetchRecentCloses</code> select at digest-context.ts:213 (<code>opened_at</code> is queried from positions) and in the <code>RecentClose</code> interface at line 43. Column is real.</li>
+  <li><strong>No other callers of <code>rewriteCatalyst</code>:</strong> Grep confirms <code>rewriteCatalyst</code> is defined and called only within <code>position-holder-brief/index.ts</code>. Return type change to <code>Promise&lt;string | null&gt;</code> affects no other file.</li>
+  <li><strong>Anti-overlap logic unchanged:</strong> The overlapped-asset one-liner path at lines 238–244 is untouched and correct. It does not invoke <code>rewriteCatalyst</code>.</li>
+  <li><strong>NON_RELEVANCE_PATTERNS placement (after quality filters):</strong> The non-relevance check runs after the importance and analyst-action filters, so it only fires on rows that already passed the quality bar. The <code>summaryText.length &lt; 30</code> guard before it means an empty summary can't accidentally match a pattern. Filter order is correct.</li>
+</ul>
+
+</body>
+</html>

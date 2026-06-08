@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA Review: Agent Deregistration — Pass 4</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0A0A0A; color: #FFFBF5; margin: 0; padding: 2rem; line-height: 1.6; }
+    h1 { color: #0FE68C; font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .meta { color: #888; font-size: 0.875rem; margin-bottom: 2rem; }
+    .summary-bar { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .badge { padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.875rem; font-weight: 700; }
+    .badge.blocking { background: #3a0a0a; color: #ff4444; border: 1px solid #ff4444; }
+    .badge.amber { background: #3a2a00; color: #ffb300; border: 1px solid #ffb300; }
+    .badge.nit { background: #1a1a2e; color: #8888ff; border: 1px solid #8888ff; }
+    .badge.safe { background: #0a2a1a; color: #0FE68C; border: 1px solid #0FE68C; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.875rem; }
+    th { text-align: left; padding: 0.5rem 1rem; background: #1a1a1a; color: #888; font-weight: 600; }
+    td { padding: 0.5rem 1rem; border-bottom: 1px solid #222; }
+    td.risk-ok { color: #0FE68C; }
+    td.risk-amber { color: #ffb300; }
+    td.risk-block { color: #ff4444; }
+    h2 { color: #0FE68C; font-size: 1.1rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #222; padding-bottom: 0.4rem; }
+    .finding { background: #111; border-left: 3px solid #ffb300; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 0 6px 6px 0; }
+    .finding.nit { border-left-color: #8888ff; }
+    .finding.safe { border-left-color: #0FE68C; }
+    .finding h3 { margin: 0 0 0.4rem; font-size: 0.95rem; }
+    .finding .cite { font-size: 0.8rem; color: #888; font-family: monospace; margin-bottom: 0.4rem; }
+    .finding p { margin: 0; font-size: 0.9rem; }
+    code { background: #1a1a1a; padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<h1>QA Review: Agent Deregistration Recovery — Pass 4</h1>
+<p class="meta">Reviewer: independent read-only agent &nbsp;|&nbsp; Date: 2026-06-08 &nbsp;|&nbsp; Prior passes: 3 &nbsp;|&nbsp; Tests passing: 327</p>
+
+<div class="summary-bar">
+  <span class="badge blocking">0 Blocking</span>
+  <span class="badge amber">1 Amber</span>
+  <span class="badge nit">1 Nit</span>
+  <span class="badge safe">Safe to deploy</span>
+</div>
+
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr><th>File</th><th>Risk</th><th>Reason</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>_shared/wallet-provisioner.ts</code></td>
+      <td class="risk-ok">OK</td>
+      <td>Implementation correct. <code>captureException</code> is inside the <code>if (dbErr)</code> block. Return semantics are correct.</td>
+    </tr>
+    <tr>
+      <td><code>_shared/wallet-provisioner.test.ts</code></td>
+      <td class="risk-amber">Amber</td>
+      <td>Test 4 does not prove <code>captureException</code> is inside the block. A regression that moves the call outside the block would pass silently.</td>
+    </tr>
+    <tr>
+      <td><code>_shared/trade-executor.ts</code></td>
+      <td class="risk-ok">OK</td>
+      <td>Single callsite. Awaits result, tags Sentry, branches admin notification correctly.</td>
+    </tr>
+    <tr>
+      <td><code>position-monitor/index.ts</code></td>
+      <td class="risk-ok">OK</td>
+      <td>All 5 callsites structurally identical. Import correct. No callsite was missed.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Amber</h2>
+
+<div class="finding">
+  <h3>Test 4 does not verify <code>captureException</code> is inside the <code>dbErr</code> block</h3>
+  <div class="cite">wallet-provisioner.test.ts line 66-69</div>
+  <p>
+    The new test asserts <code>dbErrIdx &gt; 0 &amp;&amp; captureIdx &gt; dbErrIdx</code>. This confirms
+    <code>captureException</code> appears textually after the string <code>"if (dbErr)"</code>, but not
+    that it appears before the closing brace of that block. A future refactor that moves
+    <code>captureException</code> to after the <code>if (dbErr) { ... }</code> block (e.g. into an
+    unconditional finally-style call at the end of the function) would still satisfy this assertion.
+    The implementation is currently correct (verified: <code>captureException</code> is at char offset
+    491, closing brace of <code>if (dbErr)</code> block is at char offset 704 within the slice, so
+    the call is clearly inside the block). The test just does not catch a regression. Add
+    <code>&amp;&amp; captureIdx &lt; closingBraceIdx</code> where <code>closingBraceIdx</code> is
+    computed by matching the opening brace of the <code>if (dbErr)</code> block.
+  </p>
+</div>
+
+<h2>Nit</h2>
+
+<div class="finding nit">
+  <h3>No deregistration tests in position-monitor test file despite 5 callsites</h3>
+  <div class="cite">position-monitor/position-monitor.test.ts (208 tests, 0 cover deregistration)</div>
+  <p>
+    The 5 position-monitor callsites to <code>maybeHandleDeregistration</code> are not covered by any
+    source-grep test in <code>position-monitor.test.ts</code>. The wallet-provisioner and
+    trade-executor test files have explicit adversarial tests for their callsites. Adding a matching
+    source-grep test to position-monitor (e.g. assert all 5 callsites exist, assert
+    <code>captureMessage</code> appears immediately after each) would close the coverage gap. Not
+    blocking because the callsite pattern is mechanically identical across all 5 locations and was
+    verified visually in this pass.
+  </p>
+</div>
+
+<h2>Safe Paths Confirmed</h2>
+
+<div class="finding safe">
+  <h3>Implementation is complete and internally consistent</h3>
+  <p>
+    <strong>wallet-provisioner.ts <code>maybeHandleDeregistration</code>:</strong> Regex guard on line 484 fires before DB write. <code>captureException</code> is inside the <code>if (dbErr)</code> block with correct Sentry tags (<code>flow</code>, <code>event</code>, <code>user_id</code>). Function returns <code>false</code> on DB failure and <code>true</code> on success. No silent success/failure confusion.
+  </p>
+  <p style="margin-top: 0.5rem;">
+    <strong>trade-executor.ts line 1204:</strong> <code>isAgentDeregistered</code> is awaited before the <code>captureMessage</code> call on line 1209, so the Sentry <code>deregistration</code> tag is always accurate. The admin notification branch on lines 1250-1263 correctly appends the recovery message only when <code>isAgentDeregistered=true</code> and <code>isMarginShortfall=false</code>. No notification path is silently suppressed.
+  </p>
+  <p style="margin-top: 0.5rem;">
+    <strong>position-monitor 5 callsites (lines 804, 1754, 1911, 2205, 2368):</strong> All 5 follow the same pattern: call <code>maybeHandleDeregistration</code>, conditionally call <code>captureMessage</code> with identical tags, then log the underlying error. Import on line 22 is correct. No callsite is missing the <code>captureMessage</code> guard.
+  </p>
+  <p style="margin-top: 0.5rem;">
+    <strong>Test slice size:</strong> The 900-character fnBody slice in tests 3 and 4 covers the entire function (function body is 874 characters). No truncation risk.
+  </p>
+  <p style="margin-top: 0.5rem;">
+    <strong>No other callers:</strong> <code>maybeHandleDeregistration</code> is only called from <code>trade-executor.ts</code> and <code>position-monitor/index.ts</code>. No unguarded callsites exist elsewhere in the functions directory.
+  </p>
+</div>
+
+<h2>Verdict</h2>
+<p>
+  No blocking issues. One amber finding in test 4 — the test does not tightly bound the
+  <code>captureException</code> call to inside the <code>if (dbErr)</code> block. The implementation
+  itself is correct and matches the intent. Deployment is safe. Fix the test assertion in a follow-up
+  or in this same commit before shipping.
+</p>
+
+</body>
+</html>

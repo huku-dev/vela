@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Report: Timeout Fix Options A/B/C</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 40px auto; padding: 0 24px; color: #111; line-height: 1.5; }
+  h1 { font-size: 1.5rem; border-bottom: 2px solid #111; padding-bottom: 8px; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; }
+  h3 { font-size: 0.95rem; color: #333; margin-top: 1.25rem; }
+  .summary-bar { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+  .badge { padding: 6px 14px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+  .red { background: #fee2e2; color: #991b1b; }
+  .amber { background: #fef3c7; color: #92400e; }
+  .gray { background: #f3f4f6; color: #374151; }
+  .green { background: #d1fae5; color: #065f46; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88rem; }
+  th { background: #f3f4f6; text-align: left; padding: 8px 10px; }
+  td { border-top: 1px solid #e5e7eb; padding: 8px 10px; vertical-align: top; }
+  .finding { border-left: 4px solid; padding: 10px 14px; margin: 10px 0; border-radius: 0 4px 4px 0; }
+  .blocking { border-color: #dc2626; background: #fff5f5; }
+  .wortlook { border-color: #d97706; background: #fffbeb; }
+  .nit { border-color: #9ca3af; background: #f9fafb; }
+  .safe { border-color: #059669; background: #f0fdf4; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .rec { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 16px; margin-top: 24px; }
+  small { color: #6b7280; }
+</style>
+</head>
+<body>
+<h1>Adversarial QA Report: Timeout Fix — Options A / B / C</h1>
+<small>Reviewer: independent adversarial agent. Zero prior context on these proposals. Files read: run-signals/index.ts (full), asset-intel-generate/index.ts (full), docs/cron-schedule.md, 20260425000004_asset_intel_generate_cron.sql, 20260303000007_production_cron_fix.sql.</small>
+
+<div class="summary-bar">
+  <span class="badge red">Blocking: 3</span>
+  <span class="badge amber">Worth a look: 5</span>
+  <span class="badge gray">Nit: 2</span>
+  <span class="badge green">Safe: 1</span>
+</div>
+
+<h2>Recommendation Table</h2>
+<table>
+  <tr><th>Option</th><th>Verdict</th><th>Rationale</th><th>Blocker to resolve first</th></tr>
+  <tr>
+    <td><strong>A — Parallelise loop</strong></td>
+    <td><span class="badge red">Risky</span></td>
+    <td>Breaks <code>usedHeadlineTitles</code> dedup, races on <code>signals</code> upserts, risks CG 429s at 4x concurrency, and digest double-fire risk exists.</td>
+    <td>Shared mutable state in <code>usedHeadlineTitles</code> (line 197) and <code>crosscheckPromises</code> (line 203) must be made safe before this is viable. Not a small refactor.</td>
+  </tr>
+  <tr>
+    <td><strong>B — Batch param + two crons</strong></td>
+    <td><span class="badge amber">Viable with care</span></td>
+    <td>Minimal code change. Assets are ordered deterministically (<code>ORDER BY symbol ASC</code> in asset-intel-generate; no ORDER BY in run-signals — needs one). Digest double-fire is a real risk that needs a guard.</td>
+    <td>run-signals asset fetch has no ORDER BY (line 105-108). Batch slicing would be non-deterministic. Fix the query first. Then add explicit digest-suppression logic to batch 2.</td>
+  </tr>
+  <tr>
+    <td><strong>C — Skip stale + reduce sleep</strong></td>
+    <td><span class="badge amber">Partial — addresses asset-intel-generate, not run-signals</span></td>
+    <td>Sleep removal saves only 5.5s on a ~150s budget. Does not close the run-signals gap. Dedup window fix for asset-intel-generate is correct and worth doing regardless.</td>
+    <td>Quantify actual per-asset wall time in run-signals before betting on sleep reduction alone. 5.5s savings against an unknown 120-145s actual work budget is too thin to rely on.</td>
+  </tr>
+</table>
+
+<hr>
+
+<h2>Option A — Parallelise Loop</h2>
+
+<div class="finding blocking">
+  <strong>BLOCKING A1: <code>usedHeadlineTitles</code> is shared mutable state — concurrent writes corrupt brief diversity</strong><br>
+  Line 197: <code>const usedHeadlineTitles = new Set&lt;string&gt;();</code> is created once and passed into <code>persistSignalResult()</code> (line 252) for every asset. The purpose is to prevent the same headline appearing in briefs for multiple assets. Under <code>Promise.all</code>, all concurrent calls receive the same Set reference and mutate it simultaneously in non-deterministic order. This does not produce a runtime crash — it silently degrades brief quality (some briefs will incorrectly see each other's headlines as "used") or miss dedup entirely depending on execution timing. Not safe to parallelize without first restructuring this to a pre-allocated set or post-processing step.
+</div>
+
+<div class="finding blocking">
+  <strong>BLOCKING A2: CoinGecko rate limiting at 4x concurrency will produce 429s</strong><br>
+  Line 487: the 2s sleep exists specifically to stay under the CoinGecko demo cap of 30 calls/min. With 4 crypto assets running concurrently, each calls CG for candles AND daily closes simultaneously: 4 assets × 2 CG calls = 8 calls in under 1 second. At 30 calls/min (1 call every 2s), this bursts well past the rate limit. CG 429s cause a retry cascade or silently fall back to degraded data depending on <code>fetch4HCandlesHL</code>/<code>fetchDailyClosesHL</code> internals. The author's note that "HL API can handle moderate parallelism" is true for HL — it is NOT true for CoinGecko. A concurrency cap must be applied only to HL calls, with CG calls serialized, OR crypto assets must still be processed sequentially while HL-only assets parallelize.
+</div>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK A3: Digest double-generation risk if async asset processing finishes in a different order</strong><br>
+  Lines 503-518: digest generation fires after the asset loop if <code>!targetAsset &amp;&amp; currentHourUTC &gt;= 8</code> and no digest exists yet for today. Under parallelism the outer loop still runs once and the digest check is outside the parallelized block, so this specific path appears safe. However: if the implementation naively wraps the loop body in <code>Promise.all</code>, review whether the digest block ends up inside or outside the parallelized scope. If inside, two concurrent runs of run-signals (e.g. 4H cron + volatility-check cascade) could both see no digest and both start generating. The existing DB check is a read-then-write without a lock. This is a pre-existing race condition made more likely by faster completion times.
+</div>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK A4: <code>crosscheckPromises</code> is an array accumulated across the loop — safe under parallelism, but watch ordering</strong><br>
+  Line 203: <code>crosscheckPromises</code> is a simple push-accumulator. Concurrent pushes to a JS array are safe in a single-threaded isolate. The array is awaited after the loop. This is fine. Note: if concurrency errors cause a promise to reject, the final <code>Promise.allSettled</code> (or equivalent) must be used rather than <code>Promise.all</code> to avoid aborting the remaining crosschecks.
+</div>
+
+<div class="finding nit">
+  <strong>NIT A5: asset-intel-generate has no shared mutable state in its loop — safe to parallelize independently</strong><br>
+  Lines 203-219: the asset-intel-generate loop accumulates counters (<code>ok</code>, <code>skipped_dedup</code>, etc.) but these are incremented after each <code>await</code> in a single-threaded Deno isolate. No shared object is mutated across concurrent calls. The upsert uses <code>onConflict: "asset_id,period_label,trigger_reason"</code> so concurrent writes for the same asset are idempotent. asset-intel-generate can safely be parallelized with a moderate cap (e.g. 4).
+</div>
+
+<h2>Option B — Batch Param + Two Crons</h2>
+
+<div class="finding blocking">
+  <strong>BLOCKING B1: run-signals asset fetch has no ORDER BY — batch slicing is non-deterministic</strong><br>
+  Lines 105-108: <code>.from("assets").select("*").eq("enabled", true)</code> — no <code>.order()</code> clause. PostgreSQL row order without ORDER BY is undefined and changes with vacuums, inserts, and index scans. A batch split at offset 11 would return different assets on different runs. Batch 1 and batch 2 could overlap or leave gaps. This must be fixed before Option B is safe: add <code>.order("symbol", { ascending: true })</code> (matching what asset-intel-generate already does at line 182).
+</div>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK B2: Digest fires in every batch that satisfies <code>!targetAsset &amp;&amp; currentHourUTC &gt;= 8</code></strong><br>
+  Lines 503-518: both batch 1 and batch 2 are full cron invocations with no <code>targetAsset</code>. Both will enter the digest check block. The DB check (<code>gte("created_at", today)</code>) prevents a second write IF batch 1 finishes and commits before batch 2 checks. In practice batch 2 starts 1 minute after batch 1, so the race window is narrow but not zero. The safest fix: add a <code>batchIndex</code> param and only attempt digest when <code>batchIndex === 0</code> (or last batch). Alternatively, move digest generation to its own cron slot entirely.
+</div>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK B3: Cron schedule has no free minute slot adjacent to existing run-signals-4h at :10</strong><br>
+  Current schedule: <code>run-signals-4h</code> at <code>10 0,4,8,12,16,20 * * *</code>. The 5-minute spacing rule (documented in cron-schedule.md) means a second entry cannot use :05, :10, or :15. Available adjacent slots: :11, :12 (but scanner-30m fires at :12 via <code>12,42 * * * *</code> — conflict), :13, :14. A slot at :13 past each 4H mark would give 3 minutes of overlap margin. cron-schedule.md says "35 active crons, ~52 invocations/hour, ceiling 80/hour" — adding 6 more per day (one per 4H window) stays well within budget. Update cron-schedule.md in the same migration commit per the documented procedure.
+</div>
+
+<div class="finding safe">
+  <strong>SAFE B4: asset-intel-generate batch approach is straightforward — DAILY_BATCH_LIMIT already exists</strong><br>
+  Line 74: <code>const DAILY_BATCH_LIMIT = IS_STAGING ? 2 : 25;</code>. The function already has limit logic. Adding a <code>batchOffset</code> param and passing it as <code>.range(offset, offset + batchSize - 1)</code> after the existing <code>.order("symbol")</code> is a 5-line change. The upsert conflict key ensures idempotency. The 5:42 UTC daily slot has room for a second invocation at 5:43 or 5:44 — but given this function runs sequentially per asset with LLM calls (~2-3s each × 22 assets = ~60s), the real fix is Option A (parallel) for this function, not batching.
+</div>
+
+<h2>Option C — Skip Stale / Reduce Sleep</h2>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK C1: SMART_REFRESH_DEDUP_MIN is 60 minutes (line 78) — does not apply to daily cron path at all</strong><br>
+  Line 256: <code>if (triggerReason !== "scheduled_daily" &amp;&amp; triggerReason !== "manual")</code> — the dedup gate is explicitly bypassed for the daily cron path. The cron always processes all assets regardless of how fresh the brief is. Option C's proposal to "skip assets whose brief was generated within the last 20h" requires adding a new dedup check on the <code>scheduled_daily</code> path, which currently has no such guard. This is a valid optimization IF you want to reduce compute on days where briefs are already fresh — but it does NOT solve the timeout problem unless a large fraction of assets have fresh briefs at 05:42, which is unlikely since this is the only daily run.
+</div>
+
+<div class="finding nit">
+  <strong>NIT C2: Sleep reduction in run-signals saves 5.5s on an unknown total budget — insufficient alone</strong><br>
+  Line 487: removing the 500ms sleep for HL-only assets saves 11 × 500ms = 5.5s. The comment at line 485-486 was written when there were 16 assets and claimed "total sleep under 15s." At 22 assets the author calculates 27.5s. However, the actual bottleneck is per-asset work time (candle fetch, indicator compute, LLM brief generation, notification, proposal generation), not sleep. If each asset takes 5-10s of wall time, 22 assets × 7s = 154s — already over budget before any sleep. Sleep reduction without parallelism or batching does not close the gap for run-signals. This option is correct for asset-intel-generate as a secondary optimization but should not be presented as a standalone fix for run-signals.
+</div>
+
+<h2>Cross-Cutting Findings</h2>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK X1: Faster run-signals increases collision probability with scanner-30m</strong><br>
+  scanner-30m fires at <code>2,32 * * * *</code>. run-signals-4h fires at <code>10 0,4,8,12,16,20 * * *</code>. The gap between run-signals starting at :10 and scanner-30m next firing at :32 is 22 minutes. With 22 assets serially, run-signals currently times out around 2.5 minutes in — well clear. If Option B reduces total run time to ~75s per batch, batch 2 finishing at :12+1:15 = :13:15 is still fine. If Option A parallelizes and finishes in ~30-40s, run-signals is done by :10:40 and there is no race. This risk is low regardless of which option is chosen, but log the total elapsed time in the response body (it already does via <code>elapsed_ms</code>) and alert if it approaches 120s.
+</div>
+
+<div class="finding wortlook">
+  <strong>WORTH A LOOK X2: The cron schedule migration file references :0 */4 (production_cron_fix) not :10 — verify which is live</strong><br>
+  Migration 20260303000007 schedules run-signals at <code>0 */4 * * *</code> (on the hour). cron-schedule.md says it runs at <code>10 0,4,8,12,16,20 * * *</code>. One of these is stale. If the live cron is actually :00 (on the hour), scanner-30m firing at :02 is only 2 minutes after run-signals starts. A later migration must have rescheduled to :10. Verify with <code>SELECT schedule FROM cron.job WHERE jobname = 'run-signals-4h'</code> before writing any new cron migration that references this schedule — the cron-schedule.md procedure (section "Cron-touching migrations") mandates this.
+</div>
+
+<div class="rec">
+  <h2>Final Recommendation</h2>
+  <p><strong>Implement Option A for asset-intel-generate only; implement Option B for run-signals.</strong></p>
+  <p><strong>For asset-intel-generate:</strong> It has no shared mutable state in the loop (verified). Apply <code>Promise.all</code> with a concurrency cap of 4. Each iteration is an independent LLM call + DB upsert with an idempotent conflict key. At 22 assets × ~2.5s per asset with cap-4 parallelism, expected runtime drops from ~55s to ~14s. No cron change needed — the single 05:42 daily run covers it.</p>
+  <p><strong>For run-signals:</strong> Do NOT parallelize yet. The shared <code>usedHeadlineTitles</code> state and the CoinGecko rate limit make safe parallelism a larger refactor than a one-session fix. Instead, implement Option B: add an <code>ORDER BY symbol ASC</code> to the asset fetch (line 107), add a <code>batchOffset</code> + <code>batchSize</code> query param, schedule a second cron at <code>11 0,4,8,12,16,20 * * *</code> with body <code>{"batchOffset":11,"batchSize":11}</code>, and suppress digest generation when <code>batchOffset &gt; 0</code>.</p>
+  <p><strong>Also apply Option C sleep reduction as a free win</strong> alongside whichever primary option is chosen. It does not solve the problem alone but reduces wasted time.</p>
+  <p><strong>Before implementing anything:</strong> query <code>SELECT schedule FROM cron.job WHERE jobname = 'run-signals-4h'</code> to verify the live schedule matches cron-schedule.md. The migration history shows a mismatch (:00 vs :10) that must be reconciled before writing new cron entries.</p>
+</div>
+</body>
+</html>

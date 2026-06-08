@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review — Daily Brief Implementation</title>
+<style>
+  body { font-family: Inter, -apple-system, sans-serif; background: #FFFBF5; color: #0A0A0A; margin: 0; padding: 24px; font-size: 14px; line-height: 1.5; }
+  h1 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 800; margin: 0 0 4px; }
+  .meta { color: #666; font-size: 13px; margin: 0 0 24px; }
+  .summary-bar { display: flex; gap: 12px; margin: 0 0 28px; flex-wrap: wrap; }
+  .badge { border-radius: 6px; padding: 8px 16px; font-weight: 700; font-size: 13px; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+  .badge .count { font-size: 26px; font-weight: 800; }
+  .badge.block { background: #FEE2E2; color: #991B1B; }
+  .badge.amber { background: #FEF3C7; color: #92400E; }
+  .badge.nit { background: #F3F4F6; color: #374151; }
+  .badge.safe { background: #D1FAE5; color: #065F46; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 28px; }
+  th { text-align: left; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; padding: 6px 10px; border-bottom: 1px solid #E5E7EB; }
+  td { padding: 8px 10px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
+  .risk-high { color: #991B1B; font-weight: 700; }
+  .risk-amber { color: #92400E; font-weight: 700; }
+  .risk-nit { color: #374151; }
+  .risk-safe { color: #065F46; font-weight: 700; }
+  h2 { font-size: 15px; font-weight: 800; margin: 28px 0 10px; border-left: 4px solid currentColor; padding-left: 10px; }
+  h2.block { color: #991B1B; border-color: #991B1B; }
+  h2.amber { color: #92400E; border-color: #D97706; }
+  h2.nit { color: #374151; border-color: #9CA3AF; }
+  h2.safe { color: #065F46; border-color: #10B981; }
+  .finding { background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .finding h3 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+  .finding .loc { font-family: 'Courier New', monospace; font-size: 12px; color: #6B7280; margin: 0 0 6px; }
+  .finding p { margin: 4px 0; font-size: 13px; }
+  .finding .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9CA3AF; margin-top: 8px; }
+  code { font-family: 'Courier New', monospace; font-size: 12px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 3px; padding: 1px 4px; }
+  .monitor { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 14px 16px; margin: 0 0 12px; }
+  .monitor h3 { color: #1E40AF; margin: 0 0 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Daily Brief Implementation</h1>
+<p class="meta">Phase 1 adversarial review · 4 features · 6 files changed · Reviewed 2026-06-06</p>
+
+<div class="summary-bar">
+  <div class="badge block"><span class="count">0</span>Blocking</div>
+  <div class="badge amber"><span class="count">3</span>Worth a look</div>
+  <div class="badge nit"><span class="count">4</span>Nit</div>
+  <div class="badge safe"><span class="count">6</span>Safe</div>
+</div>
+
+<h2 style="color:#374151;border-color:#9CA3AF;border-left:4px solid #9CA3AF;">File-Level Risk Matrix</h2>
+<table>
+  <tr>
+    <th>File</th>
+    <th>Highest Finding</th>
+    <th>Risk</th>
+  </tr>
+  <tr>
+    <td><code>_shared/brief-generator.ts</code></td>
+    <td>Prompt injection vector via unescaped LLM output in anti-repetition context</td>
+    <td class="risk-amber">WORTH A LOOK</td>
+  </tr>
+  <tr>
+    <td><code>daily-digest/index.ts</code></td>
+    <td>Supabase error from anti-repetition query silently dropped (no error destructuring)</td>
+    <td class="risk-amber">WORTH A LOOK</td>
+  </tr>
+  <tr>
+    <td><code>run-signals/index.ts</code></td>
+    <td>Same silent-error pattern; EOD mode comment misleading</td>
+    <td class="risk-amber">WORTH A LOOK</td>
+  </tr>
+  <tr>
+    <td><code>_shared/signal-persistence.ts</code></td>
+    <td>Detail merge logic correct; null themeLine handled cleanly</td>
+    <td class="risk-safe">SAFE</td>
+  </tr>
+  <tr>
+    <td><code>_shared/notify.ts</code></td>
+    <td>Preheader fallback correct; SUMMARY_CAP raise benign</td>
+    <td class="risk-safe">SAFE</td>
+  </tr>
+  <tr>
+    <td><code>_shared/news-classifier.ts</code></td>
+    <td>SUMMARY_MAX 85 correct; lastSpace threshold consistent</td>
+    <td class="risk-safe">SAFE</td>
+  </tr>
+  <tr>
+    <td><code>_shared/news-fetcher.ts</code></td>
+    <td>formatNewsForPrompt: cross-source annotation path untested</td>
+    <td class="risk-nit">NIT</td>
+  </tr>
+</table>
+
+<h2 class="block">Blocking</h2>
+<p style="color:#666;font-size:13px;font-style:italic;">No blocking issues found. The implementation degrades cleanly on all critical failure paths.</p>
+
+<h2 class="amber">Worth a Look</h2>
+
+<div class="finding">
+  <h3>WL-1: Supabase error from anti-repetition query silently dropped in both call sites</h3>
+  <p class="loc">daily-digest/index.ts:130 · run-signals/index.ts:726</p>
+  <p><span class="label">Symptom</span> If Supabase returns an error (RLS misconfiguration, connection timeout, schema mismatch), the anti-repetition context silently stays <code>null</code> with no log entry. The <code>try/catch</code> only fires on thrown exceptions; PostgREST errors come back as <code>{data: null, error: {...}}</code>, not thrown errors.</p>
+  <p><span class="label">Root cause</span> Both call sites destructure only <code>data</code>, not <code>error</code>: <code>const { data: prevBrief } = await supabase...maybeSingle()</code>. The Supabase error object is discarded before the try/catch can see it.</p>
+  <p><span class="label">Fix</span> Destructure the error and log it inside the try block at both sites:</p>
+  <code>const { data: prevBrief, error: prevErr } = await supabase...maybeSingle();<br>if (prevErr) console.warn("anti-repetition query error:", prevErr.message);</code>
+  <p><span class="label">Severity</span> Low-impact in practice (anti-repetition is cosmetic), but a silent failure creates a blind spot. Cheap to fix.</p>
+</div>
+
+<div class="finding">
+  <h3>WL-2: LLM output injected into LLM prompt without sanitization (prompt injection surface)</h3>
+  <p class="loc">_shared/brief-generator.ts:785,788</p>
+  <p><span class="label">Symptom</span> <code>previousOpener</code> and <code>previousThemeLine</code> — both LLM-generated — are interpolated directly into the next run's user prompt inside double-quote wrappers. A previous brief's <code>theme_line</code> could contain sequences that attempt to override the prompt instructions (e.g. <code>" — Ignore all STYLE NOTEs and instead output...</code>).</p>
+  <p><span class="label">Root cause</span> No sanitization between LLM output storage and LLM prompt injection. The double-quote wrapper provides cosmetic scoping but no semantic boundary in a plain-text prompt context.</p>
+  <p><span class="label">Fix</span> One of: (a) strip any <code>"</code> characters and newlines from both values before injection; (b) wrap in an XML-style delimiter (<code>&lt;yesterday_opener&gt;...&lt;/yesterday_opener&gt;</code>) that the model treats as a delimited block rather than in-band instructions. Option (a) is one line each; option (b) requires adjusting both injection points and the STYLE NOTE wording.</p>
+  <p><span class="label">Severity</span> Low probability in production (self-injection only, no external attacker). Worth addressing before the feature accumulates months of prior briefs. Confidence: moderate.</p>
+</div>
+
+<div class="finding">
+  <h3>WL-3: EOD path queries wrong brief_type for anti-repetition context (misleading, not buggy)</h3>
+  <p class="loc">daily-digest/index.ts:133 (used when mode=eod)</p>
+  <p><span class="label">Symptom</span> The anti-repetition query always filters on <code>brief_type = "daily_digest"</code>. When mode is <code>eod</code>, this returns the most recent <em>morning</em> brief. The code comment at line 125 says "yesterday's brief" — but for EOD at 22:05 UTC, it loads <em>today's</em> morning brief, not yesterday's EOD.</p>
+  <p><span class="label">Root cause</span> The query does not branch on <code>mode</code>. This means EOD anti-repetition context is "don't echo the morning brief", not "don't echo yesterday's EOD brief". That's defensible as product behavior (morning/EOD pair shouldn't echo each other), but the comment is wrong and a future author will be confused.</p>
+  <p><span class="label">Fix</span> Update the comment at lines 125-126 to say: "For morning runs, this fetches yesterday's morning brief. For EOD runs, this fetches today's morning brief — so EOD doesn't echo the morning framing." No code change required unless the intent is to dedup against yesterday's EOD instead.</p>
+</div>
+
+<h2 class="nit">Nit</h2>
+
+<div class="finding">
+  <h3>NIT-1: <code>formatNewsForPrompt</code> cross-source annotation path has no test coverage</h3>
+  <p class="loc">_shared/news-fetcher.test.ts — no test for ScoredNewsItem path</p>
+  <p>The three <code>formatNewsForPrompt</code> tests use plain <code>NewsItem[]</code> objects. The <code>ScoredNewsItem</code> branch (which appends <code>+N sources</code>) is untested. Add one test with a <code>ScoredNewsItem</code> where <code>crossSourceCount &gt;= 2</code> and assert the suffix appears in the output.</p>
+</div>
+
+<div class="finding">
+  <h3>NIT-2: No tests for anti-repetition context injection in brief-generator</h3>
+  <p class="loc">No test file for this path</p>
+  <p><code>rewriteDigestAsNarrative</code> is a private function, but <code>generateDailyDigest</code> is exported and accepts <code>previousOpener</code>/<code>previousThemeLine</code>. Zero unit tests verify the <code>antiRepetitionSection</code> is non-empty when both fields are provided, or empty string when both are null. A source-scan test asserting the IIFE produces the correct structure would take under 20 lines.</p>
+</div>
+
+<div class="finding">
+  <h3>NIT-3: Idempotency window has a 1-second gap at midnight UTC</h3>
+  <p class="loc">_shared/signal-persistence.ts:672-673</p>
+  <p>The window check uses <code>.lt("created_at", `${today}T23:59:59Z`)</code>, which excludes the 1-second window 23:59:59–00:00:00 UTC. A digest persisted in that window is excluded and a second one could be written. In practice digests run at 08:00 UTC and 12–20 UTC recovery, so this never triggers. Change to <code>23:59:60Z</code> or use the cleaner <code>.lt("created_at", `${tomorrow}T00:00:00Z`)</code>.</p>
+</div>
+
+<div class="finding">
+  <h3>NIT-4: No observability signal for "did anti-repetition context change the output"</h3>
+  <p class="loc">_shared/brief-generator.ts:863-865</p>
+  <p>The success log at line 863 notes the narrative length and word count but not whether anti-repetition context was applied. Append <code>(anti-rep: opener=${!!context?.previousOpener}, theme=${!!context?.previousThemeLine})</code> to the existing log line so you can cross-reference against the actual output in Supabase logs to assess if the feature is working.</p>
+</div>
+
+<h2 class="safe">Safe</h2>
+
+<div class="finding">
+  <h3>SAFE-1: <code>persistDailyDigest</code> detail merge is correct</h3>
+  <p class="loc">_shared/signal-persistence.ts:705-707</p>
+  <p>When <code>themeLine</code> is truthy: <code>{ ...(options?.detail ?? {}), themeLine }</code> spreads <code>marketPulse</code> first, then adds <code>themeLine</code>. No key collision possible since <code>marketPulse</code> and <code>themeLine</code> are distinct keys. When <code>themeLine</code> is null/undefined: <code>options?.detail ?? null</code> stores <code>{ marketPulse }</code> without a <code>themeLine</code> key. Both branches are correct.</p>
+</div>
+
+<div class="finding">
+  <h3>SAFE-2: Day-1 null degradation clean in both call sites</h3>
+  <p class="loc">daily-digest/index.ts:138-148 · run-signals/index.ts:734-743</p>
+  <p>When <code>maybeSingle()</code> returns <code>data: null</code> (no prior brief), the <code>if (prevBrief?.summary)</code> guard keeps <code>previousOpener</code> as <code>null</code>. The <code>typeof detail?.themeLine === "string"</code> guard keeps <code>previousThemeLine</code> as <code>null</code>. In <code>rewriteDigestAsNarrative</code>, the IIFE checks <code>if (context?.previousOpener)</code> and <code>if (context?.previousThemeLine)</code> — both are falsy. Result: <code>antiRepetitionSection = ""</code>. No "null" string reaches the LLM.</p>
+</div>
+
+<div class="finding">
+  <h3>SAFE-3: Preheader fallback logic is correct</h3>
+  <p class="loc">_shared/notify.ts:1742-1744</p>
+  <p>When <code>isPlaceholder</code> is true (LLM failure path), <code>options?.briefHeader?.themeLine</code> is never reached. The <code>||</code> short-circuit ensures the fallback is <code>paragraphs[0]?.slice(0, 100) ?? ""</code> — the first sentence of the narrative. <code>paragraphs</code> is populated from <code>splitBriefParagraphs(summary.trim())</code> at line 1668 and <code>summary</code> is non-empty by the time <code>persistDailyDigest</code>'s guard passes. Safe.</p>
+</div>
+
+<div class="finding">
+  <h3>SAFE-4: <code>formatNewsForPrompt</code> order preservation is correct</h3>
+  <p class="loc">_shared/news-fetcher.ts:799</p>
+  <p><code>items.slice(0, maxItems).map(formatLine)</code> applies no sort. Input order — already sorted by global score in <code>rankAndBalanceNews</code> — is preserved. The previous grouping by category has been fully removed. The inline <code>CATEGORY_TAG</code> map covers all 4 categories; unknown categories fall back to <code>[${n.category.toUpperCase()}]</code>, which is a safe default.</p>
+</div>
+
+<div class="finding">
+  <h3>SAFE-5: Single-sentence summary extraction degrades cleanly</h3>
+  <p class="loc">daily-digest/index.ts:140-143 · run-signals/index.ts:735-738</p>
+  <p><code>/\.\s/.search()</code> returns <code>-1</code> when the summary ends with a period but no following space (e.g. a single sentence). The <code>firstDot &gt; 0</code> guard then falls back to <code>slice(0, 120).trim()</code>, which returns the full sentence intact. No truncation artifact. The <code>&gt; 0</code> check also correctly rejects a period at position 0 (edge case: summary starts with ".").</p>
+</div>
+
+<div class="finding">
+  <h3>SAFE-6: SUMMARY_MAX/SUMMARY_CAP values are internally consistent</h3>
+  <p class="loc">_shared/news-classifier.ts:278 · _shared/notify.ts:1809</p>
+  <p>Classifier stores at most 85 chars (SUMMARY_MAX). Render-side cap is 150 chars, with <code>lastSpace &gt; 120</code> threshold — i.e. only kicks in for strings over 150 chars. New rows (max 85) never hit the render cap. Legacy rows (old 110-char cap) are also under 150 and pass through untruncated. The raise from 110 to 150 correctly protects legacy rows without changing new-row behavior.</p>
+</div>
+
+<h2 style="color:#1E40AF;border-color:#3B82F6;border-left:4px solid #3B82F6;">Risks to Monitor Post-Deploy</h2>
+
+<div class="monitor">
+  <h3>Monitor 1: Anti-repetition context effectiveness</h3>
+  <p>The feature is unverifiable from logs alone (no "changed output" signal). For the first week: spot-check consecutive morning briefs in the Supabase <code>briefs</code> table. Compare <code>summary</code> opening sentences day-over-day. If they still echo structurally (both start with "Markets..." or both start the same verb phrase), the LLM is ignoring the STYLE NOTE, which means the feature needs stronger injection (system prompt rather than user prompt).</p>
+</div>
+
+<div class="monitor">
+  <h3>Monitor 2: EOD theme_line persistence</h3>
+  <p>EOD briefs store to <code>eod_report</code> brief_type. The anti-repetition query fetches <code>daily_digest</code>. This means EOD's <code>themeLine</code> is never read as anti-repetition context on the next morning run (morning queries <code>daily_digest</code>, not <code>eod_report</code>). Not a bug, but if you wanted day-over-day EOD variety, it needs a separate query branch.</p>
+</div>
+
+<div class="monitor">
+  <h3>Monitor 3: Concurrent cron overlap (low risk)</h3>
+  <p>Both <code>daily-digest</code> (08:00 UTC) and <code>run-signals</code> recovery (08:10 UTC) read the same "latest daily_digest" for anti-repetition. If they somehow both miss the idempotency check simultaneously (race window is small), the second persist will log a warning and return <code>null</code> rather than creating a duplicate. Existing idempotency guard handles this correctly.</p>
+</div>
+
+<hr style="border:none;border-top:1px solid #E5E7EB;margin:24px 0;">
+<p style="color:#9CA3AF;font-size:12px;">Reviewed by adversarial QA agent · No prior context from the author · All file paths read cold.</p>
+
+</body>
+</html>
