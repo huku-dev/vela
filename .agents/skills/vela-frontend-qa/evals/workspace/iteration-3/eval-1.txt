@@ -1,0 +1,11 @@
+Task: QA review of `clean-component.tsx` for design token violations, accessibility gaps, and incorrect Vela component usage.
+
+- PASS: No hardcoded colors. All color values use CSS custom properties: `var(--color-signal-buy)`, `var(--color-signal-sell)`, `var(--color-signal-wait)`, `var(--color-surface-card)`, `var(--color-text-primary)`.
+- PASS: Signal colors used correctly. `--color-signal-buy` applied when `direction === 'BUY'`, `--color-signal-sell` when `direction === 'SELL'`, `--color-signal-wait` otherwise. Signal color is only used for the direction label and the left border accent, both of which are signal UI.
+- PASS: VelaButton used. `VelaButton` imported from `VelaComponents` and used for the dismiss action. No raw MUI `<Button>`.
+- PASS: ARIA labels present. The `<article>` element has `aria-label` describing the signal direction and asset. The `<VelaButton>` has `aria-label="Dismiss {signal.asset} signal"`. Both interactive and landmark elements are labeled.
+- PASS: TypeScript prop interface defined. `SignalBadgeProps` declares typed `signal: SignalType` and `onDismiss: () => void`. No inline types or `any`.
+- PASS (N/A): No async data fetching in this component. Data arrives via props. No loading or error states required.
+- PASS: Spacing and layout values use design tokens: `var(--spacing-md)`, `var(--spacing-xs)`, `var(--spacing-sm)`, `var(--radius-sm)`, `var(--text-sm)`, `var(--text-base)`, `var(--font-weight-bold)`.
+
+**Overall: PASS**

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: Cleanup Crons Fix</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --red: #E53E3E;
+    --red-bg: #FFF5F5;
+    --amber: #D97706;
+    --amber-bg: #FFFBEB;
+    --gray: #4A5568;
+    --gray-bg: #F7FAFC;
+    --green: #0FE68C;
+    --green-bg: #F0FFF4;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Space Grotesk', system-ui, sans-serif; background: var(--cream); color: var(--ink); line-height: 1.6; padding: 2rem; }
+  h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--gray); font-size: 0.9rem; margin-bottom: 2rem; }
+  .summary-bar { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .badge { padding: 0.5rem 1.25rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; }
+  .badge.blocking { background: var(--red-bg); color: var(--red); border: 1.5px solid var(--red); }
+  .badge.amber    { background: var(--amber-bg); color: var(--amber); border: 1.5px solid var(--amber); }
+  .badge.nit      { background: var(--gray-bg); color: var(--gray); border: 1.5px solid #CBD5E0; }
+  .badge.safe     { background: var(--green-bg); color: #276749; border: 1.5px solid var(--green); }
+  .section { margin-bottom: 2.5rem; }
+  .section-title { font-size: 1.1rem; font-weight: 800; padding: 0.5rem 0; margin-bottom: 1rem; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
+  .section-title .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot.red    { background: var(--red); }
+  .dot.amber  { background: var(--amber); }
+  .dot.gray   { background: #A0AEC0; }
+  .dot.green  { background: var(--green); }
+  .finding { border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
+  .finding.blocking { border-left: 4px solid var(--red); background: var(--red-bg); }
+  .finding.amber    { border-left: 4px solid var(--amber); background: var(--amber-bg); }
+  .finding.nit      { border-left: 4px solid #CBD5E0; background: var(--gray-bg); }
+  .finding.safe     { border-left: 4px solid var(--green); background: var(--green-bg); }
+  .finding-header { font-weight: 700; margin-bottom: 0.5rem; font-size: 1rem; }
+  .finding-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+  .finding-label.blocking { color: var(--red); }
+  .finding-label.amber    { color: var(--amber); }
+  .finding-label.nit      { color: var(--gray); }
+  .finding-label.safe     { color: #276749; }
+  .finding p { margin-bottom: 0.6rem; font-size: 0.93rem; }
+  .finding p:last-child { margin-bottom: 0; }
+  code { background: rgba(0,0,0,0.07); padding: 0.1em 0.35em; border-radius: 3px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.88em; }
+  pre { background: rgba(0,0,0,0.06); border-radius: 6px; padding: 0.9rem 1rem; font-size: 0.85rem; overflow-x: auto; margin: 0.6rem 0; font-family: 'SF Mono', 'Fira Code', monospace; line-height: 1.5; }
+  .file-ref { font-size: 0.8rem; color: var(--gray); margin-bottom: 0.5rem; font-family: monospace; }
+  .action { margin-top: 0.75rem; padding: 0.6rem 0.9rem; border-radius: 5px; font-size: 0.88rem; font-weight: 600; }
+  .action.blocking { background: #FED7D7; color: #C53030; }
+  .action.amber    { background: #FEF3C7; color: #92400E; }
+  .verdict-box { background: white; border: 2px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+  .verdict-box h2 { font-size: 1rem; font-weight: 800; margin-bottom: 0.75rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; background: #EDF2F7; font-weight: 700; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pass { color: #276749; font-weight: 600; }
+  .fail { color: var(--red); font-weight: 600; }
+  .uncertain { color: var(--amber); font-weight: 600; }
+  .q5-box { background: white; border: 2px solid var(--amber); border-radius: 8px; padding: 1.5rem; margin-top: 2.5rem; }
+  .q5-box h2 { font-size: 1rem; font-weight: 800; color: var(--amber); margin-bottom: 0.75rem; }
+</style>
+</head>
+<body>
+
+<h1>Adversarial Review: Cleanup Crons Fix</h1>
+<p class="subtitle">Reviewer: independent subagent, no author context &bull; Files read: 3 migration files &bull; 2026-05-29</p>
+
+<div class="summary-bar">
+  <div class="badge blocking">&#10006; 2 Blocking</div>
+  <div class="badge amber">&#9888; 3 Worth a look</div>
+  <div class="badge nit">&#8226; 1 Nit</div>
+  <div class="badge safe">&#10003; 3 Safe</div>
+</div>
+
+<!-- BLOCKING -->
+<div class="section">
+  <div class="section-title"><span class="dot red"></span> Blocking</div>
+
+  <div class="finding blocking">
+    <div class="finding-label blocking">Blocking &mdash; B1</div>
+    <div class="finding-header">ALTER TABLE on extension-owned tables will fail hard in Supabase managed Postgres</div>
+    <div class="file-ref">Proposed fix &mdash; Step 2 (no existing migration reference)</div>
+    <p>
+      <strong>Symptom:</strong> The migration will throw <code>ERROR: must be owner of table _http_response</code> (or similar) when it reaches the <code>ALTER TABLE net._http_response</code> statement. The pg_net extension creates and owns <code>net._http_response</code> under a dedicated extension owner role, not the <code>postgres</code> role. Supabase's managed Postgres does not grant <code>postgres</code> ownership of extension-internal tables. The same applies to <code>cron.job_run_details</code>, which is owned by the <code>pg_cron</code> extension.
+    </p>
+    <p>
+      <strong>Root cause:</strong> The diagnosis assumes <code>postgres</code> has ALTER TABLE privilege on extension-owned tables. That is true on self-hosted Postgres (where <code>postgres</code> is superuser), but Supabase's managed instances restrict this. The <code>postgres</code> role is a privileged role but not a true superuser; it lacks ownership of extension-catalog tables. The May 26 migration (lines 12-13) actually asserted "execute as the postgres role (which can VACUUM any table, including pg_net-owned ones)" for VACUUM — that claim was directionally correct for VACUUM (which is a special command, not DML) but does not carry over to DDL like ALTER TABLE. The ownership check for DDL is stricter.
+    </p>
+    <p>
+      <strong>Failure mode:</strong> Not silent. Supabase migrations run in a transaction; the ALTER TABLE failure rolls back the entire migration, meaning the cron reschedules in steps 1 also roll back. The crons stay at the broken May 26 state (with VACUUM) and continue failing every 6 hours.
+    </p>
+    <p>
+      <strong>Evidence gap:</strong> This can be confirmed cheaply before deploying: run <code>SELECT tableowner FROM pg_tables WHERE tablename = '_http_response' AND schemaname = 'net'</code> on production. If the owner is not <code>postgres</code>, the ALTER TABLE will fail.
+    </p>
+    <div class="action blocking">Fix: Wrap the ALTER TABLE statements in a <code>BEGIN ... EXCEPTION WHEN insufficient_privilege OR not_owner THEN RAISE NOTICE '...'; END</code> guard to make them advisory (degrade gracefully) rather than migration-breaking. Or drop them from this migration entirely and address autovacuum tuning via Supabase dashboard storage settings, which does have the required privilege pathway. The cron reschedule (step 1) is the real fix; don't let step 2 nuke it.</div>
+  </div>
+
+  <div class="finding blocking">
+    <div class="finding-label blocking">Blocking &bull; B2</div>
+    <div class="finding-header">No idempotency guard on cron.unschedule: will hard-fail on fresh branches / staging re-runs</div>
+    <div class="file-ref">Proposed fix &mdash; Step 1, all four unschedule calls</div>
+    <p>
+      <strong>Symptom:</strong> On a branch where the May 26 migration has not run (e.g. a freshly seeded staging DB, a new Supabase preview branch, or a CI test environment), <code>cron.unschedule('cleanup-net-responses')</code> will throw because the job name does not exist. pg_cron's <code>unschedule</code> raises an error on unknown job names.
+    </p>
+    <p>
+      <strong>Contrast with past practice:</strong> The original Apr 3 migration (lines 33-34) correctly wrapped unschedule calls with exception handlers:
+    </p>
+    <pre>BEGIN PERFORM cron.unschedule('deposit-monitor'); EXCEPTION WHEN OTHERS THEN NULL; END;</pre>
+    <p>
+      The May 2 migration (lines 25, 33) and the proposed fix drop this safety pattern entirely, using bare <code>SELECT cron.unschedule(...)</code>. The May 2 migration got away with it because the jobs were always present after Apr 3 ran. The proposed fix is operating in a context where May 26 may or may not have run.
+    </p>
+    <p>
+      <strong>Root cause:</strong> No pg_cron equivalent of <code>DROP CRON IF EXISTS</code>. The workaround is the exception wrapper shown above, which already exists in this codebase.
+    </p>
+    <div class="action blocking">Fix: Wrap all four <code>cron.unschedule</code> calls using the same exception handler pattern from the Apr 3 migration (lines 33-34). This is a one-liner per call and already the established project pattern.</div>
+  </div>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="section">
+  <div class="section-title"><span class="dot amber"></span> Worth a look</div>
+
+  <div class="finding amber">
+    <div class="finding-label amber">Worth a look &bull; W1</div>
+    <div class="finding-header">The "autovacuum never triggered" claim in the May 26 migration may be partially right — and autovacuum tuning alone may not be enough</div>
+    <div class="file-ref">20260526000001_cleanup_crons_append_vacuum.sql, lines 5-8</div>
+    <p>
+      The May 26 migration explains bloat as: "new inserts consume dead tuple space before autovacuum samples n_dead_tup, so the threshold is never reached." This is a real mechanism. If rows are inserted fast enough that they fill newly freed slots before autovacuum's <code>n_dead_tup</code> sampling window, the table's <code>pg_stat_user_tables.n_dead_tup</code> counter stays low, and autovacuum never fires.
+    </p>
+    <p>
+      <strong>The problem with threshold=50:</strong> Even if autovacuum fires after every 50 dead tuples, it only reclaims space within pages for reuse — it does not shrink the file. If <code>net._http_response</code> grew to 9.8 MB before the manual VACUUM FULL, it will grow back to a similar level if the write pattern that caused the bloat hasn't changed. A regular VACUUM updates the Free Space Map (FSM) so new inserts reuse freed pages, but this only works if inserts happen after the VACUUM. Under high write rates where inserts precede any VACUUM cycle, new pages are allocated anyway.
+    </p>
+    <p>
+      <strong>Practical question not answered:</strong> What is the actual insert rate to <code>net._http_response</code>? The Apr 3 migration notes the table was 26 MB before the daily cleanup was added. If inserts outpace the DELETE window (1 day retention, 6h cleanup), the table will grow regardless of autovacuum tuning. The diagnosis doesn't address whether the retention window is appropriately sized for the write rate.
+    </p>
+    <div class="action amber">Verify: Query <code>SELECT count(*), min(created), max(created) FROM net._http_response</code> on production to confirm the 1-day retention window keeps the table bounded. If the row count at cleanup time is consistently above a few thousand, the bloat mechanism is write rate, not autovacuum tuning, and the fix is wrong.</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-label amber">Worth a look &bull; W2</div>
+    <div class="finding-header">cron.unschedule + cron.schedule orphans job_run_details history rows</div>
+    <div class="file-ref">Proposed fix &mdash; Step 1 (both cron reschedules) / project MEMORY.md</div>
+    <p>
+      Per project notes, <code>cron.unschedule + cron.schedule</code> creates a new job with a fresh <code>jobid</code>. This is the pattern used in May 2 (lines 25-38) and the proposed fix. The <code>cron.job_run_details</code> table stores historical run records keyed by <code>jobid</code>.
+    </p>
+    <p>
+      When the old jobid is removed and a new one created, the existing <code>job_run_details</code> rows for the old jobid remain in the table permanently (or until the 7-day DELETE catches them), but they now have a <code>jobid</code> that no longer exists in <code>cron.job</code>. This is cosmetic for the cleanup jobs specifically, but it means the history for <code>cleanup-cron-history</code> itself shows an unexplained gap after the migration.
+    </p>
+    <p>
+      More practically: if any monitoring or alerting relies on querying <code>job_run_details</code> by joining to <code>cron.job</code> on <code>jobid</code>, those rows become invisible. The <code>vela-debug</code> skill checks signal freshness via cron history. If it joins by jobid, the cleanup-cron-history entries will appear to have never run successfully before this migration.
+    </p>
+    <div class="action amber">Verify that any cron health checks query by job name (via JOIN to <code>cron.job</code> on <code>jobname</code>), not by raw jobid. If they join on jobid, the history discontinuity will produce false alarms.</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-label amber">Worth a look &bull; W3</div>
+    <div class="finding-header">autovacuum_vacuum_threshold = 50 on cron.job_run_details may cause autovacuum contention</div>
+    <div class="file-ref">Proposed fix &mdash; Step 2, second ALTER TABLE block</div>
+    <p>
+      <code>cron.job_run_details</code> accumulates ~500 rows/day (conservative estimate from the Apr 3 note: 48 MB, 61k rows after a period without cleanup). At threshold=50, autovacuum will fire roughly 10 times per day based purely on DELETE churn from the cleanup cron. But it also fires from INSERT churn: every cron execution inserts a row. With 40+ crons running at varying frequencies, the insertion rate could be several hundred rows per hour.
+    </p>
+    <p>
+      Autovacuum on <code>cron.job_run_details</code> with threshold=50 could mean autovacuum runs dozens of times per day on this table. Each run acquires a <code>ShareUpdateExclusiveLock</code> and scans the table. While this won't block reads or writes, it consumes autovacuum worker slots (default 3 on Supabase) and could delay autovacuum on other high-churn tables (like <code>net._http_response</code> itself). The diagnosis notes this as "IO-positive" but does not account for autovacuum worker slot contention.
+    </p>
+    <p>
+      <strong>Caveat:</strong> This is unlikely to be a severe problem in practice, but on a Supabase instance already flagged for high Disk IO, adding frequent autovacuum passes on two tables is worth verifying post-deploy.
+    </p>
+    <div class="action amber">Monitor autovacuum frequency post-deploy via <code>SELECT relname, last_autovacuum, n_dead_tup FROM pg_stat_user_tables WHERE relname IN ('_http_response', 'job_run_details') ORDER BY last_autovacuum DESC</code>. If autovacuum is thrashing, raise the threshold to 200.</div>
+  </div>
+</div>
+
+<!-- NIT -->
+<div class="section">
+  <div class="section-title"><span class="dot gray"></span> Nit</div>
+
+  <div class="finding nit">
+    <div class="finding-label nit">Nit &bull; N1</div>
+    <div class="finding-header">cron.unschedule + cron.schedule resets active=true — documented but not addressed for cleanup jobs</div>
+    <div class="file-ref">Project MEMORY.md (cron.unschedule note)</div>
+    <p>
+      Project MEMORY.md notes: "any migration that reschedules an existing cron creates a fresh job with <code>active=true</code>, wiping prior disabled state. If the cron was disabled on staging, the staging block MUST explicitly re-disable it." The cleanup crons are not typically disabled on staging (they're not write-sensitive like financial crons), so this is not a blocker. But the migration has no comment acknowledging this, and if someone disabled these crons on a branch for testing, the migration silently re-enables them.
+    </p>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+  <div class="section-title"><span class="dot green"></span> Safe</div>
+
+  <div class="finding safe">
+    <div class="finding-label safe">Safe &bull; S1</div>
+    <div class="finding-header">Root cause diagnosis is correct: VACUUM cannot run in a transaction block</div>
+    <p>
+      The VACUUM failure is correctly diagnosed. pg_cron does wrap multi-statement commands in a transaction block, and VACUUM cannot execute inside a transaction. This is a hard PostgreSQL constraint. The May 26 migration comment (lines 12-13) was wrong to assert otherwise. DELETE-only is the right approach for the cron command itself.
+    </p>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-label safe">Safe &bull; S2</div>
+    <div class="finding-header">Cron schedules and retention windows are correct and consistent</div>
+    <p>
+      Both crons preserve their May 2 schedules (<code>17 */6 * * *</code> and <code>19 */6 * * *</code>), their retention windows (7-day and 1-day respectively), and the correct table targets. No regression on schedule logic from the proposed fix.
+    </p>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-label safe">Safe &bull; S3</div>
+    <div class="finding-header">VACUUM FULL is correctly treated as a one-time emergency op, not a cron concern</div>
+    <p>
+      The diagnosis correctly distinguishes regular VACUUM (marks dead tuples for reuse, no file shrink) from VACUUM FULL (rewrites the table, shrinks the file, requires exclusive lock). Not attempting to schedule VACUUM FULL via cron is correct. The baseline was already reset by the manual May 26 VACUUM FULL — the cron just needs to keep the table from re-bloating.
+    </p>
+  </div>
+</div>
+
+<!-- DIRECT ANSWER TO Q5 -->
+<div class="q5-box">
+  <h2>Direct answer: Q5 — Did DELETE-only demonstrably fail before, and does autovacuum tuning actually change the outcome?</h2>
+
+  <p style="margin-bottom:0.75rem;">
+    <strong>Did DELETE-only fail?</strong> The evidence is ambiguous. Here is what the migrations actually record:
+  </p>
+  <table style="margin-bottom:1rem;">
+    <tr><th>Date</th><th>State</th><th>Outcome</th></tr>
+    <tr><td>Apr 3</td><td>DELETE-only, daily cleanup</td><td>net._http_response grew to 32 MB by May 2 (29 days). This is 26 MB -> 32 MB, so bloat worsened but incrementally.</td></tr>
+    <tr><td>May 2</td><td>DELETE-only, 6-hourly cleanup</td><td>May 26 migration says table re-bloated to 9.8 MB in "8 days after the May 18 VACUUM FULL." That is May 18-26, 8 days, while DELETE-only was running every 6h.</td></tr>
+    <tr><td>May 26</td><td>DELETE + VACUUM (broken)</td><td>VACUUM errors, cron partially failing. State unknown.</td></tr>
+  </table>
+  <p style="margin-bottom:0.75rem;">
+    So yes: DELETE-only with 6-hourly runs demonstrably did not prevent re-bloat during May 18-26. The table grew 9.8 MB in 8 days despite cleanup every 6 hours.
+  </p>
+  <p style="margin-bottom:0.75rem;">
+    <strong>Does autovacuum tuning change the outcome?</strong> Possibly, but only if the May 18-26 bloat was caused by autovacuum failing to fire (dead tuple recycling). If the bloat was caused by new page allocation outpacing VACUUM's FSM updates, threshold=50 does not help at all — autovacuum can still only reclaim pages, not shrink the file. Given the table grew 9.8 MB in 8 days with 6-hourly DELETEs, the write rate into <code>net._http_response</code> is high enough that each DELETE cycle creates substantial dead tuple churn. Whether autovacuum at threshold=50 can keep pace with that churn is unverified.
+  </p>
+  <p style="margin-bottom:0.75rem;">
+    <strong>The honest answer:</strong> The proposed fix is the right fix for the VACUUM error (step 1: DELETE-only crons). The autovacuum tuning (step 2) is a reasonable hypothesis for preventing re-bloat, but it failed silently once before (May 18-26) without the tuning, and there is no evidence that threshold=50 will be sufficient if the write rate is the bottleneck rather than autovacuum sampling. Additionally, step 2 may hard-fail on Supabase's managed Postgres due to extension ownership (B1 above).
+  </p>
+  <p>
+    <strong>Recommended approach:</strong> Deploy step 1 (cron fix) unconditionally. Test step 2 (ALTER TABLE) in a sandbox first by confirming table ownership. If ALTER TABLE is blocked, the alternative path is to accept that re-bloat will require periodic manual VACUUM FULL operations, and schedule a reminder rather than attempting to automate it via autovacuum tuning on extension-owned tables.
+  </p>
+</div>
+
+</body>
+</html>

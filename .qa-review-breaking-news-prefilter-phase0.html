@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 0 QA — breaking-news pre-generation asset-relevance filter</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1.6; color: #1a1a1a; background: #fafafa; margin: 0; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .meta { font-size: 12px; color: #666; margin-bottom: 20px; }
+  .summary-bar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .pill-red    { background: #fde8e8; color: #9b1c1c; }
+  .pill-amber  { background: #fef3c7; color: #92400e; }
+  .pill-gray   { background: #f0f0f0; color: #4b5563; }
+  .pill-green  { background: #d1fae5; color: #065f46; }
+  .pill .count { font-size: 18px; font-weight: 700; }
+  section { margin-bottom: 28px; }
+  h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid currentColor; }
+  h2.blocking  { color: #b91c1c; border-color: #fca5a5; }
+  h2.amber     { color: #b45309; border-color: #fcd34d; }
+  h2.nit       { color: #6b7280; border-color: #d1d5db; }
+  h2.safe      { color: #047857; border-color: #6ee7b7; }
+  .finding { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .finding-header { font-weight: 600; font-size: 13px; margin-bottom: 6px; display: flex; align-items: baseline; gap: 8px; }
+  .tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .tag-red    { background: #fee2e2; color: #991b1b; }
+  .tag-amber  { background: #fef3c7; color: #92400e; }
+  .tag-gray   { background: #f3f4f6; color: #374151; }
+  .tag-green  { background: #d1fae5; color: #065f46; }
+  .loc { font-size: 11px; color: #6366f1; font-family: 'SF Mono', Consolas, monospace; font-weight: 400; }
+  .finding p { margin: 4px 0 0; color: #374151; font-size: 13px; }
+  code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
+  .action { color: #1d4ed8; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Phase 0 QA: breaking-news pre-generation asset-relevance filter</h1>
+<p class="meta">Reviewed 2026-06-17 · Files: breaking-news/index.ts lines 840–1096, _shared/news-broadcast-eval.ts lines 1–238 · Phase 0 (pre-implementation)</p>
+
+<div class="summary-bar">
+  <div class="pill pill-red"><span class="count">2</span> Blocking</div>
+  <div class="pill pill-amber"><span class="count">3</span> Worth a look</div>
+  <div class="pill pill-gray"><span class="count">1</span> Nit</div>
+  <div class="pill pill-green"><span class="count">3</span> Safe</div>
+</div>
+
+<section>
+  <h2 class="blocking">Blocking — resolve before writing code</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-red">BLOCKING</span>
+      Import structure forces an eager load of the eval module
+      <span class="loc">breaking-news/index.ts:1081 · news-broadcast-eval.ts:109</span>
+    </div>
+    <p>
+      <code>hasAssetRelevance()</code> is currently <strong>not exported</strong> from <code>news-broadcast-eval.ts</code>. Exporting it is necessary to call it from <code>breaking-news/index.ts</code>. However, the existing eval import at line 1081 is a dynamic <code>await import(...)</code> — deliberately lazy to avoid the cold-start WORKER_RESOURCE_LIMIT that the function previously hit. If the pre-generation filter runs in the candidate loop (~line 950), it is called before that lazy import point. Wiring it to the eval module would require either (a) promoting the import to a top-level static import, undoing the cold-start protection, or (b) a second dynamic import inside the loop, which adds await-latency to every candidate iteration even when the story will be filtered. <span class="action">Resolve before coding</span> by inlining a minimal copy of the four-line <code>hasAssetRelevance</code> logic directly in the loop — no import needed, no cold-start risk, no per-iteration await. Do not export the function from the eval module for this use.
+    </p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-red">BLOCKING</span>
+      Pre-generation filter must fail-open when <code>resolved</code> is null
+      <span class="loc">breaking-news/index.ts:942–945 (catch block)</span>
+    </div>
+    <p>
+      The existing catch block sets <code>resolved = null</code> on classification failure and proceeds with <code>importance = null</code>, which already fail-opens the quality gate (<code>passesGate</code> stays <code>true</code>). The proposal does not explicitly state how the pre-generation filter handles <code>resolved === null</code>. If the filter reads <code>resolved.assetSentiments</code> or <code>resolved.classification.importance</code> directly without a null guard, it will throw, turning a soft classification failure into a hard skip of all remaining candidates. <span class="action">Write the filter as</span>: if <code>resolved === null</code>, skip the asset-relevance check and let the candidate through — identical to the existing quality-gate behavior. The null path is not an edge case; it is the documented fail-open contract.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2 class="amber">Worth a look — design decisions needed before coding</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-amber">WORTH A LOOK</span>
+      The pre-generation filter is substantially redundant with the existing quality gate for importance-3 stories
+      <span class="loc">breaking-news/index.ts:958–968</span>
+    </div>
+    <p>
+      For <code>importance === 3</code>, <code>passesGate</code> is already <code>nonNeutralChipCount >= 1</code>. A non-neutral chip requires a tradeable-asset entry in <code>assetSentiments</code> with direction bullish or bearish — which is exactly the third clause of <code>hasAssetRelevance()</code>. So for importance-3 stories, any story that passes the quality gate already passes the asset-relevance filter, and any story that fails the filter already fails the gate. The filter adds zero coverage for this entire importance tier. The gap is <strong>importance-4+ stories with non-null <code>assetSentiments</code> containing only non-tradeable tickers</strong> — currently gated as <code>chips >= 1</code> (already required), plus <strong>importance-4+ stories with null <code>assetSentiments</code></strong> — these pass the existing gate unconditionally (the "macro" carve-out) but could fail the new filter if <code>category != "macro"</code>. Confirm this is the intended target: only the "high-importance, null-sentiments, non-macro-category" story class. If so, the filter could be expressed as a single additional condition on line 962 rather than a full function call.
+    </p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-amber">WORTH A LOOK</span>
+      Geopolitical events tagged non-macro will be incorrectly blocked
+      <span class="loc">news-broadcast-eval.ts:109–118</span>
+    </div>
+    <p>
+      <code>hasAssetRelevance()</code> passes unconditionally only when <code>category === "macro"</code>. The classifier assigns "macro" to Fed/CPI/NFP/GDP events but does not consistently tag major geopolitical shocks (war, sanctions, election results) as macro — those can land in "equities", "crypto", or "commodities" with <code>relevantAssets=[]</code> and <code>assetSentiments=null</code>. A "US imposes new tariffs on Chinese tech exports" story is unambiguously market-moving but could arrive as <code>category="equities", relevantAssets=[], assetSentiments=null</code>, failing the pre-generation filter and never reaching the LLM. The Layer 2 judge's criterion 1 explicitly passes "geopolitical shock affecting risk assets broadly" regardless of asset tagging — but that check never runs if the pre-generation filter drops the story first. <span class="action">Either</span> (a) confirm the classifier reliably assigns geopolitical shocks to "macro" (grep production <code>news_cache</code> for relevant recent examples before assuming this), or (b) extend the filter's carve-out to also pass when <code>importance >= 4 AND assetSentiments === null</code> — reproducing the existing gate's unconditional pass for high-importance null-sentiment stories.
+    </p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-amber">WORTH A LOOK</span>
+      Pre-generation filter skips should NOT be logged to <code>social_posts</code>
+      <span class="loc">breaking-news/index.ts:979–991 (quality-gate dedup log)</span>
+    </div>
+    <p>
+      The existing quality-gate skip inserts a row with <code>tweet_id=null, error_message="skipped: importance=..."</code> — this is load-bearing dedup: the same story is blocked from re-evaluation on the next hourly tick. If the pre-generation filter fires on a candidate and also logs to <code>social_posts</code>, those stories are deduped out for 48 hours. This is probably wrong: the proposal's goal is to cheaply skip an LLM call, not to permanently retire a candidate. A story that fails the filter today (e.g. scored high but tagged with only non-tradeable assets due to a classification blip) could correctly broadcast tomorrow after a different cross-source context. <span class="action">Do not log pre-generation filter skips to <code>social_posts</code></span>. Use <code>continue</code> without a DB insert — let the story re-compete on the next tick. Add a console.log for observability. The quality gate's dedup-log pattern exists to prevent re-evaluation of deliberate low-quality rejections; that rationale does not apply here.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2 class="nit">Nit</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-gray">NIT</span>
+      The proposal's <code>tradeableAssets</code> availability claim is correct but worth annotating
+      <span class="loc">breaking-news/index.ts:863</span>
+    </div>
+    <p>
+      <code>tradeableAssets</code> is fetched once before the loop at line 863 and is available throughout. This is correct and requires no change. However, if the inline logic is added to the loop, add a brief comment at the new check site pointing back to line 863 so future readers don't wonder where the set came from. The existing comment at 860–862 explains the whitelist purpose; mirror that intent at the new usage site.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2 class="safe">Safe</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-green">SAFE</span>
+      <code>assetSentiments</code> is available when needed
+    </div>
+    <p>
+      After <code>ensureClassifiedNewsRow</code> returns at line 924, <code>resolved.assetSentiments</code> is read at line 936 with a <code>?? {}</code> guard — already null-safe. The pre-generation filter reads the same field. No additional null guard is needed beyond the <code>resolved === null</code> check described in Blocking #2.
+    </p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-green">SAFE</span>
+      <code>selectedResolved</code> assignment is not affected
+    </div>
+    <p>
+      <code>selectedResolved = resolved</code> is assigned at line 995 immediately after the <code>selectedCandidate = candidate</code> assignment (line 994). The pre-generation filter runs before line 994 on the continue path, so it only fires on candidates that are being skipped. Stories that pass the filter reach line 994–995 exactly as today. The downstream <code>evaluateBroadcastReadiness</code> call at line 1082 receives <code>selectedResolved?.assetSentiments</code> unchanged.
+    </p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-green">SAFE</span>
+      Optimization value is real
+    </div>
+    <p>
+      The generation call (<code>generateTelegramAnalysis</code>) at line 1064 is only attempted when <code>selectedCandidate.score >= TELEGRAM_BROADCAST_SCORE</code>. Stories below the score threshold never reach generation regardless. The pre-generation filter therefore only fires on high-score candidates — the exact population where the LLM spend is non-zero. The optimization is correctly targeted.
+    </p>
+  </div>
+</section>
+
+</body>
+</html>

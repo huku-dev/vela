@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review — Hold-Duration Rule (Phase 1)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e0e0e0; margin: 0; padding: 24px; line-height: 1.6; }
+  h1 { font-size: 20px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+  .meta { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .badge { padding: 10px 18px; border-radius: 6px; font-weight: 700; font-size: 15px; }
+  .blocking { background: #3d0e0e; color: #ff6b6b; border: 1px solid #7a2020; }
+  .amber { background: #2d1f00; color: #ffb347; border: 1px solid #5c3d00; }
+  .nit { background: #1a1a1a; color: #aaa; border: 1px solid #333; }
+  .safe { background: #0d2a1a; color: #4caf82; border: 1px solid #1a5a32; }
+  .section { margin-bottom: 36px; }
+  .section h2 { font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; border-bottom: 1px solid #2a2a2a; padding-bottom: 8px; margin-bottom: 16px; }
+  .finding { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 16px; margin-bottom: 14px; }
+  .finding.blocking { border-left: 4px solid #ff6b6b; }
+  .finding.amber { border-left: 4px solid #ffb347; }
+  .finding.nit { border-left: 4px solid #666; }
+  .finding.safe { border-left: 4px solid #4caf82; }
+  .finding-title { font-weight: 700; color: #fff; font-size: 14px; margin-bottom: 6px; }
+  .loc { font-family: "SF Mono", Consolas, monospace; font-size: 12px; color: #888; margin-bottom: 8px; }
+  .finding p { margin: 6px 0; font-size: 13px; color: #ccc; }
+  .finding .fix { background: #0d1f0d; border: 1px solid #1a4a1a; border-radius: 4px; padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #7dd87d; font-family: "SF Mono", Consolas, monospace; white-space: pre-wrap; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; display: inline-block; padding: 2px 6px; border-radius: 3px; margin-bottom: 6px; }
+  .label.blocking { background: #5a1a1a; color: #ff9090; }
+  .label.amber { background: #3d2800; color: #ffcc80; }
+  .label.nit { background: #222; color: #999; }
+  .label.safe { background: #0a2a18; color: #6ecf92; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .matrix th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #888; font-weight: 600; border-bottom: 1px solid #2a2a2a; }
+  .matrix td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; vertical-align: top; }
+  .risk-h { color: #ff6b6b; font-weight: 700; }
+  .risk-m { color: #ffb347; font-weight: 700; }
+  .risk-l { color: #4caf82; font-weight: 700; }
+  code { background: #222; padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Consolas, monospace; font-size: 12px; color: #e0c070; }
+</style>
+</head>
+<body>
+
+<h1>QA Review — Hold-Duration Rule Close Path (Phase 1)</h1>
+<div class="meta">Reviewed: 2026-06-17 &nbsp;|&nbsp; Reviewer: independent subagent (zero author context) &nbsp;|&nbsp; Target: <code>position-monitor/index.ts</code> + <code>position-monitor.test.ts</code></div>
+
+<div class="summary-bar">
+  <div class="badge blocking">🔴 Blocking: 1</div>
+  <div class="badge amber">🟡 Worth-a-look: 4</div>
+  <div class="badge nit">⚪ Nit: 2</div>
+  <div class="badge safe">🟢 Safe: 9</div>
+</div>
+
+<!-- RISK MATRIX -->
+<div class="section">
+  <h2>File-level risk matrix</h2>
+  <table class="matrix">
+    <tr><th>File</th><th>Risk</th><th>Reason</th></tr>
+    <tr>
+      <td><code>position-monitor/index.ts</code></td>
+      <td class="risk-h">HIGH</td>
+      <td>Missing upgrade_close guard creates a double-close race for any main position with an in-flight upgrade_close. The BB2 path has this guard; the new path does not.</td>
+    </tr>
+    <tr>
+      <td><code>position-monitor/index.ts</code> (admin Telegram, line 2093)</td>
+      <td class="risk-l">LOW</td>
+      <td>Hardcoded <code>+</code> prefix on peakPnl renders as <code>+-N%</code> when peakPnl is funding-adjusted to a negative value.</td>
+    </tr>
+    <tr>
+      <td><code>position-monitor.test.ts</code></td>
+      <td class="risk-m">MEDIUM</td>
+      <td>Four gap categories: no upgrade_close guard test, no bb2_30m exclusion test, no env-var-disabled test, no idempotency/concurrency test. All source-regex tests, so gaps are silent.</td>
+    </tr>
+    <tr>
+      <td><code>positions.close_reason</code> column</td>
+      <td class="risk-l">LOW</td>
+      <td>Column is free-text (<code>text</code>, no CHECK constraint, no enum). No migration required. New value is safe to write.</td>
+    </tr>
+    <tr>
+      <td><code>notify.ts</code> / <code>postmortem.ts</code></td>
+      <td class="risk-l">LOW</td>
+      <td>Both accept free-text reason strings. No enum or switch needed. <code>hold_duration_rule</code> flows through cleanly.</td>
+    </tr>
+  </table>
+</div>
+
+<!-- BLOCKING -->
+<div class="section">
+  <h2>Blocking findings</h2>
+
+  <div class="finding blocking">
+    <div class="label blocking">Blocking</div>
+    <div class="finding-title">B-1: Missing upgrade_close in-flight guard — double-close race on main positions</div>
+    <div class="loc">index.ts ~line 1959 (hold-duration outer if block, just after the holdH check at line 1965)</div>
+    <p><strong>Symptom.</strong> A <code>main</code> position that has an upgrade_close proposal in status <code>pending</code>, <code>auto_approved</code>, or <code>executing</code> will simultaneously receive a hold-duration market close order and the user-approved upgrade_close trade. The second order to hit HL is a reduce-only on a position that is already flat — HL rejects it. But before that rejection: the SL order was already cancelled (line 1972-1975); if the upgrade_close fills first and the hold-duration close fails with a non-deregistration error, the SL is orphaned-cancelled with no position on HL and an open DB row. Subsequent cycles find a <code>status=open</code> position with no HL position and enter the phantom-reconciliation path, creating a spurious reconciliation close.</p>
+    <p><strong>Root cause.</strong> The BB2 expiry block (lines 1786-1802) queries <code>trade_proposals</code> for in-flight upgrade_closes before acting. The hold-duration block was inserted at lines 1959-2110 without this guard. The <code>main</code> position type is the primary consumer of upgrade_close proposals (BB2 positions never have them), so the risk is higher for this path than for BB2.</p>
+    <p><strong>Fix.</strong></p>
+    <div class="fix">// Add immediately after line 1965 (the holdH >= 72h check), before the console.log:
+
+const { data: inFlightUpgrade } = await supabase
+  .from("trade_proposals")
+  .select("id, status")
+  .eq("user_id", userId)
+  .eq("asset_id", pos.asset_id)
+  .eq("proposal_type", "upgrade_close")
+  .in("status", ["pending", "auto_approved", "executing"])
+  .limit(1)
+  .maybeSingle();
+
+if (inFlightUpgrade) {
+  console.log(
+    `[position-monitor] HOLD-DURATION skipped for ${symbol} ${pos.side}: ` +
+      `upgrade_close already in-flight (${inFlightUpgrade.status})`
+  );
+  continue;
+}
+
+// Then proceed with the existing console.log and close logic.</div>
+    <p>Add a corresponding source-regex test: assert the hold-duration rule block contains <code>upgrade_close</code> and <code>in-flight</code>.</p>
+  </div>
+</div>
+
+<!-- WORTH-A-LOOK -->
+<div class="section">
+  <h2>Worth-a-look findings</h2>
+
+  <div class="finding amber">
+    <div class="label amber">Worth-a-look</div>
+    <div class="finding-title">W-1: No test asserting bb2_30m positions are excluded from the hold-duration rule</div>
+    <div class="loc">position-monitor.test.ts — gap between the 21 new tests</div>
+    <p>The code correctly checks <code>pos.position_type === "main"</code> (line 1961), which excludes <code>bb2</code> and <code>bb2_30m</code>. But there is no adversarial test confirming this. A future refactor that renames <code>position_type</code> values or adds a new type could silently fire the rule on non-main positions. The existing regex test for "rule only fires for main" is positive-assertion only — it does not assert bb2_30m is NOT caught.</p>
+    <div class="fix">Add test:
+
+Deno.test("HOLD-DURATION-ADV: rule does NOT reference bb2 or bb2_30m as eligible types", () => {
+  const ruleBlock = src.slice(
+    src.indexOf("Hold-duration rule: exit main positions"),
+    src.indexOf("Native trailing trigger: place/update when activation met")
+  );
+  assertNotMatch(
+    ruleBlock,
+    /position_type\s*===\s*"bb2/,
+    "Rule must only check for 'main' — bb2 and bb2_30m have their own expiry path"
+  );
+});</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="label amber">Worth-a-look</div>
+    <div class="finding-title">W-2: No test asserting the rule does NOT fire when HOLD_DURATION_RULE_ENABLED is absent or "false"</div>
+    <div class="loc">position-monitor.test.ts — gap in HOLD-DURATION-ADV suite</div>
+    <p>All 21 tests assert the rule exists and wires up correctly when enabled. None assert the guard-off path. If the env var check was accidentally inverted (<code>=== "false"</code> instead of <code>=== "true"</code>), no test would catch it. This is a staged-rollout feature — the disabled path is the default and the most important safety invariant.</p>
+    <div class="fix">Add test:
+
+Deno.test("HOLD-DURATION-ADV: rule is disabled when env var is absent (default-off)", () => {
+  assertMatch(
+    src,
+    /Deno\.env\.get\("HOLD_DURATION_RULE_ENABLED"\)\s*===\s*"true"/,
+    "Rule must use strict equality to 'true' — absent var must default to disabled"
+  );
+  assertNotMatch(
+    src,
+    /Deno\.env\.get\("HOLD_DURATION_RULE_ENABLED"\)\s*!==\s*"false"/,
+    "Must not use negated false-check — missing env var would then enable the rule"
+  );
+});</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="label amber">Worth-a-look</div>
+    <div class="finding-title">W-3: peakPnl can be negative for a never-profitable position; admin Telegram emits "Peak: +-N.NNN%"</div>
+    <div class="loc">index.ts line 2093</div>
+    <p><code>peakPnl = Math.max(pos.trailing_stop_peak_pnl_pct ?? 0, unrealizedPnlPct)</code>. The <code>?? 0</code> default means a fresh position with no stored peak and current unrealizedPnlPct of, say, -0.3% gives <code>Math.max(0, -0.3) = 0</code>. The rule condition is <code>peakPnl &lt; 0.5</code>, so 0 &lt; 0.5 = true — the rule fires correctly. However, if <code>pos.trailing_stop_peak_pnl_pct</code> was written as a small negative number (rare but possible via cumulative funding on a losing perp), the in-memory peakPnl itself could be negative, and line 2093 unconditionally prepends <code>+</code>: <code>`Peak: +${peakPnl.toFixed(3)}%`</code> would emit <code>Peak: +-0.123%</code>. Not a financial correctness issue, but a garbled ops notification.</p>
+    <div class="fix">Change line 2093:
+  `Held ${holdH.toFixed(1)}h · Peak: +${peakPnl.toFixed(3)}%\n`
+to:
+  `Held ${holdH.toFixed(1)}h · Peak: ${peakPnl >= 0 ? "+" : ""}${peakPnl.toFixed(3)}%\n`</div>
+  </div>
+
+  <div class="finding amber">
+    <div class="label amber">Worth-a-look</div>
+    <div class="finding-title">W-4: Successful hold-duration closes on rare profitable positions will generate unexpected social posts</div>
+    <div class="loc">index.ts line 2053 — <code>maybePostTradeClose</code></div>
+    <p><code>maybePostTradeClose</code> posts to X for all winning trades where <code>totalPnl > 0</code> and <code>position_type === "main"</code>. The hold-duration rule is designed for 0%-win-rate positions, but "0% win rate" does not mean "never profitable" — a position could have a fill_price that lands above entry. In that case, the function will queue a social post celebrating a trade that was closed specifically because it was stuck below 0.5% peak. The post is not incorrect, but it may look strange: "ETH long +0.3% profit" on a trade your system exited due to poor momentum. Consider whether to suppress social posts for hold-duration closes in <code>maybePostTradeClose</code>, similar to the BB2 suppression at lines 2761-2764.</p>
+    <div class="fix">Add to maybePostTradeClose (after line 2764):
+
+  // Skip hold-duration closes (position exited due to stuck momentum, not meaningful for social)
+  if (closeReason === "hold_duration_rule") return;</div>
+  </div>
+</div>
+
+<!-- NITS -->
+<div class="section">
+  <h2>Nit findings</h2>
+
+  <div class="finding nit">
+    <div class="label nit">Nit</div>
+    <div class="finding-title">N-1: WALLET-ADV test comment is stale after the new close path</div>
+    <div class="loc">position-monitor.test.ts line 1413</div>
+    <p>The comment reads <em>"stop-loss, BB2 expiry, trailing stop, ladder trim, spot sell"</em> — 5 paths. The new hold-duration failure path (line 2102 of index.ts) adds a 6th call. The <code>occurrences >= 5</code> assertion still passes (6 >= 5), but the comment no longer enumerates all paths. Update the comment to list 6 paths and change the assertion to <code>>= 6</code> so a future removal would be caught.</p>
+  </div>
+
+  <div class="finding nit">
+    <div class="label nit">Nit</div>
+    <div class="finding-title">N-2: Hold-duration rule does not log "HOLD-DURATION RULE skipped" when peakPnl or holdH threshold is not met</div>
+    <div class="loc">index.ts lines 1959-1965</div>
+    <p>The BB2 expiry path logs when skipped due to in-flight upgrade_close (line 1797-1801). The hold-duration rule logs when it fires (line 1966) but is silent when it evaluates and decides not to close. For a 72h+ position with a 0.4% peak that somehow avoids the rule (e.g., rule disabled), there is no diagnostic trace. A <code>console.log("[position-monitor] HOLD-DURATION skipped: ...")</code> when <code>holdH >= 72</code> but <code>holdDurationRuleEnabled === false</code> would help confirm staging behavior during gated rollout.</p>
+  </div>
+</div>
+
+<!-- POST-DEPLOY MONITORING -->
+<div class="section">
+  <h2>Post-deploy monitoring risks</h2>
+  <div class="finding amber">
+    <div class="label amber">Monitor</div>
+    <div class="finding-title">Watch for double-close on upgrade_close positions within first 48h after enabling HOLD_DURATION_RULE_ENABLED=true</div>
+    <p>Until B-1 is fixed: after enabling the rule, query <code>trade_proposals</code> for any row where <code>proposal_type = 'upgrade_close'</code> and <code>status IN ('pending', 'auto_approved', 'executing')</code> coincides with a position where <code>position_type = 'main'</code> and <code>opened_at &lt; NOW() - INTERVAL '72 hours'</code>. If such a combination exists, the rule will race the upgrade_close. Do NOT enable the env var until B-1 is resolved.</p>
+    <p>After fix: monitor <code>audit_log</code> for back-to-back <code>hold_duration_rule_close</code> and <code>upgrade_close</code> on the same position ID within a 2-minute window.</p>
+  </div>
+  <div class="finding nit">
+    <div class="label nit">Monitor</div>
+    <div class="finding-title">Confirm social post suppression: check for <code>hold_duration_rule</code> entries in <code>social_posts</code> table after first live close</div>
+    <p>If W-4 is not addressed, the first time the rule fires on a marginally profitable position, a social post will queue. Query <code>SELECT * FROM social_posts WHERE post_type = 'trade_closed' ORDER BY created_at DESC LIMIT 10</code> after the first live hold-duration close and confirm the source position was not exited by hold-duration rule.</p>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+  <h2>Safe — correct as implemented</h2>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">peakPnl logic is correct for all combinations of stored peak and current PnL</div>
+    <p><code>Math.max(trailing_stop_peak_pnl_pct ?? 0, unrealizedPnlPct)</code>: a position currently up 0.6% with stored peak 0.3% gives 0.6 (correctly excluded). A position down 2% with stored peak 0.4% gives 0.4 (correctly uses historical peak). A position never profitable (null DB peak, negative current) gives 0 (correctly treated as zero peak, rule fires if held 72h). The <code>unrealizedPnlPct</code> calculation accounts for both long (lines 1419-1421) and short (lines 1423-1425) sides via the direction multiplier, so the peak is always in "profit %" terms.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">TP cancellation correctly handles <code>TpOrderEntry[]</code> array (not raw strings)</div>
+    <p>Lines 1979-1983: <code>const tpIds = pos.exchange_tp_order_ids.map((tp: TpOrderEntry) => tp.order_id)</code> extracts the <code>order_id</code> string from each entry before passing to <code>cancelTriggerOrder</code>, which accepts <code>string | string[]</code>. The adapter (hyperliquid-adapter.ts line 1431-1435) normalizes to an array. Pattern matches stop-loss path (lines 1625-1629) exactly.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title"><code>close_reason</code> column is free-text — no migration needed</div>
+    <p>Migration 20260222000000: <code>close_reason text</code> with no CHECK constraint and no enum type. The value <code>"hold_duration_rule"</code> will insert cleanly. Confirmed by searching all migrations for CHECK or enum on this column — none found.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">recordPostmortem is correctly fire-and-forget (.catch(() => {})) consistent with all other close paths</div>
+    <p>Lines 2043-2051 match the BB2 expiry pattern (lines 1880-1888) exactly. The postmortem does not need to complete before the close DB write or notification.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">maybePostTradeClose is called directly (not fire-and-forget), consistent with BB2 and stop-loss paths</div>
+    <p>Line 2053 calls without await or .catch() — same as lines 1890 (BB2 expiry) and 1702 (stop-loss). The function is synchronous-entry with an internal Promise.resolve() chain, so it correctly registers work without blocking the caller loop.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">holdDurationRuleEnabled read once per user per cycle — correct and consistent with suppressAdminNotifications scope</div>
+    <p>Line 426 reads the env var once at <code>processUserPositions</code> entry. <code>suppressAdminNotifications</code> (line 451) follows the same scope pattern. Env var reads are O(1) and stable within an invocation; reading per-user (vs once per serve) adds negligible overhead and is the established pattern.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">reasonLabels entry is correct and prevents raw key from reaching users</div>
+    <p>Line 222: <code>hold_duration_rule: "Position closed: no meaningful progress after 72 hours"</code> is plain English, bidirectionally neutral, matches Vela voice. No jargon, no em dash.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">hold_duration_closes correctly aggregated and exposed in return value and serve-level log</div>
+    <p>Lines 375, 380, 2099, 2729: counter initialized (line 424), incremented on success only (line 2099), returned in <code>processUserPositions</code> result (line 2729), reduced across users (line 375), and included in the completion log (line 380). No gaps.</p>
+  </div>
+  <div class="finding safe">
+    <div class="label safe">Safe</div>
+    <div class="finding-title">WALLET-ADV deregistration count test still passes (6 >= 5)</div>
+    <p>The new hold-duration failure path at line 2102 adds a 6th <code>await maybeHandleDeregistration</code> call. The existing WALLET-ADV test asserts <code>occurrences >= 5</code> (line 1411), which evaluates to <code>6 >= 5 = true</code>. No regression. (See N-1 for the stale comment.)</p>
+  </div>
+</div>
+
+<div style="margin-top: 40px; padding: 16px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; font-size: 12px; color: #666;">
+  Review scope: index.ts (2828 lines), position-monitor.test.ts (1642 lines), notify.ts (sendPositionClosedEmail, notifyUserPositionClosed), postmortem.ts, fee-sweep.ts reference, hyperliquid-adapter.ts (cancelTriggerOrder), all migrations (close_reason column). Confidence on B-1: high. Confidence on W-3/W-4: moderate.
+</div>
+
+</body>
+</html>

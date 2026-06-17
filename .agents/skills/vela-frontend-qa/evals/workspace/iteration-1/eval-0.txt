@@ -1,0 +1,23 @@
+**Task: QA review of seeded-violations.tsx for design token violations, accessibility gaps, and MUI usage.**
+
+---
+
+## Pre-Commit Checklist: `seeded-violations.tsx`
+
+- **FAIL: Hardcoded color** — `backgroundColor: '#0FE68C'` on the wrapper `<div>` (line 26). Must use `var(--color-signal-buy)` or another semantic token. Replace: `backgroundColor: 'var(--color-signal-buy)'`.
+
+- **FAIL: Signal color misuse** — `color: 'var(--color-signal-buy)'` applied to the "Confirmed" badge (line 36). `--color-signal-buy` is reserved for BUY signal indicators only. "Confirmed" is a status label, not a BUY signal. Use a neutral semantic token (e.g. `var(--color-text-positive)` or `var(--color-success)`) instead.
+
+- **FAIL: Raw MUI `<Button>` used** — Line 46 imports and uses `<Button>` from `@mui/material`. Replace with `<VelaButton>` from `VelaComponents.tsx`. Remove the `@mui/material` import.
+
+- **FAIL: Missing ARIA label on dismiss button** — The `<button>` at line 51 contains only the text `✕` with no `aria-label`. Screen readers will announce "times" or the raw character. Add `aria-label="Dismiss trade"` (or equivalent).
+
+- PASS: TypeScript prop interface present — `TradeCardProps` interface is defined with correct types.
+
+- PASS: No loading/error state issues visible — component is a pure display card; no async data fetched directly (data passed via props).
+
+- PASS: Other token usage — `var(--color-text-primary)`, `var(--color-text-secondary)`, `var(--text-sm)` are semantic tokens used correctly.
+
+---
+
+**Overall: FAIL** — 4 violations found (1 hardcoded color, 1 signal color misuse, 1 raw MUI component, 1 missing ARIA label). All must be resolved before committing.

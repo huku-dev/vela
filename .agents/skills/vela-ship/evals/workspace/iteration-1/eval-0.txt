@@ -1,0 +1,84 @@
+**Task:** Produce the frontend-only ship flow for a signal card component change.
+
+---
+
+## Ship: Signal Card Component (Frontend-only)
+
+### Step 1: Pre-Flight Checks
+
+**All three must pass before any push. Stop and fix if any fail.**
+
+```bash
+cd /Users/henry/crypto-agent-frontend
+npm run test -- --run        # all tests green
+npm run type-check           # 0 TypeScript errors
+npm run build                # build succeeds
+```
+
+---
+
+### Step 2: Push to develop
+
+```bash
+git push origin develop
+```
+
+---
+
+### Step 3: Monitor CI (synchronous — do not proceed until green)
+
+```bash
+sleep 5
+gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId')
+```
+
+If CI fails:
+```bash
+gh run view <run-id> --log-failed
+```
+Stop. Fix. Push. Re-verify. Never proceed with red CI.
+
+---
+
+### Step 4: Verify Staging
+
+Vercel auto-deploys from `develop`. Check the preview deployment is "Ready":
+
+```bash
+vercel ls --limit 3
+```
+
+Open the preview URL and confirm the signal card renders correctly. This is the staging gate — production does not proceed until staging is verified.
+
+---
+
+### Step 5: Pre-Production Review
+
+Run `/ultrareview` to get multi-agent analysis of the branch before promoting. Fix any HIGH findings. Get explicit sign-off on MEDIUM findings before proceeding.
+
+---
+
+### Step 6: Promote to Production
+
+```bash
+git checkout main
+git merge develop
+git push origin main
+```
+
+Monitor production CI:
+```bash
+gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId')
+```
+
+Keep `develop` in sync:
+```bash
+git checkout develop && git merge main && git push origin develop
+```
+
+---
+
+### Step 7: Post-Ship Documentation
+
+- Update **MEMORY.md**: add signal card change to completed work, update test count if tests were added
+- Update **Notion**: mark the related task "Done" in the Tasks database; add a Changelog entry with the PR link and scope (frontend)

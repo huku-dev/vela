@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: Builder Perp Trailing Stop Fix</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 24px; background: #0f0f0f; color: #e8e8e8; line-height: 1.6; }
+  h1 { font-size: 1.5rem; color: #fff; border-bottom: 2px solid #333; padding-bottom: 12px; }
+  h2 { font-size: 1.1rem; color: #ccc; margin-top: 32px; }
+  .summary-bar { display: flex; gap: 12px; margin: 20px 0 32px; flex-wrap: wrap; }
+  .badge { padding: 6px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+  .blocking { background: #3d0000; color: #ff6b6b; border: 1px solid #7a0000; }
+  .amber { background: #2d1a00; color: #ffa94d; border: 1px solid #5c3800; }
+  .nit { background: #1a1a2e; color: #74c0fc; border: 1px solid #2c4a7a; }
+  .safe { background: #0d2b1a; color: #69db7c; border: 1px solid #1c5c38; }
+  .count { font-size: 1.2rem; font-weight: 700; margin-right: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.88rem; }
+  th { background: #1e1e1e; color: #aaa; text-align: left; padding: 8px 12px; border: 1px solid #333; }
+  td { padding: 8px 12px; border: 1px solid #2a2a2a; vertical-align: top; }
+  tr:nth-child(even) td { background: #141414; }
+  .risk-high { color: #ff6b6b; font-weight: 600; }
+  .risk-medium { color: #ffa94d; font-weight: 600; }
+  .risk-low { color: #69db7c; }
+  .finding { background: #141414; border-left: 4px solid #444; border-radius: 4px; padding: 14px 18px; margin: 16px 0; }
+  .finding.blocking-f { border-left-color: #ff6b6b; }
+  .finding.amber-f { border-left-color: #ffa94d; }
+  .finding.nit-f { border-left-color: #74c0fc; }
+  .finding.safe-f { border-left-color: #69db7c; }
+  .finding-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+  .finding-title span { font-size: 0.78rem; font-weight: 400; color: #888; margin-left: 8px; }
+  code { background: #222; padding: 2px 6px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 0.85em; color: #e0e0e0; }
+  pre { background: #1a1a1a; border: 1px solid #333; border-radius: 4px; padding: 12px 16px; overflow-x: auto; font-size: 0.83em; color: #d4d4d4; }
+  .file-ref { color: #74c0fc; font-family: monospace; font-size: 0.83em; }
+  .verdict { margin-top: 32px; padding: 16px 20px; background: #1a1a1a; border-radius: 8px; border: 1px solid #333; }
+  ul { padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  .meta { color: #666; font-size: 0.82rem; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA Review: Builder Perp Trailing Stop Fix</h1>
+<p class="meta">Reviewed: 2026-06-08 &nbsp;|&nbsp; Reviewer: cold subagent &nbsp;|&nbsp; Tests at review time: 401 pass, 0 fail</p>
+
+<div class="summary-bar">
+  <div class="badge blocking"><span class="count">0</span> BLOCKING</div>
+  <div class="badge amber"><span class="count">2</span> AMBER</div>
+  <div class="badge nit"><span class="count">2</span> NIT</div>
+  <div class="badge safe"><span class="count">5</span> SAFE / CONFIRMED CORRECT</div>
+</div>
+
+<h2>File-Level Risk Matrix</h2>
+<table>
+  <tr>
+    <th>File</th>
+    <th>Change scope</th>
+    <th>Risk</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td class="file-ref">_shared/hyperliquid-adapter.ts</td>
+    <td>Grouping logic, 3 lines</td>
+    <td class="risk-low">LOW</td>
+    <td>Isolated to one branch. Detection condition is tight. Response parser already handles "resting" OID path correctly.</td>
+  </tr>
+  <tr>
+    <td class="file-ref">position-monitor/index.ts</td>
+    <td>Cancel gate + sizeInAsset spread, 10 lines</td>
+    <td class="risk-medium">MEDIUM</td>
+    <td>Software-fallback cancel path passes <code>isSpot</code> but not <code>isBuilderPerp</code> for builder perp "na" OIDs. See Amber #1.</td>
+  </tr>
+  <tr>
+    <td class="file-ref">_shared/trade-executor.ts</td>
+    <td><code>needsExplicitSize</code> guard, <code>isBuilderPerp</code> reuse, 15 lines</td>
+    <td class="risk-medium">MEDIUM</td>
+    <td><code>isBuilderPerp</code> at line 636 is in scope at line 1665 — same function body, confirmed. TP ladder skips builder perps silently. See Amber #2.</td>
+  </tr>
+</table>
+
+<h2>Findings</h2>
+
+<!-- AMBER 1 -->
+<div class="finding amber-f">
+  <div class="finding-title">AMBER-1: Software-fallback trailing-stop cancel passes <code>isSpot=false</code> for builder perp "na" OIDs <span>position-monitor/index.ts:2093</span></div>
+  <p>
+    When the trailing-stop triggers via the software-fallback path (i.e. <code>pos.exchange_sl_order_id</code> is set but the retrace-skip was bypassed), the cancel at line 2093 passes <code>isSpot</code> to <code>cancelTriggerOrder</code>:
+  </p>
+  <pre>await adapter.cancelTriggerOrder(hlCoin, pos.exchange_sl_order_id, isSpot);</pre>
+  <p>
+    For a builder perp position, <code>isSpot</code> is <code>false</code>. <code>cancelTriggerOrder</code> resolves the asset index by checking spot meta first (<code>getSpotMeta()</code>), then falling back to <code>resolveAsset()</code> when <code>isSpot=false</code>. <code>resolveAsset("xyz:GOLD")</code> returns the builder-perp index, which is correct for cancelling builder perp "na" orders. This works today.
+  </p>
+  <p>
+    <strong>The gap:</strong> The comment at line 2090 says "Pass isSpot so cancelTriggerOrder uses the correct spot index" but says nothing about builder perps. A reader editing this cancel in the future may not realise builder perp OIDs are also "na" orders and must use the perp (not spot) index. If they add <code>isSpot || isBuilderPerp</code> to the cancel call by analogy with line 1975, they will break cancels for builder perps (builder perp assets are not in spot meta, so <code>useSpotIndex=true</code> and no <code>spotToken</code> returns an error without cancelling).
+  </p>
+  <p>
+    <strong>Recommended fix:</strong> Add a clarifying comment at line 2092 stating that builder perp OIDs use <code>isSpot=false</code> (perp cancel path) because builder perp assets are not in spot meta. No code change required, just documentation.
+  </p>
+</div>
+
+<!-- AMBER 2 -->
+<div class="finding amber-f">
+  <div class="finding-title">AMBER-2: Profit ladder TP placement skips builder perps silently; no <code>isBuilderPerp</code> check in skip condition <span>trade-executor.ts:1739</span></div>
+  <p>
+    The TP ladder skip condition at line 1739 is:
+  </p>
+  <pre>const skipTpLadder = posType === "bb2" || posType === "bb2_30m" || openedAsSpot;</pre>
+  <p>
+    Builder perps (<code>isBuilderPerp=true</code>) are NOT in this skip list. This means when a builder perp trade executes, the code enters the TP placement loop at line 1740 and sends three partial-close trigger orders. Those orders do NOT set <code>isSpot: true</code> but they do correctly pass <code>sizeInAsset</code> (it is always passed for partial orders regardless of asset type since <code>isPartial</code> is true). The grouping in the adapter resolves to <code>"na"</code> because <code>sizeInAsset</code> makes <code>isPartial=true</code>, which is the correct grouping for partial TP orders.
+  </p>
+  <p>
+    Functionally this is safe. However: (a) the skip comment at line 1737 mentions "spot positions skip native TP" but does not mention whether builder perps are intended to place TPs; (b) if HL builder perp dexes do NOT support partial TP trigger orders, they will accumulate stale TP orders just like the SL orders did before this fix.
+  </p>
+  <p>
+    <strong>Recommended action:</strong> Verify with HL documentation or a test trade whether builder perp dexes support <code>"na"</code>-grouped partial TP trigger orders. If they do, add a comment confirming the intent. If they do not, add <code>isBuilderPerp</code> to the <code>skipTpLadder</code> condition before production traffic reaches builder perp assets with active TPs.
+  </p>
+</div>
+
+<!-- NIT 1 -->
+<div class="finding nit-f">
+  <div class="finding-title">NIT-1: Tests are source-string matchers; none would catch a runtime-wrong <code>pos.size</code> value <span>position-monitor.test.ts:1052-1066</span></div>
+  <p>
+    All three BUILDER-PERP-ADV tests use <code>assertMatch(src, /pattern/)</code> against the raw TypeScript source. Test at line 1055 confirms the literal text <code>isBuilderPerp && { sizeInAsset: pos.size }</code> is present, but it does not verify that <code>pos.size</code> at the call site reflects the post-trim remaining size (not original size). The size update path at line 1571 writes <code>pos.size = newSize</code> after TP fills, which is correct. But a behavioral test that exercises a position with a prior trim and then checks the size passed to <code>placeTriggerOrder</code> would catch a regression here that the current tests cannot.
+  </p>
+  <p>
+    Not blocking: the existing code path is correct since local state is updated at 1571 before the trailing trigger path at 1988. Flagging as an improvement candidate.
+  </p>
+</div>
+
+<!-- NIT 2 -->
+<div class="finding nit-f">
+  <div class="finding-title">NIT-2: Phantom-reconciliation and SL-fill TP cancel paths do not pass <code>isSpot</code> or <code>isBuilderPerp</code> <span>position-monitor/index.ts:986, 1358</span></div>
+  <p>
+    Lines 986 and 1358 cancel orphaned TP orders without passing an explicit <code>isSpot</code> flag:
+  </p>
+  <pre>await adapter.cancelTriggerOrder(hlCoin, tpIds);</pre>
+  <p>
+    <code>cancelTriggerOrder</code> auto-detects from spot meta when the third argument is omitted (<code>isSpot=undefined</code>). For builder perp assets with <code>hlCoin="xyz:GOLD"</code>, the auto-detect will not find it in spot meta, so it falls back to <code>resolveAsset("xyz:GOLD")</code> and gets the correct builder perp index. The cancels work correctly. This is a style inconsistency with the explicit <code>isSpot</code> pattern established elsewhere, not a bug.
+  </p>
+</div>
+
+<h2>Safety Analysis by Review Category</h2>
+
+<div class="finding safe-f">
+  <div class="finding-title">SAFE-1: Grouping logic is correctly scoped to non-spot builder perps <span>hyperliquid-adapter.ts:1310-1314</span></div>
+  <p>
+    <code>isBuilderPerpAsset = !request.isSpot && request.asset.includes(":")</code>. The <code>!request.isSpot</code> guard prevents accidentally routing genuine spot orders through builder-perp logic. No native perp coin names include a colon in HL's API (confirmed: HL asset names are plain symbols like "BTC", "ETH", "AMZN" for native perps). The condition is tight.
+  </p>
+</div>
+
+<div class="finding safe-f">
+  <div class="finding-title">SAFE-2: Tick-1 coexistence window is safe <span>(review question 3)</span></div>
+  <p>
+    Existing positions with <code>exchange_sl_order_id=null</code> will, on tick 1, enter the cancel gate check <code>(isSpot || isBuilderPerp) && pos.exchange_sl_order_id</code> with a null OID, so the cancel does not fire. A fresh "na" order is placed and the OID is written. There is a brief coexistence window where the old stale <code>positionTpsl</code> order and the new "na" order are both live on HL. This is safe: both are reduce-only at the same (or very similar) price. If both fill, the second fill is a reduce-only against a zero position and HL rejects it. The stale positionTpsl orders will continue to accumulate on tick 2 and beyond only if the new "na" cancel-before-replace cycle fails, which Sentry catches via the non-<code>HL_STRING_STATUS</code> error path.
+  </p>
+</div>
+
+<div class="finding safe-f">
+  <div class="finding-title">SAFE-3: <code>isBuilderPerp</code> scope in trade-executor is correct <span>trade-executor.ts:636 vs 1665</span></div>
+  <p>
+    <code>hlCoin</code> is declared at line 373 and <code>isBuilderPerp</code> at line 636, both in the outer function body. Line 1665 references <code>isBuilderPerp</code> without re-declaration. TypeScript's lexical scoping confirms it resolves to line 636's value. Both declarations use the same <code>hlCoin.includes(":")</code> check, so they are semantically identical.
+  </p>
+</div>
+
+<div class="finding safe-f">
+  <div class="finding-title">SAFE-4: <code>cancelTriggerOrder</code> uses correct asset index for builder perp cancels <span>hyperliquid-adapter.ts:1440-1457</span></div>
+  <p>
+    With <code>isSpot=false</code>, the adapter skips the spot-index path and calls <code>resolveAsset("xyz:GOLD")</code>, which returns the builder-perp-dex asset index. This is the same index used when placing the "na" order, so the cancel targets the correct order on HL.
+  </p>
+</div>
+
+<div class="finding safe-f">
+  <div class="finding-title">SAFE-5: <code>isHLStringStatus</code> guard change is logically equivalent and correct <span>trade-executor.ts:1703</span></div>
+  <p>
+    Old guard: <code>!openedAsSpot && slResult.error?.startsWith("HL_STRING_STATUS:")</code>. New guard: <code>!needsExplicitSize && slResult.error?.startsWith("HL_STRING_STATUS:")</code>. Since <code>needsExplicitSize = openedAsSpot || isBuilderPerp</code>, the new guard excludes both spot AND builder perp from the HL_STRING_STATUS suppression. Builder perps now use "na" grouping and return a real OID, so they should never produce <code>HL_STRING_STATUS</code> anyway. The guard correctly surfaces any unexpected string-status error from a builder perp as a Sentry alert rather than suppressing it silently.
+  </p>
+</div>
+
+<div class="verdict">
+  <strong>Verdict: AMBER — safe to deploy with known caveats.</strong>
+  <ul>
+    <li>No blocking correctness bugs found.</li>
+    <li>AMBER-1 (comment gap at software-fallback cancel) requires a one-line comment addition before this pattern is copied by future editors. Low deployment risk, high documentation risk.</li>
+    <li>AMBER-2 (TP ladder for builder perps) requires a deliberate decision: confirm HL builder perp dexes support "na" partial TP trigger orders before builder perp positions accumulate TP orders. If unsure, add <code>isBuilderPerp</code> to <code>skipTpLadder</code> as a safe default and enable TPs only after verification.</li>
+    <li>Two NITs are style/test coverage items, not correctness issues.</li>
+    <li>The core fix (grouping, cancel gate, OID write) is correct and the SL accumulation bug will not recur post-deploy.</li>
+  </ul>
+</div>
+
+</body>
+</html>

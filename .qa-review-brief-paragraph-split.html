@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 1 QA — splitBriefParagraphs / news-classifier / renderLiveNowModule</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.6; background: #fafafa; color: #1a1a1a; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+  .subtitle { color: #666; font-size: 13px; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .pill { padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .pill-red { background: #fee2e2; color: #991b1b; }
+  .pill-amber { background: #fef3c7; color: #92400e; }
+  .pill-gray { background: #f3f4f6; color: #374151; }
+  .pill-green { background: #dcfce7; color: #166534; }
+  .count { font-size: 20px; font-weight: 900; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  th { background: #f3f4f6; text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+  .tag-safe { background: #dcfce7; color: #166534; }
+  .tag-nit { background: #f3f4f6; color: #374151; }
+  .tag-amber { background: #fef3c7; color: #92400e; }
+  .tag-red { background: #fee2e2; color: #991b1b; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 15px; font-weight: 800; padding: 8px 14px; border-radius: 6px; margin: 0 0 16px; }
+  h2.red { background: #fee2e2; color: #991b1b; }
+  h2.amber { background: #fef3c7; color: #92400e; }
+  h2.gray { background: #f3f4f6; color: #374151; }
+  h2.green { background: #dcfce7; color: #166534; }
+  h2.yellow { background: #fefce8; color: #713f12; }
+  .finding { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .finding-red { border-left: 4px solid #ef4444; }
+  .finding-amber { border-left: 4px solid #f59e0b; }
+  .finding-gray { border-left: 4px solid #9ca3af; }
+  .finding-green { border-left: 4px solid #22c55e; }
+  .finding-yellow { border-left: 4px solid #eab308; }
+  .finding h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; }
+  .loc { font-family: "SF Mono", monospace; font-size: 12px; color: #6b7280; background: #f9fafb; padding: 2px 6px; border-radius: 3px; border: 1px solid #e5e7eb; }
+  .code { font-family: "SF Mono", monospace; font-size: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 10px 12px; margin: 8px 0; overflow-x: auto; white-space: pre; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 4px; }
+  .action { font-weight: 700; }
+  ul { margin: 6px 0; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  .row-ok td:first-child { color: #166534; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA Review</h1>
+<div class="subtitle">splitBriefParagraphs rewrite · news-classifier SUMMARY_MAX bump · renderLiveNowModule header cleanup<br>Reviewer: independent cold read · 2026-06-11</div>
+
+<div class="summary-bar">
+  <div class="pill pill-red"><span class="count">0</span> Blocking</div>
+  <div class="pill pill-amber"><span class="count">2</span> Worth a look</div>
+  <div class="pill pill-gray"><span class="count">2</span> Nits</div>
+  <div class="pill pill-green"><span class="count">7</span> Confirmed safe</div>
+</div>
+
+<!-- FILE RISK MATRIX -->
+<h2 class="gray">File-Level Risk Matrix</h2>
+<table>
+  <thead>
+    <tr><th>File</th><th>Change</th><th>Highest severity</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><span class="loc">_shared/notify.ts</span></td><td>splitBriefParagraphs rewrite; renderLiveNowModule header cell emptied</td><td><span class="tag tag-amber">Worth a look</span></td></tr>
+    <tr><td><span class="loc">_shared/news-classifier.ts</span></td><td>SUMMARY_MAX 85→110; lastSpace threshold 60→90; prompt updated</td><td><span class="tag tag-amber">Worth a look</span></td></tr>
+    <tr><td><span class="loc">news-enrich/index.ts</span></td><td>Not touched in this PR</td><td><span class="tag tag-amber">Worth a look</span> (pre-existing gap exposed)</td></tr>
+  </tbody>
+</table>
+
+<!-- BLOCKING -->
+<section>
+<h2 class="red">Blocking — must resolve before deploy</h2>
+<p style="color:#6b7280;font-style:italic;">None found.</p>
+</section>
+
+<!-- WORTH A LOOK -->
+<section>
+<h2 class="amber">Worth a Look (2)</h2>
+
+<div class="finding finding-amber">
+  <h3>W1 — news-enrich cron path bypasses SUMMARY_MAX entirely</h3>
+  <span class="loc">news-enrich/index.ts:309–311</span>
+
+  <p><span class="action">Symptom:</span> The PR raises <span class="loc">SUMMARY_MAX</span> to 110 in <span class="loc">classifyNewsItem()</span> inside <span class="loc">news-classifier.ts</span>. But <span class="loc">news-enrich/index.ts</span> does its own inline summary extraction (line 309–311) without calling <span class="loc">classifyNewsItem</span> — it imports only <span class="loc">NEWS_CLASSIFY_SYSTEM_PROMPT</span>, <span class="loc">isAssetSentimentsObject</span>, and <span class="loc">wrapUntrustedExcerpt</span>. The SUMMARY_MAX guard is absent entirely from this path.</p>
+
+  <div class="code">// news-enrich/index.ts — no truncation guard
+const summary = typeof parsed.summary === "string" && parsed.summary.trim().length > 0
+  ? parsed.summary.trim()
+  : null;
+// ↑ Summaries of 111-180 chars go straight to DB from the cron path.</div>
+
+  <p><span class="action">Root cause:</span> The SUMMARY_MAX guard was added to <span class="loc">classifyNewsItem()</span> in the shared module, but <span class="loc">news-enrich</span> never calls that function. It duplicates the parsing logic inline. This was already a divergence before this PR; the PR does not make it worse, but it does create a false impression that the guard is universal.</p>
+
+  <p><span class="action">Impact:</span> The majority of news classification goes through the <strong>cron</strong> path (<span class="loc">news-enrich</span> processes the backlog hourly). Only inline/live classification (via <span class="loc">news-cache.ts</span>, which calls <span class="loc">classifyNewsItem</span>) gets the 110-char cap. Summaries from the cron path can still hit the DB at 111–180 chars, where they get caught only by the 150-char render-side backstop in <span class="loc">renderNewsModule</span>.</p>
+
+  <p><span class="action">Fix:</span> Refactor <span class="loc">news-enrich/index.ts</span> to call <span class="loc">classifyNewsItem()</span> from the shared module instead of duplicating the parsing inline, OR copy the SUMMARY_MAX truncation block into the inline parse path at line 311. Either approach ensures consistent storage length across both classification paths.</p>
+</div>
+
+<div class="finding finding-amber">
+  <h3>W2 — stale comment in renderNewsModule still says "40-85 chars"</h3>
+  <span class="loc">notify.ts:1849</span>
+
+  <p><span class="action">Symptom:</span> The comment on the render-side backstop was not updated when the classifier prompt was changed from "40-85" to "60-110":</p>
+  <div class="code">// Classifier prompt now targets
+// 40-85 chars; this is a safety net for legacy news_cache rows written   ← stale</div>
+
+  <p><span class="action">Root cause:</span> The PR updated the classifier prompt (line 128 in <span class="loc">news-classifier.ts</span>) and SUMMARY_MAX (line 278), but not the corresponding comment in <span class="loc">renderNewsModule</span>. The <span class="loc">registry.ts</span> comment at line 94 was updated ("60-110 chars"), so there are now two sources of truth in the same repo with different numbers.</p>
+
+  <p><span class="action">Fix:</span> Update the comment at <span class="loc">notify.ts:1849</span> to read "60-110 chars" to match the classifier prompt and registry.ts.</p>
+</div>
+
+</section>
+
+<!-- NITS -->
+<section>
+<h2 class="gray">Nits (2)</h2>
+
+<div class="finding finding-gray">
+  <h3>N1 — em dash in console.warn violates project style rule</h3>
+  <span class="loc">notify.ts:1344</span>
+  <div class="code">console.warn("[splitBriefParagraphs] LLM dash artifact detected — stripping");</div>
+  <p>Consider replacing the em dash with a colon or comma: <code>"LLM dash artifact detected: stripping"</code>. The global CLAUDE.md hard rule states no em dashes in any text output. This is internal logging so it has zero user impact, but it is a style violation and sets a bad template for other log messages.</p>
+</div>
+
+<div class="finding finding-gray">
+  <h3>N2 — no tests for splitBriefParagraphs or SUMMARY_MAX guard</h3>
+  <span class="loc">_shared/notify.ts · _shared/news-classifier.ts</span>
+  <p>Neither the rewritten <span class="loc">splitBriefParagraphs</span> nor the updated SUMMARY_MAX truncation block has a test. The function is pure and deterministic — it's an ideal target for source-reading unit tests. Consider adding at minimum: (a) 4-sentence string with "U.S." abbreviation (the original bug trigger); (b) 3-sentence string returning unsplit; (c) empty string returning <code>[]</code>; (d) all-caps string returning unsplit. Similarly, add a source-grep test to <span class="loc">news-enrich.test.ts</span> asserting <span class="loc">SUMMARY_MAX</span> is &gt; 85 in <span class="loc">news-classifier.ts</span> to prevent silent regression.</p>
+</div>
+</section>
+
+<!-- RISKS TO MONITOR -->
+<section>
+<h2 class="yellow">Risks to Monitor Post-Deploy</h2>
+
+<div class="finding finding-yellow">
+  <h3>R1 — all-caps briefs return unsplit regardless of length</h3>
+  <p>The boundary regex <span class="loc">/[a-z0-9][.!?] /g</span> requires a lowercase letter or digit before the punctuation. An all-uppercase brief (unlikely but possible if an LLM generates one) returns as a single paragraph regardless of sentence count. This was the same behavior as the old implementation and is not a regression, but it is worth logging if a future LLM model changes capitalization style. Monitor: scan <span class="loc">daily_digest</span> rows for unsplit 400+ char briefs.</p>
+</div>
+
+<div class="finding finding-yellow">
+  <h3>R2 — numbered-list briefs produce excess break points</h3>
+  <p>If an LLM generates a brief formatted as "1. Point one. 2. Point two. 3. Point three." the digit before the period matches <span class="loc">[a-z0-9][.!?]</span> and produces double breaks per sentence boundary (one for the preceding digit, one for the sentence-terminal lowercase). Result: more split points than expected, potentially 4–5 "paragraphs" from a 3-point list. Low probability given current prompts, but the dash-artifact fix shows LLMs do produce unexpected structural patterns.</p>
+</div>
+</section>
+
+<!-- CONFIRMED SAFE -->
+<section>
+<h2 class="green">Confirmed Safe (7)</h2>
+
+<div class="finding finding-green">
+  <ul>
+    <li><strong>+2 offset is correct.</strong> The boundary regex matches 3 chars (e.g. <code>"g. "</code>) at <code>m.index</code>. <code>m.index + 2</code> points to the space character. <code>slice(pos, sp)</code> ends one char before the space (at the punctuation); <code>.trim()</code> removes trailing punctuation's space and the leading space of the next slice. Traced on <code>"War fears... morning. U.S.-Iran tensions... lower. Oil jumped. Gold fell."</code>: produces exactly <code>["War fears are driving markets this morning.", "U.S.-Iran tensions sent the Dow lower.", "Oil jumped. Gold fell."]</code> — "U" is preserved.</li>
+    <li><strong>Final sentence is always captured.</strong> The last sentence has no trailing space, so it never registers as a break. The final <code>cleaned.slice(pos).trim()</code> after the split-point loop captures all remaining text including the terminal sentence. Verified.</li>
+    <li><strong>breaks.length &lt;= 2 threshold is correct.</strong> N sentences produce N-1 inter-sentence spaces (the final sentence has no trailing space). 3 sentences = 2 breaks → returns unsplit. 4 sentences = 3 breaks → splits. The comment is accurate.</li>
+    <li><strong>No character loss.</strong> The new implementation uses <code>slice()</code> throughout with position-based boundaries. Unlike the old <code>.match()</code> approach, no text is ever dropped. Consecutive slices with no gaps are guaranteed because each split point is a character position in the original string.</li>
+    <li><strong>Dash cleanup regex is safe for multiple matches.</strong> <code>trimmed.replace(/(\. )-([A-Z])/g, "$1$2")</code> uses a fresh regex literal (not the <code>dashArtifact</code> variable with advanced <code>lastIndex</code>), so all occurrences of the artifact are replaced in a single pass. No user content is logged in the <code>console.warn</code> — only the static string.</li>
+    <li><strong>SUMMARY_MAX = 110 truncation is correct.</strong> A 110-char summary passes through unchanged (<code>110 &gt; 110</code> is false). A 111-char summary is sliced to 110, the last space is found, and if it is beyond position 90 the word-boundary trim applies. The trailing-punctuation replace uses <code>/[.,;:]\s*$/</code> (where <code>$</code> is end-of-string, not a literal dollar sign — confirmed by JS regex semantics). Result is clean word-boundary truncation + ellipsis. The render-side backstop in <span class="loc">renderNewsModule</span> (SUMMARY_CAP=150) provides a second layer for any rows that escape the 110-char guard.</li>
+    <li><strong>renderLiveNowModule change is correct.</strong> All three header cells are now empty (<code>&lt;td&gt;&lt;/td&gt;</code>). The column structure (widths 32, unconstrained, 52) is preserved. The <span class="loc">headerCellStyle</span> still applies the bottom border and uppercase styling — the cells still render with the divider line, they just have no label text. No layout breakage.</li>
+  </ul>
+</div>
+</section>
+
+<hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0 16px;">
+<p style="font-size:12px;color:#9ca3af;">Generated by independent cold-read Phase 1 review. No prior context from the author. 2026-06-11.</p>
+
+</body>
+</html>

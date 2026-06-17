@@ -1,0 +1,83 @@
+{
+  "skill_name": "vela-ship",
+  "evals": [
+    {
+      "id": 0,
+      "name": "frontend-only-ship-flow",
+      "prompt": "Ship this — I've made frontend changes to the signal card component and need to get it to production.",
+      "expected_output": "Pre-flight checks (test + type-check + build) described before git push. CI monitoring mentioned. Staging verification before production. MEMORY.md and Notion mentioned post-ship. No bare deploy.sh calls.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "preflight_before_push",
+          "description": "Pre-flight checks described before git push",
+          "type": "qualitative",
+          "rubric": "Pass if the output describes running tests, type-check, and/or build commands BEFORE any git push. Look for 'npm run test', 'npm run type-check', 'npm run build' appearing before 'git push' in the sequence. Fail if git push is described without any preceding pre-flight checks."
+        },
+        {
+          "name": "ci_monitoring_present",
+          "description": "CI monitoring described, not fire-and-forget",
+          "type": "regex_match",
+          "pattern": "(?i)(gh run watch|gh run list|wait for CI|monitor CI|CI.*pass|CI.*green|CI.*complete|watching)"
+        },
+        {
+          "name": "staging_gate_present",
+          "description": "Staging verification mentioned before production push",
+          "type": "regex_match",
+          "pattern": "(?i)(staging|vercel preview|preview.*URL|verify.*deploy|check.*staging)"
+        },
+        {
+          "name": "no_bare_deploy_sh",
+          "description": "deploy.sh not called without --staging or --prod",
+          "type": "regex_absent",
+          "pattern": "deploy\\.sh(?!\\s*(--staging|--prod))"
+        },
+        {
+          "name": "memory_md_post_ship",
+          "description": "MEMORY.md mentioned as a post-ship step",
+          "type": "regex_match",
+          "pattern": "MEMORY\\.md"
+        },
+        {
+          "name": "no_direct_prod_skip",
+          "description": "Does not skip staging and push directly to production",
+          "type": "qualitative",
+          "rubric": "Pass if staging is an explicit step before production. Fail if the output describes a flow that goes directly from git push to production without a staging verification step. A flow that says 'push to main (Vercel auto-deploys to preview) then verify preview then promote' counts as passing."
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "cross-repo-ordering",
+      "prompt": "Ship this — I've made changes to both the frontend signal card and the backend signal-engine edge function.",
+      "expected_output": "Backend ships first, frontend second. Both repos get pre-flight checks. MEMORY.md and Notion mentioned post-ship.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "backend_first",
+          "description": "Backend is deployed before frontend when both repos change",
+          "type": "qualitative",
+          "rubric": "Pass if the output describes deploying the backend (crypto-agent / edge functions / deploy.sh) before the frontend (crypto-agent-frontend / git push to main). Fail if frontend is described as deploying first, or if the ordering is ambiguous when both repos have changes."
+        },
+        {
+          "name": "deploy_sh_with_flag",
+          "description": "Backend deploy uses deploy.sh with --staging or --prod",
+          "type": "regex_match",
+          "pattern": "deploy\\.sh.*(--staging|--prod)"
+        },
+        {
+          "name": "no_bare_deploy_sh",
+          "description": "deploy.sh never called without a flag",
+          "type": "regex_absent",
+          "pattern": "deploy\\.sh(?!\\s*(--staging|--prod))"
+        },
+        {
+          "name": "memory_and_notion_postship",
+          "description": "MEMORY.md and Notion both mentioned as post-ship steps",
+          "type": "regex_match",
+          "pattern": "MEMORY\\.md"
+        }
+      ]
+    }
+  ]
+}

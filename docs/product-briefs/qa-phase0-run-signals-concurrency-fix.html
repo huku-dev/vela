@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 0 QA — run-signals ASSET_CONCURRENCY 5→3 Fix</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --green: #0FE68C;
+    --red: #FF4D4D;
+    --amber: #F5A623;
+    --blue: #2D7DD2;
+    --gray: #888;
+    --border: #E5E5E5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--cream); color: var(--ink); line-height: 1.6; padding: 32px; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .subtitle { color: var(--gray); font-size: 14px; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .badge { padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 14px; }
+  .badge-blocking { background: #FFE5E5; color: #C0392B; border: 1px solid #F5B7B1; }
+  .badge-wtal { background: #FFF3E0; color: #E67E22; border: 1px solid #FAD7A0; }
+  .badge-nit { background: #E8F5E9; color: #27AE60; border: 1px solid #A9DFBF; }
+  .verdict-box { border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid; }
+  .verdict-pass { background: #E8F5E9; border-color: #A9DFBF; }
+  .verdict-warn { background: #FFF3E0; border-color: #FAD7A0; }
+  .verdict-fail { background: #FFE5E5; border-color: #F5B7B1; }
+  .verdict-box h2 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  section { margin-bottom: 32px; }
+  section h2 { font-size: 18px; font-weight: 700; border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 16px; }
+  .finding { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .finding-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+  .tag-blocking { background: #FFE5E5; color: #C0392B; }
+  .tag-wtal { background: #FFF3E0; color: #E67E22; }
+  .tag-nit { background: #E8F5E9; color: #27AE60; }
+  .finding-title { font-weight: 700; font-size: 15px; }
+  .finding p { color: #333; font-size: 14px; margin-bottom: 6px; }
+  .finding p:last-child { margin-bottom: 0; }
+  code { font-family: "Fira Code", "Menlo", monospace; font-size: 12px; background: #F4F4F4; padding: 1px 5px; border-radius: 3px; }
+  pre { background: #1E1E1E; color: #D4D4D4; padding: 14px; border-radius: 6px; font-size: 12px; overflow-x: auto; margin: 8px 0; line-height: 1.5; }
+  .confidence-box { background: #F0F4FF; border: 1px solid #C5D5F7; border-radius: 8px; padding: 16px; margin-top: 24px; }
+  .confidence-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #F4F4F4; padding: 8px 12px; text-align: left; font-weight: 600; border: 1px solid var(--border); }
+  td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFAFA; }
+  .pass-cell { color: #27AE60; font-weight: 700; }
+  .fail-cell { color: #C0392B; font-weight: 700; }
+  .warn-cell { color: #E67E22; font-weight: 700; }
+  ul { padding-left: 20px; }
+  ul li { font-size: 14px; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA: run-signals ASSET_CONCURRENCY 5→3</h1>
+<p class="subtitle">Adversarial review — independent read of code, no author context. Date: 2026-06-09.</p>
+
+<div class="summary-bar">
+  <div class="badge badge-blocking">BLOCKING: 1</div>
+  <div class="badge badge-wtal">WORTH-A-LOOK: 3</div>
+  <div class="badge badge-nit">NIT: 1</div>
+</div>
+
+<!-- ─── ROOT CAUSE VERDICT ─── -->
+<div class="verdict-box verdict-warn">
+  <h2>Verdict: Root Cause — PARTIALLY CORRECT, ONE MAJOR CAVEAT</h2>
+  <p>OOM is a plausible explanation for the batch-1 546 but the evidence is circumstantial. The concurrency fix addresses one real pressure (simultaneous LLM + HL candle allocations), but the <strong>single most likely cause of the NEAR+SKHX notification miss is independent of OOM</strong> — it is a structural race between the asset loop and the post-loop dispatch, which the concurrency fix does not address. See Blocking finding B-1.</p>
+</div>
+
+<!-- ─── FIX VERDICT ─── -->
+<div class="verdict-box verdict-fail">
+  <h2>Verdict: Fix — INSUFFICIENT. Does not close the notification-miss race.</h2>
+  <p>Reducing concurrency from 5 to 3 may reduce peak heap, but it does not fix the failure path that explains zero <code>notification_log</code> entries for NEAR+SKHX. The dispatch block at line 595 is guarded by <code>pendingEmailsByUser.size > 0</code>. There is a code path where proposals are inserted to <code>trade_proposals</code> but <code>pendingEmailsByUser</code> ends up empty, causing silent skip — and that path has nothing to do with OOM. The fix needs to be paired with investigation of this path before any deploy.</p>
+</div>
+
+<!-- ─── BLOCKING ─── -->
+<section>
+  <h2>Blocking Issues</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-blocking">BLOCKING</span>
+      <span class="finding-title">B-1: There is a non-OOM code path that explains zero notification_log with proposals in DB</span>
+    </div>
+    <p>The diagnosis assumes OOM killed the process before the dispatch block. But there is a structural path that produces the exact same symptom — proposals in <code>trade_proposals</code>, empty <code>pendingEmailsByUser</code>, no <code>notification_log</code> rows — without any OOM.</p>
+    <p><strong>The path:</strong></p>
+    <pre>
+// run-signals/index.ts lines 406-434
+if (signalResult.signalChanged && signalResult.signal.color !== "grey" && signalId && !IS_STAGING) {
+  const proposalResult = await generateTradeProposals(supabase, {
+    ...
+    deferEmail: true,         // <── instructs createProposal to return pendingEmail
+  });
+
+  for (const pending of proposalResult.pendingEmails) {
+    const userId = pending.userId;
+    if (!userId) {
+      console.warn("...missing userId — skipping email", pending.proposalId);
+      continue;                // <── THIS skips the map insertion silently
+    }
+    if (!pendingEmailsByUser.has(userId)) pendingEmailsByUser.set(userId, []);
+    pendingEmailsByUser.get(userId)!.push(pending);
+  }
+}
+    </pre>
+    <p>Now look at <code>createProposal</code> (proposal-generator.ts line 824):</p>
+    <pre>
+const proposalNotification: TradeProposalNotification = {
+  ...
+  userId: user.privy_did,   // <── set here
+};
+
+if (options?.deferEmail) {
+  return { created: true, autoApproved: false, pendingEmail: proposalNotification };
+}
+    </pre>
+    <p><code>userId</code> is always set on the notification object (it comes from <code>user.privy_did</code> from <code>fetchEligibleUsers</code>). So the <code>!userId</code> guard at line 428 should never fire in normal operation. However — if <code>generateTradeProposals</code> throws an exception (DB error, HL API error, Anthropic rate limit during the eligibility checks) after the <code>trade_proposals</code> INSERT completes but before returning <code>pendingEmails</code>, the proposal row exists in the DB but <code>proposalResult.pendingEmails</code> is never populated into the map.</p>
+    <p>Inspect <code>generateTradeProposals</code>: the per-user loop has a try/catch (line 423) that catches errors and pushes to <code>result.errors[]</code> without aborting. However, if an error occurs <em>inside <code>createProposal</code> after the DB insert</em> but before returning <code>pendingEmail</code> — specifically between the INSERT (line 757) and the return (line 847) — the error is caught, but <code>pendingEmail</code> is never pushed to <code>result.pendingEmails</code>. More critically: the <code>logAudit</code> call at line 771 makes async DB writes after the INSERT. If <code>logAudit</code> throws synchronously (rare, but possible if supabase client is in a bad state), the return at line 847 is never reached.</p>
+    <p>The <strong>most concrete non-OOM path</strong>: if the asset loop's per-asset <code>runWithConcurrency</code> worker catches an error at the outer level (line 528-536) — i.e., <code>generateTradeProposals</code> itself throws rather than returning an error-bearing result — then the <code>for (const pending of proposalResult.pendingEmails)</code> block at line 426 is never reached. The insert was already committed by Postgres (it doesn't get rolled back by a JS exception). Result: proposals in DB, nothing in map, zero notification_log.</p>
+    <p><strong>What to check before dismissing this:</strong> Query <code>notification_log</code> for the NEAR/SKHX run time window. Also query <code>supabase_audit</code> or Sentry for errors from that batch. If there are Sentry events from the NEAR/SKHX asset task at +42s or +97s, this path is confirmed and the fix needed is not concurrency reduction but error propagation hardening in the asset worker.</p>
+    <p><strong>Why this matters:</strong> If B-1 is the actual cause, reducing concurrency from 5 to 3 does nothing to prevent the next miss. The fix is wrong.</p>
+  </div>
+</section>
+
+<!-- ─── WORTH-A-LOOK ─── -->
+<section>
+  <h2>Worth-A-Look Items</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-wtal">WORTH-A-LOOK</span>
+      <span class="finding-title">W-1: Timing analysis after fix — batch-1 can still approach 150s under heavy signal-change conditions</span>
+    </div>
+    <p>With concurrency 3 and 11 assets in batch-1, the pattern is:</p>
+    <table>
+      <tr><th>Wave</th><th>Assets</th><th>Worst-case time (all signal-change)</th></tr>
+      <tr><td>Wave 1</td><td>3 assets concurrently</td><td>~50s (HL candles + LLM brief + proposal gen)</td></tr>
+      <tr><td>Wave 2</td><td>3 assets concurrently</td><td>~50s</td></tr>
+      <tr><td>Wave 3</td><td>3 assets concurrently</td><td>~50s</td></tr>
+      <tr><td>Wave 4</td><td>2 assets concurrently</td><td>~50s</td></tr>
+    </table>
+    <p>Worst-case asset loop: ~200s — which exceeds the 150s wall-clock limit. In practice, most assets don't change signal on every run, so typical time is much lower. But on a major market move (BTC flash crash, for example), all 11 batch-1 assets could change simultaneously. The news pre-fetch adds ~5-15s before the loop. Even at concurrency 3, the 150s risk is not eliminated — it's reduced in the average case but not in the worst case.</p>
+    <p>Before deploying, estimate the probability of simultaneous signal changes across all 11 assets. If it has happened historically (e.g., March 2020, FTX collapse style events), this fix provides false assurance.</p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-wtal">WORTH-A-LOOK</span>
+      <span class="finding-title">W-2: Brief staleness recovery fires per-asset and adds LLM calls even with no signal change</span>
+    </div>
+    <p>In <code>signal-persistence.ts</code> lines 559-592, every asset that hasn't had a brief in 4+ hours triggers a <code>generateAndSaveBrief</code> LLM call — the "staleness recovery" path. This fires regardless of whether the signal changed. With 11 assets in batch-1 and concurrency 3, if 6+ assets haven't had a brief recently (e.g., after a cron gap or deploy), wave 1 could run 3 simultaneous staleness-recovery LLM calls on top of market-context fetches. This is a real heap contributor that isn't gated by <code>signalChanged</code>.</p>
+    <p>The concurrency fix helps here too, but the existence of this path means that even "quiet" signal runs (no changes) can still hit substantial LLM-call concurrency. This is worth documenting as a second memory pressure driver beyond the obvious signal-change path.</p>
+  </div>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-wtal">WORTH-A-LOOK</span>
+      <span class="finding-title">W-3: auto-execute queue runs sequentially BEFORE dispatch — adds unbounded time before notifications</span>
+    </div>
+    <p>Post-loop ordering (lines 545-606):</p>
+    <pre>
+1. autoExecuteQueue (sequential, unbounded)
+2. pendingEmailsByUser dispatch
+3. generateDigestInline
+    </pre>
+    <p>If multiple auto-approved proposals land in the same batch (e.g., 3 users with <code>full_auto</code> each have a close+open pair on different assets), the auto-execute queue processes sequentially. Each <code>executeTradeProposal</code> involves an HL API call + DB update. Under high market-activity conditions this could add 20-40s before the email dispatch even starts. This is not new to this fix, but the concurrency reduction makes the loop run longer, so the window before the dispatch grows. Worth timing in staging.</p>
+  </div>
+</section>
+
+<!-- ─── NITS ─── -->
+<section>
+  <h2>Nits</h2>
+
+  <div class="finding">
+    <div class="finding-header">
+      <span class="tag tag-nit">NIT</span>
+      <span class="finding-title">N-1: ASSET_CONCURRENCY constant has no comment explaining its history or rationale</span>
+    </div>
+    <p>The constant at line 258 currently says:</p>
+    <pre>// Process assets concurrently. Cap at 5 to avoid HL rate limits and DB
+// connection pressure. ...</pre>
+    <p>If changed to 3, update the comment to reflect the reason (OOM/memory pressure on Micro plan) and document that 5 caused 546s in the AAPL/BTC/ETH/GOLD/HYPE batch. This prevents a future engineer from "fixing" it back to 5 thinking they're restoring a conservative limit.</p>
+  </div>
+</section>
+
+<!-- ─── DOES THE FIX ADDRESS OOM ─── -->
+<section>
+  <h2>Question-by-question analysis</h2>
+
+  <table>
+    <tr>
+      <th>Question</th>
+      <th>Finding</th>
+      <th>Confidence</th>
+    </tr>
+    <tr>
+      <td><strong>Q1: Is OOM the correct root cause for the 546?</strong></td>
+      <td class="warn-cell">Plausible but unconfirmed. At concurrency 5, simultaneous per-asset memory includes: HL candle arrays (~500 candles × 6 fields × 8 bytes × 5 assets = modest), LLM response strings (each Haiku/Sonnet response ~2-10KB), news fetch results (already in news_cache, not re-fetched per asset), <code>persistSignalResult</code> intermediate objects. The news pre-fetch runs BEFORE the loop and is already complete — it is NOT held during asset processing (only the cached DB rows are read per-asset). The most likely heap driver is simultaneous LLM brief generation: if 5 assets all trigger briefs simultaneously, you have 5 in-flight Anthropic API responses buffered. That's non-trivial but also not enormous. An alternative cause: cold-boot memory from dynamic imports in <code>generateDigestInline</code> (7 modules loaded simultaneously if digest fires). At hour &ge;8, the digest triggers AFTER the asset loop, so this doesn't explain 44s failure. 546 at 44s into an 11-asset batch suggests the loop itself is the culprit, not digest.</td>
+      <td>Moderate</td>
+    </tr>
+    <tr>
+      <td><strong>Q2: Does concurrency 3 actually reduce memory?</strong></td>
+      <td class="pass-cell">Yes, modestly. Each concurrent task holds: HL candle response (parse/decode in-flight), <code>computeIndicators</code> output (small), LLM API response stream (if signal change), proposal generation state. Reducing from 5 to 3 cuts simultaneous LLM responses from 5 to 3. News items are NOT per-asset memory — they're read from <code>news_cache</code> via a DB query that returns a filtered subset. The reduction is real but the delta per concurrent task is modest (~2-5MB saved). Whether this clears the Micro plan limit depends on how close to the limit the baseline is.</td>
+      <td>Moderate</td>
+    </tr>
+    <tr>
+      <td><strong>Q3: Timing after fix</strong></td>
+      <td class="warn-cell">Batch-1 (11 assets, concurrency 3): 4 waves. Worst case (all signal-change): ~200s. Exceeds 150s wall-clock. Typical case (2-3 assets change): ~60-80s. Batch-2 (8 assets, concurrency 3): 3 waves. Worst case: ~150s. Right at the limit.</td>
+      <td>Moderate</td>
+    </tr>
+    <tr>
+      <td><strong>Q4: Non-OOM path to zero notification_log?</strong></td>
+      <td class="fail-cell">YES — see B-1. If the per-asset worker task throws an exception that is caught by the outer catch (line 528-536), the <code>pendingEmails</code> loop at line 426 is never reached for that asset. Proposals already inserted to DB by Postgres are NOT rolled back (no transaction wrapping the INSERT + notification flow). This produces the exact failure signature: proposals in <code>trade_proposals</code>, nothing in <code>pendingEmailsByUser</code>, zero <code>notification_log</code> rows.</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td><strong>Q5: New failure modes from slower execution?</strong></td>
+      <td>Slower loop means more elapsed time before email dispatch. For auto-execute users, the window between signal change and position entry grows (proposal sits in <code>auto_approved</code> longer before execution). Not a correctness issue but could mean worse fills on fast-moving assets. The auto-execute queue is sequential post-loop, which is unchanged.</td>
+      <td>Low concern</td>
+    </tr>
+    <tr>
+      <td><strong>Q6: Is this fix sufficient?</strong></td>
+      <td class="fail-cell">No. Even if OOM is confirmed as the batch-1 cause, the NEAR+SKHX miss (batch-2) at 100s is not explained by OOM from concurrency-5 asset processing — batch-2 only has 8 assets and skips the news pre-fetch. The reported +97s for SKHX proposal suggests the batch ran near but possibly under the 150s limit before the dispatch. A non-OOM error in the worker task is the more likely explanation for that miss. The fix is incomplete.</td>
+      <td>High</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ─── MEMORY PROFILE ─── -->
+<section>
+  <h2>Memory profile: what's actually in-flight at concurrency 5</h2>
+  <p>Per concurrent asset task, in-flight simultaneously:</p>
+  <ul>
+    <li><strong>HL candle fetch:</strong> 4H candles (~500 bars) + daily closes (~200 bars) as raw arrays. After <code>computeIndicators</code> runs, the raw arrays can be GC'd. Estimate: ~200KB per asset at parse peak.</li>
+    <li><strong>LLM responses (signal-change only):</strong> Haiku event extraction response + Sonnet brief response. Streamed but buffered until complete. Estimate: ~5-20KB each. 5 simultaneous = ~200KB total.</li>
+    <li><strong>News context (NOT re-fetched per asset):</strong> Read from <code>news_cache</code> table via DB query. Filtered subset returned per asset. The full news corpus (~100-300 items) stays in the DB, not JS heap.</li>
+    <li><strong>DB result sets from <code>fetchEligibleUsers</code>, <code>fetchPreviousState</code>, etc.:</strong> Small (few rows). Not a concern.</li>
+    <li><strong>Proposal notification objects:</strong> Tiny, deferred to map.</li>
+  </ul>
+  <p>Raw estimate at concurrency 5 with all assets signal-changing: ~5MB LLM + ~1MB candles + overhead. This seems modest for Micro plan OOM, but Supabase Edge Functions (Deno) may have a much lower practical heap limit than the nominal MB figure. If the Micro plan limit is 150-200MB and the baseline worker footprint (all shared imports, supabase client, news-fetcher module) consumes 100-120MB, 5×~1MB concurrent tasks could plausibly tip it. This is speculative without an actual heap trace.</p>
+</section>
+
+<!-- ─── RECOMMENDED PRE-DEPLOY STEPS ─── -->
+<section>
+  <h2>Required steps before implementing this fix</h2>
+  <ol style="padding-left: 20px; font-size: 14px; line-height: 1.8;">
+    <li><strong>Query Sentry for the NEAR/SKHX batch-2 run time window.</strong> Look for any exceptions thrown from the asset worker at +42s or +97s. If you find a JS error that was caught by the outer <code>catch (err)</code> at line 528-536, that is B-1 and the fix required is not concurrency reduction.</li>
+    <li><strong>Query <code>notification_log</code> for the exact run time.</strong> Confirm there are truly zero rows, and also check whether any Telegram send for NEAR or SKHX appears (the Telegram path in <code>notifyBatchProposals</code> fires before the audit row insert — absence of Telegram AND audit rows together is strong evidence the dispatch block was never reached).</li>
+    <li><strong>If B-1 is confirmed:</strong> Fix the error propagation in the asset worker so exceptions from <code>generateTradeProposals</code> still result in any already-constructed notifications being added to the map before the exception is caught. Consider wrapping the inner block more tightly so the map-population code is reached even on partial failures.</li>
+    <li><strong>If OOM-only is confirmed:</strong> The concurrency change is a reasonable mitigation, but also add a per-batch wall-clock guard so that if the loop takes >120s, a warning is logged and the dispatch still fires.</li>
+    <li><strong>Staging verification:</strong> Force a run with NEAR+SKHX by manually triggering a signal change for both assets in the same batch window. Confirm <code>notification_log</code> rows appear.</li>
+  </ol>
+</section>
+
+<!-- ─── CONFIDENCE ─── -->
+<div class="confidence-box">
+  <h3>Confidence assessment: Will this fix resolve the NEAR+SKHX miss permanently?</h3>
+  <p><strong>Low.</strong> The concurrency change addresses memory pressure on a warm worker, which may reduce batch-1 546 frequency. But the NEAR+SKHX miss was in batch-2 (8 assets, no news pre-fetch, skips digest). The proposed fix does not address the code path where a mid-loop exception causes proposals to land in DB without being added to <code>pendingEmailsByUser</code>. Until Sentry logs from that run are checked and the exact failure point is identified, deploying this fix as a complete solution risks a false sense of closure. The miss will likely recur under the next high-volatility multi-asset signal event.</p>
+  <p style="margin-top: 8px;"><strong>Confidence in root-cause diagnosis: Moderate.</strong> OOM is plausible for batch-1. The NEAR+SKHX batch-2 miss has a more likely non-OOM explanation that was not investigated before proposing this fix.</p>
+</div>
+
+<p style="color: var(--gray); font-size: 12px; margin-top: 32px;">Phase 0 QA — independent adversarial review. Author had no input into this analysis.</p>
+</body>
+</html>

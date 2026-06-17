@@ -1,0 +1,97 @@
+## Session Retrospective: Skill Eval Infrastructure Build
+
+---
+
+### 1. What Was Accomplished
+
+**`eval-runner.py`** (`~/.claude/scripts/eval-runner.py`)
+Core eval execution engine. Accepts a skill name, loads SKILL.md and evals.json from the correct directory (personal or project-scoped), runs each test case through the Claude CLI via `claude -p`, saves outputs to `workspace/iteration-N/eval-<id>.txt`, and runs assertions (regex_match, regex_absent, regex_count, word_count, qualitative). Added `--id` flag to run a single test case and `--no-run` flag to re-assert on prior output without calling the API. Also added `--save-output` flag for Option B: agent-generated output can be piped in and asserted immediately without a CLI spawn. Skill search was updated to check both `~/.claude/skills/` and `~/crypto-agent-frontend/.claude/skills/` so project-scoped skills are found.
+
+**`grader.py`** (`~/.claude/scripts/grader.py`)
+LLM grader for qualitative assertions. Reads the saved output file for a given skill and test case, constructs a grading prompt from the rubric in evals.json, calls the Anthropic API with a different model than the one that ran the skill (Haiku grades Sonnet output), and parses `<result>pass</result>` or `<result>fail</result>` from the response. Reasoning is surfaced via `<thinking>` tags before the verdict.
+
+**`watch-evals.py`** (`~/.claude/scripts/watch-evals.py`)
+File-system watcher. Uses watchdog to monitor all SKILL.md files across both personal and project skill directories. On save, debounces 1.5s, then triggers eval-runner.py for that skill. Prints pass/fail inline. Supports `--no-run` to re-assert without API calls and a positional skill-name argument to narrow scope to one skill. Updated to watch both `~/.claude/skills/` and `~/crypto-agent-frontend/.claude/skills/` in the same observer.
+
+**`session-import.py`** (`~/.claude/scripts/session-import.py`)
+Utility to import pre-generated agent output into the workspace. Takes a skill name, test case ID, and file path (or stdin via `-`), writes the text to the next workspace iteration, then runs assertions immediately. This is the glue for Option B workflows where Claude Code spawns agents and captures their output outside the eval-runner subprocess.
+
+One file was committed with CI green.
+
+---
+
+### 2. Prompting Feedback
+
+The overall direction was clear: build a complete eval pipeline for personal and project-scoped skills. That said, several prompts in this session left decisions underspecified that required unnecessary back-and-forth.
+
+The most costly example: the initial prompt said "build eval infrastructure" without specifying whether eval-runner.py should call the Anthropic API directly or use the `claude` CLI binary. This required a clarifying exchange that added a round-trip. The choice matters practically (API key vs. subscription billing, subprocess environment setup) and should have been stated upfront: "use `claude -p` with the subscription, not a raw API call."
+
+Similarly, "build watch-evals.py" did not specify whether it should watch personal skills only or both personal and project-scoped skills. The scope was implicit in the rest of the session's context, but the prompt didn't name it. This caused a partial implementation that had to be patched when a project-scoped skill wasn't being detected.
+
+A smaller issue: "add a --save-output flag" for Option B was prompted mid-session after Option A (spawn via Agent tool) was already working. If both options had been specified at the start, the flag could have been designed alongside the core runner rather than retrofitted. The retrofit was clean but required re-reading the existing code to find the right insertion point.
+
+---
+
+### 3. Efficiency Feedback
+
+The biggest wasted step this session was implementing `load_skill()` twice: once in eval-runner.py without project-scoped support, and then again with it after the first implementation failed to find a project skill. This was a predictable requirement. The session context established early that some skills live in `crypto-agent-frontend/.claude/skills/` and some in `~/.claude/skills/`. The correct implementation was to check both from the start. Instead, the first pass only checked the personal directory, hit a "skill not found" error during a live test, then patched in the `PROJECT_SKILL_DIRS` list. Cost: one extra file-read cycle and a full re-run of the affected test case.
+
+The same issue hit watch-evals.py separately: it was written initially without project skill support, then updated in a second pass. These two files share the same skill-discovery logic. A helper function extracted to a shared `skill_utils.py` module would have prevented the duplication entirely, though the session correctly avoided premature abstraction given only two files use it. Still, writing the correct multi-directory logic once would have been faster than writing it wrong twice.
+
+A smaller inefficiency: the watchdog import check at the top of watch-evals.py used `watchdog.__version__` to test availability. This raised `AttributeError` on the installed version (3.0.0 removes `__version__`). The correct check is a direct import of the component class. This required a debug cycle that a `from watchdog.observers import Observer` guard would have caught immediately.
+
+---
+
+### 4. Learnings
+
+**Skill directory search order matters and should be established once.** Both eval-runner.py and watch-evals.py need to know where to find skills. The right pattern: define `PROJECT_SKILL_DIRS` as a list constant at the top of each file, then iterate `[SKILLS_DIR] + PROJECT_SKILL_DIRS` in any discovery function. Adding a new project in the future is a one-line change to the constant.
+
+**`claude -p` inside a Claude Code session needs two env vars cleared.** Running the claude CLI as a subprocess from within an active Claude Code session fails unless `CLAUDECODE` and `CLAUDE_CODE_ENTRYPOINT` are removed from the environment. Add `env.pop("CLAUDECODE", None); env.pop("CLAUDE_CODE_ENTRYPOINT", None)` before the subprocess call. This is non-obvious and took a debug cycle to discover.
+
+**Option B (`--save-output`) is the right default for eval runs inside Claude Code.** Option A (using `claude -p` in a subprocess) works but burns a subprocess spawn, requires env var juggling, and can hit permission prompts. Option B (agent spawns the eval content, pipes output to `--save-output`) keeps execution inside the subscription and avoids subprocess complexity. For future eval runs, default to Option B.
+
+**watchdog 3.0.0 drops `__version__`.** Test availability with a class import, not `.__version__`. Use: `from watchdog.observers import Observer` in a try/except block.
+
+**Qualitative assertions in evals.json require a separate grader run.** The eval-runner.py skips qualitative assertions with status "SKIP" and a note. The grader.py handles them separately. This is correct behavior but means a full eval pass requires two commands: `eval-runner.py <skill>` then `grader.py <skill>`. Consider adding a `--grade` flag to eval-runner.py that calls grader.py automatically for qualitative assertions after the code-based ones pass.
+
+---
+
+### 5. MEMORY.md / CLAUDE.md Updates Needed
+
+**Add to MEMORY.md under "Claude Code Infrastructure":**
+
+```
+- **Eval pipeline:** eval-runner.py, grader.py, watch-evals.py, session-import.py in ~/.claude/scripts/. Skills found in ~/.claude/skills/ and ~/crypto-agent-frontend/.claude/skills/. Option B (--save-output) preferred inside Claude Code sessions.
+- **claude subprocess env:** Pop CLAUDECODE and CLAUDE_CODE_ENTRYPOINT before any claude CLI subprocess call.
+```
+
+**Update the existing Claude Code Infrastructure line in MEMORY.md:**
+The current line says "5 skills. 11 hookify rules. 4 path-scoped rules." After adding the eval scripts, add: "4 eval scripts (eval-runner, grader, watch-evals, session-import)."
+
+**No CLAUDE.md changes are required** from this session. All eval pipeline details belong in MEMORY.md, not project CLAUDE.md, since the eval scripts are global infrastructure, not project-specific.
+
+---
+
+### 6. Open Items
+
+**grader.py integration with eval-runner.py.** The grader is a separate script today. A `--grade` flag on eval-runner.py that automatically invokes grader.py for qualitative assertions would make the eval loop single-command. Not urgent but reduces friction.
+
+**Sarah transcript baseline for transcript-review.** The second test case in transcript-review's evals.json references a ground-truth transcript from Sarah's onboarding call. The URL or file path hasn't been provided yet. This test case cannot produce a meaningful baseline until that transcript is available.
+
+**Eval coverage for all 9 skills.** The eval scripts are built; evals.json files exist for all skills; baselines for qa-review and transcript-review are in workspace. Baselines for the remaining 7 skills (vela-ads, last30days, vela-debug, vela-qa, vela-session, vela-ship, vela-frontend-qa) still need to be generated and saved.
+
+**`skills-eval-criteria.md` "Last eval run" column.** The table shows "Never" for most skills. Once baselines are generated, update these dates so the table reflects reality.
+
+**Monthly session retrospection pass** (per skills-evals.md cadence). The last retrospection was 2026-04-22. May retrospection is due. Run the ReadOnly agent scan against recent session transcripts to surface missed trigger phrases and under-triggered skill opportunities.
+
+---
+
+**Proposed MEMORY.md edits for your approval:**
+
+Add under "Claude Code Infrastructure":
+- `**Eval scripts:** eval-runner.py, grader.py, watch-evals.py, session-import.py in ~/.claude/scripts/. Use --save-output (Option B) for eval runs inside Claude Code sessions.`
+- `**claude subprocess env:** Pop CLAUDECODE and CLAUDE_CODE_ENTRYPOINT before any claude CLI subprocess call.`
+
+I can log this session to the Notion Changelog database (`3088414f7d9b8152a806d1109be2af30`) with a summary entry if you'd like. Just confirm and I'll draft the entry.
+
+**Reminder:** Run `vela-end` in terminal to complete interactive Notion logging (decisions + tasks prompts).

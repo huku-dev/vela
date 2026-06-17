@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 0 QA: hold-duration-rule — position-monitor</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --green: #0FE68C;
+    --red: #EF4444;
+    --amber: #F59E0B;
+    --gray: #6B7280;
+    --light-gray: #F3F4F6;
+    --border: #E5E7EB;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    padding: 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+    line-height: 1.55;
+  }
+  h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem; }
+  .meta { color: var(--gray); font-size: 0.85rem; margin-bottom: 2rem; }
+  .summary-bar {
+    display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;
+  }
+  .badge {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 1rem; border-radius: 8px;
+    font-weight: 700; font-size: 0.9rem;
+  }
+  .badge.blocking { background: #FEE2E2; color: #B91C1C; border: 1.5px solid #F87171; }
+  .badge.amber    { background: #FEF3C7; color: #92400E; border: 1.5px solid #FCD34D; }
+  .badge.nit      { background: #F3F4F6; color: #374151; border: 1.5px solid #D1D5DB; }
+  .badge.safe     { background: #D1FAE5; color: #065F46; border: 1.5px solid #6EE7B7; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.blocking { background: #EF4444; }
+  .dot.amber    { background: #F59E0B; }
+  .dot.nit      { background: #9CA3AF; }
+  .dot.safe     { background: #10B981; }
+
+  .verdict-box {
+    border-radius: 10px; padding: 1.25rem 1.5rem;
+    margin-bottom: 2.5rem; border-left: 4px solid var(--red);
+    background: #FEF2F2;
+  }
+  .verdict-box h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: #B91C1C; }
+  .verdict-box p { font-size: 0.9rem; }
+  .verdict-box ul { margin-top: 0.5rem; padding-left: 1.5rem; font-size: 0.9rem; }
+  .verdict-box li { margin-bottom: 0.25rem; }
+
+  h2.section-head {
+    font-size: 1rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--gray);
+    margin-bottom: 1rem; margin-top: 2.5rem;
+    padding-bottom: 0.3rem; border-bottom: 1px solid var(--border);
+  }
+  .finding {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .finding-header {
+    display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.75rem;
+  }
+  .severity-pill {
+    flex-shrink: 0; font-size: 0.72rem; font-weight: 700;
+    padding: 0.2rem 0.6rem; border-radius: 4px; margin-top: 0.15rem;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sev-blocking { background: #FEE2E2; color: #B91C1C; }
+  .sev-amber    { background: #FEF3C7; color: #92400E; }
+  .sev-nit      { background: #F3F4F6; color: #374151; }
+  .finding-title { font-weight: 700; font-size: 0.97rem; }
+  .ref {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.8rem; background: #F3F4F6;
+    padding: 0.1rem 0.4rem; border-radius: 4px;
+    color: #374151; margin-top: 0.15rem; display: inline-block;
+  }
+  .finding-body { font-size: 0.88rem; }
+  .finding-body p { margin-bottom: 0.6rem; }
+  .finding-body strong { font-weight: 700; }
+  .finding-body code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.82rem; background: #F3F4F6;
+    padding: 0.1rem 0.35rem; border-radius: 3px; color: #1F2937;
+  }
+  pre {
+    background: #1F2937; color: #F9FAFB;
+    border-radius: 8px; padding: 1rem 1.25rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.79rem; overflow-x: auto; margin: 0.6rem 0;
+    line-height: 1.5;
+  }
+  .fix-box {
+    background: #F0FDF4; border: 1px solid #A7F3D0;
+    border-radius: 6px; padding: 0.75rem 1rem;
+    margin-top: 0.75rem;
+  }
+  .fix-box .fix-label {
+    font-size: 0.73rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: #065F46; margin-bottom: 0.3rem;
+  }
+  .fix-box p { font-size: 0.87rem; margin: 0; }
+  .finding-body ul { padding-left: 1.4rem; margin: 0.5rem 0; }
+  .finding-body li { margin-bottom: 0.3rem; }
+
+  .safe-section {
+    background: #F0FDF4; border: 1px solid #A7F3D0;
+    border-radius: 10px; padding: 1rem 1.5rem; margin-bottom: 1rem;
+  }
+  .safe-section h3 { font-size: 0.9rem; font-weight: 700; color: #065F46; margin-bottom: 0.4rem; }
+  .safe-section p { font-size: 0.88rem; }
+  .safe-section ul { font-size: 0.88rem; padding-left: 1.4rem; }
+  .safe-section li { margin-bottom: 0.2rem; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA: hold-duration-rule</h1>
+<p class="meta">
+  Adversarial pre-implementation review &bull; position-monitor/index.ts &bull;
+  Reviewer: independent subagent (no author context) &bull; 2026-06-17
+</p>
+
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+  <div class="badge blocking"><div class="dot blocking"></div> Blocking: 3</div>
+  <div class="badge amber"><div class="dot amber"></div> Worth-a-look: 5</div>
+  <div class="badge nit"><div class="dot nit"></div> Nit: 2</div>
+  <div class="badge safe"><div class="dot safe"></div> Safe/confirmed: 4</div>
+</div>
+
+<!-- VERDICT -->
+<div class="verdict-box">
+  <h2>Verdict: NOT safe to implement as sketched</h2>
+  <p>
+    The architectural placement and hold-time math are sound. However three design gaps
+    must be resolved before writing a single line of production code:
+  </p>
+  <ul>
+    <li><strong>The close flow is underspecified.</strong> The sketch says "close position" but the full stop-loss flow has 11 steps. Missing any one (TP cancel, spot proceeds transfer, EMA cooldown, postmortem, notification) will leave the system in a broken state or silently skip user comms.</li>
+    <li><strong>Position-type scope is unguarded.</strong> Without an explicit <code>position_type === "main"</code> guard, the rule fires on BB2 and BB2_30m positions that have their own expiry mechanism already — creating a double-close race.</li>
+    <li><strong>No counter and no kill switch.</strong> The rule will fire silently with no observability and no rollback path. Both are required before deploy per the project's safety standards.</li>
+  </ul>
+  <p style="margin-top:0.75rem;">
+    The underlying data pattern is real and the fix direction is correct.
+    Resolve the three items above (all addressable in the design phase), then proceed to implementation.
+  </p>
+</div>
+
+<!-- ── BLOCKING ── -->
+<h2 class="section-head">Blocking</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-blocking">Blocking</span>
+    <div>
+      <div class="finding-title">B1 — Close flow is underspecified: 7 of 11 steps are missing from the sketch</div>
+      <span class="ref">index.ts:1586–1760 (stop_loss close reference)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The stop-loss close path (lines 1586–1760) does 11 things after <code>checkStopLoss()</code> returns true. The sketch only says "close position." The BB2 expiry path (lines 1764–1919) is the closest architectural analog for a hold-time close and performs all the same steps. Steps that must be present for the hold-duration close and are absent from the sketch:</p>
+    <ul>
+      <li><strong>Cancel native SL trigger order</strong> (<code>exchange_sl_order_id</code>) before placing the market close, or HL will double-fill. Applies to perps and spot. (line 1600–1608)</li>
+      <li><strong>Cancel native TP trigger orders</strong> (<code>exchange_tp_order_ids</code>) before close, or orphaned TP orders will remain on HL. (line 1612–1617). Main positions can have native TPs; BB2 cannot. This step is explicitly needed for main positions.</li>
+      <li><strong>Spot vs perp close branch</strong>: spot uses <code>placeSpotOrder</code>, perps use <code>placeOrder(..., reduceOnly: true)</code>. Missing the branch causes a wrong order type for spot. (line 1621–1637)</li>
+      <li><strong>Spot proceeds transfer</strong>: if <code>isSpot &amp;&amp; fill_price &amp;&amp; fill_size</code>, call <code>adapter.transferUSDC(proceeds, true)</code> to move proceeds from spot sub-account back to perp sub-account. Skipping this leaves funds stranded. (line 1641–1646)</li>
+      <li><strong>EMA cooldown upsert</strong>: stop-loss and untracked-fill paths both upsert <code>ema_cooldowns</code> for <code>position_type === "main"</code> (line 1736–1752). A hold-duration close on a failed main position should also set the EMA cooldown, otherwise the strategy will immediately re-enter the same direction on the next 4H cycle. The existing EMA cooldown comment says "prevent re-entry in same direction after stop-loss" — a 72h hold-duration close is economically equivalent to a delayed stop-loss.</li>
+      <li><strong>Postmortem</strong>: <code>recordPostmortem</code> (fire-and-forget) must be called for analytics. All close paths call it. (line 1679–1688)</li>
+      <li><strong>Admin Telegram</strong>: all close paths send an <code>sendAdminTelegram</code> notification. The hold-duration rule needs one too or it fires silently. (line 1710–1715)</li>
+    </ul>
+    <p>Steps that DO NOT apply to hold-duration (only to stop-loss): the circuit-breaker <code>stopLosses</code> counter increment and the <code>bb2_cooldowns</code> upsert (BB2 positions are excluded — see B2).</p>
+    <p>The closest complete reference to clone from is the BB2 expiry flow, lines 1764–1919, which handles all of the above for a time-based close on any position type.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Before writing code, enumerate explicitly which of the 11 steps apply and draft the full close sequence. Do not write a partial close — use the BB2 expiry block (lines 1764–1919) as a structural template. Confirm that EMA cooldown is set for main positions.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-blocking">Blocking</span>
+    <div>
+      <div class="finding-title">B2 — No position_type guard: rule fires on bb2 and bb2_30m positions</div>
+      <span class="ref">index.ts:1764–1919 (BB2 expiry path); proposed insertion ~line 1941</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The sketch has no <code>position_type</code> filter. BB2 and BB2_30m positions already have their own hold-time expiry checked at lines 1764–1919. A BB2_30m position that has held 72h will have already been closed by the existing <code>hoursHeld &gt;= BB2_30M_HOLD_HOURS (16h)</code> check. But a BB2 (4H) position has a 48h limit (BB2_HOLD_DAYS=2, line 1102 in tests). If a BB2_4H close fails (network error, deregistration), the position stays open, <code>continue</code> is NOT hit (only hit on success, line 1909), and the loop falls through to line 1921. At 72h, an unguarded hold-duration check would then fire a second close attempt on an already-partially-processed BB2 expiry.</p>
+    <p>More critically: the production data analysis explicitly states the 0% win rate was for <code>position_type = 'main'</code> positions. BB2 positions were excluded from the qualifying set. The rule was designed for EMA/main positions only.</p>
+    <pre>// Proposed sketch — MISSING guard:
+if (holdH &gt;= 72 &amp;&amp; peakPnl &lt; 0.5) { ... }
+
+// Required:
+if (pos.position_type === "main" &amp;&amp; holdH &gt;= 72 &amp;&amp; peakPnl &lt; 0.5) { ... }</pre>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Add <code>pos.position_type === "main"</code> as the first condition in the guard. This both matches the intent (the rule is evidence-based on main positions only) and prevents any interaction with the existing BB2 expiry logic.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-blocking">Blocking</span>
+    <div>
+      <div class="finding-title">B3 — No observability counter and no kill switch</div>
+      <span class="ref">index.ts:400–412 (result object counters); line 2552–2561 (return)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The <code>processUserPositions</code> return object (line 2552) tracks <code>stop_losses</code>, <code>trailing_stops</code>, <code>ladder_trims</code>, <code>native_tp_fills</code>. There is no <code>hold_duration_closes</code> counter. If the rule fires on a user's position, the operations team has no signal: the counter is not reported, no admin alert exists in the sketch, and <code>logAudit</code> (required anyway per B1) uses a free-text <code>action</code> string that isn't aggregated anywhere automatically.</p>
+    <p>Additionally, there is no env-var kill switch. Every other non-trivial behavior in position-monitor either has a safety gate (the E2E triple-gate, the <code>failedDexes</code> skip, the <code>spotBalanceFetchFailed</code> skip) or is guarded by a position-type check that doubles as a config parameter (BB2 expiry is off for main positions). A new irreversible close path has no rollback mechanism other than a re-deploy.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Add a <code>hold_duration_closes: number</code> field to the return type and increment it on each successful close. Add <code>HOLD_DURATION_RULE_ENABLED</code> env var (defaults to false on deploy, flip to true after first staging validation). The Sentry capture / admin Telegram (already required by B1) provide the alerting.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── WORTH A LOOK ── -->
+<h2 class="section-head">Worth a Look</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-amber">Worth a Look</span>
+    <div>
+      <div class="finding-title">W1 — peakPnl (in-memory) vs pos.trailing_stop_peak_pnl_pct (DB): which to use?</div>
+      <span class="ref">index.ts:1929 (peakPnl assignment); line 59 (field type)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>At line 1929: <code>const peakPnl = Math.max(pos.trailing_stop_peak_pnl_pct ?? 0, unrealizedPnlPct)</code>. This is the current-tick in-memory peak — it is always <code>&gt;=</code> the DB value because it incorporates this tick's price. Using in-memory <code>peakPnl</code> for the 0.5% threshold is strictly correct and strictly safer than the DB value: it gives the position one more tick of benefit-of-the-doubt. If the position hits exactly 0.5% on this tick, <code>peakPnl &gt;= 0.5</code> and it survives — the rule only fires if the current tick is also below 0.5%.</p>
+    <p>The risk is the inverse: using DB-only <code>pos.trailing_stop_peak_pnl_pct</code> could fire even if the position is currently at 0.6%, because the DB may lag one tick. The proposed in-memory value is the right choice. Just confirm the author is aware of this distinction and has not accidentally written <code>pos.trailing_stop_peak_pnl_pct &lt; 0.5</code> instead of <code>peakPnl &lt; 0.5</code>.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Confirm the condition uses in-memory <code>peakPnl</code>, not <code>pos.trailing_stop_peak_pnl_pct</code>. Add a code comment explaining the choice.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-amber">Worth a Look</span>
+    <div>
+      <div class="finding-title">W2 — BB2 continue path at line 1788 can leave a hold-time-expired BB2 position in the loop past the proposed insertion point</div>
+      <span class="ref">index.ts:1783–1789 (upgrade_close in-flight guard); ~line 1941 (proposed insertion)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The BB2 expiry block (line 1769) has an in-flight upgrade_close guard (line 1783–1789) that fires a <code>continue</code> to skip to the next position. If a BB2 position that is beyond its expiry limit has an in-flight upgrade_close, it skips the BB2 expiry close and falls through to line 1921 — the trailing stop section — and then to the proposed insertion point at ~1941.</p>
+    <p>With a missing <code>position_type === "main"</code> guard (B2), this would let the hold-duration rule fire on a BB2 position that has a pending upgrade_close, creating a race condition with a proposal in-flight. The B2 fix (adding the position_type guard) completely eliminates this path. This is a reinforcing argument for B2, not a separate blocking issue.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Resolved entirely by fixing B2 (adding position_type === "main" guard). No separate action needed if B2 is addressed.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-amber">Worth a Look</span>
+    <div>
+      <div class="finding-title">W3 — reasonLabels map in notifyUserPositionClosed does not include "hold_duration_rule"</div>
+      <span class="ref">index.ts:211–217 (reasonLabels); tests line 230 (fallback test)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The <code>notifyUserPositionClosed</code> function uses a <code>reasonLabels</code> map (line 211) to convert internal close reasons to user-readable strings. The current entries are <code>stop_loss</code>, <code>bb2_expiry</code>, <code>trailing_stop</code>, <code>liquidation</code>. The fallback at line 217 is <code>reasonLabels[closeReason] ?? closeReason</code>, so a missing entry shows the raw string <code>"hold_duration_rule"</code> to the user — internal terminology leaking into a user-facing message.</p>
+    <p>The existing test at line 230 checks that the fallback path works (raw string falls through), but there is no test asserting that <code>hold_duration_rule</code> maps to a plain-English label. The voice rule (knowledgeable-friend tone, no jargon) requires this.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Add <code>hold_duration_rule: "Position closed — signal did not develop within expected timeframe"</code> (or equivalent plain-English label) to <code>reasonLabels</code>. Add a test asserting this mapping exists. Do not expose the internal reason name to users.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-amber">Worth a Look</span>
+    <div>
+      <div class="finding-title">W4 — Close failure path: if placeOrder fails, no continue fires, loop falls to profit ladder</div>
+      <span class="ref">index.ts:1753–1759 (BB2 expiry failure path); proposed implementation</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>Every successful close path in position-monitor fires a <code>continue</code> to skip subsequent checks. The BB2 expiry <code>else</code> block (line 1910–1916) only logs the error — it does NOT fire a <code>continue</code>. This means if the BB2 expiry close fails, the position falls through to the trailing stop checks. The same will happen to the hold-duration rule if not explicitly handled.</p>
+    <p>For the hold-duration rule: if the market close fails (e.g. HL timeout), the rule should log the failure and then <code>continue</code> — skipping the profit ladder — because the position is in a degraded state where we already decided to close it. Falling through to the profit ladder after a failed close attempt would execute partial trims on a position we intended to fully close.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>In the failure path of the hold-duration close, add <code>continue</code> after the error log (do not fall through to profit ladder). Match the behavior of the stop-loss failure path at line 1753–1760.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-amber">Worth a Look</span>
+    <div>
+      <div class="finding-title">W5 — opened_at is non-nullable but DB may return a different fallback for legacy rows</div>
+      <span class="ref">index.ts:62 (opened_at: string); index.ts:1765 (BB2 expiry uses pos.opened_at directly)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p><code>opened_at</code> is typed as <code>string</code> (non-nullable, line 62). The BB2 expiry code at line 1765 uses <code>new Date(pos.opened_at).getTime()</code> with no null guard. The author's sketch uses <code>pos.opened_at ?? pos.created_at</code>, which implies concern about null — but the type says it's never null.</p>
+    <p>Check the DB query that populates positions: if there are legacy rows where <code>opened_at</code> was never backfilled (e.g. positions opened before the column existed), the TypeScript non-null type would be wrong and <code>new Date(undefined)</code> returns NaN, making <code>holdH</code> NaN and the <code>&gt;= 72</code> check silently false (never fires). This is low risk for new positions but worth confirming via a one-time query before deploy.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Run <code>SELECT COUNT(*) FROM positions WHERE opened_at IS NULL AND status = 'open'</code> against production before deploy. If any rows exist, either add the <code>?? pos.created_at</code> fallback and assert it aligns with the BB2 expiry approach, or backfill the nulls in a migration. Either way match the null-handling to what BB2 expiry does on line 1765.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── NITS ── -->
+<h2 class="section-head">Nits</h2>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-nit">Nit</span>
+    <div>
+      <div class="finding-title">N1 — Test coverage: no FEATURE-ADV test for hold_duration_rule close reason in notifyUserPositionClosed</div>
+      <span class="ref">position-monitor.test.ts:257–263 (existing close-path tests)</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>Every existing close path has a test asserting <code>notifyUserPositionClosed</code> is called with the right reason string (lines 238–263). The hold-duration rule needs one too. Without it, a refactor that renames <code>"hold_duration_rule"</code> to <code>"hold_duration"</code> would silently break user notifications. The existing test at line 267–274 also counts all notification calls (&ge;6) — adding a 7th call path needs that count updated.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Add a <code>CLOSE-NOTIFY-ADV</code> test asserting the hold_duration_rule path calls <code>notifyUserPositionClosed(..., "hold_duration_rule")</code>. Update the fire-and-forget count test if needed.</p>
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <span class="severity-pill sev-nit">Nit</span>
+    <div>
+      <div class="finding-title">N2 — run-signals vs position-monitor: placement is correct, but document why</div>
+      <span class="ref">CLAUDE.md: "Diagrams for non-trivial flows. Stale diagrams are worse than none."</span>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>Position-monitor is the right place for this rule (runs every ~2 minutes vs run-signals every 4 hours — a 72h rule checked only every 4h has up to a 4h detection window beyond 72h). This is correct. But the commit should include a comment explaining why run-signals was rejected, so the next engineer doesn't move it.</p>
+    <div class="fix-box">
+      <div class="fix-label">Required action</div>
+      <p>Add a one-line comment above the guard block: "In position-monitor (not run-signals) so the detection window is &lt;2 min, not up to 4h."</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── SAFE / CONFIRMED ── -->
+<h2 class="section-head">Safe / Confirmed</h2>
+
+<div class="safe-section">
+  <h3>Placement after line 1941 is correct</h3>
+  <p>The stop-loss check (line 1589) fires a <code>continue</code> at line 1760 when it successfully closes. The BB2 expiry block (line 1764) fires <code>continue</code> at line 1909. Both skip to the next position before reaching line 1941. Any position that reaches the proposed insertion point has passed SL and BB2 expiry checks, which is the correct ordering: hard stops before time-based exits. No other <code>continue</code> between lines 1589 and 1921 would skip a main position on a normal tick.</p>
+</div>
+
+<div class="safe-section">
+  <h3>NULL peak / new position: holdH guard fully protects</h3>
+  <p>A position with <code>trailing_stop_peak_pnl_pct = null</code> evaluates <code>peakPnl = Math.max(0, unrealizedPnlPct)</code>. If <code>unrealizedPnlPct &lt; 0.5</code>, then <code>peakPnl &lt; 0.5</code> is true. However, a new position cannot be 72 hours old, so <code>holdH &gt;= 72</code> is always false for it. The guard is safe. No new position will be incorrectly closed. <code>opened_at</code> is typed <code>string</code> (non-nullable), so <code>new Date(pos.opened_at)</code> is valid for all positions that pass TypeScript checks.</p>
+</div>
+
+<div class="safe-section">
+  <h3>Trailing stop interaction: 0.5% is far below activation thresholds</h3>
+  <p>Crypto trailing stop activation is 5.0% (line 87), non-crypto is 3.0% (line 88). Both are 6–10x above the 0.5% peak threshold. A position with <code>peakPnl &lt; 0.5%</code> has never come close to trailing activation, so there is no race condition: the hold-duration rule at 0.5% and trailing stop at 5%/3% operate in entirely separate regimes. The proposed ordering (hold-duration check after peak update, before trailing stop logic) is correct.</p>
+</div>
+
+<div class="safe-section">
+  <h3>Partial ladder positions: close is safe on remaining size</h3>
+  <p><code>pos.size</code> and <code>pos.size_usd</code> are updated in-memory by the native TP fill detection block (lines 1571–1574) before we reach line 1921. Any close placed using <code>pos.size</code> at the insertion point reflects the post-trim size. The close flow for all existing paths uses <code>pos.size</code> and <code>pos.size_usd</code> — they are kept current. Trimmed positions are safe to close with the standard flow.</p>
+</div>
+
+<!-- SECTION: CHECKLIST FOR IMPLEMENTATION -->
+<h2 class="section-head">Resolved Design Checklist (before writing code)</h2>
+<div class="finding" style="border-left: 4px solid #6B7280;">
+  <div class="finding-body">
+    <p>All items must be resolved before implementation starts:</p>
+    <ul>
+      <li>[B1] Define the full close sequence: SL cancel, TP cancel, spot vs perp branch, spot proceeds transfer, EMA cooldown (main only), postmortem, admin Telegram, user notification, logAudit.</li>
+      <li>[B2] Add <code>pos.position_type === "main"</code> as first condition.</li>
+      <li>[B3] Add <code>hold_duration_closes</code> counter to return object and add <code>HOLD_DURATION_RULE_ENABLED</code> env var defaulting false.</li>
+      <li>[W1] Confirm condition uses in-memory <code>peakPnl</code>, not DB field.</li>
+      <li>[W3] Add <code>hold_duration_rule</code> to <code>reasonLabels</code> with plain-English user message.</li>
+      <li>[W4] Add <code>continue</code> in the close-failure path.</li>
+      <li>[W5] Query prod for <code>opened_at IS NULL</code> open positions before deploy.</li>
+      <li>[N1] Add FEATURE-ADV test for the new close path and notification.</li>
+      <li>[N2] Add comment explaining position-monitor over run-signals.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

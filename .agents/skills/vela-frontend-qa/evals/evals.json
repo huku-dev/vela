@@ -1,0 +1,73 @@
+{
+  "skill_name": "vela-frontend-qa",
+  "evals": [
+    {
+      "id": 0,
+      "name": "seeded-violations-detection",
+      "prompt": "QA review this React component for design token violations before committing. Read and assess the file at:\n\n/Users/henry/crypto-agent-frontend/.claude/skills/vela-frontend-qa/evals/fixtures/seeded-violations.tsx\n\nProduce a pre-commit checklist with PASS/FAIL per item.",
+      "expected_output": "Checklist catching all 4 seeded violations: hardcoded hex color, signal color misuse (green used for 'Confirmed' badge), raw MUI Button, missing ARIA label on dismiss button.",
+      "files": ["fixtures/seeded-violations.tsx"],
+      "assertions": [
+        {
+          "name": "hardcoded_color_flagged",
+          "description": "Hardcoded hex (#0FE68C) detected as a violation",
+          "type": "qualitative",
+          "rubric": "Pass if the output explicitly flags the hardcoded hex color #0FE68C (or describes a hardcoded backgroundColor) as a violation that must be replaced with a design token. Fail if no hardcoded color issue is mentioned."
+        },
+        {
+          "name": "signal_color_misuse_flagged",
+          "description": "Signal green used for 'Confirmed' badge (non-signal use) detected",
+          "type": "qualitative",
+          "rubric": "Pass if the output flags the use of --color-signal-buy (signal green) on the 'Confirmed' badge text as a misuse — signal colors are reserved for BUY/SELL/WAIT signal indicators only. Fail if this specific misuse is not identified."
+        },
+        {
+          "name": "raw_mui_button_flagged",
+          "description": "Raw MUI <Button> (instead of VelaButton) detected",
+          "type": "regex_match",
+          "pattern": "(?i)(raw MUI|<Button|MUI Button|VelaButton|VelaComponents|replace.*Button)"
+        },
+        {
+          "name": "missing_aria_flagged",
+          "description": "Missing ARIA label on dismiss button detected",
+          "type": "regex_match",
+          "pattern": "(?i)(aria|a11y|accessibility|aria-label|missing label)"
+        },
+        {
+          "name": "checklist_format_present",
+          "description": "Output uses a checklist format with at least 3 items",
+          "type": "regex_count",
+          "pattern": "(?m)(^[-*] \\[[ x]\\]|- (PASS|FAIL)|✓|✗|\\bPASS\\b|\\bFAIL\\b)",
+          "min_count": 3
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "clean-component-no-false-positives",
+      "prompt": "QA review this React component for design token violations before committing. Read and assess the file at:\n\n/Users/henry/crypto-agent-frontend/.claude/skills/vela-frontend-qa/evals/fixtures/clean-component.tsx\n\nProduce a pre-commit checklist with PASS/FAIL per item.",
+      "expected_output": "Checklist with all items PASS. The component is intentionally clean: semantic tokens throughout, VelaButton, ARIA labels, correct signal color semantics.",
+      "files": ["fixtures/clean-component.tsx"],
+      "assertions": [
+        {
+          "name": "clean_component_passes",
+          "description": "Clean component produces zero must-fix violations",
+          "type": "qualitative",
+          "rubric": "Pass if the output gives an overall PASS verdict (or all checklist items pass) for the clean-component fixture. The SignalBadge component uses semantic tokens, VelaButton, ARIA labels, and correct signal color semantics. Fail if any item is flagged as a must-fix or blocker — those would be false positives on clean code."
+        },
+        {
+          "name": "checklist_still_present",
+          "description": "Checklist still produced for clean code (not skipped)",
+          "type": "regex_count",
+          "pattern": "(?m)(^[-*] \\[[ x]\\]|- (PASS|FAIL)|✓|✗|\\bPASS\\b)",
+          "min_count": 3
+        },
+        {
+          "name": "no_em_dashes_in_output",
+          "description": "No em dashes in the QA report",
+          "type": "regex_absent",
+          "pattern": "—"
+        }
+      ]
+    }
+  ]
+}

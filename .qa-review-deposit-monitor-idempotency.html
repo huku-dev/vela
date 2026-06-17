@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 1 QA — Deposit Monitor Idempotency Fix</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #e8e8e8; padding: 32px; line-height: 1.6; }
+  h1 { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .meta { color: #888; font-size: 13px; margin-bottom: 28px; }
+
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 36px; flex-wrap: wrap; }
+  .badge { padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 15px; }
+  .badge.red    { background: #3a0a0a; border: 1px solid #c0392b; color: #e74c3c; }
+  .badge.amber  { background: #2a1a00; border: 1px solid #d68910; color: #f39c12; }
+  .badge.gray   { background: #1a1a1a; border: 1px solid #555; color: #aaa; }
+  .badge.green  { background: #0a2a0a; border: 1px solid #1e8449; color: #2ecc71; }
+
+  /* Sections */
+  .section { margin-bottom: 36px; }
+  .section-title { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #2a2a2a; }
+  .section-title.red   { color: #e74c3c; border-color: #c0392b; }
+  .section-title.amber { color: #f39c12; border-color: #d68910; }
+  .section-title.gray  { color: #aaa; border-color: #444; }
+  .section-title.green { color: #2ecc71; border-color: #1e8449; }
+
+  /* Finding cards */
+  .finding { background: #111; border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; border-left: 4px solid; }
+  .finding.red   { border-color: #e74c3c; }
+  .finding.amber { border-color: #f39c12; }
+  .finding.gray  { border-color: #555; }
+  .finding.green { border-color: #2ecc71; }
+
+  .finding-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 12px; }
+  .finding-num { font-weight: 700; font-size: 15px; color: #fff; flex-shrink: 0; }
+  .finding-loc { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #888; background: #1a1a1a; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; }
+
+  .finding h3 { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 10px; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-top: 12px; margin-bottom: 4px; }
+  .finding p { font-size: 14px; color: #ccc; }
+  code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; background: #1a1a1a; padding: 2px 6px; border-radius: 3px; color: #e8e8e8; }
+  pre { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; background: #1a1a1a; padding: 12px 16px; border-radius: 6px; color: #e8e8e8; overflow-x: auto; margin: 8px 0; white-space: pre-wrap; }
+  .action { font-size: 14px; color: #fff; font-weight: 600; }
+  .action.red   { color: #e74c3c; }
+  .action.amber { color: #f39c12; }
+  .action.green { color: #2ecc71; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA: Deposit Monitor Idempotency Fix</h1>
+<div class="meta">Reviewed 2026-06-12 &bull; Files: deposit-monitor/index.ts, refresh-balance/index.ts, 20260612000001_funding_events_deposit_dedup_index.sql &bull; Reviewer: independent subagent</div>
+
+<!-- SUMMARY BAR -->
+<div class="summary-bar">
+  <div class="badge red">1 Blocking</div>
+  <div class="badge amber">3 Worth a look</div>
+  <div class="badge gray">2 Nit</div>
+  <div class="badge green">4 Safe</div>
+</div>
+
+<!-- BLOCKING -->
+<div class="section">
+  <div class="section-title red">Blocking</div>
+
+  <div class="finding red">
+    <div class="finding-header">
+      <span class="finding-num">B-1</span>
+      <span class="finding-loc">deposit-monitor/index.ts:756-761</span>
+    </div>
+    <h3>dex_transfer idempotency check still queries <code>created_at</code> — the exact bug this PR fixes for deposits</h3>
+
+    <div class="label">Symptom</div>
+    <p>The deposit idempotency bug being fixed is: the query window is derived from <code>transfer.timestamp</code> (on-chain time), but <code>created_at</code> (wall-clock insertion time) is compared against it. When a late-detection path catches the event, <code>created_at</code> falls outside the window and the check returns empty. This PR correctly fixes this for the <em>deposit</em> idempotency check at lines 789-790. But the <strong>dex_transfer check immediately above it (lines 760-761) has exactly the same bug and was left unchanged</strong>.</p>
+
+    <div class="label">Root cause</div>
+    <p>The <code>dex_transfer</code> lookup at line 760-761 still uses <code>.gte("created_at", windowStart).lte("created_at", windowEnd)</code>. The window is computed the same way: <code>transfer.timestamp ± 5 min</code>. If <code>trade-executor</code> logged the <code>dex_transfer</code> row, its <code>created_at</code> is the wall-clock insertion time — which may be minutes away from the on-chain transfer time if there was any processing lag. Result: the dex_transfer check falsely returns nothing, the function classifies the internal margin shuffle as a real deposit, and the user gets a spurious deposit notification and an incorrect <code>funding_events</code> row.</p>
+
+    <div class="label">Evidence</div>
+    <pre>// Lines 755-761 in deposit-monitor/index.ts (unchanged by this PR):
+const { data: dexTransfers } = await supabase
+  .from("funding_events")
+  .select("id, amount_usdc")
+  .eq("user_id", userId)
+  .eq("event_type", "dex_transfer")
+  .gte("created_at", windowStart)   // &lt;-- should be "completed_at"
+  .lte("created_at", windowEnd);    // &lt;-- should be "completed_at"</pre>
+
+    <p>Note: unlike the deposit rows, <code>dex_transfer</code> rows ARE inserted with <code>completed_at</code> set — check <code>trade-executor</code> and the <code>20260407000002_dex_transfer_event_type.sql</code> migration context. If they are, the fix is identical to the deposit fix.</p>
+
+    <div class="label">Action</div>
+    <p class="action red">Change lines 760-761 to <code>.gte("completed_at", windowStart).lte("completed_at", windowEnd)</code> — same fix applied to the deposit check. Verify that <code>trade-executor</code> sets <code>completed_at</code> on <code>dex_transfer</code> inserts before deploying. If <code>trade-executor</code> does NOT set <code>completed_at</code>, document that here and use a different discriminator field.</p>
+  </div>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="section">
+  <div class="section-title amber">Worth a Look</div>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="finding-num">W-1</span>
+      <span class="finding-loc">deposit-monitor/index.ts:727-741 + migrations</span>
+    </div>
+    <h3>Cron schedule is <code>1-56/5</code> (every 5 min), not every 10 min — lookback comment and value are inconsistent</h3>
+
+    <div class="label">Symptom</div>
+    <p>The code comment at line 728-732 says: <em>"deposit-monitor runs every 10 min (pg_cron: 5-59/10)"</em>. The actual cron schedule — confirmed by reading every migration that touches <code>deposit-monitor</code> — is <code>1-56/5</code>, which fires at :01, :06, :11, :16, :21, :26, :31, :36, :41, :46, :51, :56 — i.e. every 5 minutes, 12 times per hour. The last rescheduling migrations (20260403000001, 20260411000001, 20260507000001) all use <code>1-56/5</code>. There is no migration setting the schedule to <code>5-59/10</code>.</p>
+
+    <div class="label">Root cause</div>
+    <p>The code comment cites a schedule string (<code>5-59/10</code>) that does not exist in any migration. The author appears to have misread or reconstructed the schedule from memory. The original bug diagnosis — "deposits in the second 5 minutes of any 10-min interval were permanently missed" — is therefore incorrect. The actual cadence is 5 minutes, not 10.</p>
+
+    <div class="label">Consequence analysis</div>
+    <p>With a 5-min cron and a 12-min lookback, consecutive runs now overlap by 7 minutes (instead of the 2-minute overlap described). A deposit landing anywhere in that 7-minute overlap zone is visible to two consecutive cron runs. The idempotency fix (querying <code>completed_at</code>) is still correct and prevents double-insertion. However, the increase in overlap raises the rate of "second-pass idempotency check" DB reads from ~20% of runs to ~58% of runs — a significant increase in read load per deposit event, though still bounded by deposit frequency.</p>
+    <p>More importantly: if the original bug was <em>really</em> a 5-min lookback on a 5-min cron, there should have been no gap at all (lookback == cadence exactly covers the interval). The described bug may not have existed for the stated reason. The root cause of any real missed deposits was more likely the <code>created_at</code> idempotency bug.</p>
+
+    <div class="label">Action</div>
+    <p class="action amber">Verify the live cron schedule via <code>SELECT jobname, schedule FROM cron.job WHERE jobname = 'deposit-monitor'</code> on production before deploy. Update the code comment to reflect the actual schedule. Consider whether 12 min is still the right lookback given the 5-min cadence (7-min overlap is fine for correctness but is unnecessarily wide).</p>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="finding-num">W-2</span>
+      <span class="finding-loc">20260612000001_funding_events_deposit_dedup_index.sql</span>
+    </div>
+    <h3>Unique index on <code>(user_id, completed_at)</code> will reject two legitimate same-second deposits</h3>
+
+    <div class="label">Symptom</div>
+    <p>The partial unique index is defined as <code>UNIQUE (user_id, completed_at) WHERE event_type = 'deposit' AND completed_at IS NOT NULL</code>. Two deposits arriving at exactly the same millisecond (or within the same timestamp resolution) for the same user would produce two rows with identical <code>user_id</code> and <code>completed_at</code>, which the index would reject as a duplicate. The DB would raise a unique-constraint violation, the insert would fail, and the second deposit would never be logged or notified.</p>
+
+    <div class="label">How realistic is this?</div>
+    <p>HL's <code>userNonFundingLedgerUpdates</code> returns timestamps in millisecond precision (<code>item.time</code> is an integer ms epoch). Two external deposits landing at the exact same millisecond is extremely rare in practice. However, a HL-to-HL <code>usdSend</code> (type=send) from two different senders to the same recipient <em>could</em> share the same ms timestamp if they were batched in the same HL block. This index would then permanently suppress logging of the second deposit for that user, with no error surfaced to the user.</p>
+
+    <div class="label">Action</div>
+    <p class="action amber">Add <code>amount_usdc</code> to the index definition: <code>UNIQUE (user_id, completed_at, amount_usdc) WHERE event_type = 'deposit' AND completed_at IS NOT NULL</code>. This reduces the collision surface to same-user, same-second, same-amount, which is near-zero. It does slightly weaken the defense-in-depth guarantee against the exact-duplicate case, but the exact-duplicate case is already prevented by the application-level idempotency check. Alternatively, keep the current index and accept the theoretical risk, but document it explicitly.</p>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="finding-num">W-3</span>
+      <span class="finding-loc">deposit-monitor/index.ts:789-790 / refresh-balance/index.ts:316-317</span>
+    </div>
+    <h3><code>completed_at IS NULL</code> on existing rows silently bypasses the idempotency check</h3>
+
+    <div class="label">Symptom</div>
+    <p>The idempotency check queries <code>.gte("completed_at", windowStart).lte("completed_at", windowEnd)</code>. In PostgreSQL (and PostgREST), comparisons against a NULL value return NULL (neither true nor false). PostgREST translates <code>.gte("completed_at", x)</code> to <code>completed_at &gt;= x</code>, which evaluates to NULL when <code>completed_at IS NULL</code>. That row is excluded from the result. So if an existing deposit row somehow has <code>completed_at = NULL</code>, the idempotency check will not find it — and will insert a duplicate.</p>
+
+    <div class="label">How can this happen?</div>
+    <p>The current code always sets <code>completed_at: transferTime</code> on insert, so new rows should never be null. But historical rows inserted before this fix (when the code ran successfully before any crash mid-insert) could theoretically be null if an insert was partially applied. More concretely: the migration adds a <code>NOT NULL</code> constraint only indirectly via the partial index (which excludes NULLs rather than preventing them). No <code>ALTER COLUMN ... SET NOT NULL</code> is added. So the column remains nullable at the DB level.</p>
+    <p>The partial unique index intentionally excludes <code>NULL completed_at</code> rows (a correct design choice for pending events). But this means the safety net does not apply to any row that slips through with a null completed_at.</p>
+
+    <div class="label">Action</div>
+    <p class="action amber">Verify that no existing <code>funding_events</code> rows of type <code>'deposit'</code> with status <code>'completed'</code> have <code>completed_at IS NULL</code> in production: <code>SELECT COUNT(*) FROM funding_events WHERE event_type = 'deposit' AND status = 'completed' AND completed_at IS NULL</code>. If any exist, backfill them before deploying the migration. Consider adding an explicit <code>NOT NULL</code> constraint on <code>completed_at</code> for completed deposit rows via a CHECK constraint or column constraint.</p>
+  </div>
+</div>
+
+<!-- NITS -->
+<div class="section">
+  <div class="section-title gray">Nit</div>
+
+  <div class="finding gray">
+    <div class="finding-header">
+      <span class="finding-num">N-1</span>
+      <span class="finding-loc">deposit-monitor.test.ts</span>
+    </div>
+    <h3>No test asserts the <code>completed_at</code> column is used for the deposit idempotency check</h3>
+    <p>All existing tests do source-text scanning. The idempotency-related test (<code>DEPOSIT-ADV: detectAndNotifyDeposits is idempotent via funding_events lookup</code>) checks that <code>alreadyLogged</code> appears before the insert, but does not assert that the query uses <code>completed_at</code> rather than <code>created_at</code>. If a future edit accidentally reverts to <code>created_at</code>, no test will catch it.</p>
+    <p class="action">Add a source-scan assertion: <code>src.includes('.gte("completed_at"') && !src.includes('.gte("created_at", windowStart)')</code> inside the idempotency test, or add a new DEPOSIT-ADV test that pins the column name.</p>
+  </div>
+
+  <div class="finding gray">
+    <div class="finding-header">
+      <span class="finding-num">N-2</span>
+      <span class="finding-loc">deposit-monitor/index.ts:728-732 (comment)</span>
+    </div>
+    <h3>Code comment references a cron schedule string that does not exist in any migration</h3>
+    <p>The comment says <code>pg_cron: 5-59/10</code>. The actual schedule is <code>1-56/5</code> (per all resched migrations). This will mislead future readers who try to verify the lookback math. This is a nit if W-1 is addressed (the comment would be corrected as part of that fix), but is worth calling out separately since the comment is wrong on two counts: the schedule string AND the cadence (10 min vs 5 min).</p>
+    <p class="action">Update the comment to cite the real schedule string <code>1-56/5</code> and state the actual cadence (5-minute interval, fires at :01/:06/:11/...).</p>
+  </div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+  <div class="section-title green">Safe</div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="finding-num">S-1</span>
+      <span class="finding-loc">deposit-monitor/index.ts:789-790 / refresh-balance/index.ts:316-317</span>
+    </div>
+    <h3>Core idempotency fix is logically correct</h3>
+    <p>Both callers set <code>completed_at = new Date(transfer.timestamp).toISOString()</code> at insert time. The idempotency window is <code>transfer.timestamp ± 5 min</code>. Querying <code>completed_at</code> against this window correctly finds existing rows regardless of when they were inserted (whether by deposit-monitor, refresh-balance, or a late-detection path hours later). The fix closes the described bug precisely.</p>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="finding-num">S-2</span>
+      <span class="finding-loc">Both callers</span>
+    </div>
+    <h3>Overlap-zone race between consecutive cron runs is handled correctly</h3>
+    <p>With a 12-min lookback and a 5-min cron, any deposit in the 7-minute overlap zone is seen by two consecutive runs. The second run's idempotency check will find the row inserted by the first run (using <code>completed_at</code>), set <code>alreadyLogged = true</code>, and skip. No double-insert or double-notification. The fix is race-safe for the nominal case (one row written before the next run starts).</p>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="finding-num">S-3</span>
+      <span class="finding-loc">20260612000001_funding_events_deposit_dedup_index.sql</span>
+    </div>
+    <h3>Migration is non-destructive and safe to apply to an existing table</h3>
+    <p><code>CREATE UNIQUE INDEX</code> on a live table takes a share lock and builds concurrently if issued as <code>CREATE INDEX CONCURRENTLY</code> (this is a non-concurrent build, so it takes <code>ShareLock</code> — acceptable for a low-traffic table like <code>funding_events</code> at current user count). The partial predicate (<code>WHERE event_type = 'deposit' AND completed_at IS NOT NULL</code>) limits the index scope. No existing rows should violate the uniqueness constraint assuming the application-level idempotency was working before this fix (each user had at most one deposit row per on-chain transfer). No schema reversals or data loss risk.</p>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="finding-num">S-4</span>
+      <span class="finding-loc">deposit-monitor.test.ts / hl-ledger-filter.ts</span>
+    </div>
+    <h3>Existing test suite still passes with the new constants</h3>
+    <p>Tests that hardcode <code>5 * 60_000</code> as a lookback value appear only in the functional filter tests (<code>filterRealInboundTransfers</code> tests use their own inline lookback value, not the one from <code>deposit-monitor</code>). The source-scan tests do not assert a specific lookback constant value, so none will fail due to the <code>5 * 60_000 → 12 * 60_000</code> change. The <code>HL-LEDGER-FILTER</code> functional test does use <code>5 * 60_000</code> as the lookback passed to the function, but that is a local parameter, not the constant from <code>deposit-monitor</code> — no test breakage.</p>
+  </div>
+</div>
+
+</body>
+</html>

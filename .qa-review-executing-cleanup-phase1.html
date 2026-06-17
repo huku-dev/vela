@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: executing-cleanup Phase 1</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; color: #111; background: #f8f8f8; padding: 32px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 0.85rem; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .badge { padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; }
+  .badge-red { background: #fee2e2; color: #b91c1c; border: 2px solid #fca5a5; }
+  .badge-amber { background: #fef3c7; color: #92400e; border: 2px solid #fcd34d; }
+  .badge-gray { background: #f3f4f6; color: #374151; border: 2px solid #d1d5db; }
+  .badge-green { background: #dcfce7; color: #166534; border: 2px solid #86efac; }
+  .risk-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
+  .risk-table th { background: #111; color: #fff; padding: 8px 12px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .risk-table td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 0.85rem; vertical-align: top; }
+  .risk-table tr:hover td { background: #fafafa; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .tag-red { background: #fee2e2; color: #b91c1c; }
+  .tag-amber { background: #fef3c7; color: #92400e; }
+  .tag-gray { background: #f3f4f6; color: #374151; }
+  .tag-green { background: #dcfce7; color: #166534; }
+  section { margin-bottom: 28px; }
+  section h2 { font-size: 1rem; font-weight: 700; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+  .finding { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .finding.blocking { border-left: 4px solid #ef4444; }
+  .finding.amber { border-left: 4px solid #f59e0b; }
+  .finding.nit { border-left: 4px solid #9ca3af; }
+  .finding h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; }
+  .finding .loc { font-size: 0.75rem; font-family: monospace; color: #6b7280; margin-bottom: 8px; }
+  .finding p { font-size: 0.85rem; line-height: 1.5; color: #374151; margin-bottom: 6px; }
+  .finding .fix { font-size: 0.85rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 8px 10px; color: #166534; font-weight: 500; }
+  .finding .fix-amber { font-size: 0.85rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; padding: 8px 10px; color: #92400e; font-weight: 500; }
+  .finding .fix-nit { font-size: 0.85rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 8px 10px; color: #374151; }
+  code { font-family: 'SF Mono', Consolas, monospace; font-size: 0.82em; background: #f3f4f6; padding: 1px 4px; border-radius: 3px; }
+  ul.safe-list { list-style: none; padding: 0; }
+  ul.safe-list li { padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 0.85rem; color: #166534; }
+  ul.safe-list li::before { content: "✓ "; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA: executing-proposal cleanup</h1>
+<p class="subtitle">Reviewer: independent subagent · 2026-05-28 · Scope: migration + trade-executor guard + TrackRecord UI + TradeProposalCard optionality</p>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <div class="badge badge-red">Blocking: 2</div>
+  <div class="badge badge-amber">Worth a look: 4</div>
+  <div class="badge badge-gray">Nit: 2</div>
+  <div class="badge badge-green">Safe: 8</div>
+</div>
+
+<!-- Risk matrix -->
+<section>
+  <h2>File-level risk matrix</h2>
+  <table class="risk-table">
+    <thead>
+      <tr><th>File</th><th>Highest severity</th><th>Finding</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>20260528000001_expire_executing_proposals.sql</code></td>
+        <td><span class="tag tag-red">BLOCKING</span></td>
+        <td>cron.unschedule resets active=true on staging; no re-disable step present</td>
+      </tr>
+      <tr>
+        <td><code>_shared/trade-executor.ts</code></td>
+        <td><span class="tag tag-amber">WORTH A LOOK</span></td>
+        <td>execUpdate error path silently continues to position creation; orphaned HL fill not documented in runbook</td>
+      </tr>
+      <tr>
+        <td><code>src/pages/TrackRecord.tsx</code></td>
+        <td><span class="tag tag-red">BLOCKING</span></td>
+        <td>failed proposals visible in "Your trades" empty-state guard but not populating tradedAssets asset filter</td>
+      </tr>
+      <tr>
+        <td><code>src/components/TradeProposalCard.tsx</code></td>
+        <td><span class="tag tag-green">SAFE</span></td>
+        <td>Optionality change is correct; handlers already use optional-chaining</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- BLOCKING -->
+<section>
+  <h2><span class="tag tag-red">BLOCKING</span> Must fix before merge</h2>
+
+  <div class="finding blocking">
+    <h3>1. Migration resets active=true on staging — cleanup cron re-enables itself</h3>
+    <div class="loc">20260528000001_expire_executing_proposals.sql:10-27</div>
+    <p>
+      The project MEMORY.md records a hard-won rule: <em>"cron.unschedule + cron.schedule resets active=true: Any migration that reschedules an existing cron creates a fresh job with active=true, wiping prior disabled state."</em>
+      <code>expire-pending-proposals</code> is explicitly listed in <code>20260527000001_staging_disable_llm_crons.sql</code> as a cron that is <em>safe to leave active on staging</em> — but the comment on line 12 of that migration says the same pattern has already caused problems with other crons.
+    </p>
+    <p>
+      The real question: does this migration need a staging re-disable? No — the staging cron hygiene file correctly marks <code>expire-pending-proposals</code> as safe to run on staging (it hits no LLM APIs). So there is no LLM quota bleed. However, the new schedule changes from <code>'5 * * * *'</code> (1/hr) to <code>'5,35 * * * *'</code> (2/hr). The migration resets the job to <code>active=true</code> without checking the prior disabled state via <code>cron.alter_job</code>, and — crucially — the job was <em>enabled</em> on staging to begin with (per the exemption list), so no <em>disabled</em> state is lost here.
+    </p>
+    <p>
+      <strong>The actual blocking issue is different:</strong> the <code>cron.unschedule</code> on line 10 is called as a bare <code>SELECT</code>, not wrapped in a <code>BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END;</code> block. The previous cron was defined by <code>20260403000002_consolidate_crons.sql</code>. If for any reason the job was manually deleted on an environment (or migration order differs), <code>cron.unschedule('expire-pending-proposals')</code> on a non-existent job raises an exception and aborts the migration, leaving the <code>executing</code> cleanup UPDATE never scheduled. All subsequent migrations in the same transaction also roll back. Compare to <code>20260403000002</code> line 96 and <code>20260307000001</code> lines 38-43 which all use the safe <code>BEGIN PERFORM cron.unschedule(...); EXCEPTION WHEN OTHERS THEN NULL; END;</code> pattern. This migration skips the defensive wrapper.
+    </p>
+    <div class="fix">Fix: wrap the unschedule in a BEGIN...EXCEPTION block identical to the pattern in 20260307000001 lines 38-43:<br>
+    <code>BEGIN PERFORM cron.unschedule('expire-pending-proposals'); EXCEPTION WHEN OTHERS THEN NULL; END;</code><br>
+    Then call <code>SELECT cron.schedule(...)</code> (or <code>PERFORM</code> inside a DO block). Without this, any environment where the cron name differs (e.g. a fresh branch DB) will abort the migration entirely.</div>
+  </div>
+
+  <div class="finding blocking">
+    <h3>2. Failed proposals missing from tradedAssets — asset filter hides them unexpectedly</h3>
+    <div class="loc">src/pages/TrackRecord.tsx:70-79 (tradedAssets derivation)</div>
+    <p>
+      The <code>tradedAssets</code> array (line 70-79) is built from <code>positions</code> (open) and <code>closedPositions</code>. It drives the asset filter dropdown. Failed proposals are now rendered in the "Failed trades" section, but their <code>asset_id</code>s are never added to <code>tradedAssets</code>.
+    </p>
+    <p>
+      Concrete failure scenario: a user has zero positions but two failed proposals (e.g. a GOLD trade and an ETH trade that both timed out). The filter dropdown does not appear (because <code>tradedAssets.length &gt; 1</code> is false — there are no positions). All failed proposals display correctly. So far, fine. But if the user <em>does</em> have positions for only one asset (e.g. BTC), and failed proposals for a different asset (GOLD), the dropdown only shows "BTC". The user selects BTC. <code>recentFailedProposals</code> at line 84-89 correctly filters to <code>p.asset_id === selectedAsset</code> — so GOLD failures disappear silently. The user has no way to see why their GOLD trade failed because GOLD never appears as a filter option.
+    </p>
+    <p>
+      Additionally: the <code>hasUserTrades</code> guard at line 137 does not include <code>recentFailedProposals.length &gt; 0</code>. If a user has <em>only</em> failed proposals and no positions or pending proposals, the entire <code>hasUserTrades</code> block returns <code>false</code> and the empty state renders ("When you approve your first trade..."), even though failed trades exist. The "Failed trades" section is inside the truthy branch of <code>hasUserTrades</code>.
+    </p>
+    <div class="fix">Fix 1: include <code>recentFailedProposals</code> asset IDs in the <code>tradedAssets</code> derivation loop.<br>
+    Fix 2: add <code>|| recentFailedProposals.length > 0</code> to the <code>hasUserTrades</code> expression at line 137 — but only after computing <code>recentFailedProposals</code> without the <code>selectedAsset</code> filter (compute a separate <code>allRecentFailedProposals</code> without the asset filter for the guard, and use the filtered version for rendering).</div>
+  </div>
+</section>
+
+<!-- WORTH A LOOK -->
+<section>
+  <h2><span class="tag tag-amber">WORTH A LOOK</span></h2>
+
+  <div class="finding amber">
+    <h3>3. execUpdate Supabase error silently falls through to position creation</h3>
+    <div class="loc">trade-executor.ts:1275-1282</div>
+    <p>
+      The destructured form <code>const { data: execUpdate } = await supabase...</code> discards the <code>error</code> field. If the Supabase client throws a network error or RLS violation, <code>execUpdate</code> is <code>undefined</code>. The guard <code>!execUpdate?.length</code> evaluates to <code>true</code> (undefined is falsy), so the function bails correctly and does not create a position — which is the safe behavior.
+    </p>
+    <p>
+      However, the bail path fires a Sentry alert with reason <code>cron_claimed</code>, which would be misleading: Sentry would show "proposal claimed by cleanup cron" when in reality the DB query failed. This creates a false signal in incident triage. The distinction matters: a cron_claimed event means "HL order may exist without a Vela position" (requires manual reconciliation); a DB error means "DB write failed, recheck if proposal is truly orphaned."
+    </p>
+    <div class="fix-amber">Destructure the error: <code>const { data: execUpdate, error: execUpdateErr } = await supabase...</code>. If <code>execUpdateErr</code> is set, fire a Sentry alert with a distinct tag (<code>reason: "db_error"</code>, not <code>cron_claimed</code>) and bail. The bail path and position-skip behavior stay the same; only the Sentry context changes.</div>
+  </div>
+
+  <div class="finding amber">
+    <h3>4. Orphaned HL fill scenario has no mitigation path documented</h3>
+    <div class="loc">trade-executor.ts:1283-1298</div>
+    <p>
+      When the bail path fires, the code logs "HL order may exist on exchange" and returns without creating a position. This is correct behavior to prevent a phantom Vela position. But there is no follow-up path: no admin notification beyond Sentry, no proposal status column that distinguishes "failed by cleanup cron after confirmed HL fill" from "failed by cleanup cron on a legitimately dead proposal." Both write the same <code>error_message = 'Execution timed out. No position created.'</code> (from the cron) with no record that the fill actually happened.
+    </p>
+    <p>
+      The user sees "Failed: Execution timed out. No position created." in the UI. If they actually have an open position on HL (because the fill completed), they now have a real position with no Vela record — no stop-loss, no monitoring, no fee tracking. Sentry fires, but the Sentry alert alone is not an action path. The executor's bail return sets <code>success: false</code> which would normally not create a position — but the user's HL account still has one.
+    </p>
+    <div class="fix-amber">Document a runbook step in the Sentry alert body or <code>docs/runbooks/</code>: when a <code>cron_claimed</code> Sentry alert fires, an admin must check the HL position API for that user+asset and manually reconcile (insert a position row or close on exchange). Without this, the "HL order may exist" comment is the only trace.</div>
+  </div>
+
+  <div class="finding amber">
+    <h3>5. Two-instance double-fire: cleanup UPDATE is not idempotent in effect</h3>
+    <div class="loc">20260528000001_expire_executing_proposals.sql:20-26</div>
+    <p>
+      The cleanup UPDATE is safe against double-execution in isolation: if two cron instances run simultaneously, both attempt to UPDATE WHERE status='executing'. The first one wins and sets status='failed'. The second finds zero rows matching (status is now 'failed') and silently updates zero rows. No data corruption. This is idempotent.
+    </p>
+    <p>
+      The concern is a tighter race: the cron fires and sets status='failed' on proposal X at time T. The executor is concurrently at step 11 doing the conditional UPDATE WHERE status='executing'. The executor's UPDATE returns 0 rows (cron already claimed it). Executor bails correctly. But the executor had already successfully placed the HL order at step 10 (fill confirmed). The cron's error_message "Execution timed out. No position created." is now factually wrong: position creation was blocked not because of a timeout but because of a race with an order that actually filled. This is the same orphaned-fill scenario as finding #4, but the trigger condition here (cron fires at exactly T+5min while executor is between step 10 and step 11) is more likely than it sounds: at 150s Deno wall-clock limit, a 5-minute cron window is generous, but a slow HL RPC (step 10 takes 140s) plus step 11 DB write could land in the window.
+    </p>
+    <div class="fix-amber">Consider tightening: before the executor's step 10 order placement, do a preflight check that the proposal is still in 'executing' status (the proposal was set to 'executing' earlier in the flow). If the cron has already claimed it by then, abort before placing the order — not just after. This is a belt-and-suspenders add, not a blocker.</div>
+  </div>
+
+  <div class="finding amber">
+    <h3>6. TradeProposalCard: error_message for "failed" status uses generic fallback when cron sets the message</h3>
+    <div class="loc">src/components/TradeProposalCard.tsx:44, 248-251</div>
+    <p>
+      <code>getStatusConfig</code> returns <code>description: 'Execution failed. Check your balance and try again.'</code> for <code>status === 'failed'</code>. The card renders <code>proposal.error_message</code> when it exists (line 248-251), so timeout-failures will show "Execution timed out. No position created." — good.
+    </p>
+    <p>
+      However, the generic <code>description</code> "Check your balance and try again" is shown as a fallback when <code>error_message</code> is null. For proposals failed by the cleanup cron, the cron always sets <code>error_message</code> (line 22-23 of migration). For other failure paths in the executor, <code>error_message</code> is also always set (line 1196-1206). So in practice the fallback should never fire. But proposals that were manually force-failed via SQL (e.g. admin tooling) with no error_message would show "Check your balance and try again" — potentially misleading for a timeout or infra failure. Low risk, but worth flagging since the description is now reachable by the new "Failed trades" section.
+    </p>
+    <div class="fix-amber">Change the fallback description from "Check your balance and try again." to something direction-neutral: "This trade did not execute. Contact support if your balance was affected." This avoids blaming the user's balance for an infra failure.</div>
+  </div>
+</section>
+
+<!-- NITS -->
+<section>
+  <h2><span class="tag tag-gray">NIT</span></h2>
+
+  <div class="finding nit">
+    <h3>7. Migration does not add semicolon after second UPDATE inside the cron body</h3>
+    <div class="loc">20260528000001_expire_executing_proposals.sql:20-26</div>
+    <p>
+      The <code>$$</code> body contains two UPDATEs. The first ends with a semicolon (line 18). The second UPDATE (lines 20-26) has no trailing semicolon before <code>$$</code>. PostgreSQL allows this (the final statement in a function body doesn't require a terminal semicolon), and pg_cron runs each statement individually. But it's inconsistent with the first statement and could confuse future editors.
+    </p>
+    <div class="fix-nit">Add a semicolon after the closing <code>WHERE</code> clause on line 26: <code>AND updated_at &lt; now() - interval '5 minutes';</code></div>
+  </div>
+
+  <div class="finding nit">
+    <h3>8. No test covers the new execUpdate?.length guard path</h3>
+    <div class="loc">trade-executor.ts:1282-1299 (bail path)</div>
+    <p>
+      The existing 110 trade-executor tests were passing before this change. The new bail path (cron claimed the proposal) is a new code branch with no coverage. A test that mocks the Supabase <code>.update().eq().eq().select()</code> chain to return <code>{ data: [], error: null }</code> should assert: (a) no position row is inserted, (b) Sentry is called with <code>reason: cron_claimed</code>, (c) the function returns <code>success: false</code> with no <code>positionId</code>.
+    </p>
+    <div class="fix-nit">Add one behavioral test: "returns success:false and skips position creation when proposal claimed by cleanup cron". This is the regression case the fix introduces.</div>
+  </div>
+</section>
+
+<!-- SAFE -->
+<section>
+  <h2><span class="tag tag-green">SAFE</span> Verified correct</h2>
+  <ul class="safe-list">
+    <li>Migration WHERE clause correctness: <code>status = 'executing' AND updated_at &lt; now() - interval '5 minutes'</code> is sound. Deno wall-clock limit is 150s; 5-minute window guarantees the isolate is dead. In-flight proposals (updated_at = claim time, seconds ago) are never caught.</li>
+    <li>Migration has no user_id filter — correct. The UPDATE scopes to status+updated_at which is sufficient; proposals are user-owned but the cron runs as service role and should clean all users' stuck proposals.</li>
+    <li>RLS: useTrading.ts line 262 fetches proposals via supabaseClient (carries user JWT), so RLS ensures users only see their own. The new "Failed trades" section inherits this correctly.</li>
+    <li>execUpdate?.length guard TypeScript correctness: Supabase JS v2 returns <code>data: T[] | null</code>. A 0-row UPDATE with <code>.select()</code> returns <code>data: []</code> (empty array, not null). Optional chaining <code>execUpdate?.length</code> on [] gives 0, which is falsy. Guard fires correctly. No TypeScript error because the type is <code>any[] | null</code>.</li>
+    <li>Early return in bail path (line 1293-1298) correctly prevents execution from reaching step 12. No position row is inserted. Verified by reading lines 1302-1356: step 12 is unreachable after the return.</li>
+    <li>recentFailedProposals filter uses <code>created_at</code> (line 87), not <code>updated_at</code>. Correct: avoids surfacing old proposals that were recently cleaned up by the new cron.</li>
+    <li>TradeProposalCard onAccept/onDecline: handlers use optional-chaining <code>onAccept?.(proposal.id)</code> (line 179) and <code>onDecline?.(proposal.id)</code> (line 181). Making props optional is safe. The pending card path (the only path that renders Accept/Decline buttons) is unchanged.</li>
+    <li>Cron schedule '5,35 * * * *' does not collide with other registered crons. Checked against 20260307000001 schedule table: :05 and :35 are only shared with expire-pending-proposals itself (previously at :05). No contention introduced.</li>
+  </ul>
+</section>
+
+<hr style="margin: 32px 0; border: 1px solid #e5e7eb;">
+<p style="font-size: 0.75rem; color: #9ca3af;">Generated by independent Phase 1 QA subagent · 2026-05-28 · No author context carried into this review.</p>
+
+</body>
+</html>

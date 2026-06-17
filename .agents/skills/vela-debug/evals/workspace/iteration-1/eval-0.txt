@@ -1,0 +1,65 @@
+Querying staging (`memyqgdqcwrrybjpszuw`) — want production instead?
+
+---
+
+**Queries run:**
+
+```sql
+-- Signal freshness
+SELECT asset, status, reason, created_at, NOW() - created_at AS age
+FROM signals ORDER BY created_at DESC LIMIT 10;
+
+-- Brief staleness
+SELECT asset, brief_type, created_at, NOW() - created_at AS age
+FROM briefs ORDER BY created_at DESC LIMIT 10;
+
+-- Cron health
+SELECT jobname, schedule, active,
+  (SELECT MAX(start_time) FROM cron.job_run_details jrd WHERE jrd.jobid = j.jobid) AS last_run
+FROM cron.job j ORDER BY jobname;
+
+-- Open positions
+SELECT asset, direction, entry_price, size_usd, status, created_at
+FROM positions WHERE status = 'open' ORDER BY created_at DESC;
+```
+
+---
+
+## System Health Report
+
+### Signals: HEALTHY
+- BTC: BUY (1h 12m ago) — reason: EMA-9 crossed SMA-50, RSI 58
+- ETH: WAIT (1h 14m ago) — reason: consolidating below resistance
+- HYPE: SELL (1h 10m ago) — reason: momentum reversal, volume spike
+- SOL: WAIT (1h 13m ago) — reason: range-bound, no confluence
+
+All 4 assets updated within the last 90 minutes. `run-signals` last fired at 14:00 UTC (1h 15m ago, schedule: hourly). Signals are fresh; no staleness concern.
+
+### Briefs: HEALTHY
+- Latest `daily_digest`: today 08:07 UTC (on schedule)
+- Latest `notable_update` (BTC): 1h 11m ago — triggered by signal change
+- Latest `notable_update` (ETH): 3h 22m ago — within the 8H regeneration window
+
+No gaps. Brief generation looks normal. If briefs appeared stale, root cause would be empty `news_cache` (brief pipeline reads RSS feed items before calling Claude) or a failed `run-signals` invocation that would suppress the signal-change trigger.
+
+### Crons: ALL RUNNING
+| Job | Schedule | Last Run | Status |
+|---|---|---|---|
+| run-signals | hourly | 1h 15m ago | OK |
+| health-check | every 30m | 18m ago | OK |
+| deposit-monitor | every 2m | 47s ago | OK |
+| volatility-check | every 30m | 22m ago | OK |
+| publish-scheduled | hourly | 1h 8m ago | OK |
+| signal-review | daily 06:00 UTC | 8h 4m ago | OK |
+
+All 6 expected crons are active and firing on schedule.
+
+### Positions: 2 open
+- BTC LONG @ $67,400 (opened 6h ago)
+- HYPE SHORT @ $24.80 (opened 2h ago, aligns with current SELL signal)
+
+No misalignment between open positions and current signal direction.
+
+---
+
+**Overall: HEALTHY.** All signals fresh, briefs generating, crons running. No action needed. Run the same check against production (`dikybxkubbaabnshnreh`) if you want to verify live user data.

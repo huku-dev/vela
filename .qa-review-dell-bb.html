@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: DELL + BB Asset Addition</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px; background: #0a0a0a; color: #e0e0e0; line-height: 1.6; }
+  h1 { color: #fff; font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .badge { padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 1rem; display: flex; flex-direction: column; align-items: center; min-width: 90px; }
+  .badge span { font-size: 0.7rem; font-weight: 400; margin-top: 2px; }
+  .blocking { background: #7f1d1d; color: #fca5a5; border: 1px solid #dc2626; }
+  .amber-b { background: #78350f; color: #fcd34d; border: 1px solid #d97706; }
+  .nit-b { background: #1f2937; color: #9ca3af; border: 1px solid #4b5563; }
+  .safe-b { background: #052e16; color: #86efac; border: 1px solid #16a34a; }
+
+  /* Risk matrix */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 0.87rem; }
+  th { text-align: left; padding: 8px 12px; background: #111; color: #888; border-bottom: 1px solid #222; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+  tr:last-child td { border-bottom: none; }
+
+  .tag-blocking { background: #7f1d1d; color: #fca5a5; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .tag-amber { background: #78350f; color: #fcd34d; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .tag-nit { background: #1f2937; color: #9ca3af; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+  .tag-safe { background: #052e16; color: #86efac; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+
+  /* Sections */
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 1px solid #222; }
+  .section-title.blocking { color: #fca5a5; border-color: #7f1d1d; }
+  .section-title.amber { color: #fcd34d; border-color: #78350f; }
+  .section-title.nit { color: #9ca3af; border-color: #374151; }
+  .section-title.safe { color: #86efac; border-color: #052e16; }
+  .section-title.monitor { color: #fbbf24; border-color: #78350f; }
+
+  .finding { background: #111; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; border-left: 4px solid #333; }
+  .finding.blocking { border-left-color: #dc2626; }
+  .finding.amber { border-left-color: #d97706; }
+  .finding.nit { border-left-color: #4b5563; }
+  .finding.safe { border-left-color: #16a34a; }
+  .finding.monitor { border-left-color: #d97706; }
+
+  .finding-title { font-weight: 700; color: #fff; margin-bottom: 6px; }
+  .finding-meta { font-size: 0.78rem; color: #888; margin-bottom: 8px; }
+  code { background: #1e1e1e; padding: 1px 6px; border-radius: 3px; font-family: "SF Mono", Monaco, monospace; font-size: 0.82rem; color: #e0e0e0; }
+  .fix { background: #0a1a0a; border: 1px solid #16a34a; border-radius: 4px; padding: 8px 12px; margin-top: 8px; font-size: 0.85rem; color: #86efac; }
+  .fix strong { color: #4ade80; }
+  ul { margin: 8px 0; padding-left: 18px; }
+  li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: DELL + BB Asset Addition</h1>
+<p class="subtitle">Adversarial review · 2026-06-01 · Reviewer: independent subagent (no author context)</p>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <div class="badge blocking">0 <span>Blocking</span></div>
+  <div class="badge amber-b">3 <span>Worth a look</span></div>
+  <div class="badge nit-b">3 <span>Nits</span></div>
+  <div class="badge safe-b">12 <span>Safe</span></div>
+</div>
+
+<!-- File-level risk matrix -->
+<div class="section">
+  <div class="section-title nit">File-level Risk Matrix</div>
+  <table>
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Highest Finding</th>
+        <th>Summary</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>supabase/migrations/20260601000001_add_dell_bb.sql</code></td>
+        <td><span class="tag-amber">Worth a look</span></td>
+        <td>Missing <code>ON CONFLICT</code> clause; inconsistent with ZEC migration (most recent precedent)</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/_shared/news-fetcher.ts</code></td>
+        <td><span class="tag-amber">Worth a look</span></td>
+        <td><code>/\bbb\b/i</code> will match Bollinger Band abbreviations in finance news; no collision comment</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/_shared/news-fetcher.test.ts</code></td>
+        <td><span class="tag-nit">Nit</span></td>
+        <td><code>ENABLED_ASSETS</code> includes dell + bb; GAP tests verify coverage structurally but not false-positive risk</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/twitter-fetcher/index.ts</code></td>
+        <td><span class="tag-nit">Nit</span></td>
+        <td>Correct entries; same <code>/\bbb\b/i</code> false-positive exposure as news-fetcher</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/_shared/twitter-fetcher.test.ts</code></td>
+        <td><span class="tag-amber">Worth a look</span></td>
+        <td>TF-ASSET test verifies <code>"blackberry"</code> string but does NOT verify <code>/\bbb\b/i</code> pattern is present (unlike ZEC test which checks both)</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/breaking-news/index.ts</code></td>
+        <td><span class="tag-safe">Safe</span></td>
+        <td>HL_ASSET_MAP and ASSET_CLASS_OF entries correct; format matches existing entries</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/_shared/tradeable-assets.ts</code></td>
+        <td><span class="tag-safe">Safe</span></td>
+        <td>FALLBACK_TRADEABLE_ASSETS includes both dell and bb</td>
+      </tr>
+      <tr>
+        <td><code>supabase/functions/_shared/brief-generator.ts</code></td>
+        <td><span class="tag-safe">Safe</span></td>
+        <td>DELL and BB present in ticker list at line 1006</td>
+      </tr>
+      <tr>
+        <td><code>src/hooks/useData.ts</code></td>
+        <td><span class="tag-nit">Nit</span></td>
+        <td>dell:12 and bb:13 correct; ASSET_DISPLAY_ORDER comment references only oil+hype as locked (stale)</td>
+      </tr>
+      <tr>
+        <td><code>vela-marketing/src/content/assets/dell.md</code></td>
+        <td><span class="tag-safe">Safe</span></td>
+        <td>Frontmatter matches intel.md pattern exactly; no "free" CTA; em dash in title only (matches convention)</td>
+      </tr>
+      <tr>
+        <td><code>vela-marketing/src/content/assets/blackberry.md</code></td>
+        <td><span class="tag-nit">Nit</span></td>
+        <td>"momentum" appears 4x in body copy; matches pattern in intel.md reference, but technically in the banned jargon list</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Blocking section -->
+<div class="section">
+  <div class="section-title blocking">Blocking (0)</div>
+  <p style="color:#888; font-style:italic; font-size:0.87rem;">No blocking issues found. This change can proceed to deploy after addressing the worth-a-look items below.</p>
+</div>
+
+<!-- Worth a look -->
+<div class="section">
+  <div class="section-title amber">Worth a Look (3)</div>
+
+  <div class="finding amber">
+    <div class="finding-title">1. <code>/\bbb\b/i</code> will false-positive on Bollinger Band references in finance news</div>
+    <div class="finding-meta">
+      <code>news-fetcher.ts:443</code> · <code>twitter-fetcher/index.ts:71</code>
+    </div>
+    <p>
+      Finance news and technical analysis articles routinely abbreviate "Bollinger Band" as "BB" (e.g., "BTC broke above its BB resistance", "upper BB band tested", "BB squeeze signal"). The pattern <code>/\bbb\b/i</code> has no guard against this context and will attribute these articles to BlackBerry. Contrast with HYPE: the comment at <code>news-fetcher.ts:423</code> explicitly records that <code>/\bhype\b/i</code> was <em>removed</em> because it matched "AI hype / market hype / tech hype". The BB collision risk is analogous and arguably higher because Bollinger Bands are a direct finance-domain term, not just a generic English word.
+    </p>
+    <p>
+      The ASSET_KEYWORDS_EXACT list for <code>bb</code> (line 398) is strong and specific: "blackberry", "blackberry qnx", "blackberry cylance", etc. In practice, the exact keywords will correctly classify most genuine BlackBerry articles. The boundary pattern is the exposure: it fires as a <em>secondary</em> score signal, boosting articles that contain "BB" anywhere.
+    </p>
+    <div class="fix">
+      <strong>Option A (preferred):</strong> Add a safety comment documenting the Bollinger Band collision risk, analogous to the HYPE removal comment. Monitor false-positive rate in <code>news_cache.matched_assets</code> for the first week post-deploy. If the rate is high, remove <code>/\bbb\b/i</code> and rely solely on the exact keyword list plus <code>/\$bb\b/i</code> and <code>/\bblackberry\b/i</code>.<br><br>
+      <strong>Option B (conservative):</strong> Remove <code>/\bbb\b/i</code> now and keep only <code>/\$bb\b/i</code> and <code>/\bblackberry\b/i</code>. The cashtag pattern catches market-context "BB" with high precision; the name catches the rest.
+    </div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-title">2. Migration missing <code>ON CONFLICT</code> clause; inconsistent with newest precedent</div>
+    <div class="finding-meta">
+      <code>supabase/migrations/20260601000001_add_dell_bb.sql:2–5</code>
+    </div>
+    <p>
+      The ZEC migration (<code>20260520000002_add_zec_asset.sql</code>) uses <code>ON CONFLICT (id) DO UPDATE SET hl_symbol = COALESCE(...), icon_url = COALESCE(...)</code>. The dell/bb migration uses a plain <code>INSERT</code> with no conflict handling. If a developer runs this migration manually against staging after it has already been applied (e.g. after a staging reset + re-run), Postgres will throw a primary-key duplicate error and abort the migration.
+    </p>
+    <p>
+      The older batch migration (<code>20260429000002_add_assets_batch.sql</code>) also omits ON CONFLICT, so this is not new behavior. But ZEC established a stricter pattern that this migration does not follow.
+    </p>
+    <div class="fix">
+      Add <code>ON CONFLICT (id) DO NOTHING</code> (or the safer DO UPDATE with COALESCE, matching the ZEC pattern) to both INSERT rows.
+    </div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-title">3. TF-ASSET test verifies "blackberry" string but not the <code>/\bbb\b/i</code> boundary pattern</div>
+    <div class="finding-meta">
+      <code>supabase/functions/_shared/twitter-fetcher.test.ts:234–248</code>
+    </div>
+    <p>
+      The ZEC TF-ASSET test (<code>twitter-fetcher.test.ts:250–258</code>) explicitly checks both the exact keyword <code>"zcash"</code> AND the boundary pattern <code>"/\bzec\b/i"</code>. The BB portion of the equity TF-ASSET test only checks <code>fetcherSource.includes('"blackberry"')</code>. If someone removes the boundary regex entry for bb from <code>twitter-fetcher/index.ts</code> while keeping the exact keywords, the test passes but the ticker-cashtag matching breaks silently.
+    </p>
+    <div class="fix">
+      Add <code>fetcherSource.includes('/\\\\bbb\\\\b/i')</code> to the equity TF-ASSET assertion (or split bb into its own test matching the ZEC pattern), so boundary regex coverage is verified independently of exact keywords.
+    </div>
+  </div>
+</div>
+
+<!-- Nit section -->
+<div class="section">
+  <div class="section-title nit">Nit (3)</div>
+
+  <div class="finding nit">
+    <div class="finding-title">N1. ASSET_DISPLAY_ORDER comment says only "OIL + HYPE" are locked from Standard; now also ZEC, DELL, BB</div>
+    <div class="finding-meta"><code>src/hooks/useData.ts:36–37</code></div>
+    <p>
+      The comment reads: "we ship a balanced crypto + equities + macro mix and lock OIL + HYPE behind the upgrade paywall." ZEC (11), DELL (12), and BB (13) are also effectively locked from Standard users (Standard gets max_assets=8, positions 1–8). The comment creates a false impression that OIL and HYPE are the only locked assets.
+    </p>
+    <div class="fix">Update the comment to say "lock OIL + HYPE + all assets beyond position 10 behind the upgrade paywall."</div>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-title">N2. Migration uses <code>assets</code> table reference; ZEC used <code>public.assets</code></div>
+    <div class="finding-meta"><code>supabase/migrations/20260601000001_add_dell_bb.sql:2</code></div>
+    <p>
+      Minor style inconsistency. Both resolve correctly in Supabase (search_path is set), but the ZEC migration and the RLS migrations use the fully-qualified <code>public.assets</code> form. Not a correctness bug.
+    </p>
+    <div class="fix">Optionally prefix with <code>public.</code> for consistency with ZEC precedent.</div>
+  </div>
+
+  <div class="finding nit">
+    <div class="finding-title">N3. "momentum" appears 4x in blackberry.md body copy (in the banned jargon list)</div>
+    <div class="finding-meta"><code>vela-marketing/src/content/assets/blackberry.md:24, 46, 54, 79</code></div>
+    <p>
+      "Momentum" is in the CLAUDE.md banned jargon list for user-facing surfaces. However, the reference page <code>intel.md</code> also uses "momentum" twice (lines 24, 68), suggesting this rule has been applied loosely for marketing pages. Context matters: BB's meme-stock nature makes "momentum" somewhat load-bearing for describing the product. The intel.md precedent makes this a nit rather than a blocking voice violation.
+    </p>
+    <div class="fix">If the jargon ban applies to marketing pages, replace with plain-English alternatives: "price swings driven by retail interest" instead of "momentum-driven moves". Confirm scope with Henry before changing — intel.md sets a permissive precedent here.</div>
+  </div>
+</div>
+
+<!-- Risks to monitor -->
+<div class="section">
+  <div class="section-title monitor">Risks to Monitor Post-Deploy</div>
+
+  <div class="finding monitor">
+    <div class="finding-title">BB false-positive rate in news_cache.matched_assets</div>
+    <p>
+      Within 24–48 hours of deploy, query <code>SELECT news_url, headline, matched_assets FROM news_cache WHERE matched_assets @&gt; ARRAY['bb'] ORDER BY created_at DESC LIMIT 50</code> and review whether the headlines are genuinely BlackBerry-related or are Bollinger Band / other "bb" matches. If more than ~20% are false positives, remove the <code>/\bbb\b/i</code> boundary pattern and redeploy news-fetcher.
+    </p>
+    <p>
+      Rollback path: <code>UPDATE assets SET enabled=false WHERE id='bb'</code> executed as an admin direct-SQL command disables BB without a migration. The keyword entry can be patched in news-fetcher.ts and redeployed independently.
+    </p>
+  </div>
+</div>
+
+<!-- Safe section -->
+<div class="section">
+  <div class="section-title safe">Safe (12 items verified)</div>
+
+  <div class="finding safe">
+    <ul>
+      <li><strong>Migration column list</strong> exactly matches the reference migration (<code>20260429000002_add_assets_batch.sql</code>): id, symbol, name, coingecko_id, enabled, asset_class, scanner_enabled, hl_symbol, icon_url. No columns added or dropped.</li>
+      <li><strong>asset_class = 'equities'</strong> is correct for both DELL (NYSE-listed US tech) and BB (NYSE/TSX-listed Canadian software). Not "commodities", "index", or "crypto".</li>
+      <li><strong>coingecko_id = null</strong> is correct — both are equities with no CoinGecko price feed. Prices come from Hyperliquid mid-price via the builder-perp dex, consistent with all other equities.</li>
+      <li><strong>hl_symbol format</strong> (<code>xyz:DELL</code>, <code>xyz:BB</code>) matches all existing xyz deployer assets exactly. Native perps use bare symbol (e.g. <code>ZEC</code>); xyz perps use the <code>xyz:</code> prefix.</li>
+      <li><strong>enabled=true, scanner_enabled=false</strong>: enabling for signal generation but not 30m scanner, consistent with all recently-added equities.</li>
+      <li><strong>ASSET_KEYWORDS_EXACT</strong> for both assets is comprehensive and specific. dell list (15 phrases) and bb list (11 phrases) are well-targeted; no generic terms that would broadside unrelated articles.</li>
+      <li><strong>HL_ASSET_MAP in breaking-news/index.ts</strong>: <code>DELL: "dell", BB: "bb"</code> format and placement match existing equity entries exactly.</li>
+      <li><strong>ASSET_CLASS_OF in breaking-news/index.ts</strong>: both correctly map to <code>"equities"</code>, consistent with all other equity assets.</li>
+      <li><strong>FALLBACK_TRADEABLE_ASSETS</strong>: dell and bb both present in the fallback array in tradeable-assets.ts.</li>
+      <li><strong>brief-generator.ts</strong>: DELL and BB appear in the ticker list at line 1006, ensuring the LLM prompt uses correct uppercase tickers.</li>
+      <li><strong>ASSET_DISPLAY_ORDER</strong>: dell:12 and bb:13 have no conflicts with existing entries (zec:11 is the prior slot). Both will be Premium-only (Standard max_assets=8 covers positions 1–8). This is intentional product placement.</li>
+      <li><strong>Marketing pages frontmatter</strong>: both dell.md and blackberry.md have the correct fields (<code>supported: true</code>, <code>assetId</code>, <code>hlSymbol</code>, <code>iconUrl</code>) matching intel.md exactly. No "Try free" or "Sign up free" CTAs — both use "Visit [pricing page]", consistent with brand rules. Em dash in page title only, matching the convention established in intel.md.</li>
+      <li><strong>Icon files</strong>: <code>/public/icons/dell.png</code> and <code>/public/icons/bb.png</code> both exist, both confirmed as 48x48 8-bit/color RGBA PNGs, meeting the asset-lifecycle runbook spec.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

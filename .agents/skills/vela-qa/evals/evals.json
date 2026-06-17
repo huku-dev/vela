@@ -1,0 +1,50 @@
+{
+  "skill_name": "vela-qa",
+  "evals": [
+    {
+      "id": 0,
+      "name": "smoke-test-report-structure",
+      "prompt": "Run a QA smoke test on the app before I deploy. Check all pages, content sanitization, visual quality, console errors, and mobile layout.",
+      "expected_output": "Structured QA report with PASS/FAIL per page, content sanitization checks, visual audit, console error check, mobile check, and overall PASS or FAIL verdict.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "overall_verdict_present",
+          "description": "Report ends with an explicit PASS or FAIL overall verdict",
+          "type": "regex_match",
+          "pattern": "(?i)(overall[:\\s]+(PASS|FAIL)|### Overall.*(PASS|FAIL)|(PASS|FAIL)\\s*$)"
+        },
+        {
+          "name": "mobile_check_present",
+          "description": "Mobile viewport check is performed",
+          "type": "regex_match",
+          "pattern": "(?i)(mobile|375\\s*px|375px|responsive)"
+        },
+        {
+          "name": "console_errors_checked",
+          "description": "Console errors section present with result",
+          "type": "regex_match",
+          "pattern": "(?i)(console error|console_error|## Console|### Console)"
+        },
+        {
+          "name": "dashboard_checked",
+          "description": "Dashboard page is included in the report",
+          "type": "regex_match",
+          "pattern": "(?i)(dashboard|home page|/home|/app)"
+        },
+        {
+          "name": "content_sanitization_present",
+          "description": "Content sanitization section present with at least 4 patterns checked",
+          "type": "qualitative",
+          "rubric": "Pass if the report explicitly checks for at least 4 of these content sanitization patterns: '|||' delimiter visible, raw ISO date string, undefined or null visible on screen, 'ERROR:' prefix, placeholder copy, broken image, truncated text, raw JSON, or empty section. Fail if the report mentions fewer than 4 sanitization checks or has no sanitization section at all."
+        },
+        {
+          "name": "pages_table_present",
+          "description": "Report includes a table or list of pages with PASS/FAIL per page",
+          "type": "qualitative",
+          "rubric": "Pass if the report includes a structured list or table that gives an individual PASS or FAIL result for multiple pages (at least 3 distinct pages). Fail if the report only gives an aggregate verdict without per-page breakdown."
+        }
+      ]
+    }
+  ]
+}

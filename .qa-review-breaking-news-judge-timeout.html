@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: breaking-news judge timeout fail-open</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.6; color: #1a1a1a; background: #f9f9f7; padding: 2rem; }
+  h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .meta { font-size: 13px; color: #666; margin-bottom: 2rem; }
+  h2 { font-size: 16px; font-weight: 600; margin: 2rem 0 0.75rem; }
+  h3 { font-size: 14px; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 2rem; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; }
+  .badge-red { background: #FCEBEB; color: #A32D2D; }
+  .badge-amber { background: #FAEEDA; color: #854F0B; }
+  .badge-gray { background: #F1EFE8; color: #5F5E5A; }
+  .badge-green { background: #EAF3DE; color: #3B6D11; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1rem; }
+  th { background: #f1efe8; text-align: left; padding: 8px 12px; font-weight: 600; border-bottom: 1px solid #d3d1c7; }
+  td { padding: 8px 12px; border-bottom: 0.5px solid #e0ded8; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+
+  .finding { border-left: 3px solid; padding: 0.75rem 1rem; margin-bottom: 1rem; background: #fff; border-radius: 0 6px 6px 0; }
+  .finding-red { border-color: #E24B4A; }
+  .finding-amber { border-color: #EF9F27; }
+  .finding-gray { border-color: #888780; }
+  .finding-green { border-color: #639922; }
+  .loc { font-family: monospace; font-size: 12px; color: #5F5E5A; margin-bottom: 4px; }
+  .finding p { margin-top: 6px; color: #333; }
+  .finding code { font-family: monospace; font-size: 12px; background: #f1efe8; padding: 1px 4px; border-radius: 3px; }
+  .action { font-weight: 600; margin-top: 6px; }
+
+  ul { padding-left: 1.5rem; color: #333; }
+  li { margin-bottom: 4px; }
+  .section-divider { border: none; border-top: 1px solid #d3d1c7; margin: 2rem 0 1rem; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: breaking-news L2 judge timeout fail-open</h1>
+<p class="meta">Reviewed: 2026-06-15 &nbsp;|&nbsp; 3 files, no schema changes, no new env vars &nbsp;|&nbsp; Reviewer: independent subagent (no author context)</p>
+
+<div class="summary-bar">
+  <span class="badge badge-red">Blocking: 0</span>
+  <span class="badge badge-amber">Worth-a-look: 2</span>
+  <span class="badge badge-gray">Nit: 1</span>
+  <span class="badge badge-green">Safe: 7</span>
+</div>
+
+<h2>File-level risk matrix</h2>
+<table>
+  <tr>
+    <th>File</th>
+    <th>Highest severity</th>
+    <th>Finding</th>
+  </tr>
+  <tr>
+    <td><code>_shared/news-broadcast-eval.ts</code></td>
+    <td><span style="color:#854F0B; font-weight:600;">Worth-a-look</span></td>
+    <td>Synthetic verdict with scores 0/0 — fine at runtime, but semantically misleading if ever consumed by a new caller</td>
+  </tr>
+  <tr>
+    <td><code>breaking-news/index.ts</code></td>
+    <td><span style="color:#854F0B; font-weight:600;">Worth-a-look</span></td>
+    <td>Admin ping on judgeSkipped path is fire-and-forget (no await), unlike the eval-blocked ping which is awaited — asymmetric and undocumented</td>
+  </tr>
+  <tr>
+    <td><code>_shared/news-broadcast-eval.test.ts</code></td>
+    <td><span style="color:#5F5E5A; font-weight:600;">Nit</span></td>
+    <td>Source-grep test is appropriate here; no blocking issues</td>
+  </tr>
+</table>
+
+<hr class="section-divider">
+
+<h2>Blocking</h2>
+<p style="color:#5F5E5A; font-size:14px; margin-bottom:1rem;">None. Safe to deploy.</p>
+
+<hr class="section-divider">
+
+<h2>Worth-a-look</h2>
+
+<div class="finding finding-amber">
+  <div class="loc">breaking-news/index.ts line 1150-1153 vs. line 1130-1137</div>
+  <p>
+    The admin ping for <code>judgeSkipped</code> is fire-and-forget (no <code>await</code>). The eval-blocked admin ping at line 1130 uses <code>await</code> with <code>.catch()</code> chained — it blocks before returning the Response. The asymmetry is undocumented and could cause the ping to be dropped if the Deno isolate exits before the promise settles (though this is low-risk on the success path since the broadcast itself takes time after). More importantly, the inconsistency makes the intent unclear to future readers: is this intentional (don't slow down the broadcast) or an oversight?
+  </p>
+  <p class="action">Suggestion: Add a one-line comment: <code>// fire-and-forget — don't delay the broadcast</code>. Optionally add <code>void</code> prefix to make the fire-and-forget intent explicit and silence any lint rules about unhandled promises.</p>
+</div>
+
+<div class="finding finding-amber">
+  <div class="loc">_shared/news-broadcast-eval.ts lines 362-373 (synthetic verdict)</div>
+  <p>
+    The synthetic <code>JudgeVerdict</code> returned on AbortError has <code>relevance_score: 0</code> and <code>comprehensibility_score: 0</code>. These are valid numbers per the interface and are never consumed by the caller on the <code>passes: true</code> path (verdictLine is only built inside <code>if (!evalResult.passes)</code>). However, if a future caller reads <code>evalResult.verdict</code> on the passing path (e.g. for calibration logging), they will see scores that look like an irrelevant broadcast that somehow passed. A score of <code>-1</code> or a sentinel like <code>null</code> would make the "not a real verdict" status more obvious — but <code>JudgeVerdict</code> types <code>relevance_score</code> as <code>number</code>, not <code>number | null</code>, so 0 is the only in-type option without a schema change.
+  </p>
+  <p class="action">Low priority. Consider adding a comment in the synthetic verdict: <code>// synthetic — not a real LLM verdict; scores are zero because L2 was skipped</code>. No code change required.</p>
+</div>
+
+<hr class="section-divider">
+
+<h2>Nit</h2>
+
+<div class="finding finding-gray">
+  <div class="loc">_shared/news-broadcast-eval.test.ts line 259-267</div>
+  <p>
+    The new source-grep test is correct and well-justified (testing a live AbortError requires a real network timeout, which is infeasible in unit tests). One minor point: the test name says "fail-open on judge AbortError (timeout)" but asserts three separate things (<code>err instanceof DOMException</code> predicate, <code>judgeSkipped: true</code> string, and "failing open" string). If the AbortError predicate string is ever reformatted (e.g., the DOMException check is extracted to a helper), the test would fail in a confusing way. Negligible in practice since this codebase doesn't refactor checks into helpers.
+  </p>
+  <p class="action">No action required. Noted for awareness only.</p>
+</div>
+
+<hr class="section-divider">
+
+<h2>Safe</h2>
+
+<div class="finding finding-green">
+  <ul>
+    <li><strong>AbortError identity preserved end-to-end.</strong> Verified by tracing: <code>openai-compatible.ts</code> line 217 re-throws <code>err</code> directly when <code>err instanceof Error</code> (DOMException is an Error subclass in Deno, so it's re-thrown unboxed). The factory catches it as <code>primaryErr</code>, reads <code>.retryable</code> (undefined, defaults to true), cascades to NVIDIA fallback. NVIDIA also times out, factory catches as <code>fallbackErr</code> (another raw DOMException), no lastResort registered for <code>news_broadcast_eval</code>, throws <code>fallbackErr</code> unchanged. The eval catch block receives the original DOMException. <code>err instanceof DOMException && err.name === "AbortError"</code> fires correctly.</li>
+
+    <li><strong>L1/L2 ordering invariant holds.</strong> <code>runDeterministicGate(input)</code> is called and checked at lines 321-329 before the L2 try block. If L1 fails, the function returns early. The AbortError branch is only reachable if L1 returned <code>{ passes: true }</code>. There is no code path where <code>judgeSkipped: true</code> is returned without L1 having passed.</li>
+
+    <li><strong>Type safety is sound.</strong> The returned object <code>{ passes: true, layer: 2, judgeSkipped: true, verdict: {...} }</code> satisfies the <code>{ passes: true; layer: 2; verdict: JudgeVerdict; judgeSkipped?: true }</code> variant. All JudgeVerdict required fields are present: <code>passes</code>, <code>relevance_score</code>, <code>comprehensibility_score</code>, <code>jargon_flags</code>, <code>primary_concern</code>, <code>reason</code>.</li>
+
+    <li><strong>sendAdminTelegram already imported.</strong> Confirmed at <code>breaking-news/index.ts</code> line 23. No new import needed.</li>
+
+    <li><strong>Only one production caller of evaluateBroadcastReadiness.</strong> grep confirms the only callers are in the test file and <code>breaking-news/index.ts</code> line 1065-1066. No other code path needs to handle <code>judgeSkipped</code>.</li>
+
+    <li><strong>judgeSkipped not consumed on the passes=true path.</strong> <code>evalResult.verdict</code> is only accessed inside <code>if (!evalResult.passes)</code> (line 1083). On the <code>judgeSkipped</code> path, <code>passes: true</code>, so the zero-score synthetic verdict is never logged or displayed.</li>
+
+    <li><strong>TaskDisabledError and generic error branches are unchanged.</strong> TaskDisabledError still fails closed. Non-AbortError non-TaskDisabledError exceptions still fall to the generic handler and fail closed. The new branch is precisely scoped to <code>DOMException && err.name === "AbortError"</code>, with no risk of accidentally catching other infrastructure errors as fail-open.</li>
+  </ul>
+</div>
+
+</body>
+</html>

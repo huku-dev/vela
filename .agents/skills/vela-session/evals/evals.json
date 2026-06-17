@@ -1,0 +1,119 @@
+{
+  "skill_name": "vela-session",
+  "evals": [
+    {
+      "id": 0,
+      "name": "session-end-retrospective",
+      "prompt": "Let's wrap up. This session built skill eval infrastructure: eval-runner.py, grader.py, watch-evals.py, and session-import.py. All CI green, one file committed.",
+      "expected_output": "Full 6-section retrospective (≥800 words), specific MEMORY.md update proposed, Notion log offered. Efficiency section names specific missteps, not generic praise.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "retro_section_accomplished",
+          "description": "Retrospective contains 'What was accomplished' section",
+          "type": "regex_match",
+          "pattern": "(?i)(what was accomplished|## 1\\.|### 1\\.|\\*\\*What was accomplished)"
+        },
+        {
+          "name": "retro_section_prompting",
+          "description": "Retrospective contains prompting feedback section",
+          "type": "regex_match",
+          "pattern": "(?i)(prompting feedback|## 2\\.|prompt feedback|user prompts)"
+        },
+        {
+          "name": "retro_section_efficiency",
+          "description": "Retrospective contains efficiency feedback section",
+          "type": "regex_match",
+          "pattern": "(?i)(efficiency feedback|## 3\\.|efficiency section|wasted steps)"
+        },
+        {
+          "name": "retro_section_learnings",
+          "description": "Retrospective contains learnings section",
+          "type": "regex_match",
+          "pattern": "(?i)(## learnings|### learnings|## 4\\.|\\*\\*learnings)"
+        },
+        {
+          "name": "retro_section_doc_updates",
+          "description": "Retrospective contains doc updates section",
+          "type": "regex_match",
+          "pattern": "(?i)(CLAUDE\\.md|MEMORY\\.md|doc.*update|## 5\\.)"
+        },
+        {
+          "name": "retro_section_open_items",
+          "description": "Retrospective contains open items section",
+          "type": "regex_match",
+          "pattern": "(?i)(open items?|## 6\\.|### open|nothing.*open|no open)"
+        },
+        {
+          "name": "retro_length",
+          "description": "Retrospective is at least 800 words",
+          "type": "word_count",
+          "min": 800
+        },
+        {
+          "name": "notion_log_offered",
+          "description": "Output offers to log to Notion",
+          "type": "regex_match",
+          "pattern": "(?i)notion"
+        },
+        {
+          "name": "memory_update_specific",
+          "description": "Output proposes a specific MEMORY.md edit, not just mentions it",
+          "type": "regex_match",
+          "pattern": "MEMORY\\.md"
+        },
+        {
+          "name": "efficiency_specificity",
+          "description": "Efficiency section names specific missteps, not generic comments",
+          "type": "qualitative",
+          "rubric": "Pass if the efficiency section names at least one concrete misstep, wrong approach, or unnecessary round-trip (e.g. 'tried X before realizing Y', 'should have read Z first', 'cost an extra round-trip by...'). Fail if the section is generic ('the session went smoothly', 'prompts were clear', 'no major inefficiencies') without naming at least one specific moment."
+        },
+        {
+          "name": "no_em_dashes",
+          "description": "No em dashes in the retrospective output",
+          "type": "regex_absent",
+          "pattern": "—"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "session-start-brief",
+      "prompt": "Let's start a new session. What should we work on?",
+      "expected_output": "Session Brief with 4 sections: Active Notion Tasks, Git Status, CI Health, Recommended Next Step. Priority logic: CI failures surfaced first.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "session_brief_present",
+          "description": "Output contains a Session Brief heading",
+          "type": "regex_match",
+          "pattern": "(?i)(## session brief|# session brief|session brief)"
+        },
+        {
+          "name": "git_status_present",
+          "description": "Git status included",
+          "type": "regex_match",
+          "pattern": "(?i)(git status|## git|frontend:|backend:|clean|uncommitted)"
+        },
+        {
+          "name": "ci_health_present",
+          "description": "CI health included",
+          "type": "regex_match",
+          "pattern": "(?i)(CI|github actions|passing|failing|green|red)"
+        },
+        {
+          "name": "recommended_next_step",
+          "description": "A recommended next step is given",
+          "type": "regex_match",
+          "pattern": "(?i)(recommended next|next step|## recommended|suggested next)"
+        },
+        {
+          "name": "notion_tasks_queried",
+          "description": "Notion tasks are mentioned or queried as part of the brief",
+          "type": "regex_match",
+          "pattern": "(?i)(notion|in progress|active tasks?|next.*priority)"
+        }
+      ]
+    }
+  ]
+}

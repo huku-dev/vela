@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: expire-executing-proposals fix</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #fafafa; color: #111; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: #555; font-size: 13px; margin-bottom: 28px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .chip { padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 14px; }
+  .chip.blocking { background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; }
+  .chip.amber { background: #fef3c7; color: #92400e; border: 1.5px solid #fcd34d; }
+  .chip.nit { background: #f3f4f6; color: #374151; border: 1.5px solid #d1d5db; }
+  .chip.safe { background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7; }
+  .matrix { border-collapse: collapse; width: 100%; margin-bottom: 32px; font-size: 13px; }
+  .matrix th { background: #111; color: #fff; padding: 8px 12px; text-align: left; }
+  .matrix td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  .matrix tr:hover td { background: #f9fafb; }
+  .risk-high { color: #dc2626; font-weight: 700; }
+  .risk-med { color: #d97706; font-weight: 600; }
+  .risk-low { color: #059669; }
+  .section { margin-bottom: 36px; }
+  .section h2 { font-size: 17px; border-bottom: 2px solid; padding-bottom: 6px; margin-bottom: 16px; }
+  .section.blocking h2 { border-color: #ef4444; color: #991b1b; }
+  .section.amber h2 { border-color: #f59e0b; color: #92400e; }
+  .section.nit h2 { border-color: #9ca3af; color: #374151; }
+  .section.safe h2 { border-color: #34d399; color: #065f46; }
+  .finding { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; }
+  .finding.blocking { border-left: 4px solid #ef4444; }
+  .finding.amber { border-left: 4px solid #f59e0b; }
+  .finding.nit { border-left: 4px solid #9ca3af; }
+  .finding.safe { border-left: 4px solid #34d399; }
+  .finding h3 { margin: 0 0 8px; font-size: 15px; }
+  .finding p { margin: 0 0 6px; font-size: 14px; line-height: 1.6; }
+  .cite { font-family: monospace; font-size: 12px; background: #f3f4f6; padding: 2px 6px; border-radius: 3px; }
+  .action { font-weight: 600; color: #111; }
+  hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: expire-executing-proposals fix</h1>
+<p class="meta">Reviewed 2026-05-28 · Adversarial pass · No prior context on this problem</p>
+
+<div class="summary-bar">
+  <span class="chip blocking">2 Blocking</span>
+  <span class="chip amber">3 Worth a look</span>
+  <span class="chip nit">1 Nit</span>
+  <span class="chip safe">2 Safe</span>
+</div>
+
+<table class="matrix">
+  <thead><tr><th>File</th><th>Risk</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><span class="cite">trade-executor.ts:1271</span></td><td class="risk-high">HIGH</td><td>Final "executed" write has no guard on current status. Can overwrite a cron-set "failed".</td></tr>
+    <tr><td><span class="cite">proposal-generator.ts:1091–1099</span></td><td class="risk-high">HIGH</td><td>Position-count gate reads from <code>positions</code> table only — does not include "executing" proposals in count. Unrelated to this fix but confirms no lockout exists.</td></tr>
+    <tr><td><span class="cite">notify.ts:4494</span></td><td class="risk-med">MED</td><td>Trade failures are admin-only by design. Users whose proposals are bulk-failed by cron get zero notification.</td></tr>
+    <tr><td><span class="cite">trade-executor.ts:762–768</span></td><td class="risk-med">MED</td><td>Downsize mid-flight moves <code>updated_at</code> without changing status. A 30-min wall clock covers it, but needs verification.</td></tr>
+    <tr><td><span class="cite">TrackRecord.tsx:41–43</span></td><td class="risk-med">MED</td><td>Filters executing proposals by <code>expires_at</code>. A stuck-executing row that gets flipped to "failed" by cron disappears from TrackRecord silently, then reappears only if the user navigates to the page post-state-change.</td></tr>
+    <tr><td><span class="cite">Layout.tsx:120–128</span></td><td class="risk-low">LOW</td><td>Failure toast fires on transition. Works correctly for the fix — user will see the toast if the app is open at the moment of transition.</td></tr>
+    <tr><td><span class="cite">migrations/20260403000002</span></td><td class="risk-low">LOW</td><td>Existing cron is pure SQL (no HTTP). New "executing" cleanup cannot reuse this path if it requires fetching user_id for notifications. Architectural mismatch to flag.</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<div class="section blocking">
+  <h2>Blocking — must fix before implementing</h2>
+
+  <div class="finding blocking">
+    <h3>B1: The executor can overwrite a cron-set "failed" back to "executed" — creating phantom positions</h3>
+    <p><span class="cite">trade-executor.ts:1270–1274</span></p>
+    <p>
+      The critical update at step 11 is:
+      <code>.update({ status: "executed" }).eq("id", proposalId)</code> with no guard on current status.
+      If the cleanup cron fires at T+30min and sets the proposal to "failed", and the executor is still mid-flight
+      (e.g., stuck waiting on an HL RPC call), it will complete and unconditionally overwrite status back to "executed".
+      The position row gets created (<span class="cite">trade-executor.ts:1276+</span>), notifications go out, and the
+      proposal ends up as "executed" even though the system considered it timed out.
+    </p>
+    <p>
+      The reverse is also true and worse: the cron fires, sets status="failed". The executor then
+      tries to place the HL order (which may succeed), creates the position, then calls
+      <code>.update({status:"executed"})</code> — which overwrites "failed" to "executed". The position is real,
+      the proposal says "executed", but the cron already treated it as dead. There is no deduplication guard
+      on position creation that would catch this.
+    </p>
+    <p class="action">Fix required: Add <code>.eq("status", "executing")</code> to the final status transition at
+    <span class="cite">trade-executor.ts:1271–1274</span>. Every intermediate status update should also guard on
+    <code>status = 'executing'</code> so that a cron-failed proposal is immediately abandoned by the executor when
+    it checks its next DB update and gets 0 rows affected. The executor does not currently check the result of most
+    of these updates — add a rows-affected check or re-query status before the HL order call.</p>
+  </div>
+
+  <div class="finding blocking">
+    <h3>B2: Part 1 (manual data fix) SQL is not shown, so it cannot be vetted — provide it explicitly</h3>
+    <p>
+      The proposal says "flip the 4 stuck proposals to 'failed' via a targeted UPDATE by ID." No SQL was provided.
+      The WHERE clause safety cannot be evaluated. The risk: if the IDs are copy-pasted incorrectly, or if the WHERE
+      clause uses <code>IN (id1, id2, ...)</code> without also gating on <code>status = 'executing'</code>, the update
+      could hit rows in other statuses if IDs are wrong. More critically, the 4 proposals need to be verified
+      as genuinely stuck (no position row exists for them) before being marked "failed" — otherwise a proposal
+      that IS executing successfully gets force-failed.
+    </p>
+    <p class="action">Fix required: Write the exact SQL and include a pre-flight SELECT to confirm
+    (a) all 4 IDs have <code>status = 'executing'</code>, and (b) none has a corresponding row in
+    <code>positions</code> table. Gate the UPDATE on <code>status = 'executing'</code>. Run SELECT first, review output, then UPDATE.</p>
+  </div>
+</div>
+
+<div class="section amber">
+  <h2>Worth a look</h2>
+
+  <div class="finding amber">
+    <h3>A1: 30 minutes is plausible but not verified against actual wall-clock limit</h3>
+    <p><span class="cite">run-signals/index.ts:100,146</span>, <span class="cite">trade-executor.ts (full file)</span></p>
+    <p>
+      Supabase edge functions have a 150-second (2.5 min) wall-clock limit per invocation. The 30-minute timeout
+      in the proposed cleanup is not about "how long can the executor run" — it's about "how long can a proposal
+      be stuck in 'executing' before we assume the executor died." An executor process cannot legitimately run for
+      30 minutes; the isolate would have been killed by Supabase long before.
+    </p>
+    <p>
+      However, there is one mid-flight write that moves <code>updated_at</code> without completing execution:
+      the downsize branch at <span class="cite">trade-executor.ts:762–768</span> writes
+      <code>proposed_size_usd + updated_at</code> but leaves status as "executing". This is the only case
+      where <code>updated_at</code> advances mid-flight. The 30-minute window comfortably covers it (the
+      downsize write happens well inside the 150s isolate limit). So 30 minutes is safe as a timeout value.
+    </p>
+    <p>
+      The concern is the opposite direction: 30 minutes is very conservative. A proposal stuck in "executing"
+      for 30 minutes means the user waited 30 minutes with no feedback. Given the 150s isolate limit, a 5-minute
+      timeout would catch all genuinely stuck proposals while being more responsive. This is a product judgment,
+      not a correctness issue — flag for Henry.
+    </p>
+    <p class="action">Verify: confirm Supabase isolate wall-clock limit is 150s. If confirmed, consider tightening the timeout to 5 minutes. 30 minutes is safe but leaves users without feedback for too long.</p>
+  </div>
+
+  <div class="finding amber">
+    <h3>A2: Users get zero notification when their stuck proposal is force-failed by the cron</h3>
+    <p><span class="cite">notify.ts:4493–4499</span>, <span class="cite">Layout.tsx:120–128</span></p>
+    <p>
+      By design, trade failures go admin-only (<span class="cite">notify.ts:4494</span>: "Trade failures are
+      operational errors — admin-only, not user-facing. Users see the failure reflected in proposal status on the app.").
+      This is correct for real-time failures where the user is likely in the app. It is wrong for proposals that
+      have been stuck for days or weeks. The 4 affected users have no idea a trade was attempted and failed.
+    </p>
+    <p>
+      The Layout.tsx failure toast (<span class="cite">Layout.tsx:120–128</span>) fires on a
+      <code>executing → failed</code> transition — but only if the app is open when the cron runs.
+      If the user is not in the app (which is almost certain for a days-old stuck proposal), the toast never fires.
+      There is no email or Telegram fallback for cron-induced failures.
+    </p>
+    <p>
+      The existing <code>notifyLowBalanceFailure</code> and <code>notifyMarginShortfall</code> functions show
+      the pattern for user-facing failure notifications. The cleanup cron, however, is pure SQL — it cannot
+      call notify.ts. A notification would require either an edge function wrapper or a separate "stale proposal
+      notification" job.
+    </p>
+    <p class="action">Decide: for proposals force-failed by the cron, should the user receive a Telegram/email nudge? If yes, the cleanup cannot be pure SQL — it needs an edge function that queries affected rows and calls <code>notifyLowBalanceFailure</code> or a new <code>notifyExecutionTimeout</code>. If no, document this as intentional.</p>
+  </div>
+
+  <div class="finding amber">
+    <h3>A3: TrackRecord.tsx silently drops executing proposals when they expire</h3>
+    <p><span class="cite">src/pages/TrackRecord.tsx:41–43</span></p>
+    <p>
+      TrackRecord filters active proposals as: <code>status in ('approved', 'auto_approved', 'executing') AND expires_at > now()</code>.
+      A proposal stuck in "executing" with a past <code>expires_at</code> is already invisible on TrackRecord — it
+      does not appear in the active list, and "failed" is not in the active filter either. When the cleanup cron
+      runs and flips it to "failed", the card appears nowhere on TrackRecord (failed is not in either filter).
+    </p>
+    <p>
+      The user with a stuck executing proposal currently sees nothing on TrackRecord. After the fix, they still
+      see nothing — but now the proposal has a "failed" error message. Whether this is acceptable depends on
+      whether failed proposals should appear in the history view (useTrading.ts at line 266 does include "failed"
+      in the status list fetched, so the data is available, just not rendered on TrackRecord).
+    </p>
+    <p class="action">Verify: confirm whether failed proposals intentionally don't render on TrackRecord, or whether there's a history list that includes them. If failed proposals are expected to be visible as a record, add them to TrackRecord's history section.</p>
+  </div>
+</div>
+
+<div class="section nit">
+  <h2>Nit</h2>
+
+  <div class="finding nit">
+    <h3>N1: Error message copy should follow Vela voice</h3>
+    <p>
+      Proposed error message: <em>"Execution timed out — no position created"</em>. This contains an em dash,
+      which is banned per project style rules. Use a comma or period instead.
+      Suggested: <em>"Execution timed out. No position was created."</em>
+    </p>
+    <p class="action">Change the em dash to a period before implementing.</p>
+  </div>
+</div>
+
+<div class="section safe">
+  <h2>Safe</h2>
+
+  <div class="finding safe">
+    <h3>S1: updated_at is the correct column to gate on</h3>
+    <p>
+      The executor writes <code>updated_at</code> exactly once mid-flight (downsize branch,
+      <span class="cite">trade-executor.ts:766</span>) and at claim time
+      (<span class="cite">trade-executor.ts:100</span>). Both are inside the 150s isolate window.
+      Using <code>updated_at &lt; now() - interval '30 minutes'</code> correctly identifies proposals
+      whose executor isolate died without finishing, and would not false-positive on an active downsize event.
+    </p>
+  </div>
+
+  <div class="finding safe">
+    <h3>S2: Position-count gate does not include executing proposals — no slot lockout issue</h3>
+    <p><span class="cite">proposal-generator.ts:955–960, 1094–1106</span></p>
+    <p>
+      The max_active_positions enforcement queries <code>positions WHERE status='open'</code> (not
+      <code>trade_proposals WHERE status='executing'</code>). Stuck executing proposals do not consume a
+      position slot from the generator's perspective. Flipping them to "failed" does not free any slot that
+      was being held. No downstream capacity logic breaks.
+    </p>
+  </div>
+</div>
+
+<hr>
+<p style="font-size:12px; color:#6b7280;">
+  Generated by adversarial QA subagent. Read files: trade-executor.ts, proposal-generator.ts, run-signals/index.ts,
+  notify.ts, Layout.tsx, TrackRecord.tsx, AssetDetail.tsx, useTrading.ts, migrations 20260403000002 and 20260411000001.
+  No prior context on this problem; all findings derived from code evidence.
+</p>
+</body>
+</html>

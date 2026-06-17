@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: breaking-telegram LLM migration</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 960px; margin: 0 auto; padding: 24px; background: #0f0f0f; color: #e0e0e0; line-height: 1.55; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #fff; }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .pill { padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; }
+  .pill-red    { background: #3d0f0f; color: #ff6b6b; border: 1px solid #8b2020; }
+  .pill-amber  { background: #3d2a00; color: #ffc34d; border: 1px solid #8b6000; }
+  .pill-gray   { background: #252525; color: #aaa;    border: 1px solid #444; }
+  .pill-green  { background: #0d2b1a; color: #4dff99; border: 1px solid #1a6640; }
+  .pill-yellow { background: #2d2800; color: #ffe066; border: 1px solid #6b5e00; }
+  /* Risk matrix */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 0.88rem; }
+  th { background: #1a1a1a; color: #aaa; text-align: left; padding: 8px 10px; border-bottom: 1px solid #333; }
+  td { padding: 8px 10px; border-bottom: 1px solid #222; vertical-align: top; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+  .badge-red    { background: #3d0f0f; color: #ff6b6b; }
+  .badge-amber  { background: #3d2a00; color: #ffc34d; }
+  .badge-gray   { background: #252525; color: #aaa; }
+  .badge-green  { background: #0d2b1a; color: #4dff99; }
+  /* Sections */
+  .section { margin-bottom: 32px; }
+  h2 { font-size: 1.05rem; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #333; }
+  h2.red    { color: #ff6b6b; border-color: #8b2020; }
+  h2.amber  { color: #ffc34d; border-color: #8b6000; }
+  h2.gray   { color: #aaa;    border-color: #444; }
+  h2.green  { color: #4dff99; border-color: #1a6640; }
+  h2.yellow { color: #ffe066; border-color: #6b5e00; }
+  .finding { background: #161616; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
+  .finding-header { font-weight: 700; margin-bottom: 6px; }
+  .finding-header .num { margin-right: 6px; opacity: 0.6; }
+  .loc { font-family: "SF Mono", "Menlo", monospace; font-size: 0.78rem; background: #222; padding: 2px 6px; border-radius: 4px; color: #8be; margin-bottom: 6px; display: inline-block; }
+  .label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .label.symptom   { color: #ff9966; }
+  .label.root      { color: #cc88ff; }
+  .label.fix       { color: #66ccff; }
+  p { margin: 4px 0 8px; font-size: 0.9rem; }
+  code { font-family: "SF Mono", "Menlo", monospace; font-size: 0.82rem; background: #222; padding: 1px 5px; border-radius: 3px; color: #c5e8b0; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: breaking-telegram LLM migration</h1>
+<p class="subtitle">Adversarial review of 3 cost-reduction changes: breaking_telegram factory migration, brief-generator recordCall, registry/types/migration additions. Reviewer has no author context.</p>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <span class="pill pill-red">Blocking: 1</span>
+  <span class="pill pill-amber">Worth-a-look: 4</span>
+  <span class="pill pill-gray">Nit: 2</span>
+  <span class="pill pill-green">Safe: 5</span>
+  <span class="pill pill-yellow">Monitor: 2</span>
+</div>
+
+<!-- Risk matrix -->
+<table>
+  <thead>
+    <tr><th>File</th><th>Highest severity</th><th>Note</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>breaking-news/index.ts</code></td><td><span class="badge badge-amber">Worth-a-look</span></td><td>Silent null on schema_fail without admin alert; schema char-vs-word mismatch</td></tr>
+    <tr><td><code>_shared/brief-generator.ts</code></td><td><span class="badge badge-red">Blocking</span></td><td>taskName passed as asset symbol to recordCall; logs are garbage</td></tr>
+    <tr><td><code>_shared/llm/registry.ts</code></td><td><span class="badge badge-green">Safe</span></td><td>breaking_telegram entry correct; cascadeOnSchemaFail present; no lastResort needed</td></tr>
+    <tr><td><code>_shared/llm/types.ts</code></td><td><span class="badge badge-green">Safe</span></td><td>breaking_telegram added to TaskName union; consistent with registry</td></tr>
+    <tr><td><code>_shared/llm/factory.ts</code></td><td><span class="badge badge-green">Safe</span></td><td>cascade logic correct; schema_fail returns (not throws) without cascadeOnSchemaFail</td></tr>
+    <tr><td><code>migrations/20260610000001_...</code></td><td><span class="badge badge-gray">Nit</span></td><td>ON CONFLICT DO NOTHING is correct; no force_provider column referenced in schema needed here</td></tr>
+  </tbody>
+</table>
+
+<!-- BLOCKING -->
+<div class="section">
+<h2 class="red">Blocking</h2>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[B1]</span> brief-generator recordCall uses asset symbol as taskName</div>
+  <span class="loc">_shared/brief-generator.ts : ~423, ~443</span>
+  <div class="label symptom">Symptom</div>
+  <p>Every <code>recordCall</code> in <code>callClaudeAPIWithRetry</code> passes <code>label</code> as the <code>taskName</code>. <code>label</code> is the asset symbol (e.g. <code>"BTC"</code>, <code>"ETH-text"</code>), not a <code>TaskName</code> enum value. The <code>task_name</code> column in <code>llm_call_log</code> will accumulate one row per symbol per run with a garbage key, making every cost query, budget alert, and per-task audit for <code>brief_generate</code> return zero rows. The records aren't rejected (column is <code>text</code>), so there's no error signal.</p>
+  <div class="label root">Root cause</div>
+  <p>The <code>callClaudeAPIWithRetry</code> function predates the factory and has its own <code>label</code> parameter used for logging, but <code>recordCall</code>'s <code>taskName</code> field is meant to be a <code>TaskName</code> value. The two concepts were conflated when the logging call was inserted.</p>
+  <div class="label fix">Fix</div>
+  <p>Add a <code>taskName: TaskName</code> parameter to <code>callClaudeAPIWithRetry</code> (alongside <code>label</code>), and pass the actual task name from callers: <code>"brief_generate"</code> for the main brief path and <code>"brief_generate"</code> (or a new <code>"brief_events"</code> task if you want separate telemetry) for the Haiku events path. Pass <code>label</code> only to the console lines. Alternatively, derive the task name inside the function by mapping <code>model</code> to a known task name, but the parameter approach is simpler and doesn't require a new mapping table.</p>
+</div>
+</div>
+
+<!-- WORTH A LOOK -->
+<div class="section">
+<h2 class="amber">Worth-a-look</h2>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[W1]</span> schema_fail cascade exhausted: result.parsed is null, no admin alert fires</div>
+  <span class="loc">breaking-news/index.ts : 391–408</span>
+  <div class="label symptom">Symptom</div>
+  <p>When both Groq and NVIDIA return <code>schema_fail</code> and <code>cascadeOnSchemaFail: true</code> is set, the factory throws a synthetic retryable error from the primary, cascades to the fallback, and then the fallback itself may also return <code>schema_fail</code>. Reading <code>factory.ts</code> lines 139–141: the fallback result is returned as-is (<code>return { ...res, fallbackUsed: true }</code>) without checking <code>res.status === "schema_fail"</code> again. So when the fallback returns <code>schema_fail</code>, <code>complete()</code> <strong>returns</strong> (does not throw), and <code>result.parsed</code> is <code>null</code> (or whatever the adapter set it to on a failed parse). The <code>try/catch</code> at line 391 does not catch this. Control falls through to the <code>if (!parsed)</code> check at line 406, which logs a console error and returns null with no admin alert. A broken Telegram analysis silently drops the broadcast.</p>
+  <div class="label root">Root cause</div>
+  <p>The cascade in <code>factory.ts</code> only re-checks <code>schema_fail</code> on the <strong>primary</strong> result (line 114). Fallback and lastResort results are returned verbatim. If fallback returns <code>schema_fail</code> (and there's no lastResort), the caller gets a <code>schema_fail</code> response with <code>parsed: null</code> silently. The same issue would occur for any task where both providers fail schema validation.</p>
+  <div class="label fix">Fix</div>
+  <p>After the <code>if (!parsed)</code> guard at line 406, add an admin alert before returning null: <code>await sendAdminTelegram(`[breaking-news] WARNING: Telegram analysis schema_fail (both providers) for: ${title}`).catch(() => {})</code>. This surfaces the double-failure rather than silently dropping the broadcast. Separately, consider extending the <code>factory.ts</code> fallback return to re-check <code>schema_fail + cascadeOnSchemaFail</code> for the lastResort path (that's a factory-wide change, out of scope here, but the no-alert path in the caller is the immediate fix).</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[W2]</span> velaRead empty string silently omitted without any alert</div>
+  <span class="loc">breaking-news/index.ts : 439–447</span>
+  <div class="label symptom">Symptom</div>
+  <p>If <code>velaRead</code> is empty or exceeds 12 words, it is quietly set to <code>""</code> and the broadcast continues with a blank image subtitle. This is intentional per the comment ("renders headline-only rather than with a malformed subtitle"), but there's no admin alert or logging when the overshoot occurs in production, making it invisible in telemetry. The warn log on line 442 is emitted but doesn't reach admin Telegram. Over time this accumulates silently degrading broadcasts without any signal.</p>
+  <div class="label root">Root cause</div>
+  <p>The drop-on-overshoot path was designed to be graceful, but graceful degradation without observability becomes invisible regression.</p>
+  <div class="label fix">Fix</div>
+  <p>Either: (a) add <code>sendAdminTelegram(...).catch(() => {})</code> on the overshoot branch to surface the model drift in production, or (b) add a <code>velaReadDropped</code> counter to the response JSON so the caller can aggregate it. Low urgency if overshots are rare, but worth catching early after a model change.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[W3]</span> schema maxLength:400 and truncation guard at >80 words are not aligned</div>
+  <span class="loc">registry.ts : 443 vs breaking-news/index.ts : 423–433</span>
+  <div class="label symptom">Symptom</div>
+  <p>The schema declares <code>analysis: { maxLength: 400 }</code> (characters). The post-generation truncation guard fires when <code>words.length &gt; 80</code> (words). At average English word length of ~5 chars plus a space, 80 words is roughly 480 characters, so a 400-character analysis could be up to ~66 words and would never trigger the word-count guard. The problem runs the other way: an analysis near the 80-word limit (legal per the prompt's "max 50 words" instruction, which the schema doesn't enforce at 50) could be 400+ characters and pass the schema check but still hit the word-count truncation. The two signals are measuring different things and neither is a strict superset of the other.</p>
+  <div class="label root">Root cause</div>
+  <p>The schema was written with a character limit; the truncation guard was ported from an older version that counted words. There's no single consistent enforcement unit.</p>
+  <div class="label fix">Fix</div>
+  <p>Align the two. The simplest fix: change the truncation guard from <code>words.length &gt; 80</code> to <code>analysis.length &gt; 400</code> (characters), matching the schema. This makes the guard a true safety net for the declared constraint. Update the log message accordingly. The 280-word inner loop guard for paragraphs can stay as-is since it protects a different (now unreachable) old multi-paragraph path.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[W4]</span> generateBreakingTweet still references outer-scope anthropicApiKey conceptually but actually takes its own param</div>
+  <span class="loc">breaking-news/index.ts : 184–188, 212–230</span>
+  <div class="label symptom">Symptom</div>
+  <p><code>generateBreakingTweet</code> takes <code>anthropicApiKey: string</code> as a parameter and uses it to make a direct <code>fetch</code> to <code>https://api.anthropic.com/v1/messages</code>. This function is NOT migrated to the factory. The function is currently paused (no call sites; the comment at line 1013 says "PAUSED"). However, if tweet generation is re-enabled in the future by restoring the block from git history, it will (a) bypass the factory and <code>llm_call_log</code>, and (b) require the outer scope to have an <code>anthropicApiKey</code> variable, which was removed. The current handler never calls <code>generateBreakingTweet</code>, so this is not a production bug today, but it creates a latent trap for whoever re-enables tweets.</p>
+  <div class="label root">Root cause</div>
+  <p>Tweet generation was paused before the outer-scope <code>anthropicApiKey</code> removal, so the function body was left in place without updating it to the factory pattern.</p>
+  <div class="label fix">Fix</div>
+  <p>Either: (a) delete <code>generateBreakingTweet</code> entirely and leave a comment in git history pointing to where to find the old implementation, or (b) migrate it to use <code>llmComplete</code> now (before it's re-enabled) and add a <code>breaking_tweet</code> task to the registry. Option (a) is safer since the function body has a direct Anthropic fetch that would cost money without logging.</p>
+</div>
+</div>
+
+<!-- NITS -->
+<div class="section">
+<h2 class="gray">Nit</h2>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[N1]</span> Truncation log at line 244 reports the same number twice</div>
+  <span class="loc">breaking-news/index.ts : 244</span>
+  <p><code>console.log(`... from ${text.length + sourceTag.length} to ${text.length + sourceTag.length} chars`)</code>: both sides of "from X to Y" are computed the same way (after truncation) so the log always reads "from N to N". The pre-truncation length is no longer in scope. Low priority since the function is paused, but the log is misleading. Save the pre-truncation length before the slice and log that as the "from" value.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[N2]</span> Migration uses ON CONFLICT DO NOTHING, masking re-runs</div>
+  <span class="loc">migrations/20260610000001_add_breaking_telegram_routing_flag.sql</span>
+  <p><code>ON CONFLICT DO NOTHING</code> is correct for idempotent seeds, but it means if the row already exists with <code>enabled = false</code> (e.g. manually disabled via a flag override), the migration silently leaves it disabled and the task is dead in production without any indication. Consider an <code>ON CONFLICT DO UPDATE SET enabled = true WHERE llm_routing_flags.enabled IS NULL</code> if the intent is always to enable on first seed. As-is, it's fine for a greenfield insert; just know that re-running on a disabled row is a no-op.</p>
+</div>
+</div>
+
+<!-- MONITOR -->
+<div class="section">
+<h2 class="yellow">Risks to monitor post-deploy</h2>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[M1]</span> Groq rate limits: breaking_telegram now competes with news_broadcast_eval for Groq quota</div>
+  <p>Both <code>breaking_telegram</code> and <code>news_broadcast_eval</code> use Groq llama-3.3-70b as primary. They run sequentially on the same broadcast path: first <code>generateTelegramAnalysis</code> (breaking_telegram), then <code>evaluateBroadcastReadiness</code> (news_broadcast_eval). Each Groq free-tier account has a shared daily-request and daily-token cap across all tasks. Monitor <code>llm_call_log</code> for <code>provider=groq, status=fail</code> rows on either task after deploy. If Groq is rate-limited, <code>breaking_telegram</code> cascades to NVIDIA and <code>news_broadcast_eval</code> cascades to NVIDIA too, potentially exhausting NVIDIA RPM on a busy day with multiple candidates.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header"><span class="num">[M2]</span> Heartbeat updates on staging, masking health-check reliability</div>
+  <span class="loc">breaking-news/index.ts : 699–715</span>
+  <p>The staging early-return fires AFTER the heartbeat upsert (line 699–704 fires unconditionally, then <code>if (isStaging)</code> returns at line 709). This means <code>cron_heartbeats["breaking-news"].last_seen_at</code> is updated on every manual staging invocation, keeping the health-check green. This is arguably intentional ("the cron ran, it just skipped work"), but it means a staging environment with the breaking-news cron accidentally enabled would perpetually update the heartbeat while doing zero work, which could mask a misconfigured <code>ENVIRONMENT</code> secret. Low risk if staging cron is confirmed <code>active=false</code>; worth noting for the next time someone manually triggers the function on staging during a debug session.</p>
+</div>
+</div>
+
+<!-- SAFE -->
+<div class="section">
+<h2 class="green">Safe</h2>
+
+<div class="finding">
+  <div class="finding-header">factory.ts cascade logic is correct for breaking_telegram</div>
+  <p>With <code>cascadeOnSchemaFail: true</code> on <code>breaking_telegram</code>, the primary Groq schema_fail correctly throws a synthetic retryable error (factory.ts line 114–119) and cascades to NVIDIA. If NVIDIA also fails <strong>with a network/timeout error</strong>, the fallback catch rethrows (line 152) and the try/catch in <code>generateTelegramAnalysis</code> catches it and fires the admin alert. The happy path and the retryable-error path are both handled correctly.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header">additionalProperties: true on BREAKING_TELEGRAM_SCHEMA is correct</div>
+  <p>Reviewed the factory schema validator path. <code>additionalProperties: true</code> means extra keys from qwen/llama are permitted; only the declared <code>required</code> fields are checked. This is consistent with every other free-tier schema in the registry (all have <code>additionalProperties: true</code> for the same reason: qwen adds <code>reasoning</code>/<code>_meta</code> keys that trip strict validators). No issue here.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header">TaskName union and registry are in sync</div>
+  <p><code>breaking_telegram</code> appears in both <code>types.ts</code> (line 79) and <code>TASK_REGISTRY</code> in <code>registry.ts</code> (line 489). The registry self-check at module load would throw if <code>lastResort.provider</code> equaled primary or fallback, but <code>breaking_telegram</code> has no <code>lastResort</code>, so no issue. The <code>getTaskConfig</code> guard would throw on an unknown task name, so a missing registry entry would surface immediately on first call.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header">Staging early-return placement is correct for zero-API-call guarantee</div>
+  <p>The <code>if (isStaging)</code> return fires before any LLM call, any external API call (post-to-x, broadcastNewsBrief), and before price fetching. The only work done on staging is the Supabase heartbeat upsert and news fetch (which is not an LLM call). The zero-API-call rule for LLMs is satisfied.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-header">recordCall in brief-generator uses EdgeRuntime.waitUntil correctly</div>
+  <p><code>recordCall</code> in <code>cost.ts</code> uses <code>EdgeRuntime.waitUntil</code> when available and swallows rejections. The isolate-lifetime concern (waitUntil promises lost on fast exit) was raised as a question, but the <code>callClaudeAPIWithRetry</code> function is synchronous in terms of its return: it <code>await</code>s the retry loop before returning. So the isolate doesn't exit until the loop completes. The <code>recordCall</code> fires synchronously after the <code>await</code> returns, and <code>waitUntil</code> extends the isolate for the write. The pattern is consistent with how <code>recordCall</code> is used throughout the factory adapters. No isolate-exit race here.</p>
+</div>
+</div>
+
+</body>
+</html>

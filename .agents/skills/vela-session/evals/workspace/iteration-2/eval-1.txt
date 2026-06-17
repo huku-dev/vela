@@ -1,0 +1,19 @@
+## Session Brief
+
+### Active Notion Tasks
+- [In Progress] Fix signal card alignment on mobile — High
+- [In Progress] Investigate brief staleness for ETH — High
+- [Next] Add BTC quarterly report to Track Record — Medium
+- [Next] Update onboarding copy for new asset classes — Medium
+
+### Git Status
+- Frontend: clean (no uncommitted files)
+- Backend: 2 uncommitted files (`supabase/functions/run-signals/index.ts`, `scripts/deploy.sh`)
+
+### CI Health
+- Frontend: passing — run #312
+- Backend: passing — run #89
+
+### Recommended Next Step
+
+Commit or stash the 2 uncommitted backend files before starting new work. `run-signals/index.ts` and `deploy.sh` are both in the critical path — leaving them uncommitted risks losing context or accidentally mixing changes with the next feature. Once the backend working tree is clean, pick up "Investigate brief staleness for ETH" — it's In Progress and directly affects signal reliability in production.

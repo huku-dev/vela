@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: Hold-Duration Rule Backtest</title>
+<style>
+  :root {
+    --red:     #e53e3e;
+    --amber:   #d69e2e;
+    --gray:    #718096;
+    --green:   #38a169;
+    --bg:      #0f0f10;
+    --surface: #1a1a1c;
+    --border:  #2d2d30;
+    --text:    #e8e6e1;
+    --muted:   #9e9e9e;
+    --code-bg: #13131a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.6; }
+  .container { max-width: 920px; margin: 0 auto; padding: 40px 24px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 32px 0 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
+  .badge { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 8px; border: 1px solid; font-weight: 600; font-size: 13px; }
+  .badge.red    { background: rgba(229,62,62,0.1); border-color: rgba(229,62,62,0.35); color: #fc8181; }
+  .badge.amber  { background: rgba(214,158,46,0.1); border-color: rgba(214,158,46,0.35); color: #f6ad55; }
+  .badge.gray   { background: rgba(113,128,150,0.1); border-color: rgba(113,128,150,0.35); color: #cbd5e0; }
+  .badge.green  { background: rgba(56,161,105,0.1); border-color: rgba(56,161,105,0.35); color: #68d391; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.red   { background: #e53e3e; }
+  .dot.amber { background: #d69e2e; }
+  .dot.gray  { background: #718096; }
+  .dot.green { background: #38a169; }
+
+  /* Finding cards */
+  .finding { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; border-left: 4px solid var(--border); }
+  .finding.red   { border-left-color: var(--red); }
+  .finding.amber { border-left-color: var(--amber); }
+  .finding.gray  { border-left-color: var(--gray); }
+  .finding.green { border-left-color: var(--green); }
+  .finding-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+  .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 4px; white-space: nowrap; margin-top: 2px; }
+  .tag.red   { background: rgba(229,62,62,0.2); color: #fc8181; }
+  .tag.amber { background: rgba(214,158,46,0.2); color: #f6ad55; }
+  .tag.gray  { background: rgba(113,128,150,0.2); color: #cbd5e0; }
+  .tag.green { background: rgba(56,161,105,0.2); color: #68d391; }
+  .finding-body { color: #c7c7c7; line-height: 1.65; }
+  .finding-body p { margin-bottom: 8px; }
+  .finding-body p:last-child { margin-bottom: 0; }
+  code { font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; background: var(--code-bg); padding: 1px 5px; border-radius: 3px; color: #a8d5ff; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; margin: 10px 0; overflow-x: auto; font-family: "SF Mono", "Fira Code", monospace; font-size: 12px; color: #c7c7c7; line-height: 1.5; }
+  ul { padding-left: 18px; margin: 6px 0; }
+  li { margin-bottom: 4px; }
+
+  /* Verdict */
+  .verdict { background: var(--surface); border: 1px solid rgba(229,62,62,0.4); border-radius: 10px; padding: 22px 24px; margin-top: 32px; }
+  .verdict-title { font-size: 16px; font-weight: 700; color: #fc8181; margin-bottom: 10px; }
+  .verdict-body { color: #c7c7c7; line-height: 1.7; }
+  .verdict-body p { margin-bottom: 10px; }
+  .verdict-body p:last-child { margin-bottom: 0; }
+
+  /* Fixes table */
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: var(--code-bg); color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .pill.required { background: rgba(229,62,62,0.2); color: #fc8181; }
+  .pill.nice { background: rgba(214,158,46,0.2); color: #f6ad55; }
+  .pill.low { background: rgba(113,128,150,0.2); color: #cbd5e0; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>QA Review: Hold-Duration Rule Backtest</h1>
+  <p class="subtitle">
+    Script: <code>/Users/henry/crypto-agent/scripts/backtest-hold-duration-rule.ts</code>
+    &nbsp;&middot;&nbsp; Reviewed: 2026-06-16 &nbsp;&middot;&nbsp; Independent adversarial review
+  </p>
+
+  <!-- Summary bar -->
+  <div class="summary-bar">
+    <div class="badge red">   <div class="dot red"></div>   2 Blocking gaps</div>
+    <div class="badge amber"> <div class="dot amber"></div> 3 Concerns</div>
+    <div class="badge gray">  <div class="dot gray"></div>  3 Minor / model simplifications</div>
+    <div class="badge green"> <div class="dot green"></div> 7 Confirmed correct</div>
+  </div>
+
+  <!-- ── BLOCKING ── -->
+  <h2>Blocking gaps</h2>
+
+  <div class="finding red">
+    <div class="finding-header">
+      <span class="tag red">Blocking</span>
+      <h3>Missing production entry filters: late_entry, anti-whipsaw, ATR gate, momentum filter</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        The simulation (lines 294&ndash;295) fires only on <strong>exact EMA cross bars</strong>:
+        <code>pf &lt;= ps &amp;&amp; f &gt; s</code>. Production adds four filters the backtest omits entirely:
+      </p>
+      <ul>
+        <li><strong>late_entry</strong> (signal-engine.ts line 290&ndash;324, <code>LATE_ENTRY_BARS = 6</code>): fires when a cross happened within the prior 6 bars (24&nbsp;h) and all gates pass <em>now</em>. This is a distinct production code path &mdash; it generates trades that the backtest will never see.</li>
+        <li><strong>anti_whipsaw</strong> (signal-engine.ts line 44, <code>ANTI_WHIPSAW_BARS = 3</code>): suppresses entries when the opposite cross happened within 3 bars. The backtest generates trades that production blocks here.</li>
+        <li><strong>momentum_overextended</strong> (signal-rules.ts line 193): skips if <code>|priceChange20bar| &gt; 10%</code>. Not computed in backtest at all.</li>
+        <li><strong>ATR gate</strong> (signal-rules.ts line 196&ndash;198): skips if <code>atrPct &gt; 8%</code> when ADX &lt; 25, except for commodities. Not computed in backtest at all.</li>
+      </ul>
+      <p>
+        <strong>Impact on the June&nbsp;9 BTC short:</strong> That position may have been triggered by <code>late_entry</code>, not an exact cross bar. If the EMA9/EMA21 cross happened on June&nbsp;7 or&nbsp;8, and conditions aligned by June&nbsp;9, production fires; the backtest does not. This is the most likely reason BTC shows zero qualifying positions despite the production loss fitting the pattern exactly.
+      </p>
+      <p>
+        The population of simulated trades is <em>different from production</em> in both directions: missing late_entry trades, and including anti-whipsaw-blocked trades. The conclusion ("don't implement the rule") rests on this mis-matching population.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding red">
+    <div class="finding-header">
+      <span class="tag red">Blocking</span>
+      <h3>Qualifying positions are 100% GOLD &mdash; asset concentration invalidates system-wide conclusion</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        All 7 qualifying positions (hold &ge; 72h, peak &lt; 0.5%) came from GOLD alone. BTC, ETH, SOL, HYPE, NEAR, ZEC, NVDA, AAPL, AMZN, GOOGL, INTC contributed zero. The author's conclusion is "don't implement the rule" &mdash; but that conclusion is derived entirely from GOLD behavior, not from the assets that motivated the investigation (BTC short on June&nbsp;9, ETH shorts).
+      </p>
+      <p>
+        The structural reason GOLD dominates: commodities use a lower trailing stop (activation 3%, trail 1.5% vs. crypto's 5%/2.5%). A crypto trade that survives 72h without stopping out has likely seen &gt; 0.5% peak already. GOLD trends more slowly. This makes the qualifying set a commodity artifact, not a general pattern.
+      </p>
+      <p>
+        The conclusion should read: "The rule doesn't appear useful for GOLD (7 positions, +0.02% EV, 2 hurt). Its applicability to BTC/ETH/equities cannot be assessed from this backtest because no qualifying positions emerged from those assets."
+      </p>
+    </div>
+  </div>
+
+  <!-- ── CONCERNS ── -->
+  <h2>Concerns</h2>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="tag amber">Concern</span>
+      <h3>4 TwelveData symbols returned 0 bars &mdash; likely fixable, may alter results</h3>
+    </div>
+    <div class="finding-body">
+      <p>The script notes SKHX, SILVER, COPPER, and SPX all returned 0 bars. The likely causes:</p>
+      <ul>
+        <li><strong>SKHX (<code>000660.KS</code>)</strong>: Yahoo Finance notation. TwelveData requires its own format, likely <code>000660</code> with <code>&amp;exchange=KRX</code> or the notation <code>000660:KRX</code>. Korean equities require an explicit exchange on many data providers. This is the highest-confidence fix.</li>
+        <li><strong>COPPER (<code>COPPER</code>)</strong>: TwelveData commodity symbol for copper is typically <code>COPPER</code> but may require adding <code>&amp;type=physical_currency</code> or may need <code>HG1!</code> (CME futures front month). Worth verifying in TwelveData's symbol search.</li>
+        <li><strong>SILVER (<code>XAG/USD</code>)</strong>: The same format <code>XAU/USD</code> works for GOLD. <code>XAG/USD</code> should work but could be hitting the free-tier 8-second rate limit between the two TwelveData calls in <code>tdFetch4H</code> (line 116&ndash;117). The 8-second delay (line 93) is only applied from the second call onward, which may not be enough to avoid rate limiting for rapid serial fetches.</li>
+        <li><strong>SPX (<code>SPX</code>)</strong>: Prior backtest scripts (backtest-stop-calibration.ts line 42) noted that SPX is excluded because "HL returns 500 on xyz:SPX" but TwelveData's <code>SPX</code> symbol has been used in other scripts (backtest-htf-gates.ts line 55, backtest-adx-recovery.ts line 44) without noted failure. The issue is likely a rate limit or temporary API error at run time, not a wrong symbol.</li>
+      </ul>
+      <p>
+        <strong>Would fixing these change the qualifying-position count?</strong> Probably not dramatically: SILVER and COPPER are slow-moving commodities similar to GOLD &mdash; they could plausibly contribute qualifying positions. SPX and SKHX are medium-volatility assets that may follow the same pattern as equities (zero qualifying). Fixing SILVER/COPPER is necessary before drawing any cross-commodity conclusion.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="tag amber">Concern</span>
+      <h3>The June&nbsp;9 production BTC short is not reproduced by the simulation &mdash; gap unexplained</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        The BTC short opened June&nbsp;9, 2026 falls within the 730-day HL data window (window starts June&nbsp;16, 2024). The position ran 134&nbsp;h, meaning the 72&nbsp;h checkpoint at June&nbsp;12 was reachable within the available data. Peak PnL was described as +0.33%, which satisfies peak &lt; 0.5%.
+      </p>
+      <p>
+        If the simulation fired on June&nbsp;9, this position would be a qualifying candidate &mdash; yet the backtest reports zero qualifying BTC positions. The gap is not explained by the author. Two explanations:
+      </p>
+      <ul>
+        <li><strong>The signal was a <code>late_entry</code>, not an exact cross.</strong> If the EMA bearish cross happened on June&nbsp;7 or&nbsp;8 and conditions aligned by June&nbsp;9, production fires; the backtest does not (no late_entry logic at lines 282&ndash;365).</li>
+        <li><strong>The simulation did fire but the position is classified as "unclosed."</strong> If the backtest ran before June&nbsp;15 (stop-out date), the position would be "unclosed" at data end and might not have been analyzed for 72h checkpoint. However, since the stop-out happened within the data window (June&nbsp;15 &lt; June&nbsp;16), the stop loss at bar&nbsp;j should have fired. This is less likely but warrants a direct check.</li>
+      </ul>
+      <p>
+        The author acknowledges the production loss as the motivation but does not investigate why it doesn't appear in simulation. This is a reasoning gap: the backtest should explicitly verify whether the motivating case is reproduced, and if not, explain why.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding amber">
+    <div class="finding-header">
+      <span class="tag amber">Concern</span>
+      <h3>n=7 qualifying positions: no statistical conclusion is possible</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        The primary result (72h / peak &lt; 0.5%) has n=7, all from one asset (GOLD). The author's conclusion "net EV near zero" is technically true (mean delta = +0.02%) but the 95% confidence interval around that estimate with n=7 spans roughly &plusmn;2&ndash;4 percentage points &mdash; wide enough to contain substantial negative and positive EV values.
+      </p>
+      <p>
+        The 0.25% peak threshold cell showing +0.91% EV is likely n=3&ndash;4, making it even less reliable. Dismissing it as "tiny sample" is correct, but the same logic should prevent drawing any definitive conclusion from the full n=7.
+      </p>
+      <p>
+        <strong>What n is needed?</strong> To detect a 2% absolute EV difference at alpha=0.05, power=0.80, with a reasonable effect size estimate, you'd need at minimum 30&ndash;50 qualifying positions per parameter cell. The backtest is roughly 7x under-powered.
+      </p>
+      <p>
+        The conclusion "don't implement the rule" cannot be supported by n=7 from a single asset class. The honest conclusion is: "the data is insufficient to confirm or deny the rule's value."
+      </p>
+    </div>
+  </div>
+
+  <!-- ── MINOR ── -->
+  <h2>Minor / model simplifications</h2>
+
+  <div class="finding gray">
+    <div class="finding-header">
+      <span class="tag gray">Minor</span>
+      <h3>Stop-loss exit PnL assumes exact fill at &minus;8%: gap risk not modeled</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Lines 338&ndash;339: when the bar's intrabar adverse move &ge; 8% (<code>advPct &ge; EQUITY_STOP_PCT</code>), <code>exitPnlPct</code> is set to exactly <code>&minus;EQUITY_STOP_PCT = &minus;8%</code>. This assumes the native stop order fills at exactly <code>entry * 0.92</code>.
+      </p>
+      <p>
+        In reality, a gap open past the stop level (overnight for equities, flash crash for crypto) fills at the open price, not at <code>&minus;8%</code>. For equities with overnight gaps, this can be &minus;10% or worse. The model is slightly optimistic. For this backtest's purpose (the rule fires before stops, so stops matter for "hurt" cases), the bias is minor but real.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding gray">
+    <div class="finding-header">
+      <span class="tag gray">Minor</span>
+      <h3>Unclosed positions at data boundary included in analysis</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        When no exit condition fires before the last candle (line 350), <code>exitReason = "unclosed"</code> and <code>exitPnlPct = lastPnlClose</code>. These positions are included in all PnL and rule-exit comparisons. For entries near the end of the 730-day window, this produces artificial "exits" at the data boundary that don't represent real trades. The count is likely small (few signals near data end) but should be filtered in the qualifying analysis.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding gray">
+    <div class="finding-header">
+      <span class="tag gray">Minor</span>
+      <h3>Trailing stop uses close-to-close peak; production uses mark price (minor divergence)</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Line 319: <code>peak = Math.max(peak, pnlClose)</code> tracks close-to-close PnL max. Production places a native HL trailing stop whose activation is monitored against the continuously-updated mark price. The mark price can be higher than the close within a bar, so production trailing activation can fire earlier than the backtest predicts. The delta is small in most cases (mark and close are close for liquid assets) but may explain some divergence in which positions are stopped vs. which survive to the 72h mark.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── CONFIRMED CORRECT ── -->
+  <h2>Confirmed correct</h2>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Entry conditions match production DEFAULT_CONFIG</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Lines 36&ndash;38 of the backtest match <code>signal-rules.ts DEFAULT_CONFIG</code> exactly:
+        RSI long 40&ndash;70, short 30&ndash;60, ADX &ge; 20. SMA50 filter (line 229&ndash;233) uses daily closes, consistent with production <code>signal-engine.ts</code> daily data path. Stop loss 8% (line 29) matches <code>DEFAULT_CONFIG.stopLossPct = 8</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Profit ladder constants match production</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        <code>LADDER_LEVELS_PCT = [15, 25, 35]</code> and <code>LADDER_FRACTIONS = [0.10, 0.10, 0.10]</code> (lines 27&ndash;28) match production <code>trading-types.ts</code>: <code>PROFIT_LADDER_LEVELS = [15, 25, 35]</code> and <code>PROFIT_LADDER_FRACTIONS = [0.10, 0.10, 0.10]</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Fee calculation for rule exit: 2 fills is correct</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Line 407: <code>ruleNetPnl = c.pnlPct - 2 * FEE_PER_FILL_PCT</code>. The comment notes "no ladder since peak &lt; threshold." This is correct: qualifying positions have peak &lt; 0.5%, so they never reached the 15% ladder level. Entry + rule exit = 2 fills. Fee per fill (0.095%) is consistent with the builder + exchange + slippage estimate used across all backtest scripts.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Checkpoint timing: 72h maps to bar i+18 in 4H data</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Line 333&ndash;336: checkpoints are recorded when <code>holdH === 24/48/72/96</code>, where <code>holdH = (j - i) * 4</code>. The 72h checkpoint fires at <code>j = i + 18</code> (18 bars &times; 4&nbsp;h = 72&nbsp;h). This is correct and the comment at line 11&ndash;12 accurately describes the monotonicity insight.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Peak PnL is monotonically non-decreasing (correctly implemented)</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Line 319: <code>peak = Math.max(peak, pnlClose)</code>. Initialized to 0. This correctly tracks the running maximum of close-to-close PnL since entry. The key insight in the script header (lines 11&ndash;13) that the rule can only fire at the <em>first</em> eligible checkpoint is correct because of this monotonicity.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Stop-loss uses intrabar low/high (not close-to-close) for detection</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Line 321: <code>advPct = side === "long" ? ((price - c.low) / price) * 100 : ((c.high - price) / price) * 100</code>, where <code>price</code> is the entry bar's close (line 289). This correctly checks whether the bar's intrabar range touched the 8% stop level, consistent with production's native stop orders. For longs: stop at <code>entry&nbsp;&times;&nbsp;0.92</code> triggers when <code>low &le; entry&nbsp;&times;&nbsp;0.92</code>.
+      </p>
+    </div>
+  </div>
+
+  <div class="finding green">
+    <div class="finding-header">
+      <span class="tag green">Correct</span>
+      <h3>Trailing stop parameters match production</h3>
+    </div>
+    <div class="finding-body">
+      <p>
+        Lines 30&ndash;33: <code>TRAIL.crypto = {activation: 5.0, trail: 2.5}</code>, <code>TRAIL.nonCrypto = {activation: 3.0, trail: 1.5}</code>. These match <code>position-monitor/index.ts</code> lines 87&ndash;88: <code>TRAILING_STOP_CRYPTO = {activation: 5.0, trail: 2.5}</code>, <code>TRAILING_STOP_NON_CRYPTO = {activation: 3.0, trail: 1.5}</code>.
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- What the backtest would need -->
+  <h2>What the backtest would need to be credible</h2>
+
+  <table>
+    <tr>
+      <th>Fix</th>
+      <th>Priority</th>
+      <th>Notes</th>
+    </tr>
+    <tr>
+      <td>Add late_entry detection (recentCross within 6 bars + all gates pass now)</td>
+      <td><span class="pill required">Required</span></td>
+      <td>The most material gap. Likely reproduces the June&nbsp;9 BTC short. Adds &plusmn;10&ndash;30% to the entry set.</td>
+    </tr>
+    <tr>
+      <td>Add anti-whipsaw filter (suppress if opposite cross within 3 bars)</td>
+      <td><span class="pill required">Required</span></td>
+      <td>Removes entries production would block. Reduces false signals in choppy markets.</td>
+    </tr>
+    <tr>
+      <td>Add momentum overextension filter (<code>|priceChange20bar| &gt; 10%</code>)</td>
+      <td><span class="pill nice">Nice to have</span></td>
+      <td>Smaller effect. Skips extreme trend-continuation entries.</td>
+    </tr>
+    <tr>
+      <td>Add ATR gate (skip if ATR% &gt; 8% when ADX &lt; 25, skip for commodities)</td>
+      <td><span class="pill nice">Nice to have</span></td>
+      <td>Regime-adaptive. Reduces high-volatility entries in choppy markets.</td>
+    </tr>
+    <tr>
+      <td>Fix 4 TwelveData symbols (SILVER XAG/USD, COPPER, SPX, SKHX exchange prefix)</td>
+      <td><span class="pill required">Required</span></td>
+      <td>SILVER and COPPER are the most important: slow-moving assets likely to contribute qualifying positions. Test each symbol interactively first.</td>
+    </tr>
+    <tr>
+      <td>Filter out unclosed positions (<code>exitReason === "unclosed"</code>) from analysis</td>
+      <td><span class="pill nice">Nice to have</span></td>
+      <td>Minor count, but prevents data-boundary noise from skewing netPnl.</td>
+    </tr>
+    <tr>
+      <td>Increase data window or add more assets to reach n &ge; 30 qualifying</td>
+      <td><span class="pill required">Required</span></td>
+      <td>730 days for crypto is reasonable. The problem is filter rarity, not window size. After fixing entry filters, re-run to see if qualifying n increases.</td>
+    </tr>
+    <tr>
+      <td>Use production positions table directly as a shortcut validation</td>
+      <td><span class="pill nice">Nice to have</span></td>
+      <td>The positions and closed_positions tables have <code>hold_duration_hours</code>, <code>trailing_stop_peak_pnl_pct</code>, and <code>closed_pnl_pct</code>. Querying real production data for the "11 slow starters" pattern avoids simulation entirely for those cases.</td>
+    </tr>
+  </table>
+
+  <!-- Verdict -->
+  <div class="verdict">
+    <div class="verdict-title">Verdict: "Don't implement the rule" is NOT well-supported</div>
+    <div class="verdict-body">
+      <p>
+        The conclusion is technically consistent with the data the script produced, but the data is not representative of production. Two blocking gaps undermine the conclusion:
+      </p>
+      <p>
+        <strong>1. The simulation does not replicate production entry signals.</strong> Missing <code>late_entry</code> (the mechanism most likely responsible for the June&nbsp;9 BTC short) means the population of simulated trades diverges from production in an unknown but material direction. The motivating case &mdash; the loss that prompted this backtest &mdash; likely does not appear in the simulation at all.
+      </p>
+      <p>
+        <strong>2. The qualifying set (n=7, all GOLD) proves nothing about BTC, ETH, or equities.</strong> The assets the rule is intended to protect are exactly the ones with zero qualifying positions in simulation. GOLD's 7 positions reflect GOLD's low trailing stop activation (3%), not a broad system-wide pattern. The rule being "+0.02% EV for GOLD" is not the same as "+0.02% EV for the system."
+      </p>
+      <p>
+        The correct conclusion is: <em>the backtest is inconclusive because (a) the simulation doesn't reproduce production signals faithfully, (b) the qualifying sample is too small and asset-concentrated for any statistical inference, and (c) the 4 missing assets include SILVER and COPPER which are the natural extension of the GOLD pattern.</em>
+      </p>
+      <p>
+        The safest near-term path is a production data query, not a simulation rebuild: pull <code>closed_positions</code> where <code>hold_duration_hours &ge; 72</code> AND <code>trailing_stop_peak_pnl_pct &lt; 0.5</code> AND <code>close_reason = 'stop_loss'</code>. Count those rows and their realized PnL. That directly answers the question without simulation fidelity concerns. If the 11 slow starters genuinely fit this pattern in production data, the rule has a real-world basis regardless of what the simulation shows.
+      </p>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

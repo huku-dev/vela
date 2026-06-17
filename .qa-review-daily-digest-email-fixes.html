@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: Daily Digest Email Pipeline Fixes</title>
+<style>
+  body { font-family: Inter, sans-serif; font-size: 14px; color: #1a1a1a; background: #f8f8f8; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+  .badge { padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 14px; }
+  .badge-red { background: #ffeaea; color: #c0392b; border: 1.5px solid #e74c3c; }
+  .badge-amber { background: #fff8e1; color: #b8860b; border: 1.5px solid #f0ad4e; }
+  .badge-gray { background: #f0f0f0; color: #555; border: 1.5px solid #bbb; }
+  .badge-green { background: #e8f8f1; color: #1a7a45; border: 1.5px solid #27ae60; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  th { background: #eee; text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e5e5e5; vertical-align: top; }
+  .sec { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; }
+  .sec h2 { font-size: 15px; font-weight: 700; margin: 0 0 14px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dot-red { background: #e74c3c; }
+  .dot-amber { background: #f0ad4e; }
+  .dot-gray { background: #aaa; }
+  .dot-green { background: #27ae60; }
+  .finding { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; }
+  .finding:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .finding-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .finding-loc { font-size: 11px; color: #888; font-family: monospace; margin-bottom: 6px; }
+  .finding-body { font-size: 13px; line-height: 1.55; color: #333; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+  .safe-list { font-size: 13px; color: #333; line-height: 1.7; }
+  .safe-list li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: Daily Digest Email Pipeline Fixes</h1>
+<div class="subtitle">Reviewer: independent subagent — no author context. Files reviewed 2026-06-11.</div>
+
+<div class="summary-bar">
+  <span class="badge badge-red">Blocking: 0</span>
+  <span class="badge badge-amber">Worth a look: 2</span>
+  <span class="badge badge-gray">Nit: 1</span>
+  <span class="badge badge-green">Safe: 9</span>
+</div>
+
+<!-- File risk matrix -->
+<div class="sec">
+  <h2>File-level risk matrix</h2>
+  <table>
+    <tr><th>File</th><th>Highest severity</th><th>Note</th></tr>
+    <tr>
+      <td><code>_shared/notify.ts</code></td>
+      <td><span style="color:#27ae60;font-weight:700;">Safe</span></td>
+      <td><code>splitBriefParagraphs</code> logic is correct. Regex, boundary detection, loop bounds, and final slice all verified.</td>
+    </tr>
+    <tr>
+      <td><code>_shared/news-classifier.ts</code></td>
+      <td><span style="color:#b8860b;font-weight:700;">Nit</span></td>
+      <td><code>capSummary</code> returns SUMMARY_MAX+1 chars in a no-space edge case. Theoretical with LLM output.</td>
+    </tr>
+    <tr>
+      <td><code>news-enrich/index.ts</code></td>
+      <td><span style="color:#b8860b;font-weight:700;">Worth a look</span></td>
+      <td>W1 completeness: <code>news-detail-generate</code> also writes to <code>news_cache.summary</code> without <code>capSummary</code>.</td>
+    </tr>
+    <tr>
+      <td><code>news-enrich/news-enrich.test.ts</code></td>
+      <td><span style="color:#b8860b;font-weight:700;">Worth a look</span></td>
+      <td>New test checks <code>capSummary</code> and <code>rawSummary</code> exist separately — does not verify they are connected.</td>
+    </tr>
+  </table>
+</div>
+
+<!-- Worth a look -->
+<div class="sec">
+  <h2><span class="dot dot-amber"></span> Worth a look (2)</h2>
+
+  <div class="finding">
+    <div class="finding-title">W1. <code>news-detail-generate</code> writes to <code>news_cache.summary</code> without calling <code>capSummary</code></div>
+    <div class="finding-loc">news-detail-generate/index.ts:266, 397-398 | news-enrich/index.ts (W1 completeness claim)</div>
+    <div class="finding-body">
+      The PR brief describes W1 as "the cron path was NOT calling capSummary." The fix correctly adds it to <code>classifyOne()</code> in <code>news-enrich</code>. But a second write path exists: <code>news-detail-generate</code> runs the <code>news_summary</code> LLM task (targeting "3-4 sentences, 80 words") and writes the result to <code>news_cache.summary</code> at line 266 with no length cap. The <code>generateSummary()</code> function at line 397 returns the raw string directly. An 80-word summary averages roughly 450-500 characters, well above SUMMARY_MAX (110). The render-side <code>SUMMARY_CAP=150</code> in <code>renderNewsModule</code> will truncate these rows before display, so no email breakage — but the stored value exceeds the new invariant.
+      <br><br>
+      This is pre-existing (not introduced by this PR), and the <code>news_summary</code> task is intentionally richer than the <code>news_classify</code> one-liner summary. However, the claim that W1 is fully closed is overstated. Decide: either document that <code>news-detail-generate</code> is intentionally uncapped (different use case, relies on the render-side backstop), or add a note to the PR/commit. No code change required if the distinction is intentional.
+    </div>
+  </div>
+
+  <div class="finding">
+    <div class="finding-title">W2. Test verifies <code>capSummary</code> and <code>rawSummary</code> appear in source separately — not that <code>capSummary(rawSummary)</code> is the actual call pattern</div>
+    <div class="finding-loc">news-enrich/news-enrich.test.ts:191-197</div>
+    <div class="finding-body">
+      The new test does:
+      <br><code>assertStringIncludes(SRC, "capSummary");</code>
+      <br><code>assertStringIncludes(SRC, "rawSummary");</code>
+      <br><br>
+      Both strings are present in the source — test passes. But the test would also pass if someone wrote <code>capSummary("other string")</code> and then used <code>rawSummary</code> uncapped. The assertion does not verify that <code>capSummary</code> is called with <code>rawSummary</code> as its argument. A stronger check:
+      <br><code>assertStringIncludes(SRC, "capSummary(rawSummary)");</code>
+      <br>This is a one-token change to the test that closes the gap. Current code is correct (the call at line 313 IS <code>const summary = capSummary(rawSummary)</code>), but the test doesn't guard against a future regression where the call is replaced.
+    </div>
+  </div>
+</div>
+
+<!-- Nit -->
+<div class="sec">
+  <h2><span class="dot dot-gray"></span> Nit (1)</h2>
+
+  <div class="finding">
+    <div class="finding-title">N1. <code>capSummary</code> can return SUMMARY_MAX+1 chars (111) when no spaces exist in the truncated slice</div>
+    <div class="finding-loc">_shared/news-classifier.ts:255-259</div>
+    <div class="finding-body">
+      When <code>raw.length > 110</code> and the 110-char slice has no spaces (or the last space is at index &lt;= 90), the function falls back to <code>slice.replace(/[.,;:]\s*$/, "") + "…"</code>. If no trailing punctuation is stripped, the result is 110 chars + "…" (U+2026, 1 char) = 111 chars — one over SUMMARY_MAX.
+      <br><br>
+      In practice this never fires with LLM output: single-sentence summaries always contain spaces. The render-side 150-char backstop in <code>renderNewsModule</code> absorbs it. Consider changing <code>slice.slice(0, SUMMARY_MAX - 1) + "…"</code> in the hard-cut branch to make the invariant strict. Low priority.
+    </div>
+  </div>
+</div>
+
+<!-- Safe -->
+<div class="sec">
+  <h2><span class="dot dot-green"></span> Safe (9 items verified correct)</h2>
+  <ul class="safe-list">
+    <li><strong>splitBriefParagraphs m.index+2 offset:</strong> correctly places the split at the space after each period, keeping the period with the prior paragraph and trimming the space from the next.</li>
+    <li><strong>Final sentence capture:</strong> the boundary regex requires a trailing space, so the last sentence (ending at end-of-string) never registers as a break. <code>result.push(cleaned.slice(pos).trim())</code> always captures it.</li>
+    <li><strong>breaks.length &lt;= 2 guard:</strong> N sentences produce N-1 breaks; the guard correctly returns unsplit for 1, 2, or 3 sentences.</li>
+    <li><strong>breaks=[] (single long sentence) handling:</strong> 0 &lt;= 2 triggers the guard, returning <code>[cleaned]</code>. No crash.</li>
+    <li><strong>U.S. / Dr. / "No. 1" abbreviation handling:</strong> the regex <code>/[a-z0-9][.!?] /g</code> requires a lowercase or digit before the punctuation. "U.S. Treasury" has 'S' (uppercase) before the second period — correctly not matched.</li>
+    <li><strong>Regex /g lastIndex safety:</strong> <code>dashArtifact</code> and <code>boundaryRe</code> are both constructed inside the function body on each call. No stale <code>lastIndex</code> risk.</li>
+    <li><strong>capSummary null/empty/at-limit pass-through:</strong> <code>raw === null || raw.length &lt;= SUMMARY_MAX</code> returns the input unchanged for null, empty string, and strings exactly 110 chars.</li>
+    <li><strong>Concurrent news-enrich invocations are safe:</strong> rows are fetched where <code>ai_classification IS NULL</code>; once written, they won't be re-processed. <code>capSummary</code> is idempotent (already-capped summaries pass through unchanged).</li>
+    <li><strong>Signal column header removal (Fix 3):</strong> all three header cells are empty, column widths (32/auto/52px) match the data rows exactly. No alignment regression. The section heading "Live signals" in the module title is preserved.</li>
+    <li><strong>SUMMARY_MAX=110 consistent with prompt:</strong> prompt instructs LLM "60-110 characters INCLUDING spaces" (line 128 of news-classifier.ts). <code>SUMMARY_MAX = 110</code> and <code>renderNewsModule</code> comment both cite "60-110 chars". No mismatch.</li>
+  </ul>
+</div>
+
+</body>
+</html>

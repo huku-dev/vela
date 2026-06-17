@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: daily_digest_items lastResort (2026-06-10)</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 860px; margin: 40px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 1.3rem; margin-bottom: 4px; }
+  .meta { font-size: 0.82rem; color: #666; margin-bottom: 24px; }
+  .bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .badge { padding: 5px 14px; border-radius: 4px; font-size: 0.82rem; font-weight: 600; }
+  .blocking  { background: #fee2e2; color: #991b1b; }
+  .worth     { background: #fef3c7; color: #92400e; }
+  .nit       { background: #f3f4f6; color: #374151; }
+  .safe      { background: #d1fae5; color: #065f46; }
+  h2 { font-size: 1rem; margin-top: 28px; margin-bottom: 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+  .finding { margin-bottom: 16px; padding: 12px 14px; border-radius: 6px; }
+  .finding.blocking { border-left: 4px solid #ef4444; background: #fef2f2; }
+  .finding.worth    { border-left: 4px solid #f59e0b; background: #fffbeb; }
+  .finding.nit      { border-left: 4px solid #9ca3af; background: #f9fafb; }
+  .finding.safe     { border-left: 4px solid #10b981; background: #f0fdf4; }
+  .finding h3 { margin: 0 0 6px 0; font-size: 0.92rem; }
+  code { font-family: "SF Mono", Menlo, monospace; font-size: 0.82rem; background: #f1f5f9; padding: 1px 4px; border-radius: 3px; }
+  .ref { font-size: 0.78rem; color: #6b7280; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA: <code>daily_digest_items</code> lastResort addition</h1>
+<div class="meta">File: <code>supabase/functions/_shared/llm/registry.ts</code> line 764 &middot; 2026-06-10 &middot; Independent review (no author context)</div>
+
+<div class="bar">
+  <span class="badge blocking">Blocking: 0</span>
+  <span class="badge worth">Worth a look: 1</span>
+  <span class="badge nit">Nit: 1</span>
+  <span class="badge safe">Safe: 8</span>
+</div>
+
+<h2>Blocking</h2>
+<p style="color:#065f46; font-size:0.9rem;">None. Safe to deploy.</p>
+
+<h2>Worth a Look</h2>
+
+<div class="finding worth">
+  <h3>W1. Cost comment underestimates actual Haiku spend by ~7-10x</h3>
+  <p>The inline comment at <code>registry.ts:758</code> says <em>"cheap safety net (~$0.001/call)"</em>. The pricing table at <code>cost.ts:24</code> shows Haiku at $1.00/M input + $5.00/M output. At a realistic digest prompt of ~3,500 input tokens plus 1,200 output tokens, actual cost is approximately $0.0035 input + $0.006 output = <strong>~$0.0095/call</strong>. Still very cheap in absolute terms, but the comment is off by nearly an order of magnitude. The strict-$0 budget cron audits <code>llm_call_log.cost_usd</code> rows where <code>last_resort_used=true</code>. A misleading comment can cause a future reviewer to dismiss a cost spike as expected. Not a correctness bug, but the comment should say "~$0.01/call" to match reality.</p>
+  <p class="ref"><code>registry.ts:758</code>, <code>cost.ts:24</code></p>
+</div>
+
+<h2>Nit</h2>
+
+<div class="finding nit">
+  <h3>N1. No dedicated test pins <code>daily_digest_items</code> provider chain</h3>
+  <p>The existing <code>LLM-SRC: asset detail v2 tasks use correct provider chains</code> test at <code>llm.test.ts:232</code> explicitly asserts <code>signal_explanation</code>'s chain (NVIDIA &rarr; Groq &rarr; Haiku) but does not cover <code>daily_digest_items</code>. The general <code>lastResort differs from primary and fallback</code> test at line 211 passes (nvidia &ne; anthropic, groq &ne; anthropic), so there is no regression today. But a future edit that accidentally swaps Haiku for Groq on the lastResort would not be caught by name. A one-liner assertion alongside the <code>signal_explanation</code> block would give chain regression coverage for zero effort.</p>
+  <p class="ref"><code>llm.test.ts:232-253</code></p>
+</div>
+
+<h2>Safe</h2>
+
+<div class="finding safe">
+  <h3>1. Factory invokes lastResort correctly when both primary and fallback fail</h3>
+  <p><code>factory.ts:148-165</code>: <code>canLastResort</code> gate requires <code>cfg.lastResort</code> defined, <code>fallbackRetryable=true</code>, and distinct providers. All three conditions are satisfied by this config (nvidia &ne; anthropic, groq &ne; anthropic). The last-resort call uses the spread <code>req</code> which carries the same <code>jsonSchema</code>, <code>maxTokens</code>, <code>temperature</code>, and <code>timeoutMs</code> from the task config. No per-parameter regression.</p>
+</div>
+
+<div class="finding safe">
+  <h3>2. cascadeOnSchemaFail correctly reaches lastResort on double schema_fail</h3>
+  <p>NVIDIA schema_fail &rarr; factory throws synthetic retryable error (line 114-120) &rarr; Groq fallback call. If Groq also returns schema_fail: the adapter returns normally (status="schema_fail", no throw), so <code>fallbackErr</code> is never set and <code>canLastResort</code> is never evaluated. Groq schema_fail returns directly to the caller with <code>status="schema_fail", fallbackUsed=true</code>. Haiku does NOT fire on Groq schema_fail. This is consistent behavior: only retryable throws route to lastResort, not schema_fail returns. The scenario in the brief (Groq TPD exhausted) causes a 429 throw with <code>retryable=true</code>, which does cascade to lastResort correctly.</p>
+</div>
+
+<div class="finding safe">
+  <h3>3. Model string is correct and priced</h3>
+  <p><code>"claude-haiku-4-5-20251001"</code> matches every other Haiku lastResort in the registry (<code>signal_explanation</code> at line 650, <code>brief_header</code> at line 717) and is present in <code>cost.ts:24</code>. No typo, no unpriced model.</p>
+</div>
+
+<div class="finding safe">
+  <h3>4. Registry self-check passes at module load</h3>
+  <p>The <code>for...of</code> loop at <code>registry.ts:836-848</code> checks <code>lastResort.provider !== primary.provider</code> and <code>lastResort.provider !== fallback.provider</code>. <code>anthropic != nvidia</code> and <code>anthropic != groq</code> — both assertions pass. Any misconfiguration would throw on cold-start before a request is served.</p>
+</div>
+
+<div class="finding safe">
+  <h3>5. lastResort field is typed on TaskConfig</h3>
+  <p><code>types.ts:171</code>: <code>lastResort?: { provider: ProviderName; model: string }</code> is declared as an optional field. The new config entry is type-safe. <code>ProviderName</code> at line 7 includes <code>"anthropic"</code>.</p>
+</div>
+
+<div class="finding safe">
+  <h3>6. No other task configs affected</h3>
+  <p>The change is scoped to one key in <code>TASK_REGISTRY</code>. The factory reads config per-task at call time via <code>getTaskConfig()</code>. No shared state, no side effect on other tasks.</p>
+</div>
+
+<div class="finding safe">
+  <h3>7. No existing tests assert daily_digest_items has no lastResort</h3>
+  <p>Searched <code>llm.test.ts</code> for <code>daily_digest_items</code>: no matches. The only potentially-breaking test is the general provider-chain assertion at line 211, which still passes. No test regression introduced.</p>
+</div>
+
+<div class="finding safe">
+  <h3>8. lastResort fires only on retryable throws, not timeouts-as-schema_fail</h3>
+  <p>Timeout errors from the provider adapters are thrown with <code>retryable=true</code>, so a Groq timeout does cascade to lastResort. A Groq schema_fail does not. This aligns with intent: the scenario described (NVIDIA empty response = schema_fail that cascades via <code>cascadeOnSchemaFail:true</code>, then Groq 429 TPD = retryable throw) would correctly reach Haiku. End-to-end path is coherent.</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase 0 QA: splitBriefParagraphs + SUMMARY_MAX + Signal label</title>
+<style>
+  :root {
+    --ink: #0A0A0A;
+    --cream: #FFFBF5;
+    --green: #0FE68C;
+    --red: #FF5C5C;
+    --amber: #F5A623;
+    --gray: #888;
+    --border: #E8E3DB;
+  }
+  body { font-family: Inter, sans-serif; background: var(--cream); color: var(--ink); max-width: 860px; margin: 40px auto; padding: 0 24px 80px; line-height: 1.55; font-size: 15px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+  .meta { color: var(--gray); font-size: 13px; margin-bottom: 32px; }
+  /* Summary bar */
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: 700; }
+  .badge.block  { background: rgba(255,92,92,0.12); color: #C0392B; }
+  .badge.amber  { background: rgba(245,166,35,0.12); color: #B7770D; }
+  .badge.nit    { background: rgba(136,136,136,0.1); color: #555; }
+  .badge.safe   { background: rgba(15,230,140,0.12); color: #0A7A4A; }
+  /* Risk matrix */
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; background: rgba(0,0,0,0.04); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .risk-high   { color: #C0392B; font-weight: 700; }
+  .risk-medium { color: #B7770D; font-weight: 700; }
+  .risk-low    { color: var(--gray); }
+  .risk-none   { color: #0A7A4A; }
+  /* Sections */
+  h2 { font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+  h2.blocking { border-bottom-color: var(--red); color: #C0392B; }
+  h2.amber    { border-bottom-color: var(--amber); color: #B7770D; }
+  h2.nit      { border-bottom-color: #CCC; color: var(--gray); }
+  h2.safe     { border-bottom-color: var(--green); color: #0A7A4A; }
+  .finding { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+  .finding.block  { border-left: 4px solid var(--red); }
+  .finding.amber  { border-left: 4px solid var(--amber); }
+  .finding.nit    { border-left: 4px solid #CCC; }
+  .finding.safe   { border-left: 4px solid var(--green); }
+  .finding-title { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .finding-loc  { font-family: 'Courier New', monospace; font-size: 12px; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 3px; margin-bottom: 10px; display: inline-block; }
+  .finding p    { margin: 8px 0; }
+  .finding ul   { margin: 8px 0 8px 20px; }
+  .finding li   { margin-bottom: 4px; }
+  code { font-family: 'Courier New', monospace; font-size: 13px; background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 3px; }
+  .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .label.symptom  { color: var(--red); }
+  .label.cause    { color: var(--amber); }
+  .label.fix      { color: #0A7A4A; }
+  .label.evidence { color: #555; }
+  .verdict { font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+  .verdict.correct  { background: rgba(15,230,140,0.12); color: #0A7A4A; }
+  .verdict.wrong    { background: rgba(255,92,92,0.12); color: #C0392B; }
+  .verdict.partial  { background: rgba(245,166,35,0.12); color: #B7770D; }
+  pre { background: rgba(0,0,0,0.05); padding: 12px 14px; border-radius: 6px; font-size: 12px; overflow-x: auto; margin: 8px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA: Three proposed backend fixes</h1>
+<p class="meta">Reviewed: 2026-06-11 · Files: notify.ts, news-classifier.ts · Adversarial, read-only. No prior context.</p>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <div class="badge block">2 Blocking</div>
+  <div class="badge amber">1 Worth a look</div>
+  <div class="badge nit">1 Nit</div>
+  <div class="badge safe">3 Safe</div>
+</div>
+
+<!-- Risk matrix -->
+<table>
+  <tr><th>File</th><th>Change</th><th>Risk</th><th>Diagnosis verdict</th></tr>
+  <tr>
+    <td><code>notify.ts:1333</code></td>
+    <td>Fix 1: Rewrite <code>splitBriefParagraphs</code></td>
+    <td class="risk-high">HIGH</td>
+    <td>Diagnosis correct. Fix has one hard off-by-one in sentence-boundary mapping.</td>
+  </tr>
+  <tr>
+    <td><code>news-classifier.ts:278</code></td>
+    <td>Fix 2: Raise <code>SUMMARY_MAX</code> 85→110</td>
+    <td class="risk-medium">MEDIUM</td>
+    <td>Diagnosis correct. Proposal misidentifies the threshold to update (<code>&gt;80</code> stated, actual code is <code>&gt;60</code>).</td>
+  </tr>
+  <tr>
+    <td><code>notify.ts:1920</code></td>
+    <td>Fix 3: Remove "Signal" column header text</td>
+    <td class="risk-none">NONE</td>
+    <td>Purely cosmetic. No test coverage. Safe to ship.</td>
+  </tr>
+</table>
+
+<!-- BLOCKING -->
+<h2 class="blocking">Blocking (2)</h2>
+
+<div class="finding block">
+  <div class="finding-title">B-1: <code>breaks.push(m.index + 2)</code> stores the space character position, not the sentence end — the split produces a leading space on every non-first paragraph</div>
+  <div class="finding-loc">notify.ts:1333 — proposed fix, boundary loop</div>
+
+  <div class="verdict partial">Diagnosis correct. Fix has an off-by-one.</div>
+
+  <p><span class="label symptom">Symptom:</span> The proposed fix writes <code>breaks.push(m.index + 2)</code>. The pattern <code>/[a-z0-9][.!?] /g</code> matches exactly 3 characters, e.g. <code>"d. "</code>. <code>m.index</code> points to <code>d</code>, <code>m.index+1</code> = the period, <code>m.index+2</code> = the space character.</p>
+
+  <p><span class="label cause">Root cause:</span> <code>cleaned.slice(pos, sp)</code> where <code>sp = m.index+2</code> ends <em>before</em> the space, so the first chunk correctly ends with the period. But <code>cleaned.slice(sp)</code> for the next segment starts <em>at</em> the space. The subsequent <code>.trim()</code> removes it, so no visible artifact makes it to the rendered HTML. <strong>Empirically tested: both <code>+2</code> and <code>+3</code> produce identical trimmed output.</strong></p>
+
+  <p>The real off-by-one is elsewhere in the same function. The <code>breaks.length &lt;= 3</code> guard returns unsplit for a 4-sentence brief (3 inter-sentence spaces detected), whereas the original <code>sentences.length &lt;= 3</code> guard returned unsplit only for 3-sentence briefs. A 4-sentence brief under the original code was split 2+2; under the proposed code it becomes one unsplit wall of text.</p>
+
+  <pre>// Original: sentences.length <= 3 → unsplit (3 sentences stays as 1 paragraph)
+// Proposed: breaks.length  <= 3 → unsplit (4 sentences stays as 1 paragraph)
+// Net effect: 4-sentence briefs lose their paragraph split</pre>
+
+  <p><span class="label fix">Fix:</span> Change the threshold from <code>breaks.length &lt;= 3</code> to <code>breaks.length &lt;= 2</code> (3 sentences = 2 breaks = unsplit, matching original intent). Alternatively, keep <code>&lt;= 3</code> intentionally as a more conservative split rule, but document the behavior change explicitly.</p>
+</div>
+
+<div class="finding block">
+  <div class="finding-title">B-2: Proposal says update <code>lastSpace &gt; 80</code> threshold in <code>news-classifier.ts</code> — the actual code has <code>lastSpace &gt; 60</code>, not <code>&gt; 80</code></div>
+  <div class="finding-loc">news-classifier.ts:289 — post-call truncation guard</div>
+
+  <div class="verdict wrong">Proposal references the wrong threshold value.</div>
+
+  <p><span class="label symptom">Symptom:</span> The proposal says "the <code>lastSpace &gt; 80</code> threshold in the post-call truncation guard should be updated to ~90." The actual line is:</p>
+  <pre>summary = (lastSpace > 60 ? slice.slice(0, lastSpace) : slice).replace(/[.,;:]\s*$/, "") + "…";</pre>
+  <p>The threshold is <code>60</code>, not <code>80</code>. This means if the proposal is implemented exactly as written, the developer searches for <code>&gt; 80</code>, finds nothing, and either skips the update or makes a wrong edit.</p>
+
+  <p><span class="label cause">Root cause:</span> The proposal was drafted without reading the actual guard line, likely inferring the value from the prompt's "40-85" range or from <code>renderNewsModule</code>'s <code>lastSpace &gt; 120</code> (which is a different function with a different cap of 150).</p>
+
+  <p><span class="label fix">Fix:</span> Update the proposal to reference line 289 and threshold <code>&gt; 60</code>. Under the new <code>SUMMARY_MAX = 110</code>, a proportional threshold would be <code>&gt; 90</code> (scales 60/85 → 90/110). The existing <code>&gt; 60</code> is not catastrophically wrong for 110-char inputs, but a string whose last space falls at position 61-89 would use the raw slice (with a mid-word cut) instead of the word-boundary trim. Update to <code>&gt; 90</code> in the same commit as the SUMMARY_MAX raise.</p>
+</div>
+
+<!-- WORTH A LOOK -->
+<h2 class="amber">Worth a Look (1)</h2>
+
+<div class="finding amber">
+  <div class="finding-title">W-1: The <code>(\. )-([A-Z])</code> cleanup regex can silently rewrite legitimate LLM-authored em-dash-free sentence fragments</div>
+  <div class="finding-loc">notify.ts:1333 — proposed fix, line 3 of function body</div>
+
+  <div class="verdict partial">Low probability, but the failure mode is silent text corruption.</div>
+
+  <p><span class="label symptom">Symptom:</span> The cleanup line <code>cleaned = trimmed.replace(/(\. )-([A-Z])/g, "$1$2")</code> removes a hyphen between a sentence-ending period+space and an uppercase letter. It was added to handle <code>"U.S. -Iran"</code> style artifacts. But:</p>
+  <ul>
+    <li>It correctly does NOT trigger on <code>"U.S.-Iran"</code> (no space before the hyphen). Verified.</li>
+    <li>It DOES trigger on any brief where an LLM writes something like <code>"rose 5%. -Gold fell too."</code> — changing it to <code>"rose 5%. Gold fell too."</code> (hyphen silently removed).</li>
+  </ul>
+  <p><span class="label cause">Root cause:</span> Vela briefs are LLM-generated narrative text. The pattern <code>". -[A-Z]"</code> (period-space-dash-capital) is rare in well-formed prose but <em>can</em> appear in LLM output that uses a dash to introduce an opposing force, contrast, or bullet-style list item at the start of a sentence.</p>
+  <p><span class="label fix">Action:</span> Either accept the risk (occurrence rate is very low, and removing an errant dash is a minor edit), or log a warning when the cleanup fires so production occurrences can be monitored. Do not expand the regex further without empirical data on actual brief formats.</p>
+</div>
+
+<!-- NITS -->
+<h2 class="nit">Nits (1)</h2>
+
+<div class="finding nit">
+  <div class="finding-title">N-1: Fix 1 adds no tests for the rewritten <code>splitBriefParagraphs</code> — the function has zero test coverage for the U.S. case or any other input</div>
+  <div class="finding-loc">notify.ts:1333 — test coverage gap</div>
+  <p>The original function and the proposed replacement both have zero test coverage. Both callers (Telegram caption builder at line 1580, email formatter at line 1668) exercise the function indirectly only if their larger integration tests run. Given that this function processes LLM-generated text that ships verbatim to users, add at least two unit tests: one with an abbreviation like "U.S." and one with a long paragraph to verify paragraph count.</p>
+</div>
+
+<!-- SAFE -->
+<h2 class="safe">Safe (3)</h2>
+
+<div class="finding safe">
+  <div class="finding-title">S-1: Fix 1 regex bug diagnosis is correct</div>
+  <div class="finding-loc">notify.ts:1341 — current implementation</div>
+  <p>Verified by tracing <code>/[^.!?]+[.!?]+(?:\s|$)/g</code> on <code>"As investors expect U.S. military action..."</code>. The regex produces <code>["S. ", "military action..."]</code> — "S." becomes sentence 1, and the leading "As investors expect U" is silently dropped. The first rendered paragraph begins "S. military action..." which is the described breakage. The proposed replacement regex <code>/[a-z0-9][.!?] /g</code> (requiring a lowercase letter or digit before punctuation) correctly ignores all-caps abbreviations like "U." and "S." and produces clean boundaries.</p>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">S-2: Fix 2 core logic is correct — raising SUMMARY_MAX 85→110 aligns prompt, guard, and schema</div>
+  <div class="finding-loc">news-classifier.ts:278 + llm/registry.ts:94-101</div>
+  <p>Three sources now agree: the schema comment in <code>registry.ts:94</code> already says "60-110 chars" and the <code>maxLength:180</code> is deliberately loose. The prompt (line 128 of <code>news-classifier.ts</code>) still says "40-85 chars" and the guard enforces 85. Raising to 110 and updating the prompt to "60-110 chars" aligns all three. The render-side <code>SUMMARY_CAP = 150</code> in <code>renderNewsModule</code> is a separate legacy backstop for old rows and is unaffected. The registry comment confirms 110 chars = 2 lines at 14px Inter on ~270px mobile width, so no 3-line overflow risk at the cap. The schema <code>maxLength:180</code> means a 120-char LLM response still hits the post-call guard and gets truncated to 110 — correct behavior.</p>
+</div>
+
+<div class="finding safe">
+  <div class="finding-title">S-3: Fix 3 (remove "Signal" header text in renderLiveNowModule) is purely cosmetic with no functional impact</div>
+  <div class="finding-loc">notify.ts:1920</div>
+  <p>Confirmed: <code>&lt;td width="52" align="left" style="${headerCellStyle}"&gt;Signal&lt;/td&gt;</code> is a static column header string. No test file references this text (searched all <code>*.test.ts</code> files). No downstream code parses rendered HTML. Removing the text empties the cell; the column width and alignment are preserved by the inline <code>width="52"</code> and <code>align="left"</code> attributes on the <code>&lt;td&gt;</code>. Safe to ship.</p>
+</div>
+
+</body>
+</html>

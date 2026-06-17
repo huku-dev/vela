@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Review: breaking-news feedback loop</title>
+<style>
+  :root {
+    --red: #E24B4A; --red-bg: #FCEBEB; --red-border: #F7C1C1; --red-text: #501313;
+    --amber: #BA7517; --amber-bg: #FAEEDA; --amber-border: #FAC775; --amber-text: #412402;
+    --gray: #5F5E5A; --gray-bg: #F1EFE8; --gray-border: #D3D1C7; --gray-text: #2C2C2A;
+    --green: #3B6D11; --green-bg: #EAF3DE; --green-border: #C0DD97; --green-text: #173404;
+    --text: #1a1a18; --text-muted: #5F5E5A; --border: #e0ddd5;
+    --bg: #fff; --bg-2: #faf9f6;
+    --radius: 8px; --radius-lg: 12px;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; color: var(--text); background: var(--bg); padding: 32px; max-width: 900px; margin: 0 auto; line-height: 1.6; }
+  h1 { font-size: 20px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 28px; }
+  .summary-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .summary-card { border-radius: var(--radius); padding: 14px 16px; }
+  .summary-card.red { background: var(--red-bg); border: 0.5px solid var(--red-border); }
+  .summary-card.amber { background: var(--amber-bg); border: 0.5px solid var(--amber-border); }
+  .summary-card.gray { background: var(--gray-bg); border: 0.5px solid var(--gray-border); }
+  .summary-card.green { background: var(--green-bg); border: 0.5px solid var(--green-border); }
+  .summary-card .count { font-size: 28px; font-weight: 500; line-height: 1; }
+  .summary-card.red .count { color: var(--red-text); }
+  .summary-card.amber .count { color: var(--amber-text); }
+  .summary-card.gray .count { color: var(--gray-text); }
+  .summary-card.green .count { color: var(--green-text); }
+  .summary-card .label { font-size: 12px; margin-top: 4px; color: var(--text-muted); }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 13px; }
+  th { text-align: left; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 9px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 500; }
+  .badge.red { background: var(--red-bg); color: var(--red-text); }
+  .badge.amber { background: var(--amber-bg); color: var(--amber-text); }
+  .badge.gray { background: var(--gray-bg); color: var(--gray-text); }
+  .badge.green { background: var(--green-bg); color: var(--green-text); }
+
+  .section-title { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 12px; margin-top: 28px; }
+  .finding { border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 12px; background: var(--bg); }
+  .finding + .finding { margin-top: 0; }
+  .finding-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+  .finding-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 1px; }
+  .finding-num.red { background: var(--red-bg); color: var(--red-text); }
+  .finding-num.amber { background: var(--amber-bg); color: var(--amber-text); }
+  .finding-num.gray { background: var(--gray-bg); color: var(--gray-text); }
+  .finding-title { font-weight: 500; font-size: 14px; }
+  .finding-loc { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .finding-body { font-size: 13px; line-height: 1.65; color: #333; }
+  .finding-body p + p { margin-top: 8px; }
+  code { font-family: var(--mono); font-size: 11.5px; background: var(--bg-2); border: 0.5px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  .fix { margin-top: 10px; padding: 10px 14px; background: var(--bg-2); border-left: 2px solid var(--border); border-radius: 0 4px 4px 0; font-size: 13px; }
+  .fix strong { font-weight: 500; color: var(--text); }
+
+  .safe-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .safe-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; }
+  .safe-list li::before { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--green-bg); border: 1px solid var(--green-border); flex-shrink: 0; margin-top: 2px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3.5 3.5 6.5-6.5' stroke='%233B6D11' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+
+  .divider { border: none; border-top: 0.5px solid var(--border); margin: 24px 0; }
+  .monitor-box { background: var(--amber-bg); border: 0.5px solid var(--amber-border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; font-size: 13px; }
+  .monitor-box strong { color: var(--amber-text); }
+</style>
+</head>
+<body>
+
+<h1>QA Review: breaking-news feedback loop</h1>
+<p class="subtitle">Phase 1 adversarial review &mdash; 2026-06-17 &mdash; files: breaking-news/index.ts, _shared/news-broadcast-eval.ts, _shared/jargon-constants.ts, migration 20260617000001</p>
+
+<div class="summary-bar">
+  <div class="summary-card red"><div class="count">1</div><div class="label">Blocking</div></div>
+  <div class="summary-card amber"><div class="count">2</div><div class="label">Worth a look</div></div>
+  <div class="summary-card gray"><div class="count">1</div><div class="label">Nit</div></div>
+  <div class="summary-card green"><div class="count">5</div><div class="label">Safe</div></div>
+</div>
+
+<div class="section-title">File risk matrix</div>
+<table>
+  <thead><tr><th>File</th><th>Highest severity</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>breaking-news/index.ts</code></td><td><span class="badge red">Blocking</span></td><td>Self-screen path dead code; analysis jargon list softened</td></tr>
+    <tr><td><code>_shared/jargon-constants.ts</code></td><td><span class="badge green">Safe</span></td><td>Pure data module, zero imports, correct ReadonlyArray types</td></tr>
+    <tr><td><code>_shared/news-broadcast-eval.ts</code></td><td><span class="badge green">Safe</span></td><td>Import wiring and buildJargonRegex signature correct</td></tr>
+    <tr><td><code>20260617000001_add_eval_columns_to_social_posts.sql</code></td><td><span class="badge green">Safe</span></td><td>Columns nullable, no NOT NULL, no DEFAULT, post_type CHECK not touched</td></tr>
+  </tbody>
+</table>
+
+<hr class="divider">
+
+<div class="section-title">Blocking</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num red">1</div>
+    <div>
+      <div class="finding-title">Self-screen path is dead code &mdash; schema_fail cascade fires before <code>parsed.skip</code> is checked</div>
+      <div class="finding-loc">breaking-news/index.ts:425 &middot; _shared/llm/registry.ts:493-501 &middot; _shared/llm/schema.ts:74-75 &middot; _shared/llm/factory.ts:114-119</div>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The self-screen prompt tells the model to return <code>{"skip": true, "skip_reason": "...", "vela_read": "", "analysis": ""}</code>. The <code>BREAKING_TELEGRAM_SCHEMA</code> requires <code>vela_read</code> with <code>minLength: 3</code> and <code>analysis</code> with <code>minLength: 10</code>. The schema validator in <code>schema.ts:74-75</code> flags both empty strings as violations.</p>
+    <p>Because <code>breaking_telegram</code> has <code>cascadeOnSchemaFail: true</code> (<code>registry.ts:496</code>), the factory converts that schema_fail to a retryable synthetic error and throws (<code>factory.ts:114-119</code>). The error bubbles out of the <code>try { const result = await llmComplete(...) }</code> block at <code>index.ts:396-408</code>, triggering the catch path: console.error + admin Telegram warning + <code>return null</code>. The skip check at line 425 is never reached.</p>
+    <p>Effect: every model self-screen fires a false-alarm admin WARNING ("Telegram analysis failed") instead of the intended silent <code>console.log</code>. The story is still suppressed (step 9 placeholder was already written at line 1040 before <code>generateTelegramAnalysis</code> was called, so dedup is safe). But admin noise accumulates and the "distinct from a generation failure" guarantee is broken &mdash; operators cannot distinguish real failures from intentional skips in Telegram alerts.</p>
+    <p>The fix requires either (a) relaxing the schema so skip responses pass validation, or (b) intercepting the skip response before schema validation.</p>
+    <div class="fix">
+      <strong>Fix:</strong> In <code>BREAKING_TELEGRAM_SCHEMA</code> (<code>registry.ts:437-444</code>), add <code>skip</code> and <code>skip_reason</code> to <code>properties</code> and change <code>vela_read</code> and <code>analysis</code> to <code>minLength: 0</code> (i.e. remove minLength). Add a server-side guard in the caller at line 431 that enforces non-empty <code>analysis</code> after confirming <code>skip !== true</code> &mdash; this is already there (the <code>if (!analysis)</code> block at line 433). The schema minLength constraints are redundant given that guard, so dropping them is safe.
+    </div>
+    <div class="fix" style="margin-top:8px;">
+      <strong>Alternative:</strong> Change the prompt to instruct the model to return <code>vela_read: "skip"</code> and <code>analysis: "skip"</code> (three-char strings that clear minLength) so existing schema passes. Then check <code>parsed.skip === true</code> before the non-empty analysis guard. Simpler schema change but slightly awkward prompt instruction.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="section-title">Worth a look</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num amber">1</div>
+    <div>
+      <div class="finding-title">Analysis section silently lost six banned terms from the generation prompt</div>
+      <div class="finding-loc">breaking-news/index.ts:361-364 &middot; _shared/jargon-constants.ts (missing terms)</div>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The old analysis <code>BANNED JARGON</code> block contained six terms not present in <code>jargon-constants.ts</code>: <code>easing cycle</code>, <code>rate hikes</code>, <code>rate cuts</code>, <code>accommodative</code>, <code>restrictive policy</code>, <code>tightening policy</code>. The new prompt acknowledges them with "plus: easing cycle, rate hikes &rarr; ..., ...)" in the label text above <code>${BANNED_JARGON_LINE}</code>, but <code>BANNED_JARGON_LINE</code> does not contain them. The model sees a parenthetical note followed by a list that omits those terms.</p>
+    <p>These were never eval-enforced (Layer 1 only checks the imported arrays), so this does not break the eval gate. But the generation-prompt instruction is weaker: the model may reason that the canonical list does not include them and use them. The difference will appear as an increase in macro/rate language in analysis copy &mdash; catchable by Layer 2 judge as "jargon" concern, but not guaranteed.</p>
+    <div class="fix">
+      <strong>Fix:</strong> Add the six terms to <code>EQUITIES_MACRO_JARGON</code> in <code>jargon-constants.ts</code> so both the generation prompt and Layer 1 eval enforce them. Note the existing comment in <code>news-broadcast-eval.ts</code> explaining why "rate cuts" was previously excluded from the eval (false-positive on "rate cuts now look further away" examples). If that exclusion still applies, add only the four unambiguous ones (<code>easing cycle</code>, <code>rate hikes</code>, <code>accommodative</code>, <code>restrictive policy</code>) and leave <code>rate cuts</code> and <code>tightening policy</code> as prompt-only.
+    </div>
+  </div>
+</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num amber">2</div>
+    <div>
+      <div class="finding-title">SELF-SCREEN asset allow-list is static and will drift from the live asset table</div>
+      <div class="finding-loc">breaking-news/index.ts:307-309</div>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p>The third disqualifier condition hardcodes <code>BTC ETH SOL HYPE ZEC NEAR NVDA AAPL AMZN MSFT GOOGL META MU SNDK INTC DELL BB gold oil silver copper</code>. This list is an advisory hint to the model; the real enforcement gate is Layer 1's <code>hasAssetRelevance()</code>, which uses the live <code>tradeableAssets</code> set from <code>getTradeableAssetIds()</code>. So correctness at the gate level is not at risk.</p>
+    <p>The risk is model behavior: when a new asset is added to Vela (e.g. a future equity), the model may self-screen stories about it because the asset isn't in the prompt list, even though Layer 1 would have passed them. This produces silent suppression with no admin alert (the self-screen path intentionally skips admin pings) that is hard to debug.</p>
+    <div class="fix">
+      <strong>Consider:</strong> Add a comment adjacent to the list ("advisory only &mdash; actual enforcement is Layer 1 asset relevance check") so the next person editing the asset list knows to update this prompt too. Low effort, prevents a future "why aren't we broadcasting NEAR stories" puzzle.
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="section-title">Nit</div>
+
+<div class="finding">
+  <div class="finding-header">
+    <div class="finding-num gray">1</div>
+    <div>
+      <div class="finding-title"><code>parsed?.skip</code> uses optional chain unnecessarily after non-null guard</div>
+      <div class="finding-loc">breaking-news/index.ts:425-426</div>
+    </div>
+  </div>
+  <div class="finding-body">
+    <p><code>if (parsed?.skip === true)</code> and <code>typeof parsed?.skip_reason === "string"</code> appear after the <code>if (!parsed) { return null }</code> guard at line 411. At line 425, <code>parsed</code> is guaranteed non-null; the optional chain is harmless but misleading. Same for <code>parsed?.skip_reason</code> on line 426.</p>
+    <div class="fix"><strong>Change:</strong> <code>parsed?.skip</code> to <code>parsed.skip</code> and <code>parsed?.skip_reason</code> to <code>parsed.skip_reason</code> at lines 425-426.</div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div class="section-title">Risks to monitor post-deploy</div>
+
+<div class="monitor-box"><strong>Admin alert noise (until blocking #1 is fixed):</strong> Every model self-screen generates a "Telegram analysis failed" admin Telegram. Watch for uptick in warnings from breaking-news. Distinguishing real failures from self-screens requires checking the log for <code>[breaking-news] Telegram analysis LLM error:</code> (real) vs absence of that prefix (self-screen cascade failure). Blocking #1 fix should eliminate this category entirely.</div>
+
+<div class="monitor-box"><strong>Rate-hike / easing-cycle language in analysis copy:</strong> With worth-a-look #1 unresolved, monitor Layer 2 judge verdicts for <code>primary_concern: "jargon"</code> on the new eval columns. A rise in jargon blocks with those specific terms confirms the regression.</div>
+
+<hr class="divider">
+
+<div class="section-title">Safe</div>
+
+<ul class="safe-list">
+  <li>Migration columns (<code>eval_layer</code>, <code>eval_jargon_flags</code>, <code>eval_primary_concern</code>) are all nullable with no DEFAULT &mdash; existing INSERTs are unaffected. <code>IF NOT EXISTS</code> guards make it idempotent.</li>
+  <li>post_type CHECK constraint: <code>breaking_news</code> was added in migration <code>20260325000001</code>; <code>telegram_broadcast</code> in <code>20260504000001</code>. Both fallback INSERT paths use one of these values. No constraint violation risk.</li>
+  <li>Audit write isolation is correct: <code>sendAdminTelegram</code> and <code>return new Response</code> are both outside the <code>try { ... } catch (auditErr)</code> block (lines 1164-1182 follow the catch). A DB failure cannot shadow the admin alert or the response.</li>
+  <li><code>jargon-constants.ts</code> has zero imports (pure data). Static import into breaking-news/index.ts adds only ~2KB of string data &mdash; no cold-start memory regression.</li>
+  <li><code>buildJargonRegex</code> signature is <code>ReadonlyArray&lt;string&gt;</code>; the imported constants are <code>ReadonlyArray&lt;string&gt;</code>; TypeScript accepts the assignment. Multi-word terms precede substrings in both arrays per the authoring note. Regex builder creates two independent regexes (not a merged one), so ordering between arrays is irrelevant &mdash; only within-array ordering matters, and both arrays are ordered correctly.</li>
+</ul>
+
+</body>
+</html>

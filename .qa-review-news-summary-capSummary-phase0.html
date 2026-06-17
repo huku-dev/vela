@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: news-summary capSummary ellipsis fix</title>
+<style>
+  body { font-family: Inter, sans-serif; background: #0f0f0f; color: #e8e8e0; margin: 0; padding: 24px; line-height: 1.55; }
+  h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; }
+  .pill { padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 700; }
+  .pill-red   { background: rgba(255,80,80,0.15);   color: #ff6060; border: 1px solid rgba(255,80,80,0.3); }
+  .pill-amber { background: rgba(255,185,0,0.13);   color: #f5c842; border: 1px solid rgba(255,185,0,0.3); }
+  .pill-gray  { background: rgba(160,160,160,0.12); color: #aaa;    border: 1px solid rgba(160,160,160,0.25); }
+  .pill-green { background: rgba(15,230,140,0.1);   color: #0fe68c; border: 1px solid rgba(15,230,140,0.25); }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .section-title.red   { color: #ff6060; }
+  .section-title.amber { color: #f5c842; }
+  .section-title.gray  { color: #888; }
+  .section-title.green { color: #0fe68c; }
+  .finding { background: #1a1a1a; border-radius: 8px; padding: 16px 18px; margin-bottom: 10px; border-left: 3px solid; }
+  .finding.red   { border-color: #ff6060; }
+  .finding.amber { border-color: #f5c842; }
+  .finding.gray  { border-color: #555; }
+  .finding-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .finding-body  { font-size: 13px; color: #ccc; }
+  code { background: #2a2a2a; border-radius: 3px; padding: 1px 5px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; color: #f0e070; }
+  .loc { font-size: 11px; color: #666; font-family: monospace; margin-bottom: 6px; }
+  .fix { margin-top: 8px; padding: 8px 10px; background: #1f2a1f; border-radius: 4px; font-size: 12px; color: #9de0aa; }
+  .green-list { list-style: none; padding: 0; margin: 0; }
+  .green-list li { font-size: 13px; color: #ccc; padding: 4px 0; border-bottom: 1px solid #222; }
+  .green-list li:last-child { border-bottom: none; }
+  .green-list li::before { content: "ok  "; color: #0fe68c; font-weight: 700; }
+</style>
+</head>
+<body>
+  <h1>QA Review: news summary capSummary ellipsis fix</h1>
+  <div class="subtitle">
+    Files: <code>_shared/news-classifier.ts</code> &middot; <code>_shared/notify.ts</code> &middot; <code>news-enrich/index.ts</code>
+    &nbsp;|&nbsp; Parts: prompt rule + capSummary() strip + warn log split + render-side strip + renderLiveNowModule header removal
+  </div>
+
+  <div class="summary-bar">
+    <div class="pill pill-red">0 Blocking</div>
+    <div class="pill pill-amber">2 Worth a look</div>
+    <div class="pill pill-gray">1 Nit</div>
+    <div class="pill pill-green">8 Safe</div>
+  </div>
+
+  <!-- BLOCKING -->
+  <div class="section">
+    <div class="section-title red">Blocking</div>
+    <p style="font-size:13px;color:#888;margin:0;">None. All six vetted questions check out.</p>
+  </div>
+
+  <!-- WORTH A LOOK -->
+  <div class="section">
+    <div class="section-title amber">Worth a look</div>
+
+    <div class="finding amber">
+      <div class="finding-title">renderNewsModule SUMMARY_CAP fallback still appends "…" — re-introduces ellipsis for any legacy clean summary &gt; 150 chars</div>
+      <div class="loc">notify.ts:1869 — renderNewsModule() SUMMARY_CAP path</div>
+      <div class="finding-body">
+        The stated goal is zero ellipsis in rendered output. <code>capSummary()</code> path B was updated to not append "…" so the render-side strip doesn't double-fire. But <code>renderNewsModule()</code> has its own SUMMARY_CAP (150) truncation path at line 1869 that still appends <code>"…"</code>:
+        <br><br>
+        <code>summaryText = (lastSpace &gt; 120 ? slice.slice(0, lastSpace) : slice).replace(/[.,;:]\s*$/, "") + "…";</code>
+        <br><br>
+        This path is the backstop for legacy <code>news_cache</code> rows whose stored summary exceeds 150 chars and does NOT end with "…" (so the ellipsis strip at 1857 doesn't fire). Those rows get truncated at the word boundary and rendered with a trailing "…". The fix eliminated "…" from write-time storage and from the ellipsis strip path, but not from this independent render-time truncation path. Any legacy row where the stored summary is a clean long sentence will ship with trailing ellipsis in the rendered email despite the fix. The practical impact depends on how many such rows exist — worth checking with <code>SELECT COUNT(*) FROM news_cache WHERE length(summary) &gt; 150 AND summary NOT LIKE '%…' AND summary NOT LIKE '%...'</code> before deciding whether to remove the append.
+      </div>
+      <div class="fix">Remove <code>+ "…"</code> from notify.ts line 1869 to match the capSummary contract. The word-boundary truncation already produces clean output; the ellipsis append is the only remaining source of "…" in rendered digests.</div>
+    </div>
+
+    <div class="finding amber">
+      <div class="finding-title">classifyOne() in news-enrich has no diagnostic log when capSummary strips to null</div>
+      <div class="loc">news-enrich/index.ts:313 — classifyOne() after capSummary call</div>
+      <div class="finding-body">
+        When <code>capSummary(rawSummary)</code> returns <code>null</code> (ellipsis input, no sentence stop found), <code>classifyOne()</code> writes <code>summary: null</code> to <code>news_cache</code> with no log entry. The parallel path in <code>classifyNewsItem()</code> (news-classifier.ts:332-337) was explicitly updated in this diff to emit "stripped to null (ellipsis, no sentence stop)" vs "trimmed N-&gt;M chars". <code>classifyOne()</code> was not given the same split. The news-enrich path processes the bulk of newly-ingested rows (every item that lands in <code>news_cache</code> and hasn't been classified yet) — it is the higher-volume path. Silent null-summary writes make it impossible in logs to distinguish "LLM returned no summary field" from "summary stripped to null due to ellipsis". Low impact on correctness, high impact on future debugging.
+      </div>
+      <div class="fix">Add the same two-branch warn block to <code>classifyOne()</code> after line 313: log "stripped to null" when <code>summary === null &amp;&amp; rawSummary !== null</code>, and "trimmed N-&gt;M chars" when <code>summary !== null &amp;&amp; summary !== rawSummary</code>.</div>
+    </div>
+  </div>
+
+  <!-- NITS -->
+  <div class="section">
+    <div class="section-title gray">Nit</div>
+
+    <div class="finding gray">
+      <div class="finding-title">Consider unit tests for the capSummary strip behavior</div>
+      <div class="loc">_shared/news-classifier.ts — capSummary() export</div>
+      <div class="finding-body">
+        <code>capSummary</code> is exported and has non-trivial branching: ellipsis-strip path (returns null or shorter string), pass-through path, length-cap path. No behavioral tests appear to exist for it. Six distinct cases are exercised by this review: <code>"creating strong…"</code> returns null; <code>"Fed holds rates. Inflation sticky…"</code> truncates to first stop; <code>"..."</code> behaves like <code>"…"</code>; no-ellipsis passthrough; bare <code>"…"</code> returns null; long clean string caps at word boundary. A <code>news-classifier.test.ts</code> with assertions for these cases would catch regressions on future edits to the strip logic — the logic is subtle enough (regex, Math.max, slice(0, lastStop+1)) that a mis-edit is plausible.
+      </div>
+    </div>
+  </div>
+
+  <!-- SAFE -->
+  <div class="section">
+    <div class="section-title green">Safe</div>
+    <ul class="green-list">
+      <li><strong>Q1 — capSummary path B double-fire:</strong> Path B returns the word-boundary truncation with no "…" appended. The render-side ellipsis strip only fires when <code>summaryText.endsWith("…") || summaryText.endsWith("...")</code> — a path-B output never satisfies this condition. No double-fire on newly-stored rows.</li>
+      <li><strong>Q2 — !raw guard:</strong> Both callers construct rawSummary as <code>trim().length &gt; 0 ? ... : null</code>, so rawSummary is never "" before calling capSummary. The <code>!raw</code> change from <code>raw === null</code> is a no-op for current callers but is correct defensive coding.</li>
+      <li><strong>Q3 — classifyOne null summary correctness:</strong> After <code>capSummary(rawSummary)</code> at line 313, summary is stored directly into the DB payload (line 328). No <code>.length</code> or string operation is called on summary afterward. Null is stored as SQL NULL. No TypeError risk.</li>
+      <li><strong>Q4 — render-side index arithmetic:</strong> <code>stripped.lastIndexOf(".")</code> returns the index OF the ".". <code>stripped.slice(0, lastStop + 1)</code> correctly includes the "." in the result. Verified: "Fed holds rates. Inflation sticky" strips to "Fed holds rates." correctly.</li>
+      <li><strong>Q5 — Math.max(-1,-1,-1):</strong> Returns -1. Guard <code>lastStop &gt;= 0</code> is false. <code>cleaned = ""</code>. Returns null. Correct behavior for inputs with no sentence stop.</li>
+      <li><strong>JSDoc update:</strong> Updated comment accurately describes no-ellipsis-append behavior and null return on no-sentence-stop. No stale references to "…" appending found.</li>
+      <li><strong>Warn log split (classifyNewsItem):</strong> <code>rawSummary !== null &amp;&amp; summary !== rawSummary</code> guards both branches. When summary is null the null-branch fires with the new message. When summary is a shorter string the length-log branch fires. No TypeError risk on either path.</li>
+      <li><strong>renderLiveNowModule header removal:</strong> Signal row &lt;td&gt;s carry explicit <code>width</code> attributes (width="32", grow, width="52"). Column layout does not derive from the removed header row. No layout regression expected.</li>
+    </ul>
+  </div>
+
+</body>
+</html>

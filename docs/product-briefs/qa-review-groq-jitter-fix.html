@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phase 0 QA — Groq 429 Jitter Fix</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f0f0f; color: #e8e8e8; margin: 0; padding: 24px; line-height: 1.55; font-size: 14px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #fff; }
+  .meta { color: #888; font-size: 12px; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .pill { padding: 6px 18px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+  .blocking { background: #5c0a0a; color: #ff6b6b; border: 1px solid #8b1a1a; }
+  .amber { background: #3d2800; color: #ffb347; border: 1px solid #7a5200; }
+  .nit { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
+  .safe { background: #0a2e1a; color: #4ade80; border: 1px solid #1a5c35; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #aaa; font-weight: 600; border-bottom: 1px solid #333; }
+  td { padding: 8px 12px; border-bottom: 1px solid #222; vertical-align: top; }
+  .verdict-gap { color: #ff6b6b; font-weight: 600; }
+  .verdict-amber { color: #ffb347; font-weight: 600; }
+  .verdict-ok { color: #4ade80; font-weight: 600; }
+  h2 { font-size: 15px; font-weight: 700; margin: 28px 0 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .finding { background: #1a0a0a; border-left: 3px solid #ff6b6b; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px; }
+  .finding-amber { background: #1a1200; border-left: 3px solid #ffb347; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px; }
+  .finding-safe { background: #0a1a10; border-left: 3px solid #4ade80; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px; }
+  .finding-num { font-weight: 700; color: #ff6b6b; margin-right: 6px; }
+  .finding-num-amber { font-weight: 700; color: #ffb347; margin-right: 6px; }
+  .finding-num-safe { font-weight: 700; color: #4ade80; margin-right: 6px; }
+  .loc { font-family: monospace; font-size: 12px; color: #888; margin-top: 4px; }
+  .action { margin-top: 6px; font-style: italic; color: #ccc; }
+  code { font-family: "JetBrains Mono", "Fira Mono", monospace; background: #1e1e1e; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #e0c080; }
+  .math-box { background: #111; border: 1px solid #333; border-radius: 4px; padding: 10px 14px; font-family: monospace; font-size: 12px; color: #ccc; margin: 8px 0; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA — Groq 429 Jitter Fix (Option B)</h1>
+<div class="meta">Reviewed: 2026-06-08 · Reviewer: independent subagent · Scope: proposed fix only, no code written yet</div>
+
+<div class="summary-bar">
+  <span class="pill blocking">BLOCKING: 2</span>
+  <span class="pill amber">WORTH-A-LOOK: 3</span>
+  <span class="pill nit">NIT: 0</span>
+  <span class="pill safe">SAFE: 2</span>
+</div>
+
+<!-- Question matrix -->
+<h2>Question Verdict Table</h2>
+<table>
+  <tr>
+    <th>#</th>
+    <th>Question</th>
+    <th>Verdict</th>
+    <th>Short answer</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>Is the root cause correct?</td>
+    <td class="verdict-amber">PARTIAL</td>
+    <td>Cascade path confirmed. But the burst hypothesis is incomplete — <code>!hasAssetMatch</code> gate means not all 5 assets trigger Groq simultaneously. Plausible but not proven.</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Does jitter before <code>complete()</code> solve the burst?</td>
+    <td class="verdict-gap">GAP FOUND</td>
+    <td>No. NVIDIA timeout is 15s × up to 3 attempts = up to 45s before cascade. Jitter of 0–2s applied at start does not spread Groq calls; they still cluster at the NVIDIA timeout boundary.</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>Latency impact on critical path?</td>
+    <td class="verdict-gap">BLOCKING</td>
+    <td>Happy path already at ~10s. Adding avg 1s jitter adds 10% per slot; worst-case per asset = 2s jitter + 45s NVIDIA retries + ~1s Groq = 48s single-asset tail. Five slots in parallel can keep total within 150s wall clock but individual asset brief latency degrades.</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Is the jitter insertion point correct?</td>
+    <td class="verdict-gap">BLOCKING</td>
+    <td>No. Jitter before <code>complete()</code> taxes every NVIDIA call (86.4% of calls) to fix a problem that only affects the Groq fallback path (≈5% of calls). Fix belongs in factory.ts fallback branch, not in news-fetcher.ts.</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>Conditional call frequency — does burst hypothesis hold?</td>
+    <td class="verdict-amber">NEEDS DATA</td>
+    <td><code>rankNewsByRelevance</code> fires only when heuristic finds no direct ticker match. Equities (INTC, DELL, BB) likely trigger it; crypto less so. Plausible that 3–5 equity assets in batch fire simultaneously, supporting the RPM burst theory — but not confirmed without per-asset call counts.</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>RPM vs daily quota exhaustion?</td>
+    <td class="verdict-amber">NEEDS DATA</td>
+    <td>41ms failure latency strongly points to RPM burst rejection (quota exhaustion returns after token accounting, not at 41ms). The proposed fix addresses only RPM clustering. If quota is also a factor, jitter won't help.</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>Deno setTimeout edge case?</td>
+    <td class="verdict-ok">SAFE</td>
+    <td>Deno supports <code>setTimeout</code> natively. No AbortController interaction from the jitter promise itself. No known isolate issues. The existing sleep() helper at line 999 uses the same pattern.</td>
+  </tr>
+</table>
+
+<!-- BLOCKING -->
+<h2 style="color:#ff6b6b;">BLOCKING</h2>
+
+<div class="finding">
+  <span class="finding-num">B1.</span>
+  <strong>Jitter insertion point is wrong — delays every NVIDIA call, not just Groq fallbacks.</strong>
+  <div class="loc">news-fetcher.ts ~line 1564 (inside rankNewsByRelevance, before complete() call)</div>
+  <p>
+    NVIDIA succeeds 86.4% of the time (369 of 427 non-timeout calls). Adding 0–2s random sleep before <code>complete()</code> degrades every successful NVIDIA call. The Groq 429 problem is a cascade-path problem: it only manifests when NVIDIA fails. Jitter must be applied <em>inside the factory fallback branch</em>, not before the primary attempt.
+  </p>
+  <p>
+    Specifically: in <code>factory.ts</code>, after NVIDIA failure is confirmed and before <code>groqProvider.complete()</code> is called, insert the jitter. This way, the 86.4% happy path is untouched, and only the ~5–13% fallback path absorbs the delay.
+  </p>
+  <div class="action">Action: Move jitter to factory.ts Groq fallback branch. Remove from rankNewsByRelevance.</div>
+</div>
+
+<div class="finding">
+  <span class="finding-num">B2.</span>
+  <strong>Jitter spread (0–2s) is too narrow to desynchronize calls after a 45s NVIDIA timeout window.</strong>
+  <div class="loc">factory.ts cascade logic + registry.ts timeoutMs: 15_000</div>
+  <p>
+    The registry sets <code>timeoutMs: 15_000</code>. The factory retries up to 3 times before cascading. That means NVIDIA can consume up to 45s before handing off to Groq. Five concurrent assets that start within 0–2s of each other (after jitter) converge on the same 45s timeout boundary: all their Groq calls fire within a ~2s window of each other at the 45s mark. The jitter applied at <em>start</em> is absorbed entirely by the NVIDIA wait time.
+  </p>
+  <div class="math-box">
+    Asset A: jitter=0.3s → NVIDIA starts 0.3s → timeout at 45.3s → Groq fires at ~45.3s
+    Asset B: jitter=1.8s → NVIDIA starts 1.8s → timeout at 46.8s → Groq fires at ~46.8s
+    Asset C: jitter=0.9s → NVIDIA starts 0.9s → timeout at 45.9s → Groq fires at ~45.9s
+    Window: Groq calls cluster in a ~1.5s burst at t≈45–47s. Burst NOT solved.
+  </div>
+  <p>
+    To actually spread Groq calls, jitter must be applied at the <em>fallback handoff point</em> with a range wide enough relative to the burst window (suggest 0–8s, covering the ~8s spread of a 5-slot concurrency pool).
+  </p>
+  <div class="action">Action: Increase jitter range to 0–8s AND apply it at factory.ts fallback branch, not at NVIDIA start time.</div>
+</div>
+
+<!-- WORTH A LOOK -->
+<h2 style="color:#ffb347;">WORTH A LOOK</h2>
+
+<div class="finding-amber">
+  <span class="finding-num-amber">W1.</span>
+  <strong>Root cause verification is incomplete — <code>!hasAssetMatch</code> gate is unquantified.</strong>
+  <div class="loc">signal-persistence.ts ~line 905</div>
+  <p>
+    <code>rankNewsByRelevance</code> fires only when heuristic scoring finds zero direct asset-name matches. The developer's burst hypothesis requires 3–5 assets to simultaneously lack keyword matches. This is plausible for equity batch assets (INTC, DELL, BB, SPCX — all have generic news coverage) but not guaranteed. Before shipping any fix, query <code>llm_call_log</code> for the exact timestamp distribution of <code>news_rank</code> Groq calls to confirm clustering. If calls are spread across minutes, the burst hypothesis is wrong and jitter is solving a phantom problem.
+  </p>
+  <div class="action">Action: Run <code>SELECT called_at, status FROM llm_call_log WHERE task_name='news_rank' AND provider='groq' AND status='fail' ORDER BY called_at</code> before implementing any fix. Confirm calls cluster within &lt;5s windows.</div>
+</div>
+
+<div class="finding-amber">
+  <span class="finding-num-amber">W2.</span>
+  <strong>RPM vs. TPD ambiguity — fix may not address the right 429 type.</strong>
+  <div class="loc">openai-compatible.ts 429 error handling</div>
+  <p>
+    The 41ms failure latency is highly consistent with an RPM (requests-per-minute) burst rejection: the API rejects the connection almost immediately without processing tokens. Daily quota (TPD) exhaustion typically returns after token accounting. However, the <code>openai-compatible.ts</code> adapter reportedly distinguishes <code>error.type === "tokens"</code> from other 429s. If any of the 22 Groq failures are TPD-related, jitter provides zero relief — the fix would pass but the error would recur at a different time of day. Verify by checking the raw error type from Sentry or the adapter logs.
+  </p>
+  <div class="action">Action: Filter Sentry errors by <code>tags.flow=news-ranking</code> and inspect <code>error.type</code> field. If any are <code>"tokens"</code>, the fix is incomplete and a TPD guard (skip LLM ranking entirely when quota is near) is also required.</div>
+</div>
+
+<div class="finding-amber">
+  <span class="finding-num-amber">W3.</span>
+  <strong>Better fix exists: Groq retry-after header or exponential backoff instead of pre-emptive jitter.</strong>
+  <div class="loc">factory.ts Groq fallback branch</div>
+  <p>
+    Groq returns a <code>Retry-After</code> header (or <code>x-ratelimit-reset-requests</code>) on 429s. Rather than pre-emptive random jitter that wastes time on non-congested runs, the factory could read this header and wait the prescribed cooldown before the next Groq call. This is zero-overhead on the happy path, adapts to actual server state, and handles burst and TPD cases correctly. Worth evaluating before committing to jitter.
+  </p>
+  <div class="action">Action: Check Groq 429 response headers in the openai-compatible.ts adapter. If present, implement header-driven backoff as the primary strategy and use jitter only as a secondary measure.</div>
+</div>
+
+<!-- SAFE -->
+<h2 style="color:#4ade80;">SAFE / CONFIRMED CORRECT</h2>
+
+<div class="finding-safe">
+  <span class="finding-num-safe">S1.</span>
+  <strong>Cascade trigger analysis is correct.</strong>
+  <p>
+    The claim that <code>cascadeOnSchemaFail</code> is a no-op for <code>news_rank</code> (no <code>jsonSchema</code> defined) is accurate. The only cascade triggers are NVIDIA timeout and HTTP failure. The log data (32 NVIDIA timeouts, 26 NVIDIA fails totalling 58 NVIDIA failures vs. 22 Groq fails) is consistent with a subset of NVIDIA failures cascading to Groq — not all cascade successfully (some may hit a different error path or the asset skipped <code>rankNewsByRelevance</code>). The cascade logic is diagnosed correctly.
+  </p>
+</div>
+
+<div class="finding-safe">
+  <span class="finding-num-safe">S2.</span>
+  <strong>Deno setTimeout is safe in this context.</strong>
+  <p>
+    Deno edge functions support <code>setTimeout</code> natively. The existing <code>sleep()</code> helper at <code>run-signals/index.ts:999</code> uses the identical pattern (<code>new Promise(resolve =&gt; setTimeout(resolve, ms))</code>) and is already in production. No AbortController is threaded into <code>rankNewsByRelevance</code>, so the jitter promise has no cancellation interaction. The runtime concern is not a blocker.
+  </p>
+</div>
+
+<hr style="border-color:#222; margin: 32px 0 16px;">
+<div style="color:#666; font-size:12px;">
+  <strong>Bottom line:</strong> The root cause is plausible but unconfirmed. The proposed fix (Option B) has the right instinct but the wrong insertion point and too-narrow a jitter range — it will not solve the burst and will degrade the 86% happy-path latency unnecessarily. Address B1 and B2 before implementing. Verify W1 (timestamp clustering) and W2 (RPM vs TPD) before assuming jitter is sufficient. Consider W3 (Retry-After header) as a cleaner alternative.
+</div>
+
+</body>
+</html>

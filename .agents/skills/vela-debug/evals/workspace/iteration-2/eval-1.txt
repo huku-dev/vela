@@ -1,0 +1,34 @@
+Defaulting to staging (`memyqgdqcwrrybjpszuw`) — want production instead?
+
+---
+
+To check for stuck trade proposals on staging, I'll run:
+
+```sql
+SELECT id, asset, direction, proposal_type, status,
+  created_at, expires_at,
+  NOW() - created_at AS age
+FROM trade_proposals
+WHERE status = 'pending'
+ORDER BY created_at ASC;
+```
+
+**What I'm looking for:**
+
+A proposal is "stuck" if it is still in `status = 'pending'` after its `expires_at` timestamp has passed. This means the proposal expiry cron (`publish-scheduled` or equivalent) is not firing, or the proposal was never picked up for execution.
+
+**Alert conditions:**
+- Any row where `expires_at < NOW()` and `status = 'pending'` — these should have transitioned to `expired` automatically.
+- Any proposal with `age > 24h` still pending — indicates a cron gap or edge function failure.
+
+If stuck proposals are found, the next step is checking cron health:
+
+```sql
+SELECT jobname, schedule, active,
+  (SELECT MAX(start_time) FROM cron.job_run_details jrd WHERE jrd.jobid = j.jobid) AS last_run
+FROM cron.job j
+WHERE jobname ILIKE '%proposal%' OR jobname ILIKE '%publish%'
+ORDER BY jobname;
+```
+
+Confirm environment (staging vs. production) and I'll run these queries.

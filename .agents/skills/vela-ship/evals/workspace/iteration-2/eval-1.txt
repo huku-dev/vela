@@ -1,0 +1,114 @@
+## Cross-Repo Ship: Backend Signal Engine + Frontend Signal Card
+
+Cross-repo change detected. Backend ships first.
+
+---
+
+### Backend Pre-Flight
+
+```bash
+cd /Users/henry/crypto-agent
+npm run test -- --run
+npm run type-check
+npm run build
+```
+
+All checks must pass before proceeding. Any failure stops the pipeline.
+
+---
+
+### Backend: Staging Deploy & Verify
+
+```bash
+cd /Users/henry/crypto-agent
+./scripts/deploy.sh --staging
+./scripts/verify-deployment.sh --staging
+```
+
+Check staging logs, confirm signal-engine edge function is live and responding. If verify-deployment.sh flags any issue, stop and fix before promoting.
+
+---
+
+### Backend: Production Deploy & Verify
+
+```bash
+cd /Users/henry/crypto-agent
+./scripts/deploy.sh --prod
+./scripts/verify-deployment.sh --prod
+```
+
+Confirm production edge function is live. Backend is now ahead of frontend — this is the correct order since the frontend signal card may depend on new backend response fields.
+
+---
+
+### Frontend Pre-Flight
+
+```bash
+cd /Users/henry/crypto-agent-frontend
+npm run test -- --run
+npm run type-check
+npm run build
+```
+
+All 3 must pass. Any failure stops here.
+
+---
+
+### Frontend: Push & Monitor CI
+
+```bash
+git push origin develop
+sleep 5
+gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId')
+```
+
+Wait for CI to complete. Do not proceed with a red CI. If it fails:
+
+```bash
+gh run view <run-id> --log-failed
+```
+
+Fix, push, re-verify.
+
+---
+
+### Frontend: Staging Gate (Vercel Preview)
+
+```bash
+vercel ls --limit 3 2>/dev/null
+```
+
+Confirm the latest deployment is "Ready." Open the preview URL and verify the signal card renders correctly with the updated backend response.
+
+---
+
+### Code Review Gate
+
+```
+/ultrareview
+```
+
+Fix any HIGH findings before proceeding. MEDIUM findings require explicit sign-off.
+
+---
+
+### Frontend: Production Merge
+
+```bash
+git checkout main && git merge develop && git push origin main
+gh run watch $(gh run list --limit 1 --json databaseId -q '.[0].databaseId')
+```
+
+Monitor production CI to completion.
+
+---
+
+### Post-Ship
+
+- Update MEMORY.md: mark signal card + signal-engine changes as shipped, update test counts if tests were added.
+- Update Notion: mark related task as Done in Tasks database, add entry to Changelog database with scope "both" and today's date.
+- Sync develop:
+
+```bash
+git checkout develop && git merge main && git push origin develop
+```

@@ -1,0 +1,11 @@
+**Task:** QA review of `clean-component.tsx` fixture for design token violations and pre-commit checklist.
+
+- PASS: No hardcoded colors — all color values use semantic CSS variables (`var(--color-signal-buy)`, `var(--color-signal-sell)`, `var(--color-signal-wait)`, `var(--color-surface-card)`, `var(--color-text-primary)`).
+- PASS: Signal colors used correctly — `--color-signal-buy` maps to BUY, `--color-signal-sell` maps to SELL, `--color-signal-wait` maps to WAIT. No signal color reused for non-signal UI.
+- PASS: VelaComponents used — `VelaButton` imported from VelaComponents, not raw MUI `<Button>`.
+- PASS: ARIA labels present — `<article>` has `aria-label` describing the signal, `<VelaButton>` has `aria-label="Dismiss {asset} signal"`.
+- PASS: TypeScript prop interface defined — `SignalBadgeProps` interface declared with typed `signal` and `onDismiss` props.
+- PASS (N/A): No async data fetching in this component; no loading or error states required.
+- PASS: Spacing and sizing values use design tokens (`var(--spacing-md)`, `var(--spacing-xs)`, `var(--spacing-sm)`, `var(--radius-sm)`, `var(--text-sm)`, `var(--text-base)`, `var(--font-weight-bold)`).
+
+**Overall: PASS**

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review — run-signals concurrency + try/catch changes</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #0f0f0f; color: #e0e0e0; line-height: 1.6; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  .meta { color: #888; font-size: 0.85rem; margin-bottom: 2rem; }
+  .summary-bar { display: flex; gap: 1rem; margin-bottom: 2rem; }
+  .badge { padding: 0.4rem 1rem; border-radius: 4px; font-weight: 700; font-size: 0.9rem; }
+  .red    { background: #4a0000; color: #ff6b6b; }
+  .amber  { background: #3a2a00; color: #ffb347; }
+  .gray   { background: #2a2a2a; color: #aaa; }
+  .green  { background: #002a1a; color: #0fe68c; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; font-size: 0.88rem; }
+  th { text-align: left; padding: 0.5rem; border-bottom: 1px solid #333; color: #888; }
+  td { padding: 0.5rem; border-bottom: 1px solid #222; vertical-align: top; }
+  .sev-blocking { color: #ff6b6b; font-weight: 700; }
+  .sev-amber    { color: #ffb347; font-weight: 600; }
+  .sev-nit      { color: #aaa; }
+  .sev-safe     { color: #0fe68c; }
+  h2 { font-size: 1.1rem; margin-top: 2rem; margin-bottom: 0.75rem; border-left: 3px solid; padding-left: 0.75rem; }
+  h2.blocking { border-color: #ff6b6b; color: #ff6b6b; }
+  h2.amber    { border-color: #ffb347; color: #ffb347; }
+  h2.nit      { border-color: #666; color: #aaa; }
+  h2.safe     { border-color: #0fe68c; color: #0fe68c; }
+  h2.monitor  { border-color: #a0a0ff; color: #a0a0ff; }
+  .finding { background: #1a1a1a; border-radius: 6px; padding: 1rem 1.2rem; margin-bottom: 1.2rem; }
+  .finding-title { font-weight: 700; margin-bottom: 0.4rem; }
+  .finding-meta { font-size: 0.8rem; color: #888; margin-bottom: 0.5rem; font-family: monospace; }
+  code { background: #252525; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.85rem; font-family: monospace; }
+  pre { background: #252525; padding: 0.8rem 1rem; border-radius: 4px; overflow-x: auto; font-size: 0.83rem; line-height: 1.5; }
+  ul { margin: 0.3rem 0 0.5rem 1.2rem; }
+  li { margin-bottom: 0.3rem; }
+</style>
+</head>
+<body>
+
+<h1>Phase 1 QA Review — run-signals concurrency + try/catch</h1>
+<p class="meta">Reviewed: 2026-06-09 &nbsp;|&nbsp; Reviewer: independent subagent &nbsp;|&nbsp; File: <code>supabase/functions/run-signals/index.ts</code></p>
+
+<div class="summary-bar">
+  <span class="badge red">Blocking: 1</span>
+  <span class="badge amber">Worth a look: 3</span>
+  <span class="badge gray">Nit: 2</span>
+  <span class="badge green">Safe: 5</span>
+</div>
+
+<h2>Risk matrix</h2>
+<table>
+  <tr><th>Change</th><th>Highest severity</th><th>Finding</th></tr>
+  <tr><td>Change 1 — news timeout 45s → 30s</td><td class="sev-amber">Worth a look</td><td>Timing budget is tight but survivable; 30s alone is fine, but combined headroom needs verification</td></tr>
+  <tr><td>Change 2 — ASSET_CONCURRENCY 5 → 4</td><td class="sev-blocking">Blocking</td><td>Comment contradicts code: says "cap at 3" but sets 4; race condition on shared <code>index</code> counter in <code>runWithConcurrency</code></td></tr>
+  <tr><td>Change 3 — try/catch around generateTradeProposals</td><td class="sev-amber">Worth a look</td><td>Silent notification drop on partial-insert throw is accepted but not observable from a single log line</td></tr>
+  <tr><td>Change 4 — orphan warning</td><td class="sev-amber">Worth a look</td><td>Fires falsely on full_auto-only runs where no semi-auto users exist — guaranteed noise every 4H batch</td></tr>
+</table>
+
+<h2 class="blocking">Blocking</h2>
+
+<div class="finding">
+  <div class="finding-title">B-1: Stale comment says "cap at 3" — code sets 4; plus shared-index race in runWithConcurrency</div>
+  <div class="finding-meta">run-signals/index.ts line ~258</div>
+  <p>The comment block above the constant reads: <em>"Cap at 3 to balance throughput against worker memory: 5 concurrent tasks caused OOM (546)… concurrency=3 (4 waves / 5 waves)…"</em> but the code sets <code>ASSET_CONCURRENCY = 4</code>. The comment also says "OOM risk at 4 is lower than 5 given the concurrent feed" — internally contradictory in a single paragraph.</p>
+  <p>This is a maintenance hazard, not just a typo. The next engineer who reads the comment ("cap at 3") to understand why 4 is set will be confused about intent, and may reduce it back to 3 "to match the comment." More critically: <code>runWithConcurrency</code> (line 1012) uses a shared mutable <code>index</code> counter across workers. In Deno, each <code>async function worker()</code> increments <code>index++</code> without any atomic guarantee. JavaScript is single-threaded so the increment itself won't tear — but two workers that both observe <code>index &lt; tasks.length</code>, both read <code>tasks[index]</code>, and both execute <code>index++</code> in the same microtask checkpoint could skip a task or double-dispatch one. This is a real race when tasks resolve synchronously (e.g. if <code>task()</code> short-circuits early due to cached data).</p>
+  <p><strong>Fix:</strong> (1) Update the comment to say "Cap at 4" and remove the contradictory "cap at 3" sentence. (2) In <code>runWithConcurrency</code>, snapshot the current index before incrementing: <code>const i = index++; await tasks[i]();</code> — this is the standard worker-pool pattern that prevents the double-dispatch edge case.</p>
+</div>
+
+<h2 class="amber">Worth a look</h2>
+
+<div class="finding">
+  <div class="finding-title">W-1: generateTradeProposals throw after partial DB INSERT silently drops notifications with no Sentry capture</div>
+  <div class="finding-meta">run-signals/index.ts lines ~432–438</div>
+  <p><code>generateTradeProposals</code> can throw in three places that may occur <em>after</em> proposals have already been INSERTed for some users in the per-user loop: (a) <code>fetchEligibleUsers</code> throws before iteration; (b) a DB error mid-loop after earlier users' proposals were written; (c) <code>WALLET_ENVIRONMENT</code> not set (<code>proposal-generator.ts</code> line 895 throws before the user loop). For case (a) and (c), no proposals exist and the fallback is safe. For case (b), proposals exist in <code>trade_proposals</code> with <code>status=pending</code> but are absent from <code>pendingEmailsByUser</code> — the author names the 2h proposal-reminder as the safety net, which is correct. However:</p>
+  <ul>
+    <li>The catch block logs via <code>console.error</code> only. There is no <code>captureException</code> call, unlike the auto-execute block at line 595 which does call Sentry. This means the throw is invisible in Sentry dashboards and won't page anyone.</li>
+    <li>The log includes <code>signal_id</code> but not <code>assetSymbol</code> in the prefix — the asset symbol IS in the outer prefix string so it's technically present, but it would help readability to be explicit.</li>
+  </ul>
+  <p><strong>Fix:</strong> Add <code>captureException(proposalErr, { tags: { flow: "proposal-generation", asset: asset.symbol } })</code> inside the catch block, matching the pattern used at line 595.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-title">W-2: Orphan warning fires on every batch with signal changes when all trading users are full_auto</div>
+  <div class="finding-meta">run-signals/index.ts lines ~613–619</div>
+  <p>The warning condition is: <code>anySignalChanged &amp;&amp; pendingEmailsByUser.size === 0 &amp;&amp; !IS_STAGING</code>. <code>pendingEmailsByUser</code> is only populated for <code>deferEmail:true</code> proposals, which are emitted only for <em>semi-auto</em> users (full_auto users get <code>autoApproved:true</code>, not a deferred email — confirmed in <code>proposal-generator.ts</code> line 820). Therefore, any batch where all trading users are <code>full_auto</code> will fire this warning on every signal change, every 4 hours. This is a false-positive that will train the operator to ignore the warning, defeating its purpose.</p>
+  <p>Additionally: when <code>generateTradeProposals</code> is skipped because the signal is non-green/non-red (grey), <code>signalChanged</code> is still true but the generation block is guarded by <code>signalResult.signal.color !== 'grey'</code>. The warning would fire if a grey signal change occurred and semi-auto users exist — but grey proposals are never generated. This is a second false-positive path (minor, grey changes are uncommon).</p>
+  <p><strong>Fix:</strong> The warning needs to distinguish "no semi-auto users at all" from "generateTradeProposals threw." Count semi-auto proposals created across the results (or track a separate <code>proposalAttempted</code> boolean) before deciding whether empty <code>pendingEmailsByUser</code> is unexpected.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-title">W-3: 30s news timeout + 3 waves at concurrency=4 leaves &lt;30s for digest — tight under worst-case conditions</div>
+  <div class="finding-meta">run-signals/index.ts lines ~187–206, ~265</div>
+  <p>Timing budget for batch-1 (11 assets, concurrency=4, 3 waves):</p>
+  <ul>
+    <li>News pre-fetch cap: 30s</li>
+    <li>3 waves of 4 assets. Each wave's duration = slowest asset in that wave. A cold HL fetch + LLM brief call observed at ~20–25s worst case per asset. Three waves: ~75s in the optimistic case, up to ~90s if one wave has a slow LLM call.</li>
+    <li>Auto-execute queue: typically &lt;5s, but can be longer if multiple proposals need execution.</li>
+    <li>Batch proposal dispatch: typically &lt;2s.</li>
+    <li>Remaining headroom for digest: 150s - 30s news - 90s waves - 7s misc = ~23s. Digest is wrapped in its own try/catch and runs only when needed, so a 546 here is non-fatal.</li>
+  </ul>
+  <p>This is not blocking because the digest 546 is explicitly handled and the dispatch already runs before it. However, if a news pre-fetch takes exactly 30s AND one wave takes 30s+ (plausible on a congested HL API), the digest may never start. This is the same risk that existed at concurrency=5 but slightly mitigated by the concurrency reduction. Worth monitoring the 08:10 UTC run on staging for wall-clock time.</p>
+  <p><strong>Note:</strong> The comment on line 186 says "30s saves 15s vs the original cap" — this is correct. No fix required, but staging timing data would increase confidence before prod deploy.</p>
+</div>
+
+<h2 class="nit">Nits</h2>
+
+<div class="finding">
+  <div class="finding-title">N-1: IS_STAGING defined twice in run-signals scope</div>
+  <div class="finding-meta">run-signals/index.ts line ~650 vs top-of-file import from notify.ts</div>
+  <p><code>IS_STAGING</code> is imported from <code>notify.ts</code> (used throughout the file) but a second local <code>isStaging</code> variable is created at line 649: <code>const isStaging = (typeof Deno !== "undefined" ? Deno.env.get("ENVIRONMENT") : undefined) === "staging"</code>. Line 651 then uses <code>isStaging</code> (local) for the digest gate while the rest of the file uses <code>IS_STAGING</code> (imported). Both read the same env var, so behavior is identical — but two variables for the same thing is a maintenance landmine. Remove the local redeclaration and use <code>IS_STAGING</code> on line 651.</p>
+</div>
+
+<div class="finding">
+  <div class="finding-title">N-2: Log message at line 258 says concurrency=3 wave counts are the comparison baseline</div>
+  <div class="finding-meta">run-signals/index.ts line ~259</div>
+  <p>The comment says "materially faster than concurrency=3 (4 waves / 5 waves)" — this is the wave count for concurrency=3 across batch-1 (11 assets) and batch-2 (15 assets). These numbers are correct. But given the comment already references concurrency=4 as the chosen value, the "cap at 3" reference earlier in the same paragraph (see B-1) is the source of confusion. Fixing B-1 cleans this up.</p>
+</div>
+
+<h2 class="monitor">Risks to monitor post-deploy</h2>
+<ul>
+  <li><strong>546 rate on batch-1 08:10 UTC run.</strong> Concurrency=4 is intended to reduce OOM. If 546s continue on staging, further reduction to concurrency=3 should be evaluated. Check edge function invocation logs for HTTP 546 in the first 3 days.</li>
+  <li><strong>Proposal-reminder safety net effectiveness.</strong> If W-1 triggers (generateTradeProposals throws after partial INSERT), proposals will be orphaned until the 2h reminder fires. Confirm the reminder cron is active in prod and surfaces those proposals correctly.</li>
+  <li><strong>Orphan warning noise level.</strong> Once W-2 is evaluated, check logs to see how often the warning fires per batch. If it fires on multiple assets per run, it means full_auto users dominate and the warning is useless without the fix.</li>
+  <li><strong>News timeout hit rate.</strong> A 30s timeout on <code>fetchAllNews</code> is tighter than the previous 45s. Monitor for the "News pre-fetch failed (non-fatal)" log line in the first week. If it fires &gt;20% of runs, brief quality will degrade and the timeout should be raised back.</li>
+</ul>
+
+<h2 class="safe">Safe</h2>
+<ul>
+  <li><strong>Change 3 fallback shape.</strong> The zero-value <code>{ pendingEmails: [], autoApproved: 0, proposalsCreated: 0, skipped: 0, errors: [] }</code> is structurally correct. The loop over <code>proposalResult.pendingEmails</code> (lines 446–454) safely handles an empty array. No null-deref risk.</li>
+  <li><strong>notifyBatchProposals empty-array guard.</strong> <code>notify.ts</code> line 2429: <code>if (proposals.length === 0) return;</code> — the function is safe to call with an empty array even though the caller at line 629 already guards with <code>pendingEmailsByUser.size > 0</code>.</li>
+  <li><strong>results.some(r =&gt; r.changed) when results is empty.</strong> <code>Array.prototype.some</code> on an empty array returns <code>false</code> per spec. The warning correctly stays silent when zero assets were processed.</li>
+  <li><strong>pendingEmailsByUser concurrent writes.</strong> JavaScript is single-threaded. The worker tasks run on a single event loop; Map mutations between <code>await</code> points are not concurrent in the memory-race sense. No lost writes possible.</li>
+  <li><strong>IS_STAGING gate on proposal generation.</strong> The try/catch block at line 415 is inside the existing <code>&amp;&amp; !IS_STAGING</code> guard. The fallback result is therefore only reached on prod, which is the correct behavior. Staging will never enter the try/catch path.</li>
+</ul>
+
+</body>
+</html>

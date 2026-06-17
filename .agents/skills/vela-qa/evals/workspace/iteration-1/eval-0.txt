@@ -1,0 +1,97 @@
+## QA Smoke Test Report
+
+**Date:** 2026-05-01 14:32 UTC
+**Environment:** localhost:5173 (dev bypass — `VITE_DEV_BYPASS_AUTH=true`)
+**Server:** dev-preview-7f3a
+
+---
+
+### Pages Checked
+
+| Page | Status | Notes |
+|------|--------|-------|
+| Dashboard (/) | PASS | Digest, asset cards, signal badges all rendered |
+| Asset Detail (/asset/btc) | PASS | Key Signal card, What's Happening, indicators, signal history present |
+| Asset Detail (/asset/eth) | PASS | All sections rendered; WAIT signal displaying correctly |
+| Asset Detail (/asset/hype) | PASS | SELL signal, red badge, correct color token |
+| Asset Detail (/asset/sol) | PASS | WAIT signal; price data current |
+| Track Record (/track-record) | PASS | Trade list loaded; P&L format correct |
+| Account (/account) | PASS | User info, tier badge, legal links all present |
+
+---
+
+### Console Errors
+
+PASS — No errors found.
+
+Checked for: React rendering errors, unhandled promise rejections, missing module errors, TypeScript runtime errors. CoinGecko rate-limit warning present (expected, non-critical). Dev bypass auth console message present (expected).
+
+---
+
+### Mobile Responsive (375px)
+
+PASS
+
+- No horizontal overflow on any page
+- Signal cards stack vertically
+- Navigation accessible (hamburger menu present and functional)
+- Text legible, not clipped or overlapping
+- Track Record and Account pages reflow cleanly at 375px
+
+---
+
+### Content Sanitization
+
+PASS — No forbidden patterns detected on any page.
+
+| Pattern | Pages Checked | Result |
+|---------|--------------|--------|
+| `\|\|\|` delimiters | All 7 | PASS |
+| Raw ISO timestamp (`2026-05-01T14:32`) | All 7 | PASS |
+| `undefined` as visible text | All 7 | PASS |
+| `null` as visible text | All 7 | PASS |
+| JSON fragments (`{"`) | All 7 | PASS |
+| `NaN` as visible text | All 7 | PASS |
+| HTML tags as text (`<br>`, `<div>`) | All 7 | PASS |
+| `[object Object]` | All 7 | PASS |
+| Markdown fences (` ``` `) | All 7 | PASS |
+
+---
+
+### Visual Audit
+
+| # | Page | Viewport | Status | Issues Found |
+|---|------|----------|--------|--------------|
+| 1 | Dashboard | Desktop | PASS | None |
+| 2 | Dashboard (digest expanded) | Desktop | PASS | None |
+| 3 | Dashboard | Mobile 375px | PASS | None |
+| 4 | Asset Detail (BTC) | Desktop | PASS | None |
+| 5 | Asset Detail (BTC, What's Moving expanded) | Desktop | PASS | None |
+| 6 | Asset Detail (HYPE) | Desktop | PASS | Red SELL badge correct; signal card aligned |
+| 7 | Track Record | Desktop | PASS | None |
+| 8 | Account | Desktop | PASS | None |
+
+---
+
+### Data Quality
+
+| Check | Status | Details |
+|-------|--------|---------|
+| Signal card headlines | PASS | BUY headlines do not contain "waiting" or "no direction"; SELL headlines do not contain "looking good" |
+| Event content clean | PASS | No HTML tags in event titles or impact text; source attribution on separate line |
+| Digest formatting | PASS | No `\|\|\|` delimiters; no raw markdown; prose reads coherently |
+| Price formatting | PASS | All prices show `$` prefix and comma separators (e.g. `$67,412`) |
+| P&L formatting | PASS | Track Record shows "+$142 profit" / "-$38 loss" convention throughout |
+| Date formatting | PASS | All dates in friendly format ("01 May", "Thursday, May 1"); no raw ISO strings |
+
+---
+
+### Design Token Compliance
+
+PASS — No hardcoded colors detected. Spot-checked signal badge elements: all reference `var(--color-signal-buy)`, `var(--color-signal-sell)`, `var(--color-signal-wait)`. No inline `#XXXXXX` or `rgb(...)` values found in rendered component styles.
+
+---
+
+### Overall: PASS
+
+No blocking issues found. All 7 pages load cleanly, content sanitization is clean across all pages, mobile layout is correct at 375px, and no console errors were detected. App is clear to deploy.

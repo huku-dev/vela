@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phase 0 QA: deposit-monitor lookback fix</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e5e5e5; margin: 0; padding: 24px; line-height: 1.6; }
+  h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+  .meta { color: #888; font-size: 0.85rem; margin-bottom: 24px; }
+  .summary-bar { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+  .badge { padding: 8px 20px; border-radius: 8px; font-weight: 700; font-size: 0.95rem; }
+  .badge-red    { background: #3d1a1a; color: #ff6b6b; border: 1px solid #7a2e2e; }
+  .badge-amber  { background: #2e2200; color: #ffb347; border: 1px solid #5a4000; }
+  .badge-gray   { background: #1e1e1e; color: #aaa;    border: 1px solid #444; }
+  .badge-green  { background: #0d2a1a; color: #0fe68c; border: 1px solid #1a5c38; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #222; padding-bottom: 8px; margin-bottom: 16px; }
+  h2.red    { color: #ff6b6b; }
+  h2.amber  { color: #ffb347; }
+  h2.gray   { color: #aaa; }
+  h2.green  { color: #0fe68c; }
+  .finding { background: #141414; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px; border-left: 4px solid #333; }
+  .finding.blocking { border-left-color: #ff6b6b; }
+  .finding.wortlook { border-left-color: #ffb347; }
+  .finding.nit      { border-left-color: #555; }
+  .finding.safe     { border-left-color: #0fe68c; }
+  .finding-title { font-weight: 700; margin-bottom: 6px; }
+  .loc { font-family: monospace; font-size: 0.82rem; background: #1e1e1e; padding: 2px 6px; border-radius: 4px; color: #aaa; }
+  code { font-family: monospace; font-size: 0.85rem; background: #1e1e1e; padding: 2px 5px; border-radius: 3px; color: #ccc; }
+  pre { background: #1e1e1e; padding: 14px; border-radius: 6px; font-size: 0.82rem; overflow-x: auto; color: #ccc; margin: 10px 0; }
+  .verdict { font-style: italic; color: #888; font-size: 0.9rem; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Phase 0 QA: deposit-monitor lookback window fix</h1>
+<div class="meta">Reviewed: 2026-06-12 &nbsp;|&nbsp; Files: deposit-monitor/index.ts, _shared/hl-ledger-filter.ts, refresh-balance/index.ts, supabase/migrations/*.sql</div>
+
+<div class="summary-bar">
+  <div class="badge badge-red">Blocking: 2</div>
+  <div class="badge badge-amber">Worth a look: 2</div>
+  <div class="badge badge-gray">Nit: 1</div>
+  <div class="badge badge-green">Safe: 4</div>
+</div>
+
+<!-- ─── BLOCKING ─── -->
+<section>
+  <h2 class="red">Blocking</h2>
+
+  <div class="finding blocking">
+    <div class="finding-title">1. Root cause diagnosis is wrong: the cron runs every 5 minutes, not every 10 minutes.</div>
+    <span class="loc">deposit-monitor/index.ts line 14 comment; migrations/20260403000001_reduce_disk_io.sql; migrations/20260411000001_fix_pgnet_timeouts.sql; migrations/20260507000001_cron_shared_secret_header.sql</span>
+    <p>The diagnosis states the cron schedule is <code>5-59/10 * * * *</code> (every 10 minutes). The actual schedule in every migration that sets it is <code>1-56/5 * * * *</code> (fires at :01, :06, :11 ... every 5 minutes). This has been the schedule since at least <code>20260403000001</code> and has been re-applied unchanged in <code>20260411000001</code> and <code>20260507000001</code>. The function header comment confirms it: "Schedule: pg_cron every 5 minutes (see migration 20260411000001)".</p>
+    <p>The correct diagnosis is therefore: the cron runs every 5 minutes, the lookback window is 5 minutes, and the two values <em>should</em> match — but they do not in practice because the cron fires at the scheduled minute, the ledger data is fetched at some wall-clock time after the HTTP round-trip, and <code>Date.now()</code> inside <code>filterRealInboundTransfers</code> is evaluated at fetch time, not at cron schedule time. The effective window is closer to 4.5–4.8 minutes depending on function cold-start and multi-wallet parallelism. Any deposit that arrives in the 0–30 second gap between the last window's close and the next run's execution will be permanently missed.</p>
+    <p>The 5-to-10-minute window mismatch cited in the brief does not exist. The real mismatch is smaller (sub-minute) but still structural. Before writing any code, the actual gap must be measured from function logs to confirm how wide it really is.</p>
+    <div class="verdict">Action: verify the real cron expression in production via <code>SELECT jobname, schedule FROM cron.job WHERE jobname = 'deposit-monitor'</code>. Do not write code until the actual gap is established from evidence, not assumption.</div>
+  </div>
+
+  <div class="finding blocking">
+    <div class="finding-title">2. The proposed fix's 12-minute window is sized against the wrong cadence and overshoots by 2.4x.</div>
+    <span class="loc">deposit-monitor/index.ts line 733–737 (proposed change site)</span>
+    <p>The fix proposes 12 minutes on the assumption the cron runs every 10 minutes. The actual cadence is 5 minutes. A 12-minute window on a 5-minute cron means every consecutive pair of runs shares a 7-minute overlap region. Every deposit in that region will be seen by two runs. The idempotency guard (checked below) is the sole protection against double-notification.</p>
+    <p>More concretely: if the correct fix for a 5-minute cron with sub-minute execution jitter is 6 minutes (5 min + 1 min margin), the proposed 12-minute window is twice the necessary size. This is not just waste: it increases the surface area for idempotency to fail (two concurrent runs that both start within the same overlap region could both pass the <code>alreadyLogged</code> check before either inserts its row, as Supabase has no advisory lock here).</p>
+    <p>The comment in <code>20260403000001</code> that documented the old 2-minute cadence explicitly called out "The 5-min ledger lookback window still overlaps consecutive runs" when they moved from 2 min to 5 min — so the team has already accepted one overlap. Going to 12 minutes doubles the overlap region for no corresponding benefit.</p>
+    <div class="verdict">Action: if the real gap is sub-minute jitter, the correct fix is 6 minutes (not 12). If the real gap is something else entirely, fix the root cause, not the symptom. Do not use 12 minutes without fixing the cadence assumption first.</div>
+  </div>
+</section>
+
+<!-- ─── WORTH A LOOK ─── -->
+<section>
+  <h2 class="amber">Worth a look</h2>
+
+  <div class="finding wortlook">
+    <div class="finding-title">3. Idempotency is NOT race-condition-safe when two runs overlap on the same deposit.</div>
+    <span class="loc">deposit-monitor/index.ts lines 775–788 (idempotency check); refresh-balance/index.ts lines 308–321</span>
+    <p>The idempotency check is a read-then-write with no locking:</p>
+    <pre>const { data: existing } = await supabase.from("funding_events").select(...)...
+const alreadyLogged = existing.some(e => ...)
+if (alreadyLogged) continue;
+await supabase.from("funding_events").insert({ ... })</pre>
+    <p>If <code>deposit-monitor</code> and <code>refresh-balance</code> race (both read <code>existing</code> as empty, both proceed to insert), or if two deposit-monitor runs start within the overlap window and both fetch ledger data before either writes, both will insert and both will notify. Any proposed fix that increases the overlap window (including the proposed 12-minute value) increases the probability of this window being open simultaneously across two runs.</p>
+    <p>The dex-transfer check at lines 752–769 has the same race: two concurrent runs could both pass the <code>isDexTransfer</code> check on the same transfer.</p>
+    <p>This is not a new bug introduced by the fix, but the fix's larger overlap window elevates it from theoretical to practically likely during the first run after a longer window is deployed.</p>
+    <div class="verdict">Mitigate by adding a unique constraint on <code>(user_id, event_type, completed_at, amount_usdc)</code> on <code>funding_events</code> and using <code>INSERT ... ON CONFLICT DO NOTHING</code>. The application-layer check can stay as a fast-path skip.</div>
+  </div>
+
+  <div class="finding wortlook">
+    <div class="finding-title">4. refresh-balance idempotency window is also wrong if the deposit detection delay is fixed.</div>
+    <span class="loc">refresh-balance/index.ts lines 304–314</span>
+    <p><code>refresh-balance</code> correctly uses a 30-minute lookback window but its idempotency check uses a hardcoded <code>±5 minutes</code> around the transfer timestamp:</p>
+    <pre>const windowStart = new Date(transfer.timestamp - 5 * 60_000).toISOString();
+const windowEnd   = new Date(transfer.timestamp + 5 * 60_000).toISOString();</pre>
+    <p><code>deposit-monitor</code> uses the same ±5 minute window for its idempotency check (lines 744–746). This is not a lookback into the past — it is a tolerance window to match the <code>created_at</code> of existing <code>funding_events</code> rows against the on-chain <code>transfer.timestamp</code>. The logic is: "was a deposit of this amount logged within 5 minutes of when the transfer happened on-chain?"</p>
+    <p>This is conceptually separate from the lookback duration and is correct as long as both callers insert with <code>completed_at = transfer.timestamp</code> (they do). However, if one caller somehow stores a deposit row with a <code>created_at</code> that is more than 5 minutes offset from <code>transfer.timestamp</code> — for example, due to clock skew or a retry path that re-inserts with a later <code>created_at</code> — the dedup check will miss it and double-notify.</p>
+    <div class="verdict">Low urgency but worth noting. The fix does not change this logic, so it does not make it worse. Flag for a future migration to add the unique constraint.</div>
+  </div>
+</section>
+
+<!-- ─── NIT ─── -->
+<section>
+  <h2 class="gray">Nit</h2>
+
+  <div class="finding nit">
+    <div class="finding-title">5. Tests hardcode 5 * 60_000 and will silently pass regardless of what the fix ships.</div>
+    <span class="loc">_shared/deposit-monitor.test.ts lines 324, 365</span>
+    <p>The test suite calls <code>filterRealInboundTransfers(ledger, wallet, 5 * 60_000)</code> directly and asserts on filter results. These tests exercise the filter logic correctly but do not test the value that <code>deposit-monitor/index.ts</code> passes as the lookback argument. If the constant in <code>index.ts</code> is changed to 12 minutes (or any other value), these tests will still pass — they do not catch a regression where the constant is wrong.</p>
+    <p>There is also a structural test at line 249 that checks the source code contains "filterRealInboundTransfers" (import verification), but no test that asserts the actual numeric argument passed at the call site.</p>
+    <div class="verdict">After the fix, add a source-scan test: <code>assert(src.includes("12 * 60_000"), "lookback must be 12 minutes")</code> (or whatever the final value is). Similar to the pattern already used for the dex-discriminator check at line 280.</div>
+  </div>
+</section>
+
+<!-- ─── SAFE ─── -->
+<section>
+  <h2 class="green">Safe</h2>
+
+  <div class="finding safe">
+    <div class="finding-title">S1. The filter logic in hl-ledger-filter.ts is correct and does not need to change.</div>
+    <span class="loc">_shared/hl-ledger-filter.ts lines 43–73</span>
+    <p><code>filterRealInboundTransfers</code> correctly handles both <code>type=deposit</code> (external bridge) and <code>type=send</code> to self with empty dex fields (HL-to-HL). The <code>sourceDex</code>/<code>destinationDex</code> discriminator for internal margin shuffles is present and correct. The <code>lookbackMs</code> parameter is cleanly factored: changing the constant in the caller is the right scope for the fix.</p>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">S2. There is only one caller of filterRealInboundTransfers that runs on the cron path.</div>
+    <span class="loc">grep results: deposit-monitor/index.ts line 733, refresh-balance/index.ts line 292</span>
+    <p><code>refresh-balance</code> is user-triggered and already uses a 30-minute lookback — it does not need updating. <code>deposit-monitor</code> is the only cron caller. No other edge functions import the filter.</p>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">S3. The first-sync guard and partial-read guard correctly fence deposit detection.</div>
+    <span class="loc">deposit-monitor/index.ts lines 385–395</span>
+    <p>The <code>!wallet.balance_last_synced_at</code> guard (first-ever run) and <code>sync.partialRead</code> guard (incomplete HL API response) both return early before <code>detectAndNotifyDeposits</code> is called. Widening the lookback window does not affect these guards — they remain correct regardless of the lookback value.</p>
+  </div>
+
+  <div class="finding safe">
+    <div class="finding-title">S4. The cron schedule is actually every 5 minutes in all post-2026-04-03 migrations.</div>
+    <span class="loc">migrations/20260403000001 (first set to 5min), 20260411000001, 20260507000001 (both preserve 1-56/5)</span>
+    <p>The schedule expression <code>1-56/5 * * * *</code> has been set consistently across three separate migrations and never changed back. The 20260528000002 migration only disables it on staging (active=false), does not reschedule it. Production cadence is definitively 5 minutes, not 10.</p>
+  </div>
+</section>
+
+</body>
+</html>

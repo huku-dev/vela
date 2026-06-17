@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QA Review: isBuilderPerp hoist fix</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #0f0f0f; color: #e0e0e0; padding: 24px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; color: #fff; }
+  .meta { font-size: 0.8rem; color: #888; margin-bottom: 20px; }
+  .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+  .badge { padding: 6px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; }
+  .red { background: #3d1111; color: #f87171; border: 1px solid #7f1d1d; }
+  .amber { background: #3d2800; color: #fbbf24; border: 1px solid #92400e; }
+  .gray { background: #1e1e1e; color: #9ca3af; border: 1px solid #374151; }
+  .green { background: #0d2e1a; color: #4ade80; border: 1px solid #166534; }
+  .yellow { background: #2d2600; color: #fde047; border: 1px solid #854d0e; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 24px; }
+  th { text-align: left; padding: 8px 12px; background: #1a1a1a; color: #9ca3af; border-bottom: 1px solid #2a2a2a; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e1e1e; }
+  .section { margin-bottom: 32px; }
+  h2 { font-size: 1rem; font-weight: 700; margin: 0 0 12px; padding: 8px 12px; border-radius: 6px; }
+  h2.red-h { background: #3d1111; color: #f87171; }
+  h2.amber-h { background: #3d2800; color: #fbbf24; }
+  h2.gray-h { background: #1e1e1e; color: #9ca3af; }
+  h2.green-h { background: #0d2e1a; color: #4ade80; }
+  h2.yellow-h { background: #2d2600; color: #fde047; }
+  .finding { background: #1a1a1a; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; border-left: 3px solid #333; }
+  .finding.red-f { border-left-color: #f87171; }
+  .finding.amber-f { border-left-color: #fbbf24; }
+  .finding.gray-f { border-left-color: #9ca3af; }
+  .finding.yellow-f { border-left-color: #fde047; }
+  .finding-title { font-weight: 700; margin-bottom: 6px; font-size: 0.9rem; }
+  .loc { font-family: monospace; font-size: 0.8rem; color: #60a5fa; margin-bottom: 6px; }
+  .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; color: #6b7280; }
+  p, li { font-size: 0.875rem; line-height: 1.55; margin: 0 0 6px; }
+  ul { margin: 4px 0 0 16px; padding: 0; }
+  code { background: #252525; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 0.82em; color: #c084fc; }
+  .empty-note { color: #555; font-style: italic; font-size: 0.85rem; padding: 8px 0; }
+</style>
+</head>
+<body>
+
+<h1>QA Review: <code>isBuilderPerp</code> hoist fix in trade-executor.ts</h1>
+<p class="meta">File: <code>supabase/functions/_shared/trade-executor.ts</code> &nbsp;|&nbsp; Change: 1-line scope hoist &nbsp;|&nbsp; Reviewer: independent adversarial pass</p>
+
+<!-- Summary Bar -->
+<div class="summary-bar">
+  <span class="badge red">Blocking: 0</span>
+  <span class="badge amber">Worth a look: 2</span>
+  <span class="badge gray">Nit: 1</span>
+  <span class="badge green">Safe: 6</span>
+  <span class="badge yellow">Monitor post-deploy: 1</span>
+</div>
+
+<!-- Risk matrix -->
+<div class="section">
+  <h2 class="gray-h">File-level risk matrix</h2>
+  <table>
+    <tr><th>File</th><th>Highest severity</th><th>Status</th></tr>
+    <tr>
+      <td><code>_shared/trade-executor.ts</code></td>
+      <td>Worth a look: close/trim paths now silently compute <code>isBuilderPerp</code> (unused but harmless today; latent risk if a future edit reads it in those branches without checking context)</td>
+      <td><span class="badge amber">Amber</span></td>
+    </tr>
+    <tr>
+      <td><code>_shared/trade-executor.test.ts</code></td>
+      <td>Worth a look: no behavioral integration test exercises the builder-perp open SL placement path; all existing coverage is source-scan text assertions</td>
+      <td><span class="badge amber">Amber</span></td>
+    </tr>
+  </table>
+</div>
+
+<!-- Blocking -->
+<div class="section">
+  <h2 class="red-h">Blocking (0)</h2>
+  <p class="empty-note">None. The fix is mechanically correct and safe to merge.</p>
+</div>
+
+<!-- Worth a look -->
+<div class="section">
+  <h2 class="amber-h">Worth a look (2)</h2>
+
+  <div class="finding amber-f">
+    <div class="finding-title">AMBER-1: Close and trim branches now silently compute <code>isBuilderPerp</code> without reading it — correct today, latent trap in future edits</div>
+    <div class="loc">trade-executor.ts line 634 (hoist site) vs. lines 1318–1550 (trim/close branches, confirmed zero reads of isBuilderPerp)</div>
+    <div class="label">Situation</div>
+    <p>Before the fix, <code>isBuilderPerp</code> was scoped strictly inside <code>if (!isClose &amp;&amp; !isTrim)</code>, so it was provably dead on those paths. After the hoist it is computed unconditionally but never read in the trim branch (lines 1318–1370) or close branch (lines 1372–1550). This is harmless at this commit.</p>
+    <div class="label">Risk</div>
+    <p>A future author adding builder-perp-specific close logic (e.g. "cancel native SL with explicit size on close") will see the variable already defined and use it without questioning its provenance. If <code>hlCoin</code> is ever <code>null</code>-coalesced to the plain <code>symbol</code> (the fallback at line 373 is <code>asset.hl_symbol ?? asset.symbol</code>), <code>isBuilderPerp</code> evaluates <code>false</code> for a builder-perp asset, silently breaking the new logic.</p>
+    <div class="label">Recommendation</div>
+    <p>Add a one-line inline comment at line 634 to bound the intended scope: <code>// isBuilderPerp used in the open-trade SL/TP path below (~lines 1665, 1684); hoisted here so it is available if close/trim branches ever need it too.</code> This costs nothing and prevents misuse in the next edit session.</p>
+  </div>
+
+  <div class="finding amber-f">
+    <div class="finding-title">AMBER-2: No behavioral integration test covers builder-perp open with SL placement; all existing tests are source-scan regex assertions</div>
+    <div class="loc">trade-executor.test.ts lines 2630–2658 (only SL-related FEATURE-ADV tests); zero hits for <code>xyz:</code>, <code>hl_symbol</code>, or <code>executeTradeProposal</code> with builder-perp inputs</div>
+    <div class="label">Situation</div>
+    <p>The two FEATURE-ADV tests at lines 2630–2658 scan the source text for string patterns. They do not call <code>executeTradeProposal</code>, do not mock the adapter, and would not have caught the ReferenceError that triggered this fix. The original bug (variable used before declaration) silently threw inside the <code>try/catch</code> at line 1722, causing SL to be skipped on every builder-perp open, with no test failure.</p>
+    <div class="label">Recommendation</div>
+    <p>Add a <code>FEATURE-ADV</code>-prefixed behavioral test: mock <code>adapter.placeTriggerOrder</code>, execute a proposal where <code>hl_symbol = "xyz:AAPL"</code> and <code>fill_size</code> is populated, and assert (a) <code>placeTriggerOrder</code> is called and (b) the call includes <code>sizeInAsset === fill_size</code>. This is a follow-up task and does not block deploy. Without it, the next regression in this path will also reach production undetected.</p>
+  </div>
+</div>
+
+<!-- Nits -->
+<div class="section">
+  <h2 class="gray-h">Nit (1)</h2>
+
+  <div class="finding gray-f">
+    <div class="finding-title">NIT-1: Comment "Closes/trims don't need transfers" now precedes the unconditional <code>isBuilderPerp</code> line, creating a minor mislead about what the comment explains</div>
+    <div class="loc">trade-executor.ts lines 633–635</div>
+    <p>Consider moving the "Closes/trims don't need transfers" comment to sit immediately above the <code>if (!isClose &amp;&amp; !isTrim)</code> block (line 635), leaving <code>const isBuilderPerp</code> above it as a bare declaration. In the current layout a reader skimming top-to-bottom may believe the comment explains why <code>isBuilderPerp</code> is computed unconditionally, when it is actually explaining why the transfer block is gated.</p>
+  </div>
+</div>
+
+<!-- Monitor post-deploy -->
+<div class="section">
+  <h2 class="yellow-h">Monitor post-deploy (1)</h2>
+
+  <div class="finding yellow-f">
+    <div class="finding-title">MONITOR-1: Verify the first builder-perp open post-deploy writes a non-null <code>exchange_sl_order_id</code></div>
+    <p>Before this fix the ReferenceError was swallowed by the <code>try/catch</code> at line 1722. Any builder-perp position opened in production before this deploy has <code>exchange_sl_order_id = null</code> and relies on poll-based SL only. After deploying, confirm the next <code>xyz:*</code> open writes a non-null SL order ID:</p>
+    <p><code>SELECT id, asset_id, exchange_sl_order_id, opened_at FROM positions WHERE asset_id IN (SELECT id FROM assets WHERE hl_symbol LIKE 'xyz:%') ORDER BY opened_at DESC LIMIT 5;</code></p>
+    <p>Also check Sentry for any residual <code>Builder perp SL placement skipped: fill_size missing</code> errors, which would indicate <code>fill_size</code> was absent rather than the ReferenceError being the root cause.</p>
+  </div>
+</div>
+
+<!-- Safe -->
+<div class="section">
+  <h2 class="green-h">Safe (confirmed correct)</h2>
+  <ul>
+    <li><strong>Hoist is in scope.</strong> <code>hlCoin</code> is declared at line 373, well before the new line 634. No temporal dead zone. <code>isBuilderPerp</code> evaluates correctly at its new location.</li>
+    <li><strong>No duplicate declarations.</strong> Full-file grep returns exactly one <code>const isBuilderPerp</code> (line 634). No shadowing or conflict anywhere in the function.</li>
+    <li><strong><code>targetDex</code> resolves from outer scope.</strong> <code>targetDex</code> at line 637 stays inside the <code>if (!isClose &amp;&amp; !isTrim)</code> block and references the hoisted <code>isBuilderPerp</code>. JavaScript lexical scoping guarantees this resolution. The logic is semantically unchanged from before the fix.</li>
+    <li><strong>Close/trim branches do not reference <code>isBuilderPerp</code>.</strong> Confirmed by full-file grep: the only live reads of <code>isBuilderPerp</code> are at lines 637, 655, 1665, and 1684. All four are inside the open-trade branch (else path of the isTrim/isClose split). Close (lines 1372–1550) and trim (lines 1318–1370) never read it. Computing the variable is harmless.</li>
+    <li><strong>SL placement for builder-perp open is now correct.</strong> Line 1665: <code>needsExplicitSize = openedAsSpot || isBuilderPerp</code> evaluates <code>true</code> for <code>xyz:*</code> assets. Line 1684: <code>...(isBuilderPerp &amp;&amp; { sizeInAsset: orderResult.fill_size! })</code> spreads the explicit size correctly. <code>orderResult.fill_size</code> is guarded at line 1666 before the spread is reached. Before this fix a ReferenceError fired at line 1665 and was caught at line 1722, silently skipping native SL.</li>
+    <li><strong>TP ladder is unaffected.</strong> <code>skipTpLadder</code> at line 1743 checks <code>posType</code> and <code>openedAsSpot</code> only; it never references <code>isBuilderPerp</code>. The comment at line 1739 explicitly documents that builder perps are intentionally included in the TP ladder. The hoist changes nothing here.</li>
+  </ul>
+</div>
+
+</body>
+</html>
