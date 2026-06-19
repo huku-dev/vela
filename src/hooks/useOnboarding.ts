@@ -4,6 +4,22 @@ import { useAuthContext } from '../contexts/AuthContext';
 const STORAGE_KEY = 'vela_onboarded';
 
 /**
+ * Safe localStorage.getItem. Returns null when storage is unavailable
+ * (Telegram in-app WebView with storage blocked, Safari Lockdown Mode,
+ * iOS "Block All Cookies"). Without this guard, the useState initializer
+ * below throws synchronously on first render and the ErrorBoundary
+ * fallback hides the entire page — the exact failure mode the Telegram
+ * deep-link path is trying to support.
+ */
+function safeReadOnboarded(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Manages onboarding state: detection, step management, and completion.
  *
  * Checks localStorage first for instant client-side detection (avoids flash),
@@ -11,9 +27,7 @@ const STORAGE_KEY = 'vela_onboarded';
  */
 export function useOnboarding() {
   const { isAuthenticated, supabaseClient } = useAuthContext();
-  const [isOnboarded, setIsOnboarded] = useState(() => {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
-  });
+  const [isOnboarded, setIsOnboarded] = useState(safeReadOnboarded);
   const [isChecking, setIsChecking] = useState(!isOnboarded);
 
   // Sync with Supabase profile when authenticated

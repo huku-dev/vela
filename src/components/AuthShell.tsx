@@ -39,8 +39,23 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
   const params = new URLSearchParams(location.search);
   const isCheckoutSuccessOnHome = location.pathname === '/' && params.get('checkout') === 'success';
 
+  // News deep links are the Telegram broadcast target. Migration
+  // 20260502000002_news_cache_anon_read.sql intentionally allows anon to
+  // read news_cache rows so unauthenticated browsers (Telegram in-app
+  // WebView, fresh incognito) can render the editorial article. Without
+  // this carve-out the OnboardingGate redirect would bounce these users
+  // to /welcome before NewsDetail ever mounts. NewsDetail itself handles
+  // the anon UX (headline + source + "Read full article" CTA visible;
+  // LLM-generated cards gated behind login).
+  const isNewsDeepLink = location.pathname.startsWith('/news/');
+
   // New user on any app route → send to onboarding
-  if (!isOnboarded && !isCheckoutSuccessOnHome && location.pathname !== '/welcome') {
+  if (
+    !isOnboarded &&
+    !isCheckoutSuccessOnHome &&
+    !isNewsDeepLink &&
+    location.pathname !== '/welcome'
+  ) {
     return <Navigate to="/welcome" replace />;
   }
 

@@ -85,3 +85,33 @@ describe('GATE-ADV: adversarial bypass invariants', () => {
     expect(gateSrc).toMatch(/params\.get\(['"]checkout['"]\) === ['"]success['"]/);
   });
 });
+
+describe('GATE-SRC: news deep-link bypass scoping', () => {
+  // Migration 20260502000002_news_cache_anon_read.sql + 20260619000002 grant
+  // anon SELECT on news_cache so unauthenticated Telegram WebView visits can
+  // render. The OnboardingGate carve-out at this level lets them past the
+  // welcome redirect.
+  it('matches /news/<id> via pathname.startsWith', () => {
+    expect(gateSrc).toMatch(/pathname\.startsWith\(['"]\/news\/['"]\)/);
+  });
+
+  it('uses isNewsDeepLink in the redirect guard', () => {
+    expect(gateSrc).toMatch(/!isNewsDeepLink/);
+  });
+
+  it('requires a trailing slash so /news prefix collisions (e.g. /newsletters) are NOT bypassed', () => {
+    // startsWith('/news/') only matches /news/<rest>. /newsletters,
+    // /news (no slash), and /news_drafts all fail to bypass.
+    expect(gateSrc).toMatch(/startsWith\(['"]\/news\/['"]\)/);
+    expect(gateSrc).not.toMatch(/startsWith\(['"]\/news['"]\)/); // bare prefix would be too broad
+  });
+
+  it('the carve-out is wired inside the same !isOnboarded redirect block (no floating bypass)', () => {
+    // Guards against a refactor that moves !isNewsDeepLink out of the
+    // redirect-guard condition. The whole point of the carve-out is to
+    // bypass the welcome redirect for non-onboarded users; a future refactor
+    // that, say, gates it on a different state would silently break the
+    // Telegram deep-link path.
+    expect(gateSrc).toMatch(/!isOnboarded\s*&&[\s\S]*!isNewsDeepLink/);
+  });
+});
