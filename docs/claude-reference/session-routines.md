@@ -19,7 +19,13 @@
 2. Commit with conventional commit message
 3. Push to trigger Vercel deployment
 4. Verify CI passes after push (`gh run list`)
-5. **Release note proposal (if applicable):** If the session shipped a user-facing feature or significant change, draft a release note entry for the `release_notes` table and propose it to the user for approval before the session ends. Follow the established voice: benefit-focused, 1-2 sentences, no jargon, emoji prefix. Once approved, insert into the production `release_notes` table. The `publish-scheduled` cron will broadcast it to Telegram and the website changelog pulls live from the table.
+5. **Release note proposal (broad scope, not just features):** If the session shipped ANY of the following, draft a release note entry for the `release_notes` table:
+   - New features or assets
+   - Reliability or performance improvements (frame as user benefit: "faster signals", "more reliable briefs")
+   - Bug fixes that affected user experience (even indirectly: notification delays, brief outages, execution issues)
+   - Security improvements
+   
+   The bar is: "would a user notice this got better, or would they have noticed it was broken?" If yes, log it. Frame entries as benefits, not internals: "Faster signals across all assets" not "Parallelised run-signals with concurrency cap 5." Categories: `feature`, `improvement`, `fix`. Set `is_major: true` for headline features (new asset classes, new capabilities). Add `image_url` for features worth a screenshot. Target: 2-3 entries per week across sessions. Insert into the production `release_notes` table. The `publish-scheduled` cron will broadcast it to Telegram and the website changelog pulls live from the table.
 6. **Clean up worktrees (MANDATORY):** Stale Claude Code worktrees cause vitest to discover duplicate test files that fail with React errors. For each worktree:
    ```bash
    git worktree list                                    # see what exists
