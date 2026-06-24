@@ -58,20 +58,23 @@ export default function NewsDetail() {
   const [searchParams] = useSearchParams();
   const assetSymbol = searchParams.get('asset') ?? '';
   const navigate = useNavigate();
-  // news_cache supports both authenticated and anon reads (the anon RLS
-  // policy enables Telegram deep links to load without a browser session).
-  // Use the JWT-bearing client when available (authenticated users get the
-  // full experience including LLM generation); fall back to the bare anon
-  // client so the article meta + cached summary always renders.
-  const { getToken, supabaseClient, isLoading: authLoading, login } = useAuthContext();
-  // Wait for Privy to resolve before choosing a client. This prevents the
-  // double-fetch flicker where:
-  //   1. mount: supabaseClient=null → readClient=anonSupabase → anon fetch fires
-  //   2. Privy resolves: supabaseClient=<jwt client> → readClient changes → effect
-  //      re-fires, resetting meta/metaLoaded mid-render
-  // Once authLoading=false we know supabaseClient is either null (genuinely
-  // unauthenticated) or a JWT-bearing client (authenticated).
-  const readClient = authLoading ? null : (supabaseClient ?? anonSupabase);
+  // news_cache + assets are both anon-readable (anon SELECT grant
+  // restored in migration 20260619000002). Always use anonSupabase for
+  // the row reads so the page does not block on Privy SDK initialization.
+  // The Telegram deep-link path has no Privy session and Privy's ready
+  // check can take 10-60+ seconds on mobile in-app webviews (cold-cache
+  // SDK download + /init backend call); blocking the meta fetch on that
+  // left users staring at "Loading article..." for over a minute.
+  //
+  // The previous flicker-avoidance trade-off (wait for Privy so the
+  // client only resolves once, no anon-then-JWT re-fetch) was wrong for
+  // this surface: news_cache returns identical rows under anon and JWT
+  // contexts, so a "flicker" never actually changed visible content.
+  // LLM generation needs a JWT and uses getToken() independently below.
+  // supabaseClient is still destructured because it gates anon-vs-
+  // authenticated UI copy further down (members-only vs not-ready yet).
+  const { getToken, supabaseClient, login } = useAuthContext();
+  const readClient = anonSupabase;
   // Asset metadata + live price for the price strip. Reuses the dashboard
   // hook so we don't duplicate fetches.
   const { data: dashboardData } = useDashboard();
