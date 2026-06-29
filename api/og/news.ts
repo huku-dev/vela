@@ -286,10 +286,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `<div style="display: flex; flex-direction: column; flex: 1; padding: 56px 88px 120px; justify-content: center;">` +
         bodyInner +
       `</div>` +
-      // Footer — unchanged
+      // Footer. "Read full brief" CTA uses an inline SVG arrow rather than
+      // the literal "→" (U+2192) — the bundled Inter woff subset doesn't
+      // include that codepoint, so satori previously rendered a tofu glyph.
+      // Inline SVG is font-independent.
       `<div style="display: flex; position: absolute; bottom: 0; left: 0; width: ${CARD_WIDTH}px; height: 88px; background: ${INK}; padding: 0 56px; justify-content: space-between; align-items: center;">` +
         `<span style="font-family: 'Inter'; font-weight: 500; font-size: 28px; color: ${GREY_TEXT};">getvela.xyz</span>` +
-        `<span style="font-family: 'Inter'; font-weight: 600; font-size: 28px; color: ${SIGNAL_GREEN};">Read full brief →</span>` +
+        `<div style="display: flex; align-items: center; gap: 14px;">` +
+          `<span style="font-family: 'Inter'; font-weight: 600; font-size: 28px; color: ${SIGNAL_GREEN};">Read full brief</span>` +
+          `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="20" viewBox="0 0 28 20"><path d="M 2 10 L 24 10 M 16 2 L 24 10 L 16 18" fill="none" stroke="${SIGNAL_GREEN}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>` +
+        `</div>` +
       `</div>` +
     `</div>`;
 
