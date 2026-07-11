@@ -248,6 +248,20 @@ interface BalanceCardProps {
   isTradingEnabled: boolean;
   /** Current subscription tier — free users see an upgrade CTA in place of "Enable trading" */
   tier: import('../types').SubscriptionTier;
+  /**
+   * True when the user's subscription row exists AND has a provider-side
+   * subscription id (Stripe et al.). Distinguishes a legitimately downgraded
+   * account from a never-paid free user with a trial-trade residual, so the
+   * "Your paid plan ended" banner is only shown when it's factually true.
+   */
+  wasPreviouslyPaid?: boolean;
+  /**
+   * True while the subscription fetch hasn't settled at least once this
+   * session. Guards against a cold-cache flash where `tier` transiently
+   * defaults to `'free'` before the fetch resolves, which would otherwise
+   * render the residual-balance card at a currently-paying user.
+   */
+  subscriptionLoading?: boolean;
   showFundingNudge?: boolean;
   enableLoading?: boolean;
   /** Open positions for computing capital in trades */
@@ -263,6 +277,8 @@ function BalanceCard({
   hasWallet,
   isTradingEnabled,
   tier,
+  wasPreviouslyPaid,
+  subscriptionLoading,
   showFundingNudge,
   enableLoading,
   openPositions,
@@ -274,9 +290,11 @@ function BalanceCard({
   const navigate = useNavigate();
   const isFree = tier === 'free';
 
-  // Free tier: no balance display, no fake wallet. Single upgrade pitch instead.
-  // Mirrors the empty-state pattern in TrackRecord.tsx for consistency.
-  if (isFree) {
+  // Subscription still resolving: don't commit to a tier-branched render yet,
+  // otherwise a paid user on a cold cache flashes the free-tier residual card.
+  // Only guards the free branch — paid users' balance card is unaffected by
+  // subscription state.
+  if (isFree && subscriptionLoading) {
     return (
       <div
         className="vela-card"
@@ -284,23 +302,235 @@ function BalanceCard({
           padding: 'var(--space-5)',
           marginBottom: 'var(--space-6)',
           textAlign: 'center',
+          minHeight: 180,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 'var(--space-3)',
         }}
       >
-        <p
-          className="vela-heading-base"
-          style={{ marginBottom: 'var(--space-2)', fontSize: '1rem' }}
+        <VelaLogo variant="mark" size={40} pulse />
+        <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+          Loading balance...
+        </p>
+      </div>
+    );
+  }
+
+  // Free tier splits into two paths:
+  //  1. No residual balance → upgrade pitch (unchanged).
+  //  2. Downgraded with residual balance → withdraw-only card so users can
+  //     always retrieve their own funds, regardless of subscription state.
+  if (isFree) {
+    const totalValue = wallet?.balance_usdc ?? 0;
+    const availableForWithdraw = wallet?.available_balance ?? totalValue;
+    const hasResidualBalance =
+      hasWallet && wallet !== null && (totalValue > 0 || availableForWithdraw > 0);
+
+    if (!hasResidualBalance) {
+      return (
+        <div
+          className="vela-card"
+          style={{
+            padding: 'var(--space-5)',
+            marginBottom: 'var(--space-6)',
+            textAlign: 'center',
+          }}
         >
-          Trading is on paid plans
+          <p
+            className="vela-heading-base"
+            style={{ marginBottom: 'var(--space-2)', fontSize: '1rem' }}
+          >
+            Trading is on paid plans
+          </p>
+          <p
+            className="vela-body-sm vela-text-secondary"
+            style={{ maxWidth: 280, margin: '0 auto var(--space-4)', lineHeight: 1.6 }}
+          >
+            Upgrade your plan to enable trading and fund your wallet.
+          </p>
+          <button onClick={onUpgradeClick} className="vela-btn vela-btn-primary vela-btn-sm">
+            View plans
+          </button>
+        </div>
+      );
+    }
+
+    // Clamp inTrades against float noise from independent balance/available
+    // syncs; either can lag the other briefly and produce a small negative.
+    const inTrades = Math.max(0, totalValue - availableForWithdraw);
+    const canWithdraw = availableForWithdraw >= 3;
+    const bannerTitle = wasPreviouslyPaid ? 'Your paid plan ended' : 'Withdraw your balance';
+    const bannerBody = wasPreviouslyPaid
+      ? 'Withdraw below or upgrade your plan to resume trading.'
+      : 'Withdraw below or upgrade your plan to start trading.';
+
+    return (
+      <div
+        className="vela-card"
+        style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-6)' }}
+      >
+        <div
+          style={{
+            padding: 'var(--space-3)',
+            backgroundColor: 'var(--gray-50)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--gray-200)',
+            marginBottom: 'var(--space-4)',
+            textAlign: 'center',
+          }}
+        >
+          <p
+            className="vela-body-sm"
+            style={{ fontWeight: 600, margin: 0, fontSize: '0.85rem' }}
+          >
+            {bannerTitle}
+          </p>
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{ margin: 'var(--space-1) 0 0', fontSize: '0.75rem', lineHeight: 1.5 }}
+          >
+            {bannerBody}
+          </p>
+        </div>
+
+        <p
+          className="vela-label-sm"
+          style={{
+            color: 'var(--color-text-muted)',
+            marginBottom: 'var(--space-2)',
+            textAlign: 'center',
+          }}
+        >
+          BALANCE
         </p>
         <p
-          className="vela-body-sm vela-text-secondary"
-          style={{ maxWidth: 280, margin: '0 auto var(--space-4)', lineHeight: 1.6 }}
+          style={{
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: 32,
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            margin: 0,
+            lineHeight: 1.2,
+            textAlign: 'center',
+          }}
         >
-          Upgrade your plan to enable trading and fund your wallet.
+          $
+          {totalValue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
         </p>
-        <button onClick={onUpgradeClick} className="vela-btn vela-btn-primary vela-btn-sm">
-          View plans
-        </button>
+
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: 'var(--space-2)',
+            }}
+          >
+            <span className="vela-body-sm vela-text-muted">Available</span>
+            <span
+              className="vela-mono vela-body-sm vela-text-muted"
+              style={{ fontWeight: 500 }}
+            >
+              $
+              {availableForWithdraw.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/trades')}
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate('/trades');
+              }
+            }}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: 'var(--space-2)',
+              cursor: 'pointer',
+            }}
+          >
+            <span className="vela-body-sm vela-text-muted">
+              In trades
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                style={{ marginLeft: 4, verticalAlign: 'middle' }}
+              >
+                <path
+                  d="M6 3L11 8L6 13"
+                  style={{ stroke: 'var(--gray-400)' }}
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span
+              className="vela-mono vela-body-sm vela-text-muted"
+              style={{ fontWeight: 500 }}
+            >
+              $
+              {inTrades.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 'var(--space-3)',
+            marginTop: 'var(--space-5)',
+          }}
+        >
+          <button
+            className="vela-btn vela-btn-primary vela-btn-sm"
+            style={{ flex: 1 }}
+            onClick={() => onWithdrawClick?.()}
+            disabled={!canWithdraw}
+          >
+            Withdraw
+          </button>
+          <button
+            className="vela-btn vela-btn-secondary vela-btn-sm"
+            style={{ flex: 1 }}
+            onClick={onUpgradeClick}
+          >
+            View plans
+          </button>
+        </div>
+
+        {!canWithdraw && (
+          <p
+            className="vela-body-sm vela-text-muted"
+            style={{
+              marginTop: 'var(--space-2)',
+              textAlign: 'center',
+              fontSize: '0.7rem',
+            }}
+          >
+            {availableForWithdraw === 0 && inTrades > 0
+              ? 'Your balance is in open trades. Withdraw unlocks when they close.'
+              : '$3 minimum withdrawal (covers $2 in fees).'}
+          </p>
+        )}
       </div>
     );
   }
@@ -2427,6 +2657,7 @@ export default function Account() {
   const {
     tier: currentTier,
     subscription,
+    isLoading: subscriptionLoading,
     startCheckout,
     openPortal,
     cancelAtPeriodEnd,
@@ -2792,6 +3023,8 @@ export default function Account() {
         hasWallet={hasWallet}
         isTradingEnabled={isTradingEnabled}
         tier={currentTier}
+        wasPreviouslyPaid={subscription?.provider_subscription_id != null}
+        subscriptionLoading={subscriptionLoading}
         showFundingNudge={needsFunding(wallet?.balance_usdc)}
         enableLoading={enableLoading}
         openPositions={positions}

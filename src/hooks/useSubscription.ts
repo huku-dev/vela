@@ -75,7 +75,11 @@ export function useSubscription(): SubscriptionState {
 
   // Seed from cache so the first render uses the last known tier (no flash)
   const [subscription, setSubscription] = useState<UserSubscription | null>(getCachedSubscription);
-  const [isLoading, setIsLoading] = useState(false);
+  // Start as loading when there's no cache to trust — otherwise a fresh
+  // session flashes tier='free' before the fetch resolves. Callers that gate
+  // tier-sensitive UI on isLoading (BalanceCard's residual-balance branch,
+  // useTierAccess-based skeletons) rely on this to avoid the wrong render.
+  const [isLoading, setIsLoading] = useState(() => getCachedSubscription() === null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchSubscription = useCallback(async () => {

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account · residual-balance card · free tier</title>
+  <style>
+    :root {
+      --cream-base: #fffbf5;
+      --black: #0a0a0a;
+      --white: #ffffff;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #94a3b8;
+      --gray-600: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #0f172a;
+      --blue-primary: #2563eb;
+      --blue-hover: #1d4ed8;
+      --shadow-sm: 2px 2px 0 var(--black);
+      --radius-lg: 16px;
+      --radius-sm: 8px;
+      --border-thick: 2px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: #eee;
+      color: var(--gray-900);
+      padding: 32px 24px 64px;
+    }
+    h1 {
+      font-family: 'Instrument Sans', 'Inter', sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+    .sub {
+      font-size: 13px;
+      color: var(--gray-600);
+      max-width: 780px;
+      line-height: 1.55;
+      margin-bottom: 28px;
+    }
+
+    .frames {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .col {
+      width: 335px;
+    }
+    .col-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gray-700);
+      margin-bottom: 4px;
+    }
+    .col-note {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-bottom: 12px;
+      line-height: 1.5;
+      min-height: 34px;
+    }
+
+    .phone {
+      background: var(--cream-base);
+      border: 2px solid var(--black);
+      border-radius: 32px;
+      padding: 20px 16px 24px;
+      min-height: 640px;
+    }
+
+    /* card = matches .vela-card */
+    .card {
+      background: var(--white);
+      border: var(--border-thick) solid var(--black);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .card + .card {
+      margin-top: 16px;
+    }
+
+    .lbl {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray-600);
+      text-align: center;
+    }
+    .balance-big {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      text-align: center;
+      line-height: 1.2;
+      margin-top: 8px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      font-size: 13px;
+      color: var(--gray-600);
+    }
+    .row .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+
+    .banner {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .banner-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      color: var(--gray-900);
+    }
+    .banner-body {
+      font-size: 11.5px;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      border: 2px solid var(--black);
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--black);
+    }
+    .btn-primary { background: var(--blue-primary); color: var(--white); }
+    .btn-secondary { background: var(--white); color: var(--gray-900); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+    .minnote {
+      font-size: 10.5px;
+      color: var(--gray-600);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    /* Header identity strip in phone */
+    .id-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #a78bfa;
+      color: var(--white);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    .id-meta { display: flex; flex-direction: column; gap: 4px; }
+    .id-name { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+    .id-tier {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px;
+    }
+    .tier-chip {
+      border: 1px solid var(--gray-400);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .tier-upgrade {
+      color: var(--blue-primary);
+      font-weight: 600;
+    }
+
+    .notes {
+      margin-top: 40px;
+      max-width: 780px;
+    }
+    .notes h2 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--gray-900);
+    }
+    .notes ul { padding-left: 20px; margin-bottom: 20px; }
+    .notes li {
+      font-size: 12.5px;
+      color: var(--gray-700);
+      line-height: 1.6;
+      margin-bottom: 4px;
+    }
+    .notes code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      background: var(--gray-100);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Account · residual-balance card · free tier</h1>
+  <p class="sub">
+    Two free-tier paths on the Account page. Current build only renders A (the upgrade pitch)
+    and hides the balance/withdraw controls regardless of wallet state. Proposal: add path B
+    for users with a live wallet balance so they can retrieve their funds without resubscribing.
+    Applies to any downgraded user, not just the one currently blocked.
+  </p>
+
+  <div class="frames">
+
+    <!-- ────────── PATH A: no wallet or zero balance (unchanged) ────────── -->
+    <div class="col">
+      <div class="col-label">Path A · Free, no residual balance</div>
+      <div class="col-note">
+        Unchanged. Fires when <code>!hasWallet</code> or both balance fields = 0.
+      </div>
+
+      <div class="phone">
+        <div class="id-strip">
+          <div class="avatar">B</div>
+          <div class="id-meta">
+            <div class="id-name">bademosi.yele@gmail.com</div>
+            <div class="id-tier">
+              <span class="tier-chip">FREE</span>
+              <a class="tier-upgrade">Upgrade</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="text-align: center;">
+          <div style="font-family: 'Instrument Sans', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 6px;">
+            Trading is on paid plans
+          </div>
+          <p class="banner-body" style="max-width: 240px; margin: 0 auto 16px;">
+            Upgrade your plan to enable trading and fund your wallet.
+          </p>
+          <button class="btn btn-primary" style="flex: none; padding: 8px 20px;">View plans</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────── PATH B: residual balance ────────── -->
+    <div class="col">
+      <div class="col-label">Path B · Free, residual balance <span style="color: var(--blue-primary);">(new)</span></div>
+      <div class="col-note">
+        Fires when <code>hasWallet</code> AND (<code>balance_usdc &gt; 0</code> OR <code>available_balance &gt; 0</code>).
+      </div>
+
+      <div class="phone">
+        <div class="id-strip">
+          <div class="avatar">B</div>
+          <div class="id-meta">
+            <div class="id-name">bademosi.yele@gmail.com</div>
+            <div class="id-tier">
+              <span class="tier-chip">FREE</span>
+              <a class="tier-upgrade">Upgrade</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="banner">
+            <div class="banner-title">Your paid plan ended</div>
+            <div class="banner-body">
+              Withdraw below or upgrade your plan to resume trading.
+            </div>
+          </div>
+
+          <div class="lbl">BALANCE</div>
+          <div class="balance-big">$47.88</div>
+
+          <div style="margin-top: 12px;">
+            <div class="row">
+              <span>Available</span>
+              <span class="mono">$47.88</span>
+            </div>
+            <div class="row" style="border-top: 1px solid var(--gray-200); padding-top: 8px;">
+              <span>In trades &nbsp;›</span>
+              <span class="mono">$0.00</span>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary">Withdraw</button>
+            <button class="btn btn-secondary">View plans</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────── PATH B edge cases ────────── -->
+    <div class="col">
+      <div class="col-label">Path B · edge cases</div>
+      <div class="col-note">
+        Two sub-states to check in the browser preview before committing.
+      </div>
+
+      <div class="phone">
+        <!-- Sub-$3 balance -->
+        <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-600); margin-bottom: 8px;">
+          B.1 · below $3 minimum
+        </div>
+        <div class="card">
+          <div class="banner">
+            <div class="banner-title">Your paid plan ended</div>
+            <div class="banner-body">Withdraw below or upgrade your plan to resume trading.</div>
+          </div>
+          <div class="lbl">BALANCE</div>
+          <div class="balance-big">$2.10</div>
+          <div style="margin-top: 12px;">
+            <div class="row"><span>Available</span><span class="mono">$2.10</span></div>
+            <div class="row" style="border-top: 1px solid var(--gray-200); padding-top: 8px;">
+              <span>In trades &nbsp;›</span>
+              <span class="mono">$0.00</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" disabled>Withdraw</button>
+            <button class="btn btn-secondary">View plans</button>
+          </div>
+          <p class="minnote">$3 minimum withdrawal (covers $2 in fees).</p>
+        </div>
+
+        <!-- With open positions -->
+        <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-600); margin: 16px 0 8px;">
+          B.2 · has open positions
+        </div>
+        <div class="card">
+          <div class="banner">
+            <div class="banner-title">Your paid plan ended</div>
+            <div class="banner-body">Withdraw below or upgrade your plan to resume trading.</div>
+          </div>
+          <div class="lbl">BALANCE</div>
+          <div class="balance-big">$120.00</div>
+          <div style="margin-top: 12px;">
+            <div class="row"><span>Available</span><span class="mono">$47.88</span></div>
+            <div class="row" style="border-top: 1px solid var(--gray-200); padding-top: 8px;">
+              <span>In trades &nbsp;›</span>
+              <span class="mono">$72.12</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary">Withdraw</button>
+            <button class="btn btn-secondary">View plans</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h2>Copy decisions</h2>
+    <ul>
+      <li><b>Banner title:</b> "Your paid plan ended" — tier-agnostic (works whether they were Standard or Premium).</li>
+      <li><b>Banner body:</b> "Withdraw below or upgrade your plan to resume trading." — action-clear, both paths named.</li>
+      <li><b>Primary CTA:</b> "Withdraw" — same button label as paid path, keeps muscle memory.</li>
+      <li><b>Secondary CTA:</b> "View plans" — matches the tier-upgrade language used elsewhere in the app.</li>
+      <li><b>Sub-$3 note:</b> "$3 minimum withdrawal (covers $2 in fees)." Explains why Withdraw is disabled without user needing to open the sheet.</li>
+      <li>No em dashes anywhere.</li>
+    </ul>
+
+    <h2>Behavior</h2>
+    <ul>
+      <li>No Deposit button in this path. Depositing is a paid-plan action; free users can't add funds.</li>
+      <li>Withdraw button routes to the existing <code>WithdrawSheet</code>. It re-fetches live balance from <code>refresh-balance</code> on mount, so if the row's cached balance is stale, the sheet still shows the true amount.</li>
+      <li>Withdraw is <b>disabled</b> when <code>available_balance &lt;= 0</code> or below the <code>$3</code> tier minimum.</li>
+      <li>"Available" and "In trades" rows always render, matching the paid-tier BalanceCard exactly. If the user has open positions, they close normally via the system and the freed capital shifts to Available on the next sync — no user action required.</li>
+      <li>The tier chip / "Upgrade" link at the top of the Account page is unchanged. Path B doesn't hide those.</li>
+    </ul>
+
+    <h2>What Path B does NOT change</h2>
+    <ul>
+      <li>Backend: prod <code>tier_config.max_daily_withdrawal_usd</code> for free is already <code>$1000</code>, so <code>process-withdrawal</code> accepts. Zero backend edits.</li>
+      <li>The rest of the Account page (Recent Activity, Profile info, Subscription, Trading preferences, Notifications, Support, Legal, Log out) renders identically for both paths.</li>
+      <li>The existing <code>Account-free-tier.test.ts</code> "Trading is on paid plans" assertion continues to pass because Path A is unchanged.</li>
+    </ul>
+
+    <h2>Deferred (not in this patch)</h2>
+    <ul>
+      <li>Whether free users should also be able to <b>deposit</b>. Current draft hides the Deposit button, but Henry has flagged the assumption as wrong — revisit as a separate scope after this patch ships.</li>
+    </ul>
+  </div>
+</body>
+</html>
