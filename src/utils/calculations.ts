@@ -491,14 +491,23 @@ export function validateSignalStatusAlignment(
 /**
  * Compute total fees and net P&L for a closed position.
  *
- * Combines exchange fees, builder fees, Vela fees, and funding into a single
- * "trading fees" number. Net P&L = gross P&L - total fees.
+ * Combines exchange fees, Vela fees, and funding into a single "trading fees"
+ * number. Net P&L = gross P&L - total fees.
  *
  * Funding can be positive (received) or negative (paid), so it's subtracted
  * from fees (positive funding reduces total fees).
+ *
+ * Note on builder fees: `total_builder_fees` is intentionally NOT summed here.
+ * Hyperliquid's `userFills.fee` field is the trader's total charge and already
+ * INCLUDES the builder portion (per crypto-agent memory
+ * reference_hl_fee_mechanics fact 1). `positions.total_exchange_fees` stores
+ * that total, so `total_builder_fees` is a breakout for auditing / display,
+ * not an additive component. Summing both would double-count the builder fee.
+ * Historically small (~1 bp per position) but real; matches the backend
+ * postmortem.ts fix that shipped alongside the Option A PnL normalization.
  */
 export interface PositionFees {
-  /** All fees combined (exchange + builder + funding + vela). Always >= 0. */
+  /** All fees combined (exchange + vela) minus funding rebate. Always >= 0. */
   totalFees: number;
   /** Gross P&L minus total fees */
   netPnlDollar: number;
@@ -512,18 +521,20 @@ export function computePositionFees(position: {
   original_size_usd: number | null;
   size_usd: number;
   total_exchange_fees: number | null;
+  /** Breakout of the builder portion already included in total_exchange_fees. */
   total_builder_fees: number | null;
   total_vela_fees: number | null;
   cumulative_funding: number | null;
 }): PositionFees {
   const exchangeFees = Math.abs(position.total_exchange_fees ?? 0);
-  const builderFees = Math.abs(position.total_builder_fees ?? 0);
   const velaFees = Math.abs(Number(position.total_vela_fees) || 0);
   // Funding: negative = paid by user (cost), positive = received (rebate)
   const funding = position.cumulative_funding ?? 0;
 
-  // Single combined fee: exchange + builder + vela - funding rebate (floored at 0)
-  const totalFees = Math.max(0, exchangeFees + builderFees + velaFees - funding);
+  // Single combined fee: exchange + vela - funding rebate (floored at 0).
+  // total_builder_fees is INTENTIONALLY excluded — it's a breakout of a fee
+  // already counted inside total_exchange_fees (see JSDoc above).
+  const totalFees = Math.max(0, exchangeFees + velaFees - funding);
 
   const posSize = position.original_size_usd ?? position.size_usd;
   const grossPnl = position.total_pnl ?? pctToDollar(position.closed_pnl_pct ?? 0, posSize);
