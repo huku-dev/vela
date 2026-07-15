@@ -12,6 +12,7 @@ import {
   isDataStale,
   validateSignalStatusAlignment,
   getEffectivePnl,
+  computePositionFees,
 } from './calculations';
 
 describe('calculatePnL - TRUST CRITICAL', () => {
@@ -852,5 +853,78 @@ describe('getEffectivePnl', () => {
     );
     expect(result.pnlPct).toBe(10);
     expect(result.pnlDollar).toBe(1);
+  });
+});
+
+describe('computePositionFees - builder-fee semantics', () => {
+  // HL semantic invariant: userFills.fee (which populates
+  // positions.total_exchange_fees) already INCLUDES the builder portion.
+  // total_builder_fees is a breakout for display, NOT an additive component.
+  // Historical bug: totalFees summed both, over-counting by ~1 bp per position.
+  // See reference_hl_fee_mechanics.md fact 1 and the backend Option A rollout
+  // (crypto-agent-backend PR #43) which fixed the same double-count in
+  // postmortem.ts. This test pins the invariant so a future refactor cannot
+  // silently reintroduce it.
+
+  const basePosition = {
+    total_pnl: 10,
+    closed_pnl_pct: null,
+    original_size_usd: 1000,
+    size_usd: 1000,
+    total_exchange_fees: 0.5, // this ALREADY includes the builder portion
+    total_builder_fees: 0.1,  // breakout only — must NOT be added again
+    total_vela_fees: 0.2,
+    cumulative_funding: 0,
+  };
+
+  it('excludes total_builder_fees from the fee sum (double-count guard)', () => {
+    const fees = computePositionFees(basePosition);
+    // Expected: exchange (0.5, includes builder) + vela (0.2) - funding (0) = 0.7
+    // Wrong: 0.5 + 0.1 + 0.2 = 0.8 (double-counts builder)
+    expect(fees.totalFees).toBeCloseTo(0.7, 10);
+    expect(fees.totalFees).not.toBeCloseTo(0.8, 10);
+    // net = grossPnl (10) - totalFees (0.7) = 9.3
+    expect(fees.netPnlDollar).toBeCloseTo(9.3, 10);
+  });
+
+  it('changing total_builder_fees alone must not change totalFees', () => {
+    const withZeroBuilder = computePositionFees({
+      ...basePosition,
+      total_builder_fees: 0,
+    });
+    const withLargeBuilder = computePositionFees({
+      ...basePosition,
+      total_builder_fees: 99.99,
+    });
+    expect(withZeroBuilder.totalFees).toBeCloseTo(withLargeBuilder.totalFees, 10);
+  });
+
+  it('positive funding reduces totalFees (rebate)', () => {
+    const withFundingRebate = computePositionFees({
+      ...basePosition,
+      cumulative_funding: 0.3, // received
+    });
+    // 0.5 (exch) + 0.2 (vela) - 0.3 (funding rebate) = 0.4
+    expect(withFundingRebate.totalFees).toBeCloseTo(0.4, 10);
+  });
+
+  it('totalFees floors at 0 when funding rebate exceeds fees', () => {
+    const overRebated = computePositionFees({
+      ...basePosition,
+      cumulative_funding: 10, // huge received rebate
+    });
+    expect(overRebated.totalFees).toBe(0);
+    // net PnL = gross - 0 = gross (funding is captured in the floor, not double-applied)
+    expect(overRebated.netPnlDollar).toBeCloseTo(10, 10);
+  });
+
+  it('falls back to closed_pnl_pct when total_pnl is null', () => {
+    const fees = computePositionFees({
+      ...basePosition,
+      total_pnl: null,
+      closed_pnl_pct: 2, // 2% of $1000 = $20 gross
+    });
+    expect(fees.totalFees).toBeCloseTo(0.7, 10);
+    expect(fees.netPnlDollar).toBeCloseTo(19.3, 10);
   });
 });
