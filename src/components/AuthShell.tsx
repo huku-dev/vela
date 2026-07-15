@@ -18,7 +18,6 @@ const Account = lazy(() => import('../pages/Account'));
 const DailyBrief = lazy(() => import('../pages/DailyBrief'));
 const Onboarding = lazy(() => import('../pages/Onboarding'));
 const Login = lazy(() => import('../pages/Login'));
-const SupportExport = lazy(() => import('../pages/SupportExport'));
 
 /**
  * Redirects new users to /welcome. Returns children for onboarded users.
@@ -100,12 +99,6 @@ export default function AuthShell() {
 
               {/* Login — returning users, no onboarding steps */}
               <Route path="/login" element={<Login />} />
-
-              {/* Support — one-off wallet-key export for stuck users.
-                  Gated inside the component on a specific privyDid.
-                  Placed outside OnboardingGate so target user can reach
-                  it regardless of onboarding state. Delete after use. */}
-              <Route path="/support/export" element={<SupportExport />} />
 
               {/* Main app — gated by onboarding check */}
               <Route
