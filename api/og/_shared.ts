@@ -67,6 +67,48 @@ function loadFonts() {
   interBold = readFileSync(join(fontsDir, "Inter-Bold.woff"))
     .buffer as ArrayBuffer;
   fontsLoaded = true;
+
+  // Canary log for the intermittent `Unsupported OpenType signature func`
+  // failures. Prints once per cold-start so we can correlate a failing
+  // Lambda instance with the actual font bytes it loaded. All 5 fonts
+  // should show byteLength == file size and sig == "wOFF". Remove once
+  // the underlying cause is identified.
+  logFontState("cold-start", spaceGroteskBold, "SpaceGrotesk-Bold");
+  logFontState("cold-start", interRegular, "Inter-Regular");
+  logFontState("cold-start", interMedium, "Inter-Medium");
+  logFontState("cold-start", interSemiBold, "Inter-SemiBold");
+  logFontState("cold-start", interBold, "Inter-Bold");
+}
+
+/**
+ * Per-font state snapshot for canary telemetry (see loadFonts). Exported so
+ * request-time error paths (`api/og/news.ts` catch) can re-log at failure
+ * time — useful for confirming whether cached font bytes remained valid or
+ * were corrupted mid-instance-lifetime. `level` picks console.error vs .log
+ * so Vercel's Error-level filter surfaces at-failure entries.
+ */
+export function logFontState(
+  phase: string,
+  buf: ArrayBuffer,
+  name: string,
+  level: "log" | "error" = "log",
+) {
+  const view = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
+  const sig = String.fromCharCode(...view);
+  const msg = `[og/font-canary] ${phase} ${name} byteLength=${buf.byteLength} sig=${JSON.stringify(sig)}`;
+  if (level === "error") console.error(msg);
+  else console.log(msg);
+}
+
+/** Access loaded fonts for canary logging from request-time error paths. */
+export function getRawFontBuffers() {
+  return {
+    spaceGroteskBold,
+    interRegular,
+    interMedium,
+    interSemiBold,
+    interBold,
+  };
 }
 
 export function getSatoriFonts() {
