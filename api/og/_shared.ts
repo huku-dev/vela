@@ -44,71 +44,38 @@ export function getVelaIconDataUri(): string {
 }
 
 // ── Font Loading (cached across invocations) ──────────────────────
+//
+// IMPORTANT: keep these as `Buffer`, NOT `readFileSync(...).buffer as
+// ArrayBuffer`. On Vercel's Node runtime, `readFileSync` returns pooled
+// Buffers whose `.buffer` property is a large shared ArrayBuffer (~64KB
+// on the deployment observed 2026-07-27) with the file data at the
+// start and *pool tail memory* after `byteLength`. Opentype.js's WOFF
+// parser reads into that tail during table iteration and, when it
+// happens to land on font-signature-like bytes, throws
+// `Unsupported OpenType signature <garbage>` — the source of the
+// intermittent `/api/og/news` 500s that starved Telegram broadcasts.
+// Satori's own `addFonts` slices Buffer inputs correctly via
+// `buf.buffer.slice(byteOffset, byteOffset + byteLength)`, so passing
+// a Buffer straight through is safe. See canary telemetry evidence in
+// PR #11 (byteLength=65536 vs SpaceGrotesk-Bold.woff file size 16416).
 
 let fontsLoaded = false;
-let spaceGroteskBold: ArrayBuffer;
-let interRegular: ArrayBuffer;
-let interMedium: ArrayBuffer;
-let interSemiBold: ArrayBuffer;
-let interBold: ArrayBuffer;
+let spaceGroteskBold: Buffer;
+let interRegular: Buffer;
+let interMedium: Buffer;
+let interSemiBold: Buffer;
+let interBold: Buffer;
 
 function loadFonts() {
   if (fontsLoaded) return;
 
   const fontsDir = join(process.cwd(), "public", "fonts");
-  spaceGroteskBold = readFileSync(join(fontsDir, "SpaceGrotesk-Bold.woff"))
-    .buffer as ArrayBuffer;
-  interRegular = readFileSync(join(fontsDir, "Inter-Regular.woff"))
-    .buffer as ArrayBuffer;
-  interMedium = readFileSync(join(fontsDir, "Inter-Medium.woff"))
-    .buffer as ArrayBuffer;
-  interSemiBold = readFileSync(join(fontsDir, "Inter-SemiBold.woff"))
-    .buffer as ArrayBuffer;
-  interBold = readFileSync(join(fontsDir, "Inter-Bold.woff"))
-    .buffer as ArrayBuffer;
+  spaceGroteskBold = readFileSync(join(fontsDir, "SpaceGrotesk-Bold.woff"));
+  interRegular = readFileSync(join(fontsDir, "Inter-Regular.woff"));
+  interMedium = readFileSync(join(fontsDir, "Inter-Medium.woff"));
+  interSemiBold = readFileSync(join(fontsDir, "Inter-SemiBold.woff"));
+  interBold = readFileSync(join(fontsDir, "Inter-Bold.woff"));
   fontsLoaded = true;
-
-  // Canary log for the intermittent `Unsupported OpenType signature func`
-  // failures. Prints once per cold-start so we can correlate a failing
-  // Lambda instance with the actual font bytes it loaded. All 5 fonts
-  // should show byteLength == file size and sig == "wOFF". Remove once
-  // the underlying cause is identified.
-  logFontState("cold-start", spaceGroteskBold, "SpaceGrotesk-Bold");
-  logFontState("cold-start", interRegular, "Inter-Regular");
-  logFontState("cold-start", interMedium, "Inter-Medium");
-  logFontState("cold-start", interSemiBold, "Inter-SemiBold");
-  logFontState("cold-start", interBold, "Inter-Bold");
-}
-
-/**
- * Per-font state snapshot for canary telemetry (see loadFonts). Exported so
- * request-time error paths (`api/og/news.ts` catch) can re-log at failure
- * time — useful for confirming whether cached font bytes remained valid or
- * were corrupted mid-instance-lifetime. `level` picks console.error vs .log
- * so Vercel's Error-level filter surfaces at-failure entries.
- */
-export function logFontState(
-  phase: string,
-  buf: ArrayBuffer,
-  name: string,
-  level: "log" | "error" = "log",
-) {
-  const view = new Uint8Array(buf, 0, Math.min(4, buf.byteLength));
-  const sig = String.fromCharCode(...view);
-  const msg = `[og/font-canary] ${phase} ${name} byteLength=${buf.byteLength} sig=${JSON.stringify(sig)}`;
-  if (level === "error") console.error(msg);
-  else console.log(msg);
-}
-
-/** Access loaded fonts for canary logging from request-time error paths. */
-export function getRawFontBuffers() {
-  return {
-    spaceGroteskBold,
-    interRegular,
-    interMedium,
-    interSemiBold,
-    interBold,
-  };
 }
 
 export function getSatoriFonts() {
