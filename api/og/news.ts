@@ -34,8 +34,6 @@ import {
   formatTimestamp,
   getVelaIconDataUri,
   decodeHtmlEntities,
-  logFontState,
-  getRawFontBuffers,
   CARD_WIDTH,
   CARD_HEIGHT,
   CREAM,
@@ -315,20 +313,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.send(png);
   } catch (err) {
     console.error("[og/news] Generation failed:", err);
-    // Canary — re-emit the state of each font buffer at failure time so we
-    // can tell whether cached fonts drifted from cold-start values (bytes
-    // corrupted mid-instance-lifetime) or matched (bug is elsewhere).
-    // Errors here must not mask the real error, hence the inner try.
-    try {
-      const fonts = getRawFontBuffers();
-      logFontState("at-failure", fonts.spaceGroteskBold, "SpaceGrotesk-Bold", "error");
-      logFontState("at-failure", fonts.interRegular, "Inter-Regular", "error");
-      logFontState("at-failure", fonts.interMedium, "Inter-Medium", "error");
-      logFontState("at-failure", fonts.interSemiBold, "Inter-SemiBold", "error");
-      logFontState("at-failure", fonts.interBold, "Inter-Bold", "error");
-    } catch (logErr) {
-      console.error("[og/news] font-canary log failed:", logErr);
-    }
     return res.status(500).json({ error: "Image generation failed" });
   }
 }
