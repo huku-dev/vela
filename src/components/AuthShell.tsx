@@ -18,6 +18,7 @@ const Account = lazy(() => import('../pages/Account'));
 const DailyBrief = lazy(() => import('../pages/DailyBrief'));
 const Onboarding = lazy(() => import('../pages/Onboarding'));
 const Login = lazy(() => import('../pages/Login'));
+const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
 
 /**
  * Redirects new users to /welcome. Returns children for onboarded users.
@@ -99,6 +100,18 @@ export default function AuthShell() {
 
               {/* Login — returning users, no onboarding steps */}
               <Route path="/login" element={<Login />} />
+
+              {/* Admin dashboard — full-bleed, no Layout, no OnboardingGate.
+                  Server-side allowlist is the enforcement boundary; the page
+                  also gates client-side and redirects non-admins to /. */}
+              <Route
+                path="/admin"
+                element={
+                  <ErrorBoundary>
+                    <AdminDashboard />
+                  </ErrorBoundary>
+                }
+              />
 
               {/* Main app — gated by onboarding check */}
               <Route
