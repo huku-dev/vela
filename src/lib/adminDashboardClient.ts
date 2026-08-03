@@ -73,6 +73,47 @@ export interface DailyBucket {
   pnl: number;
 }
 
+export interface HighlightItem {
+  direction: 'up' | 'down' | 'flat';
+  body: string;
+}
+
+export interface CarryoverItem {
+  title: string;
+  owner: string;
+  note: string;
+}
+
+export interface Curated {
+  highlights: HighlightItem[];
+  carryoverInProgress: CarryoverItem[];
+  carryoverNeedsStatus: CarryoverItem[];
+  notes: string;
+  updatedAt: string | null;
+}
+
+export interface ShippedPr {
+  number: number;
+  title: string;
+  author: string;
+  mergedAt: string;
+  mergedLabel: string;
+  risk: 'low' | 'med' | 'high' | 'unknown';
+}
+
+export interface VelocityBucket {
+  dayLabel: string;
+  isoDate: string;
+  count: number;
+}
+
+export interface GithubActivity {
+  shippedTop: ShippedPr[];
+  velocity7d: VelocityBucket[];
+  fetchedAt: string;
+  errorMessage: string | null;
+}
+
 export interface DashboardResponse {
   generatedAt: string;
   kpis: Kpis;
@@ -82,6 +123,8 @@ export interface DashboardResponse {
   revenueBreakdown: RevenueRow[];
   cohortFunnel: CohortRow[];
   pnlSeries30d: DailyBucket[];
+  curated: Curated;
+  github: GithubActivity;
 }
 
 const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-dashboard-data`;

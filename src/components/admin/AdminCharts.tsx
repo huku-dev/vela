@@ -1,220 +1,226 @@
 // src/components/admin/AdminCharts.tsx
 //
-// Hand-rolled SVG charts. Two: TradingVolumeChart (bars + line) and PnlChart
-// (up/down bars). No external chart lib — matches TrackRecord.tsx convention.
+// Chart.js-backed charts for the admin dashboard. Matches the config in
+// docs/dashboard.html on the backend repo (bars + area line for volume,
+// signed bars for PnL, with native hover tooltips).
 //
-// Design tweaks: edit here. Data tweaks: edit the backend pnl-series compose.
+// Chart.js is imported here directly. Because AdminDashboard is lazy-loaded,
+// non-admins never download it — the whole /admin route (including this file
+// and chart.js) only ships when an admin navigates to the page.
 
+import { useEffect, useRef } from 'react';
+import {
+  BarController,
+  BarElement,
+  CategoryScale,
+  Chart,
+  Filler,
+  Legend,
+  LineController,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Title,
+  Tooltip,
+} from 'chart.js';
 import type { DailyBucket } from '../../lib/adminDashboardClient';
 
+Chart.register(
+  BarController,
+  LineController,
+  BarElement,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Tooltip,
+  Legend,
+  Title,
+  Filler,
+);
+
 const PURPLE = '#8b5cf6';
-const AMBER = '#d97706';
-const GREEN = '#059669';
-const RED = '#dc2626';
-const GRID = 'rgba(0, 0, 0, 0.06)';
-const TICK = '#475569';
+const AMBER_DARK = '#d97706';
+const GREEN_DARK = '#059669';
+const RED_DARK = '#dc2626';
+const TICK_COLOR = '#475569';
+const GRID_COLOR = 'rgba(0, 0, 0, 0.06)';
+const TITLE_COLOR = '#0f172a';
 
 interface ChartProps {
   data: DailyBucket[];
 }
 
-const WIDTH = 640;
-const HEIGHT = 220;
-const PAD = { top: 24, right: 40, bottom: 34, left: 44 };
-const PLOT_W = WIDTH - PAD.left - PAD.right;
-const PLOT_H = HEIGHT - PAD.top - PAD.bottom;
-
-function niceMax(v: number): number {
-  if (v <= 0) return 1;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(v)));
-  const norm = v / magnitude;
-  let round = 1;
-  if (norm <= 1) round = 1;
-  else if (norm <= 2) round = 2;
-  else if (norm <= 5) round = 5;
-  else round = 10;
-  return round * magnitude;
-}
-
 /**
- * Daily trades (bars) + active traders per day (line).
+ * Daily trades (bars) + active traders per day (area line).
+ * Ported verbatim from docs/dashboard.html Chart.js config.
  */
 export function TradingVolumeChart({ data }: ChartProps) {
-  const maxTrades = niceMax(Math.max(1, ...data.map(d => d.trades)));
-  const maxTraders = Math.max(1, ...data.map(d => d.traders));
-  const barW = PLOT_W / data.length;
-  const gap = 3;
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const chartRef = useRef<Chart | null>(null);
 
-  const gridTicks = [0, 0.25, 0.5, 0.75, 1].map(t => Math.round(maxTrades * t));
-  const linePath = data
-    .map((d, i) => {
-      const x = PAD.left + i * barW + barW / 2;
-      const y = PAD.top + PLOT_H - (d.traders / maxTraders) * PLOT_H;
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
-  const xLabelEvery = Math.ceil(data.length / 10);
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const traderMax = Math.max(5, ...data.map(d => d.traders));
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.date),
+        datasets: [
+          {
+            label: 'Trades Closed',
+            data: data.map(d => d.trades),
+            backgroundColor: 'rgba(139, 92, 246, 0.6)',
+            borderColor: PURPLE,
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+          {
+            label: 'Active Traders',
+            data: data.map(d => d.traders),
+            type: 'line',
+            borderColor: AMBER_DARK,
+            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+            tension: 0.3,
+            fill: true,
+            yAxisID: 'y1',
+            pointRadius: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Daily Trading Volume',
+            color: TITLE_COLOR,
+            font: { size: 13, weight: 600 },
+          },
+          legend: { labels: { color: TICK_COLOR, font: { size: 11 } } },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            titleColor: '#0f172a',
+            bodyColor: '#374151',
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: TICK_COLOR, font: { size: 10 }, maxRotation: 45 },
+            grid: { color: GRID_COLOR },
+          },
+          y: {
+            ticks: { color: TICK_COLOR },
+            grid: { color: GRID_COLOR },
+            title: { display: true, text: 'Trades', color: TICK_COLOR },
+          },
+          y1: {
+            position: 'right',
+            ticks: { color: AMBER_DARK },
+            grid: { display: false },
+            title: { display: true, text: 'Traders', color: AMBER_DARK },
+            min: 0,
+            max: traderMax,
+          },
+        },
+      },
+    });
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
+  }, [data]);
 
   return (
     <div className="ad-chart-wrap">
-      <div className="ad-chart-title">Daily Trading Volume</div>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={{ width: '100%', height: 'auto' }}>
-        {/* Grid + Y axis */}
-        {gridTicks.map(t => {
-          const y = PAD.top + PLOT_H - (t / maxTrades) * PLOT_H;
-          return (
-            <g key={`g-${t}`}>
-              <line
-                x1={PAD.left}
-                x2={WIDTH - PAD.right}
-                y1={y}
-                y2={y}
-                stroke={GRID}
-                strokeWidth={1}
-              />
-              <text x={PAD.left - 6} y={y + 3} textAnchor="end" fontSize={9} fill={TICK}>
-                {t}
-              </text>
-            </g>
-          );
-        })}
-        {/* Bars */}
-        {data.map((d, i) => {
-          const x = PAD.left + i * barW + gap / 2;
-          const h = (d.trades / maxTrades) * PLOT_H;
-          const y = PAD.top + PLOT_H - h;
-          return (
-            <rect
-              key={`b-${i}`}
-              x={x}
-              y={y}
-              width={barW - gap}
-              height={h}
-              fill={PURPLE}
-              opacity={0.6}
-              rx={2}
-            />
-          );
-        })}
-        {/* Traders line */}
-        <path d={linePath} fill="none" stroke={AMBER} strokeWidth={1.5} />
-        {data.map((d, i) => {
-          const x = PAD.left + i * barW + barW / 2;
-          const y = PAD.top + PLOT_H - (d.traders / maxTraders) * PLOT_H;
-          return <circle key={`p-${i}`} cx={x} cy={y} r={2} fill={AMBER} />;
-        })}
-        {/* Right Y axis (traders) */}
-        {[0, maxTraders].map(t => {
-          const y = PAD.top + PLOT_H - (t / maxTraders) * PLOT_H;
-          return (
-            <text key={`ry-${t}`} x={WIDTH - PAD.right + 6} y={y + 3} fontSize={9} fill={AMBER}>
-              {t}
-            </text>
-          );
-        })}
-        {/* X labels */}
-        {data.map((d, i) => {
-          if (i % xLabelEvery !== 0 && i !== data.length - 1) return null;
-          const x = PAD.left + i * barW + barW / 2;
-          return (
-            <text
-              key={`x-${i}`}
-              x={x}
-              y={HEIGHT - PAD.bottom + 14}
-              textAnchor="middle"
-              fontSize={9}
-              fill={TICK}
-            >
-              {d.date}
-            </text>
-          );
-        })}
-        {/* Legend */}
-        <g transform={`translate(${PAD.left},${HEIGHT - 6})`}>
-          <rect x={0} y={-8} width={8} height={8} fill={PURPLE} opacity={0.6} rx={1} />
-          <text x={12} y={0} fontSize={9} fill={TICK}>
-            Trades
-          </text>
-          <line x1={70} y1={-4} x2={82} y2={-4} stroke={AMBER} strokeWidth={1.5} />
-          <text x={86} y={0} fontSize={9} fill={TICK}>
-            Active traders
-          </text>
-        </g>
-      </svg>
+      <div style={{ position: 'relative', height: 300 }}>
+        <canvas ref={canvasRef} />
+      </div>
     </div>
   );
 }
 
 /**
- * Daily platform PnL. Positive → green up; negative → red down.
+ * Daily platform PnL. Positive → green bar; negative → red bar.
  */
 export function PnlChart({ data }: ChartProps) {
-  const maxAbs = niceMax(Math.max(1, ...data.map(d => Math.abs(d.pnl))));
-  const barW = PLOT_W / data.length;
-  const gap = 3;
-  const zeroY = PAD.top + PLOT_H / 2;
-  const halfH = PLOT_H / 2;
-  const xLabelEvery = Math.ceil(data.length / 10);
-  const gridTicks = [-maxAbs, -maxAbs / 2, 0, maxAbs / 2, maxAbs];
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const chartRef = useRef<Chart | null>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'bar',
+      data: {
+        labels: data.map(d => d.date),
+        datasets: [
+          {
+            label: 'Platform PnL ($)',
+            data: data.map(d => d.pnl),
+            backgroundColor: data.map(d =>
+              d.pnl >= 0 ? 'rgba(16, 185, 129, 0.55)' : 'rgba(239, 68, 68, 0.55)',
+            ),
+            borderColor: data.map(d => (d.pnl >= 0 ? GREEN_DARK : RED_DARK)),
+            borderWidth: 1,
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Daily Platform PnL (All Users)',
+            color: TITLE_COLOR,
+            font: { size: 13, weight: 600 },
+          },
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#ffffff',
+            borderColor: '#e5e7eb',
+            borderWidth: 1,
+            titleColor: '#0f172a',
+            bodyColor: '#374151',
+            callbacks: {
+              label: ctx => {
+                const v = ctx.parsed.y ?? 0;
+                const sign = v > 0 ? '+' : v < 0 ? '-' : '';
+                return `Platform PnL: ${sign}$${Math.abs(v).toFixed(2)}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { color: TICK_COLOR, font: { size: 10 }, maxRotation: 45 },
+            grid: { color: GRID_COLOR },
+          },
+          y: {
+            ticks: {
+              color: TICK_COLOR,
+              callback: v => (typeof v === 'number' && v < 0 ? `-$${Math.abs(v)}` : `$${v}`),
+            },
+            grid: { color: GRID_COLOR },
+          },
+        },
+      },
+    });
+    return () => {
+      chartRef.current?.destroy();
+      chartRef.current = null;
+    };
+  }, [data]);
 
   return (
     <div className="ad-chart-wrap">
-      <div className="ad-chart-title">Daily Platform PnL (All Users)</div>
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} style={{ width: '100%', height: 'auto' }}>
-        {gridTicks.map(t => {
-          const y = zeroY - (t / maxAbs) * halfH;
-          return (
-            <g key={`g-${t}`}>
-              <line
-                x1={PAD.left}
-                x2={WIDTH - PAD.right}
-                y1={y}
-                y2={y}
-                stroke={GRID}
-                strokeWidth={1}
-              />
-              <text x={PAD.left - 6} y={y + 3} textAnchor="end" fontSize={9} fill={TICK}>
-                {t < 0 ? `-$${Math.abs(t).toFixed(0)}` : `$${t.toFixed(0)}`}
-              </text>
-            </g>
-          );
-        })}
-        {data.map((d, i) => {
-          const x = PAD.left + i * barW + gap / 2;
-          const h = (Math.abs(d.pnl) / maxAbs) * halfH;
-          const y = d.pnl >= 0 ? zeroY - h : zeroY;
-          const color = d.pnl >= 0 ? GREEN : RED;
-          return (
-            <rect
-              key={`b-${i}`}
-              x={x}
-              y={y}
-              width={barW - gap}
-              height={h}
-              fill={color}
-              opacity={0.55}
-              rx={2}
-            />
-          );
-        })}
-        {/* X labels */}
-        {data.map((d, i) => {
-          if (i % xLabelEvery !== 0 && i !== data.length - 1) return null;
-          const x = PAD.left + i * barW + barW / 2;
-          return (
-            <text
-              key={`x-${i}`}
-              x={x}
-              y={HEIGHT - PAD.bottom + 14}
-              textAnchor="middle"
-              fontSize={9}
-              fill={TICK}
-            >
-              {d.date}
-            </text>
-          );
-        })}
-      </svg>
+      <div style={{ position: 'relative', height: 300 }}>
+        <canvas ref={canvasRef} />
+      </div>
     </div>
   );
 }

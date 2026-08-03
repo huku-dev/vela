@@ -307,6 +307,143 @@
   margin-top: 32px;
 }
 
+/* Highlights */
+.admin-dash .ad-highlights-list {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 18px 22px;
+  list-style: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  margin: 0;
+}
+.admin-dash .ad-highlights-list li {
+  padding: 10px 0;
+  border-top: 1px solid var(--ad-gray-100);
+  font-size: 13px;
+  color: var(--ad-gray-700);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.admin-dash .ad-highlights-list li:first-child { border-top: none; padding-top: 0; }
+.admin-dash .ad-highlights-list li:last-child { padding-bottom: 0; }
+.admin-dash .ad-highlight-arrow {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  line-height: 1.5;
+}
+.admin-dash .ad-highlight-arrow.ad-up { color: var(--ad-green-dark); }
+.admin-dash .ad-highlight-arrow.ad-down { color: var(--ad-red-dark); }
+.admin-dash .ad-highlight-arrow.ad-flat { color: var(--ad-gray-500); }
+.admin-dash .ad-highlight-text strong { color: var(--ad-gray-900); font-weight: 600; }
+.admin-dash .ad-highlight-text { color: var(--ad-gray-600); }
+
+/* Carryover */
+.admin-dash .ad-carryover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.admin-dash .ad-carryover-col {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-carryover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ad-gray-100);
+}
+.admin-dash .ad-carryover-head h3 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ad-gray-700);
+  margin: 0;
+}
+.admin-dash .ad-carryover-count {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--ad-purple-dark);
+  background: var(--ad-lavender-100);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.admin-dash .ad-carryover-item {
+  padding: 10px 0;
+  border-top: 1px solid var(--ad-gray-100);
+  font-size: 12px;
+}
+.admin-dash .ad-carryover-item:first-of-type { border-top: none; padding-top: 0; }
+.admin-dash .ad-carryover-item:last-of-type { padding-bottom: 0; }
+.admin-dash .ad-carryover-title {
+  color: var(--ad-gray-900);
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+.admin-dash .ad-carryover-meta { color: var(--ad-gray-500); font-size: 12px; }
+.admin-dash .ad-carryover-meta .ad-who {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  color: var(--ad-purple-dark);
+}
+.admin-dash .ad-carryover-empty {
+  color: var(--ad-gray-500);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Velocity */
+.admin-dash .ad-velocity-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.admin-dash .ad-velocity-day {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--ad-gray-500);
+}
+.admin-dash .ad-velocity-track {
+  position: relative;
+  height: 14px;
+  background: transparent;
+}
+.admin-dash .ad-velocity-bar {
+  height: 14px;
+  background: var(--ad-purple);
+  border-radius: 3px;
+  min-width: 2px;
+}
+.admin-dash .ad-velocity-bar.ad-zero {
+  background: var(--ad-gray-100);
+  border: 1px solid var(--ad-border);
+}
+.admin-dash .ad-velocity-count {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ad-gray-700);
+  text-align: right;
+}
+
+/* Links inside the dashboard */
+.admin-dash a { color: inherit; text-decoration: none; }
+.admin-dash a.ad-purple:hover { text-decoration: underline; }
+
 .admin-dash .ad-error {
   color: var(--ad-red-dark);
   background: var(--ad-red-bg);
