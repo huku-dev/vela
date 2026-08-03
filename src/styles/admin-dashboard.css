@@ -1,0 +1,317 @@
+/* src/styles/admin-dashboard.css
+ *
+ * Scoped styles for the /admin dashboard. All rules live under `.admin-dash`
+ * so this file cannot leak into the main app. Ported from docs/dashboard.html
+ * on the backend repo — visually identical, one variable set, one exit.
+ *
+ * Design tweaks: edit here. Layout tweaks: edit AdminDashboard.tsx. Section
+ * tweaks: edit AdminSections.tsx.
+ */
+
+.admin-dash {
+  --ad-cream: #f5f1e8;
+  --ad-white: #ffffff;
+  --ad-ink: #0a0a0a;
+  --ad-gray-50: #f9fafb;
+  --ad-gray-100: #f3f4f6;
+  --ad-gray-200: #e5e7eb;
+  --ad-gray-400: #94a3b8;
+  --ad-gray-500: #6b7280;
+  --ad-gray-600: #475569;
+  --ad-gray-700: #374151;
+  --ad-gray-900: #0f172a;
+  --ad-lavender-50: #f5f3ff;
+  --ad-lavender-100: #ede9fe;
+  --ad-purple: #8b5cf6;
+  --ad-purple-dark: #7c3aed;
+  --ad-green: #10b981;
+  --ad-green-bg: #ecfdf5;
+  --ad-green-dark: #059669;
+  --ad-amber: #f59e0b;
+  --ad-amber-bg: #fffbeb;
+  --ad-amber-dark: #d97706;
+  --ad-red: #ef4444;
+  --ad-red-bg: #fef2f2;
+  --ad-red-dark: #dc2626;
+  --ad-blue: #2563eb;
+  --ad-blue-hover: #1d4ed8;
+  --ad-blue-light: #dbeafe;
+  --ad-border: #e5e7eb;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--ad-cream);
+  color: var(--ad-gray-900);
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.admin-dash * {
+  box-sizing: border-box;
+}
+.admin-dash h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: var(--ad-gray-900);
+}
+.admin-dash .ad-subtitle {
+  color: var(--ad-gray-500);
+  font-size: 13px;
+  margin-bottom: 28px;
+}
+.admin-dash .ad-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ad-gray-600);
+  margin-bottom: 12px;
+  margin-top: 32px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ad-border);
+}
+
+.admin-dash .ad-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.admin-dash .ad-kpi-card {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-kpi-label {
+  font-size: 11px;
+  color: var(--ad-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+.admin-dash .ad-kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--ad-gray-900);
+}
+.admin-dash .ad-kpi-detail {
+  font-size: 12px;
+  color: var(--ad-gray-500);
+  margin-top: 4px;
+}
+.admin-dash .ad-green {
+  color: var(--ad-green-dark);
+}
+.admin-dash .ad-red {
+  color: var(--ad-red-dark);
+}
+.admin-dash .ad-amber {
+  color: var(--ad-amber-dark);
+}
+.admin-dash .ad-purple {
+  color: var(--ad-purple-dark);
+}
+
+.admin-dash table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ad-white);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ad-border);
+  font-size: 12px;
+}
+.admin-dash th {
+  text-align: left;
+  padding: 9px 14px;
+  background: var(--ad-gray-50);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ad-gray-600);
+  font-weight: 600;
+  border-bottom: 1px solid var(--ad-border);
+}
+.admin-dash td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ad-gray-100);
+  color: var(--ad-gray-700);
+  vertical-align: middle;
+}
+.admin-dash tr:last-child td {
+  border-bottom: none;
+}
+.admin-dash tr:hover td {
+  background: var(--ad-lavender-50);
+}
+.admin-dash td strong {
+  color: var(--ad-gray-900);
+}
+.admin-dash .ad-mono {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ad-gray-700);
+  font-variant-numeric: tabular-nums;
+}
+.admin-dash .ad-right {
+  text-align: right;
+}
+
+.admin-dash .ad-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.admin-dash .ad-pill-green {
+  background: var(--ad-green-bg);
+  color: var(--ad-green-dark);
+}
+.admin-dash .ad-pill-amber {
+  background: var(--ad-amber-bg);
+  color: var(--ad-amber-dark);
+}
+.admin-dash .ad-pill-red {
+  background: var(--ad-red-bg);
+  color: var(--ad-red-dark);
+}
+.admin-dash .ad-pill-purple {
+  background: var(--ad-lavender-100);
+  color: var(--ad-purple-dark);
+}
+.admin-dash .ad-pill-muted {
+  background: var(--ad-gray-100);
+  color: var(--ad-gray-500);
+}
+
+.admin-dash .ad-chart-wrap {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-chart-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+.admin-dash .ad-chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ad-gray-900);
+  margin-bottom: 12px;
+}
+
+.admin-dash .ad-velocity {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 18px 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-vel-placeholder {
+  color: var(--ad-gray-500);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.admin-dash .ad-narrative-line {
+  font-size: 13px;
+  color: var(--ad-gray-700);
+  line-height: 1.6;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-left: 3px solid var(--ad-purple);
+  border-radius: 6px;
+}
+.admin-dash .ad-narrative-line strong {
+  color: var(--ad-gray-900);
+}
+
+.admin-dash .ad-pnl-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.admin-dash .ad-bar-track {
+  width: 64px;
+  height: 6px;
+  background: var(--ad-gray-100);
+  border-radius: 3px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.admin-dash .ad-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.admin-dash .ad-bar-fill.ad-red {
+  background: var(--ad-red-dark);
+}
+.admin-dash .ad-bar-fill.ad-green {
+  background: var(--ad-green-dark);
+}
+.admin-dash .ad-bar-fill.ad-zero {
+  background: var(--ad-gray-200);
+  width: 3px !important;
+  margin: 0 auto;
+}
+.admin-dash .ad-bar-fill.ad-phantom {
+  background: transparent;
+  border: 1.5px dashed var(--ad-amber-dark);
+  height: 4px;
+  margin-top: 1px;
+}
+
+.admin-dash .ad-empty-panel {
+  background: var(--ad-white);
+  border: 1px dashed var(--ad-border);
+  border-radius: 8px;
+  padding: 24px;
+  color: var(--ad-gray-500);
+  font-size: 12px;
+  text-align: center;
+}
+.admin-dash .ad-notes-block {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 20px 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-notes-block p {
+  font-size: 13px;
+  color: var(--ad-gray-600);
+  line-height: 1.8;
+}
+.admin-dash .ad-notes-block strong {
+  color: var(--ad-gray-900);
+}
+
+.admin-dash .ad-timestamp {
+  color: var(--ad-gray-500);
+  font-size: 11px;
+  text-align: right;
+  margin-top: 32px;
+}
+
+.admin-dash .ad-error {
+  color: var(--ad-red-dark);
+  background: var(--ad-red-bg);
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid var(--ad-red);
+}
