@@ -5,13 +5,18 @@
 // slices the response, and passes props. Rearrange sections by reordering
 // the calls in AdminDashboard.tsx.
 //
-// Curated sections (Highlights, Carryover, Notes) are hardcoded placeholders
-// today. Wire to a `dashboard_curated` table in a later iteration.
+// Curated content (Highlights, Carryover, Notes) is served from the
+// dashboard_curated Postgres row. GitHub sections (Shipped, Velocity) come
+// from a GitHub REST call in the edge fn (needs GITHUB_TOKEN env var).
 
+import type React from 'react';
 import type {
+  CarryoverItem,
   CohortRow,
   ConcentrationRow,
   DailyBucket,
+  GithubActivity,
+  HighlightItem,
   Kpis,
   OpenPositionRow,
   RevenueRow,
@@ -442,9 +447,13 @@ export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
             </thead>
             <tbody>
               {rows.map((r, i) => {
+                // money() strips sign via Math.abs; add it back here so a losing
+                // position renders "-$3.90 (red)" not "$3.90 (red)".
                 const pnlTone = r.pnl > 0 ? 'ad-green' : r.pnl < 0 ? 'ad-red' : '';
                 const pnlLabel =
-                  Math.abs(r.pnl) < 0.005 ? '$0.00' : `${r.pnl > 0 ? '+' : ''}${money(r.pnl)}`;
+                  Math.abs(r.pnl) < 0.005
+                    ? '$0.00'
+                    : `${r.pnl > 0 ? '+' : '-'}${money(Math.abs(r.pnl))}`;
                 const pctTone = r.pnlPct > 0 ? 'ad-green' : r.pnlPct < 0 ? 'ad-red' : '';
                 const pctLabel = `${r.pnlPct > 0 ? '+' : ''}${r.pnlPct.toFixed(2)}%`;
                 return (
@@ -467,6 +476,187 @@ export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── Curated: Highlights / Carryover / Notes ─────────────────────────────
+
+/**
+ * Render **bold** and _italic_ / *italic* in the curated body strings. Curated
+ * content is authored in SQL and edited by a single admin, so the surface is
+ * trusted; still, we escape everything except the recognised tokens so a
+ * stray < in the source doesn't render HTML.
+ */
+function renderInlineMarkdown(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    if (match[1] !== undefined) {
+      parts.push(<strong key={`b-${key++}`}>{match[1]}</strong>);
+    } else if (match[2] !== undefined) {
+      parts.push(<em key={`i-${key++}`}>{match[2]}</em>);
+    }
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+export function HighlightsSection({ items }: { items: HighlightItem[] }) {
+  if (!items.length) return null;
+  return (
+    <>
+      <SectionTitle>Highlights</SectionTitle>
+      <ul className="ad-highlights-list">
+        {items.map((h, i) => (
+          <li key={i}>
+            <span className={`ad-highlight-arrow ad-${h.direction}`}>
+              {h.direction === 'up' ? '↑' : h.direction === 'down' ? '↓' : '→'}
+            </span>
+            <span className="ad-highlight-text">{renderInlineMarkdown(h.body)}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+export function CarryoverSection({
+  inProgress,
+  needsStatus,
+}: {
+  inProgress: CarryoverItem[];
+  needsStatus: CarryoverItem[];
+}) {
+  if (inProgress.length === 0 && needsStatus.length === 0) return null;
+  return (
+    <>
+      <SectionTitle>Carryover</SectionTitle>
+      <div className="ad-carryover-grid">
+        <CarryoverCol title="In Progress" items={inProgress} />
+        <CarryoverCol title="Needs Status Check" items={needsStatus} />
+      </div>
+    </>
+  );
+}
+
+function CarryoverCol({ title, items }: { title: string; items: CarryoverItem[] }) {
+  return (
+    <div className="ad-carryover-col">
+      <div className="ad-carryover-head">
+        <h3>{title}</h3>
+        <span className="ad-carryover-count">{items.length}</span>
+      </div>
+      {items.length === 0 ? (
+        <div className="ad-carryover-empty">Empty.</div>
+      ) : (
+        items.map((c, i) => (
+          <div key={i} className="ad-carryover-item">
+            <div className="ad-carryover-title">{c.title}</div>
+            <div className="ad-carryover-meta">
+              Owner <span className="ad-who">{c.owner}</span> · {c.note}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+export function NotesSection({ notes }: { notes: string }) {
+  if (!notes.trim()) return null;
+  const paragraphs = notes.split(/\n{2,}/).filter(Boolean);
+  return (
+    <>
+      <SectionTitle>Notes</SectionTitle>
+      <div className="ad-notes-block">
+        {paragraphs.map((p, i) => (
+          <p key={i}>{renderInlineMarkdown(p)}</p>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ── GitHub: Shipped This Week + Velocity ────────────────────────────────
+
+export function ShippedSection({ github }: { github: GithubActivity }) {
+  return (
+    <>
+      <SectionTitle>Shipped This Week</SectionTitle>
+      {github.errorMessage ? (
+        <div className="ad-empty-panel">GitHub fetch failed: {github.errorMessage}</div>
+      ) : github.shippedTop.length === 0 ? (
+        <div className="ad-empty-panel">No PRs merged in the last 7 days.</div>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: 90 }}>PR</th>
+              <th>Title</th>
+              <th style={{ width: 130 }}>Author</th>
+              <th style={{ width: 100 }}>Merged</th>
+            </tr>
+          </thead>
+          <tbody>
+            {github.shippedTop.map(pr => (
+              <tr key={pr.number}>
+                <td className="ad-mono">
+                  <a
+                    href={`https://github.com/huku-dev/crypto-agent-backend/pull/${pr.number}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="ad-purple"
+                  >
+                    #{pr.number}
+                  </a>
+                </td>
+                <td>{pr.title}</td>
+                <td className="ad-mono">{pr.author}</td>
+                <td className="ad-mono">{pr.mergedLabel}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
+}
+
+export function VelocitySection({ github }: { github: GithubActivity }) {
+  const velocity = github.velocity7d;
+  const max = Math.max(1, ...velocity.map(b => b.count));
+  return (
+    <>
+      <SectionTitle>Velocity (PRs Merged, Last 7 Days)</SectionTitle>
+      {github.errorMessage ? (
+        <div className="ad-empty-panel">GitHub fetch failed: {github.errorMessage}</div>
+      ) : velocity.length === 0 ? (
+        <div className="ad-empty-panel">No GitHub activity in the last 7 days.</div>
+      ) : (
+        <div className="ad-velocity">
+          {velocity.map(b => {
+            const width = Math.round((b.count / max) * 100);
+            return (
+              <div key={b.isoDate} className="ad-velocity-row">
+                <span className="ad-velocity-day">{b.dayLabel}</span>
+                <div className="ad-velocity-track">
+                  <div
+                    className={`ad-velocity-bar ${b.count === 0 ? 'ad-zero' : ''}`}
+                    style={{ width: b.count === 0 ? 6 : `${Math.max(2, width)}%` }}
+                  />
+                </div>
+                <span className="ad-velocity-count">{b.count}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </>

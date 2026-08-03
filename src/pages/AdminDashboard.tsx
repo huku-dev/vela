@@ -22,14 +22,19 @@ import type { DashboardResponse } from '../lib/adminDashboardClient';
 import { fetchAdminDashboard } from '../lib/adminDashboardClient';
 import { FIXTURE_DASHBOARD } from '../lib/adminDashboardFixtures';
 import {
+  CarryoverSection,
   ChartsSection,
   CohortFunnelSection,
   DeferredPanel,
+  HighlightsSection,
   KpisSection,
+  NotesSection,
   OpenPositionsSection,
   PositionConcentrationSection,
   RevenueBreakdownSection,
+  ShippedSection,
   UserOverviewSection,
+  VelocitySection,
 } from '../components/admin/AdminSections';
 import PageLoader from '../components/PageLoader';
 import '../styles/admin-dashboard.css';
@@ -153,20 +158,9 @@ export default function AdminDashboard() {
         <>
           <KpisSection kpis={data.kpis} />
 
-          <DeferredPanel
-            title="Highlights"
-            note="Hand-curated highlights and this-week shipped list will move here once the dashboard_curated table lands. Until then, keep editing docs/dashboard.html on the backend repo."
-          />
-
-          <DeferredPanel
-            title="Shipped This Week"
-            note="Deferred: needs GitHub PAT wiring in the edge function."
-          />
-
-          <DeferredPanel
-            title="Velocity (PRs Merged, Last 7 Days)"
-            note="Deferred: needs GitHub PAT wiring in the edge function."
-          />
+          <HighlightsSection items={data.curated.highlights} />
+          <ShippedSection github={data.github} />
+          <VelocitySection github={data.github} />
 
           <RevenueBreakdownSection rows={data.revenueBreakdown} mrr={data.kpis.mrr} />
           <CohortFunnelSection rows={data.cohortFunnel} />
@@ -174,6 +168,12 @@ export default function AdminDashboard() {
           <UserOverviewSection rows={data.userOverview} />
           <PositionConcentrationSection rows={data.positionConcentration} />
           <OpenPositionsSection rows={data.openPositions} />
+
+          <CarryoverSection
+            inProgress={data.curated.carryoverInProgress}
+            needsStatus={data.curated.carryoverNeedsStatus}
+          />
+          <NotesSection notes={data.curated.notes} />
 
           <DeferredPanel
             title="Search Visibility (Google)"
