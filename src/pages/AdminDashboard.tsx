@@ -170,8 +170,8 @@ export default function AdminDashboard() {
           <OpenPositionsSection rows={data.openPositions} />
 
           <CarryoverSection
-            inProgress={data.curated.carryoverInProgress}
-            needsStatus={data.curated.carryoverNeedsStatus}
+            nextUp={data.curated.carryoverNextUp}
+            needsAttention={data.curated.carryoverNeedsAttention}
           />
           <NotesSection notes={data.curated.notes} />
 

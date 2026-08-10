@@ -529,25 +529,39 @@ export function HighlightsSection({ items }: { items: HighlightItem[] }) {
 }
 
 export function CarryoverSection({
-  inProgress,
-  needsStatus,
+  nextUp,
+  needsAttention,
 }: {
-  inProgress: CarryoverItem[];
-  needsStatus: CarryoverItem[];
+  nextUp: CarryoverItem[];
+  needsAttention: CarryoverItem[];
 }) {
-  if (inProgress.length === 0 && needsStatus.length === 0) return null;
+  if (nextUp.length === 0 && needsAttention.length === 0) return null;
   return (
     <>
-      <SectionTitle>Carryover</SectionTitle>
+      <SectionTitle>Roadmap</SectionTitle>
       <div className="ad-carryover-grid">
-        <CarryoverCol title="In Progress" items={inProgress} />
-        <CarryoverCol title="Needs Status Check" items={needsStatus} />
+        <CarryoverCol title="Next Up" items={nextUp} />
+        <CarryoverCol title="Needs Attention" items={needsAttention} showStale />
       </div>
     </>
   );
 }
 
-function CarryoverCol({ title, items }: { title: string; items: CarryoverItem[] }) {
+const PRIORITY_COLORS: Record<string, string> = {
+  High: 'var(--color-signal-sell)',
+  Medium: 'var(--color-signal-wait)',
+  Low: 'var(--ad-gray-400)',
+};
+
+function CarryoverCol({
+  title,
+  items,
+  showStale,
+}: {
+  title: string;
+  items: CarryoverItem[];
+  showStale?: boolean;
+}) {
   return (
     <div className="ad-carryover-col">
       <div className="ad-carryover-head">
@@ -559,9 +573,31 @@ function CarryoverCol({ title, items }: { title: string; items: CarryoverItem[] 
       ) : (
         items.map((c, i) => (
           <div key={i} className="ad-carryover-item">
-            <div className="ad-carryover-title">{c.title}</div>
+            <div className="ad-carryover-title">
+              {c.notionUrl ? (
+                <a href={c.notionUrl} target="_blank" rel="noopener noreferrer">{c.title}</a>
+              ) : (
+                c.title
+              )}
+            </div>
             <div className="ad-carryover-meta">
-              Owner <span className="ad-who">{c.owner}</span> · {c.note}
+              {c.priority && (
+                <span
+                  className="ad-carryover-pill"
+                  style={{ color: PRIORITY_COLORS[c.priority] ?? 'inherit' }}
+                >
+                  {c.priority}
+                </span>
+              )}
+              {c.area && <span className="ad-carryover-pill">{c.area}</span>}
+              {c.status === 'Blocked' && (
+                <span className="ad-carryover-pill" style={{ color: 'var(--color-signal-sell)' }}>
+                  Blocked
+                </span>
+              )}
+              {showStale && c.daysStale > 0 && (
+                <span className="ad-carryover-stale">{c.daysStale}d stale</span>
+              )}
             </div>
           </div>
         ))

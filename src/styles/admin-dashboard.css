@@ -326,8 +326,13 @@
   align-items: flex-start;
   gap: 12px;
 }
-.admin-dash .ad-highlights-list li:first-child { border-top: none; padding-top: 0; }
-.admin-dash .ad-highlights-list li:last-child { padding-bottom: 0; }
+.admin-dash .ad-highlights-list li:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.admin-dash .ad-highlights-list li:last-child {
+  padding-bottom: 0;
+}
 .admin-dash .ad-highlight-arrow {
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
   font-size: 13px;
@@ -337,11 +342,22 @@
   text-align: center;
   line-height: 1.5;
 }
-.admin-dash .ad-highlight-arrow.ad-up { color: var(--ad-green-dark); }
-.admin-dash .ad-highlight-arrow.ad-down { color: var(--ad-red-dark); }
-.admin-dash .ad-highlight-arrow.ad-flat { color: var(--ad-gray-500); }
-.admin-dash .ad-highlight-text strong { color: var(--ad-gray-900); font-weight: 600; }
-.admin-dash .ad-highlight-text { color: var(--ad-gray-600); }
+.admin-dash .ad-highlight-arrow.ad-up {
+  color: var(--ad-green-dark);
+}
+.admin-dash .ad-highlight-arrow.ad-down {
+  color: var(--ad-red-dark);
+}
+.admin-dash .ad-highlight-arrow.ad-flat {
+  color: var(--ad-gray-500);
+}
+.admin-dash .ad-highlight-text strong {
+  color: var(--ad-gray-900);
+  font-weight: 600;
+}
+.admin-dash .ad-highlight-text {
+  color: var(--ad-gray-600);
+}
 
 /* Carryover */
 .admin-dash .ad-carryover-grid {
@@ -386,18 +402,44 @@
   border-top: 1px solid var(--ad-gray-100);
   font-size: 12px;
 }
-.admin-dash .ad-carryover-item:first-of-type { border-top: none; padding-top: 0; }
-.admin-dash .ad-carryover-item:last-of-type { padding-bottom: 0; }
+.admin-dash .ad-carryover-item:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.admin-dash .ad-carryover-item:last-of-type {
+  padding-bottom: 0;
+}
 .admin-dash .ad-carryover-title {
   color: var(--ad-gray-900);
   font-weight: 600;
   margin-bottom: 4px;
   font-size: 13px;
 }
-.admin-dash .ad-carryover-meta { color: var(--ad-gray-500); font-size: 12px; }
-.admin-dash .ad-carryover-meta .ad-who {
+.admin-dash .ad-carryover-title a {
+  color: inherit;
+  text-decoration: none;
+}
+.admin-dash .ad-carryover-title a:hover {
+  text-decoration: underline;
+}
+.admin-dash .ad-carryover-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--ad-gray-500);
+  font-size: 11px;
+}
+.admin-dash .ad-carryover-pill {
   font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
-  color: var(--ad-purple-dark);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.admin-dash .ad-carryover-stale {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--ad-gray-400);
 }
 .admin-dash .ad-carryover-empty {
   color: var(--ad-gray-500);
@@ -441,8 +483,13 @@
 }
 
 /* Links inside the dashboard */
-.admin-dash a { color: inherit; text-decoration: none; }
-.admin-dash a.ad-purple:hover { text-decoration: underline; }
+.admin-dash a {
+  color: inherit;
+  text-decoration: none;
+}
+.admin-dash a.ad-purple:hover {
+  text-decoration: underline;
+}
 
 .admin-dash .ad-error {
   color: var(--ad-red-dark);

@@ -80,14 +80,17 @@ export interface HighlightItem {
 
 export interface CarryoverItem {
   title: string;
-  owner: string;
-  note: string;
+  priority: 'High' | 'Medium' | 'Low' | null;
+  area: string | null;
+  status: string;
+  daysStale: number;
+  notionUrl: string | null;
 }
 
 export interface Curated {
   highlights: HighlightItem[];
-  carryoverInProgress: CarryoverItem[];
-  carryoverNeedsStatus: CarryoverItem[];
+  carryoverNextUp: CarryoverItem[];
+  carryoverNeedsAttention: CarryoverItem[];
   notes: string;
   updatedAt: string | null;
 }

@@ -227,24 +227,49 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
       { direction: 'up', body: '**Fixture highlight A.** Synthetic prose for design iteration.' },
       { direction: 'down', body: '**Fixture highlight B.** More synthetic prose.' },
     ],
-    carryoverInProgress: [
-      { title: 'fixture-in-progress-item', owner: 'alice', note: 'Synthetic in-progress carryover.' },
+    carryoverNextUp: [
+      {
+        title: 'fixture-next-up-item',
+        priority: 'High' as const,
+        area: 'Signals',
+        status: 'Next',
+        daysStale: 3,
+        notionUrl: null,
+      },
     ],
-    carryoverNeedsStatus: [
-      { title: 'fixture-status-check-item', owner: 'bob', note: 'Synthetic status-check carryover.' },
+    carryoverNeedsAttention: [
+      {
+        title: 'fixture-needs-attention-item',
+        priority: 'Medium' as const,
+        area: 'Infra',
+        status: 'In progress',
+        daysStale: 21,
+        notionUrl: null,
+      },
     ],
     notes: '**Synthetic notes.** No real data. Design fixture only.',
     updatedAt: '2026-01-01T00:00:00Z',
   },
   github: {
     shippedTop: [
-      { number: 1, title: 'fixture: sample merged PR', author: 'alice', mergedAt: '2026-01-01T00:00:00Z', mergedLabel: 'Jan 1', risk: 'unknown' },
+      {
+        number: 1,
+        title: 'fixture: sample merged PR',
+        author: 'alice',
+        mergedAt: '2026-01-01T00:00:00Z',
+        mergedLabel: 'Jan 1',
+        risk: 'unknown',
+      },
     ],
     velocity7d: (() => {
       const buckets: DashboardResponse['github']['velocity7d'] = [];
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       for (let i = 0; i < 7; i++) {
-        buckets.push({ isoDate: `2026-01-0${i + 1}`, dayLabel: `${dayNames[i]} Jan ${i + 1}`, count: (i * 2) % 5 });
+        buckets.push({
+          isoDate: `2026-01-0${i + 1}`,
+          dayLabel: `${dayNames[i]} Jan ${i + 1}`,
+          count: (i * 2) % 5,
+        });
       }
       return buckets;
     })(),
