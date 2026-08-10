@@ -80,10 +80,13 @@ export interface HighlightItem {
 
 export interface CarryoverItem {
   title: string;
+  description: string | null;
   priority: 'High' | 'Medium' | 'Low' | null;
   area: string | null;
   status: string;
   daysStale: number;
+  targetDate: string | null;
+  createdDate: string;
   notionUrl: string | null;
 }
 

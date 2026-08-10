@@ -422,6 +422,12 @@
 .admin-dash .ad-carryover-title a:hover {
   text-decoration: underline;
 }
+.admin-dash .ad-carryover-desc {
+  font-size: 11px;
+  color: var(--ad-gray-500);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
 .admin-dash .ad-carryover-meta {
   display: flex;
   align-items: center;

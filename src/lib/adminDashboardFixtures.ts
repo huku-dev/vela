@@ -230,20 +230,26 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     carryoverNextUp: [
       {
         title: 'fixture-next-up-item',
+        description: 'A synthetic description for design iteration purposes.',
         priority: 'High' as const,
         area: 'Signals',
         status: 'Next',
         daysStale: 3,
+        targetDate: '2026-02-15',
+        createdDate: '2026-01-01',
         notionUrl: null,
       },
     ],
     carryoverNeedsAttention: [
       {
         title: 'fixture-needs-attention-item',
+        description: 'Another synthetic description showing what a stale task looks like.',
         priority: 'Medium' as const,
         area: 'Infra',
         status: 'In progress',
         daysStale: 21,
+        targetDate: null,
+        createdDate: '2025-12-15',
         notionUrl: null,
       },
     ],

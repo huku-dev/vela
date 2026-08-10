@@ -553,6 +553,19 @@ const PRIORITY_COLORS: Record<string, string> = {
   Low: 'var(--ad-gray-400)',
 };
 
+const STATUS_COLORS: Record<string, string> = {
+  'In progress': 'var(--ad-blue)',
+  Next: 'var(--ad-purple-dark)',
+  Blocked: 'var(--color-signal-sell)',
+  Backlog: 'var(--ad-gray-500)',
+};
+
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
 function CarryoverCol({
   title,
   items,
@@ -580,7 +593,16 @@ function CarryoverCol({
                 c.title
               )}
             </div>
+            {c.description && (
+              <div className="ad-carryover-desc">{c.description}</div>
+            )}
             <div className="ad-carryover-meta">
+              <span
+                className="ad-carryover-pill"
+                style={{ color: STATUS_COLORS[c.status] ?? 'var(--ad-gray-500)' }}
+              >
+                {c.status}
+              </span>
               {c.priority && (
                 <span
                   className="ad-carryover-pill"
@@ -590,10 +612,11 @@ function CarryoverCol({
                 </span>
               )}
               {c.area && <span className="ad-carryover-pill">{c.area}</span>}
-              {c.status === 'Blocked' && (
-                <span className="ad-carryover-pill" style={{ color: 'var(--color-signal-sell)' }}>
-                  Blocked
-                </span>
+              {c.targetDate && (
+                <span className="ad-carryover-stale">Target: {formatShortDate(c.targetDate)}</span>
+              )}
+              {!c.targetDate && c.createdDate && (
+                <span className="ad-carryover-stale">Created {formatShortDate(c.createdDate)}</span>
               )}
               {showStale && c.daysStale > 0 && (
                 <span className="ad-carryover-stale">{c.daysStale}d stale</span>
