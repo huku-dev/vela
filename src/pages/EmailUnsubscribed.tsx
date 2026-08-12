@@ -60,18 +60,15 @@ export default function EmailUnsubscribed() {
         >
           ✓
         </div>
-        <h1
-          className="vela-heading-md"
-          style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-        >
+        <h1 className="vela-heading-md" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
           You&rsquo;ve been unsubscribed
         </h1>
         <p
           className="vela-body-sm vela-text-muted"
           style={{ margin: 0, marginBottom: 'var(--space-5)' }}
         >
-          No more {label}s from Vela. Signal alerts, trade proposals, and
-          account emails will keep coming as normal.
+          No more {label}s from Vela. Signal alerts, trade proposals, and account emails will keep
+          coming as normal.
         </p>
         <a
           href="/account"

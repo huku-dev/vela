@@ -1507,7 +1507,9 @@ function NotificationsPanel({
         </div>
         <button
           onClick={() => setEmailEnabled(!emailEnabled)}
-          aria-label={emailEnabled ? 'Disable signal and trade emails' : 'Enable signal and trade emails'}
+          aria-label={
+            emailEnabled ? 'Disable signal and trade emails' : 'Enable signal and trade emails'
+          }
           style={{
             width: 44,
             height: 24,

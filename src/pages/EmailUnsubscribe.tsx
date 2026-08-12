@@ -74,7 +74,7 @@ export default function EmailUnsubscribe() {
     return `${getEdgeUnsubscribeUrl()}?${qs.toString()}`;
   }, [params]);
 
-  const errorCopy = errorCode ? ERROR_COPY[errorCode] ?? ERROR_COPY.expired : null;
+  const errorCopy = errorCode ? (ERROR_COPY[errorCode] ?? ERROR_COPY.expired) : null;
 
   return (
     <div
@@ -100,10 +100,7 @@ export default function EmailUnsubscribe() {
       >
         {errorCopy ? (
           <>
-            <h1
-              className="vela-heading-md"
-              style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-            >
+            <h1 className="vela-heading-md" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
               {errorCopy.title}
             </h1>
             <p
@@ -122,18 +119,15 @@ export default function EmailUnsubscribe() {
           </>
         ) : postUrl ? (
           <>
-            <h1
-              className="vela-heading-md"
-              style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-            >
+            <h1 className="vela-heading-md" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
               Unsubscribe from Vela&rsquo;s {label}?
             </h1>
             <p
               className="vela-body-sm vela-text-muted"
               style={{ margin: 0, marginBottom: 'var(--space-5)' }}
             >
-              You&rsquo;ll stop receiving Vela&rsquo;s {label}. Signal alerts, trade
-              proposals, and account emails will keep coming as normal.
+              You&rsquo;ll stop receiving Vela&rsquo;s {label}. Signal alerts, trade proposals, and
+              account emails will keep coming as normal.
             </p>
             <form method="POST" action={postUrl} style={{ display: 'block' }}>
               <button
@@ -164,18 +158,15 @@ export default function EmailUnsubscribe() {
           </>
         ) : (
           <>
-            <h1
-              className="vela-heading-md"
-              style={{ margin: 0, marginBottom: 'var(--space-2)' }}
-            >
+            <h1 className="vela-heading-md" style={{ margin: 0, marginBottom: 'var(--space-2)' }}>
               Link is no longer valid
             </h1>
             <p
               className="vela-body-sm vela-text-muted"
               style={{ margin: 0, marginBottom: 'var(--space-5)' }}
             >
-              This unsubscribe link is missing information. You can manage
-              your email preferences directly in your account settings.
+              This unsubscribe link is missing information. You can manage your email preferences
+              directly in your account settings.
             </p>
             <a
               href="/account"
