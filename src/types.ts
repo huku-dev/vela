@@ -171,7 +171,12 @@ export interface UserPreferences {
   stop_loss_pct: number;
   allowed_assets: string[];
   notifications_telegram: boolean;
+  /** Signal changes, trade proposals, activation nudges (labelled "Signal & trade emails" in /account). */
   notifications_email: boolean;
+  /** Daily brief marketing email opt-in. Flipped off by the footer Unsubscribe link. */
+  notifications_daily_brief: boolean;
+  /** Weekly recap marketing email opt-in. Flipped off by the footer Unsubscribe link. */
+  notifications_weekly_recap: boolean;
   telegram_chat_id: string | null;
   created_at: string;
   updated_at: string;

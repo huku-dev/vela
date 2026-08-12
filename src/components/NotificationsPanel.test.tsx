@@ -160,6 +160,8 @@ const basePreferences: UserPreferences = {
   allowed_assets: ['btc', 'eth'],
   notifications_telegram: false,
   notifications_email: true,
+  notifications_daily_brief: true,
+  notifications_weekly_recap: true,
   telegram_chat_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',

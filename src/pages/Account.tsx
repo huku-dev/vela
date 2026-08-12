@@ -381,10 +381,7 @@ function BalanceCard({
             textAlign: 'center',
           }}
         >
-          <p
-            className="vela-body-sm"
-            style={{ fontWeight: 600, margin: 0, fontSize: '0.85rem' }}
-          >
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0, fontSize: '0.85rem' }}>
             {bannerTitle}
           </p>
           <p
@@ -433,10 +430,7 @@ function BalanceCard({
             }}
           >
             <span className="vela-body-sm vela-text-muted">Available</span>
-            <span
-              className="vela-mono vela-body-sm vela-text-muted"
-              style={{ fontWeight: 500 }}
-            >
+            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
               $
               {availableForWithdraw.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
@@ -480,10 +474,7 @@ function BalanceCard({
                 />
               </svg>
             </span>
-            <span
-              className="vela-mono vela-body-sm vela-text-muted"
-              style={{ fontWeight: 500 }}
-            >
+            <span className="vela-mono vela-body-sm vela-text-muted" style={{ fontWeight: 500 }}>
               $
               {inTrades.toLocaleString('en-US', {
                 minimumFractionDigits: 2,
@@ -1425,6 +1416,12 @@ function NotificationsPanel({
   const [telegramEnabled, setTelegramEnabled] = useState(
     preferences?.notifications_telegram ?? false
   );
+  const [dailyBriefEnabled, setDailyBriefEnabled] = useState(
+    preferences?.notifications_daily_brief ?? true
+  );
+  const [weeklyRecapEnabled, setWeeklyRecapEnabled] = useState(
+    preferences?.notifications_weekly_recap ?? true
+  );
   const [chatId, setChatId] = useState(preferences?.telegram_chat_id ?? '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -1436,6 +1433,8 @@ function NotificationsPanel({
     if (preferences) {
       setEmailEnabled(preferences.notifications_email);
       setTelegramEnabled(preferences.notifications_telegram);
+      setDailyBriefEnabled(preferences.notifications_daily_brief);
+      setWeeklyRecapEnabled(preferences.notifications_weekly_recap);
       setChatId(preferences.telegram_chat_id ?? '');
     }
   }, [preferences]);
@@ -1447,6 +1446,8 @@ function NotificationsPanel({
       await updatePreferences({
         notifications_email: emailEnabled,
         notifications_telegram: telegramAllowed ? telegramEnabled : false,
+        notifications_daily_brief: dailyBriefEnabled,
+        notifications_weekly_recap: weeklyRecapEnabled,
         telegram_chat_id: telegramAllowed && telegramEnabled ? chatId.trim() || null : null,
       } as Record<string, unknown>);
       setSuccess(true);
@@ -1474,7 +1475,20 @@ function NotificationsPanel({
 
   return (
     <div style={{ padding: 'var(--space-4)' }}>
-      {/* Email toggle */}
+      {/* Section: Signals & trades */}
+      <p
+        className="vela-body-sm vela-text-muted"
+        style={{
+          margin: '0 0 var(--space-2)',
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        Signals &amp; trades
+      </p>
+      {/* Signal & trade emails toggle */}
       <div
         style={{
           display: 'flex',
@@ -1485,15 +1499,15 @@ function NotificationsPanel({
       >
         <div>
           <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
-            Email alerts
+            Signal &amp; trade emails
           </p>
           <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
-            Signal changes and trade proposals
+            Signal changes, trade proposals, and account nudges
           </p>
         </div>
         <button
           onClick={() => setEmailEnabled(!emailEnabled)}
-          aria-label={emailEnabled ? 'Disable email alerts' : 'Enable email alerts'}
+          aria-label={emailEnabled ? 'Disable signal and trade emails' : 'Enable signal and trade emails'}
           style={{
             width: 44,
             height: 24,
@@ -1670,6 +1684,117 @@ function NotificationsPanel({
             )}
           </div>
         )}
+      </div>
+
+      {/* Section: Marketing emails */}
+      <p
+        className="vela-body-sm vela-text-muted"
+        style={{
+          margin: 'var(--space-4) 0 var(--space-2)',
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        Marketing emails
+      </p>
+
+      {/* Daily brief toggle */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--space-3)',
+        }}
+      >
+        <div>
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+            Daily brief
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+            Morning market read with top signals and news
+          </p>
+        </div>
+        <button
+          onClick={() => setDailyBriefEnabled(!dailyBriefEnabled)}
+          aria-label={dailyBriefEnabled ? 'Disable daily brief' : 'Enable daily brief'}
+          style={{
+            width: 44,
+            height: 24,
+            borderRadius: 12,
+            border: '2px solid var(--black)',
+            backgroundColor: dailyBriefEnabled ? 'var(--green-primary)' : 'var(--gray-200)',
+            cursor: 'pointer',
+            padding: 0,
+            position: 'relative',
+            transition: 'background-color 0.15s ease',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              border: '2px solid var(--black)',
+              position: 'absolute',
+              top: 2,
+              left: dailyBriefEnabled ? 22 : 2,
+              transition: 'left 0.15s ease',
+            }}
+          />
+        </button>
+      </div>
+
+      {/* Weekly recap toggle */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+            Weekly recap
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+            Top trades and highlights from the week
+          </p>
+        </div>
+        <button
+          onClick={() => setWeeklyRecapEnabled(!weeklyRecapEnabled)}
+          aria-label={weeklyRecapEnabled ? 'Disable weekly recap' : 'Enable weekly recap'}
+          style={{
+            width: 44,
+            height: 24,
+            borderRadius: 12,
+            border: '2px solid var(--black)',
+            backgroundColor: weeklyRecapEnabled ? 'var(--green-primary)' : 'var(--gray-200)',
+            cursor: 'pointer',
+            padding: 0,
+            position: 'relative',
+            transition: 'background-color 0.15s ease',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              border: '2px solid var(--black)',
+              position: 'absolute',
+              top: 2,
+              left: weeklyRecapEnabled ? 22 : 2,
+              transition: 'left 0.15s ease',
+            }}
+          />
+        </button>
       </div>
 
       {/* Save button + status */}

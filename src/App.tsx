@@ -13,6 +13,8 @@ import PageLoader from './components/PageLoader';
 const AuthShell = lazy(() => import('./components/AuthShell'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Privacy = lazy(() => import('./pages/Privacy'));
+const EmailUnsubscribe = lazy(() => import('./pages/EmailUnsubscribe'));
+const EmailUnsubscribed = lazy(() => import('./pages/EmailUnsubscribed'));
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
           {/* Public routes — no Privy, instant load */}
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/email/unsubscribe" element={<EmailUnsubscribe />} />
+          <Route path="/email/unsubscribed" element={<EmailUnsubscribed />} />
 
           {/* All other routes — Privy loaded on demand via AuthShell */}
           <Route path="/*" element={<AuthShell />} />
