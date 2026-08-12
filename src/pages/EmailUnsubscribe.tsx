@@ -33,7 +33,7 @@ const ERROR_COPY: Record<string, { title: string; body: string }> = {
   },
   expired: {
     title: 'Link has expired',
-    body: 'This unsubscribe link could not be verified — it may have expired or been altered. You can manage your email preferences directly in your account settings.',
+    body: 'This unsubscribe link could not be verified. It may have expired or been altered. You can manage your email preferences directly in your account settings.',
   },
   server: {
     title: 'Something went wrong',
