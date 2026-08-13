@@ -452,6 +452,23 @@
   font-size: 12px;
   font-style: italic;
 }
+.admin-dash .ad-carryover-toggle {
+  display: block;
+  width: 100%;
+  padding: 6px 0;
+  margin-top: 4px;
+  background: none;
+  border: 1px dashed var(--ad-gray-300);
+  border-radius: 6px;
+  color: var(--ad-gray-500);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.admin-dash .ad-carryover-toggle:hover {
+  color: var(--ad-blue);
+  border-color: var(--ad-blue);
+}
 
 /* Velocity */
 .admin-dash .ad-velocity-row {

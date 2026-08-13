@@ -9,6 +9,7 @@
 // dashboard_curated Postgres row. GitHub sections (Shipped, Velocity) come
 // from a GitHub REST call in the edge fn (needs GITHUB_TOKEN env var).
 
+import { useState } from 'react';
 import type React from 'react';
 import type {
   CarryoverItem,
@@ -562,9 +563,24 @@ const STATUS_COLORS: Record<string, string> = {
 
 function formatShortDate(iso: string): string {
   const d = new Date(iso);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
+
+const CARRYOVER_COLLAPSED_LIMIT = 5;
 
 function CarryoverCol({
   title,
@@ -575,6 +591,10 @@ function CarryoverCol({
   items: CarryoverItem[];
   showStale?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsToggle = items.length > CARRYOVER_COLLAPSED_LIMIT;
+  const visible = expanded || !needsToggle ? items : items.slice(0, CARRYOVER_COLLAPSED_LIMIT);
+
   return (
     <div className="ad-carryover-col">
       <div className="ad-carryover-head">
@@ -584,46 +604,62 @@ function CarryoverCol({
       {items.length === 0 ? (
         <div className="ad-carryover-empty">Empty.</div>
       ) : (
-        items.map((c, i) => (
-          <div key={i} className="ad-carryover-item">
-            <div className="ad-carryover-title">
-              {c.notionUrl ? (
-                <a href={c.notionUrl} target="_blank" rel="noopener noreferrer">{c.title}</a>
-              ) : (
-                c.title
-              )}
-            </div>
-            {c.description && (
-              <div className="ad-carryover-desc">{c.description}</div>
-            )}
-            <div className="ad-carryover-meta">
-              <span
-                className="ad-carryover-pill"
-                style={{ color: STATUS_COLORS[c.status] ?? 'var(--ad-gray-500)' }}
-              >
-                {c.status}
-              </span>
-              {c.priority && (
+        <>
+          {visible.map((c, i) => (
+            <div key={i} className="ad-carryover-item">
+              <div className="ad-carryover-title">
+                {c.notionUrl ? (
+                  <a href={c.notionUrl} target="_blank" rel="noopener noreferrer">
+                    {c.title}
+                  </a>
+                ) : (
+                  c.title
+                )}
+              </div>
+              {c.description && <div className="ad-carryover-desc">{c.description}</div>}
+              <div className="ad-carryover-meta">
                 <span
                   className="ad-carryover-pill"
-                  style={{ color: PRIORITY_COLORS[c.priority] ?? 'inherit' }}
+                  style={{ color: STATUS_COLORS[c.status] ?? 'var(--ad-gray-500)' }}
                 >
-                  {c.priority}
+                  {c.status}
                 </span>
-              )}
-              {c.area && <span className="ad-carryover-pill">{c.area}</span>}
-              {c.targetDate && (
-                <span className="ad-carryover-stale">Target: {formatShortDate(c.targetDate)}</span>
-              )}
-              {!c.targetDate && c.createdDate && (
-                <span className="ad-carryover-stale">Created {formatShortDate(c.createdDate)}</span>
-              )}
-              {showStale && c.daysStale > 0 && (
-                <span className="ad-carryover-stale">{c.daysStale}d stale</span>
-              )}
+                {c.priority && (
+                  <span
+                    className="ad-carryover-pill"
+                    style={{ color: PRIORITY_COLORS[c.priority] ?? 'inherit' }}
+                  >
+                    {c.priority}
+                  </span>
+                )}
+                {c.area && <span className="ad-carryover-pill">{c.area}</span>}
+                {c.targetDate && (
+                  <span className="ad-carryover-stale">
+                    Target: {formatShortDate(c.targetDate)}
+                  </span>
+                )}
+                {!c.targetDate && c.createdDate && (
+                  <span className="ad-carryover-stale">
+                    Created {formatShortDate(c.createdDate)}
+                  </span>
+                )}
+                {showStale && c.daysStale > 0 && (
+                  <span className="ad-carryover-stale">{c.daysStale}d stale</span>
+                )}
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+          {needsToggle && (
+            <button
+              className="ad-carryover-toggle"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded
+                ? 'Show less'
+                : `See ${items.length - CARRYOVER_COLLAPSED_LIMIT} more`}
+            </button>
+          )}
+        </>
       )}
     </div>
   );
