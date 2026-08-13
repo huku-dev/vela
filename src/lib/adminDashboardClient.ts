@@ -94,6 +94,9 @@ export interface Curated {
   highlights: HighlightItem[];
   carryoverNextUp: CarryoverItem[];
   carryoverNeedsAttention: CarryoverItem[];
+  // Legacy field names from pre-Notion backend (remove once backend is updated)
+  carryoverInProgress?: CarryoverItem[];
+  carryoverNeedsStatus?: CarryoverItem[];
   notes: string;
   updatedAt: string | null;
 }
