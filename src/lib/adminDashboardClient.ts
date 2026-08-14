@@ -123,6 +123,33 @@ export interface GithubActivity {
   errorMessage: string | null;
 }
 
+export interface LlmCostKpis {
+  totalSpend: number;
+  totalSpendDelta: number | null;
+  requests: number;
+  requestsDelta: number | null;
+  tokenVolume: number;
+  tokenVolumeDelta: number | null;
+  cacheHitRate: number;
+  cacheHitRateDelta: number;
+  blendedPer1M: number;
+  blendedPer1MDelta: number | null;
+}
+
+export interface LlmProviderRow {
+  provider: string;
+  cost: number;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface LlmCosts {
+  kpis: LlmCostKpis;
+  providers: LlmProviderRow[];
+  errorMessage: string | null;
+}
+
 export interface DashboardResponse {
   generatedAt: string;
   kpis: Kpis;
@@ -134,6 +161,7 @@ export interface DashboardResponse {
   pnlSeries30d: DailyBucket[];
   curated: Curated;
   github: GithubActivity;
+  llmCosts?: LlmCosts;
 }
 
 const ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-dashboard-data`;

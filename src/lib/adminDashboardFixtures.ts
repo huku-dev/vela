@@ -282,4 +282,25 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     fetchedAt: '2026-01-01T00:00:00Z',
     errorMessage: null,
   },
+  llmCosts: {
+    kpis: {
+      totalSpend: 4.27,
+      totalSpendDelta: -0.12,
+      requests: 8430,
+      requestsDelta: 0.05,
+      tokenVolume: 42_500_000,
+      tokenVolumeDelta: 0.08,
+      cacheHitRate: 0.34,
+      cacheHitRateDelta: 0.02,
+      blendedPer1M: 0.10,
+      blendedPer1MDelta: -0.18,
+    },
+    providers: [
+      { provider: 'deepseek', cost: 2.85, calls: 3200, inputTokens: 18_000_000, outputTokens: 4_500_000 },
+      { provider: 'anthropic', cost: 1.42, calls: 210, inputTokens: 1_200_000, outputTokens: 350_000 },
+      { provider: 'groq', cost: 0, calls: 4100, inputTokens: 15_000_000, outputTokens: 3_200_000 },
+      { provider: 'nvidia', cost: 0, calls: 920, inputTokens: 800_000, outputTokens: 250_000 },
+    ],
+    errorMessage: null,
+  },
 };

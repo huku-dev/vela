@@ -28,6 +28,7 @@ import {
   DeferredPanel,
   HighlightsSection,
   KpisSection,
+  LlmCostSection,
   NotesSection,
   OpenPositionsSection,
   PositionConcentrationSection,
@@ -163,6 +164,7 @@ export default function AdminDashboard() {
           <VelocitySection github={data.github} />
 
           <RevenueBreakdownSection rows={data.revenueBreakdown} mrr={data.kpis.mrr} />
+          {data.llmCosts && <LlmCostSection data={data.llmCosts} />}
           <CohortFunnelSection rows={data.cohortFunnel} />
           <ChartsSection pnlSeries={data.pnlSeries30d} />
           <UserOverviewSection rows={data.userOverview} />
@@ -171,7 +173,9 @@ export default function AdminDashboard() {
 
           <CarryoverSection
             nextUp={data.curated.carryoverNextUp ?? data.curated.carryoverInProgress ?? []}
-            needsAttention={data.curated.carryoverNeedsAttention ?? data.curated.carryoverNeedsStatus ?? []}
+            needsAttention={
+              data.curated.carryoverNeedsAttention ?? data.curated.carryoverNeedsStatus ?? []
+            }
           />
           <NotesSection notes={data.curated.notes} />
 

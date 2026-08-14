@@ -19,6 +19,7 @@ import type {
   GithubActivity,
   HighlightItem,
   Kpis,
+  LlmCosts,
   OpenPositionRow,
   RevenueRow,
   UserRow,
@@ -650,13 +651,8 @@ function CarryoverCol({
             </div>
           ))}
           {needsToggle && (
-            <button
-              className="ad-carryover-toggle"
-              onClick={() => setExpanded((v) => !v)}
-            >
-              {expanded
-                ? 'Show less'
-                : `See ${items.length - CARRYOVER_COLLAPSED_LIMIT} more`}
+            <button className="ad-carryover-toggle" onClick={() => setExpanded(v => !v)}>
+              {expanded ? 'Show less' : `See ${items.length - CARRYOVER_COLLAPSED_LIMIT} more`}
             </button>
           )}
         </>
@@ -753,6 +749,140 @@ export function VelocitySection({ github }: { github: GithubActivity }) {
             );
           })}
         </div>
+      )}
+    </>
+  );
+}
+
+// ── LLM API Cost Tracking ───────────────────────────────────────────────
+
+function formatTokens(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+function formatDelta(delta: number | null): { text: string; tone: string } | null {
+  if (delta === null) return null;
+  const pct = Math.round(delta * 100);
+  if (pct === 0) return { text: '0% vs prior 7d', tone: '' };
+  const sign = pct > 0 ? '+' : '';
+  return {
+    text: `${sign}${pct}% vs prior 7d`,
+    tone: pct > 0 ? 'ad-red' : 'ad-green',
+  };
+}
+
+function formatDeltaInverse(delta: number | null): { text: string; tone: string } | null {
+  if (delta === null) return null;
+  const pct = Math.round(delta * 100);
+  if (pct === 0) return { text: '0% vs prior 7d', tone: '' };
+  const sign = pct > 0 ? '+' : '';
+  return {
+    text: `${sign}${pct}% vs prior 7d`,
+    tone: pct > 0 ? 'ad-green' : 'ad-red',
+  };
+}
+
+function formatRateDelta(delta: number): { text: string; tone: string } | null {
+  const pp = Math.round(delta * 100);
+  if (pp === 0) return { text: '0pp vs prior 7d', tone: '' };
+  const sign = pp > 0 ? '+' : '';
+  return {
+    text: `${sign}${pp}pp vs prior 7d`,
+    tone: pp > 0 ? 'ad-green' : 'ad-red',
+  };
+}
+
+function CostKpiCard({
+  label,
+  value,
+  delta,
+}: {
+  label: string;
+  value: string;
+  delta: { text: string; tone: string } | null;
+}) {
+  return (
+    <div className="ad-kpi-card">
+      <div className="ad-kpi-label">{label}</div>
+      <div className="ad-kpi-value">{value}</div>
+      {delta && (
+        <div className={`ad-kpi-detail ${delta.tone}`}>{delta.text}</div>
+      )}
+    </div>
+  );
+}
+
+export function LlmCostSection({ data }: { data: LlmCosts }) {
+  const { kpis, providers, errorMessage } = data;
+  const maxCost = Math.max(1, ...providers.map(p => p.cost));
+
+  return (
+    <>
+      <SectionTitle>API Costs (Last 7 Days)</SectionTitle>
+      {errorMessage ? (
+        <div className="ad-empty-panel">LLM cost data unavailable: {errorMessage}</div>
+      ) : (
+        <>
+          <div className="ad-kpi-grid">
+            <CostKpiCard
+              label="Total Spend"
+              value={`$${kpis.totalSpend.toFixed(2)}`}
+              delta={formatDelta(kpis.totalSpendDelta)}
+            />
+            <CostKpiCard
+              label="Requests"
+              value={formatTokens(kpis.requests)}
+              delta={formatDeltaInverse(kpis.requestsDelta)}
+            />
+            <CostKpiCard
+              label="Token Volume"
+              value={formatTokens(kpis.tokenVolume)}
+              delta={formatDeltaInverse(kpis.tokenVolumeDelta)}
+            />
+            <CostKpiCard
+              label="Cache Hit Rate"
+              value={`${Math.round(kpis.cacheHitRate * 100)}%`}
+              delta={formatRateDelta(kpis.cacheHitRateDelta)}
+            />
+            <CostKpiCard
+              label="Blended $/1M tokens"
+              value={`$${kpis.blendedPer1M.toFixed(2)}`}
+              delta={formatDelta(kpis.blendedPer1MDelta)}
+            />
+          </div>
+
+          {providers.length > 0 && (
+            <table style={{ marginTop: 8 }}>
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th className="ad-right">Cost</th>
+                  <th className="ad-right">Calls</th>
+                  <th className="ad-right">Input Tokens</th>
+                  <th className="ad-right">Output Tokens</th>
+                </tr>
+              </thead>
+              <tbody>
+                {providers.map(p => (
+                  <tr key={p.provider}>
+                    <td style={{ textTransform: 'capitalize' }}>
+                      <strong>{p.provider}</strong>
+                    </td>
+                    <td className="ad-right">
+                      <BarCell value={p.cost} maxAbs={maxCost} />
+                    </td>
+                    <td className="ad-right ad-mono">{formatTokens(p.calls)}</td>
+                    <td className="ad-right ad-mono">{formatTokens(p.inputTokens)}</td>
+                    <td className="ad-right ad-mono">{formatTokens(p.outputTokens)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
       )}
     </>
   );
