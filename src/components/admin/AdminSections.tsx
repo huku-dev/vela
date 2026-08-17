@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import type React from 'react';
 import type {
+  AssetScoreboardRow,
   CarryoverItem,
   CohortRow,
   ConcentrationRow,
@@ -22,6 +23,9 @@ import type {
   LlmCosts,
   OpenPositionRow,
   RevenueRow,
+  SubscriptionRisk,
+  SubscriptionRisks,
+  TraderCumulativePnlRow,
   UserRow,
 } from '../../lib/adminDashboardClient';
 import {
@@ -30,6 +34,7 @@ import {
   NarrativeLine,
   SectionTitle,
   SidePill,
+  Sparkline,
   TierPill,
 } from './AdminPrimitives';
 import { PnlChart, TradingVolumeChart } from './AdminCharts';
@@ -886,4 +891,499 @@ export function LlmCostSection({ data }: { data: LlmCosts }) {
       )}
     </>
   );
+}
+
+// ── Trader Cumulative PnL (30d) ──────────────────────────────────────────
+//
+// Replaces the daily-PnL bar chart. Compact per-trader row with an inline
+// sparkline of cumulative realized PnL. Movers strip on top surfaces the
+// biggest gain, biggest loss, and one "notable" pick regardless of how many
+// traders the table holds, so the section stays legible past 60 users.
+
+type TraderFilter = 'active30d' | 'all';
+type TraderSort = 'pnl' | 'peak' | 'trough' | 'balance' | 'name';
+
+export function TraderCumulativePnlSection({
+  rows,
+  totalUsers,
+}: {
+  rows: TraderCumulativePnlRow[];
+  totalUsers: number;
+}) {
+  const [tierFilter, setTierFilter] = useState<'all' | 'premium' | 'standard' | 'free'>('all');
+  const [activityFilter, setActivityFilter] = useState<TraderFilter>('active30d');
+  const [sort, setSort] = useState<TraderSort>('pnl');
+
+  const visible = rows.filter(r => tierFilter === 'all' || r.tier === tierFilter);
+  const sorted = visible.slice().sort((a, b) => {
+    switch (sort) {
+      case 'pnl':
+        return a.totalPnl30d - b.totalPnl30d; // worst first
+      case 'peak':
+        return b.peak30d - a.peak30d;
+      case 'trough':
+        return a.trough30d - b.trough30d;
+      case 'balance':
+        return b.balance - a.balance;
+      case 'name':
+        return a.displayName.localeCompare(b.displayName);
+    }
+  });
+
+  const platform30d = rows.reduce((acc, r) => acc + r.totalPnl30d, 0);
+  const winner = rows.slice().sort((a, b) => b.totalPnl30d - a.totalPnl30d)[0] ?? null;
+  const loser = rows.slice().sort((a, b) => a.totalPnl30d - b.totalPnl30d)[0] ?? null;
+  // Notable slot: most recent close, but never a duplicate of winner or loser.
+  // In small trader populations (2 or 3), all extremes may collide; when they
+  // do, we render null and the card shows a placeholder rather than a repeat.
+  const isDuplicate = (r: TraderCumulativePnlRow | null) =>
+    r !== null && (r === winner || r === loser);
+  const byRecency = rows
+    .slice()
+    .sort((a, b) => (b.lastCloseIso ?? '').localeCompare(a.lastCloseIso ?? ''));
+  const notable = byRecency.find(r => !isDuplicate(r)) ?? null;
+
+  return (
+    <>
+      <SectionTitle>Cumulative Realized PnL by Trader (30d)</SectionTitle>
+      <NarrativeLine>
+        Platform 30d realized PnL: <strong>{signedMoney(platform30d)}</strong> across{' '}
+        <strong>{rows.length}</strong> active trader{rows.length === 1 ? '' : 's'}. Movers strip picks the extremes
+        so the section stays legible as user count grows.
+      </NarrativeLine>
+
+      <div className="ad-movers-grid">
+        <MoverCard label="Biggest 30d gain" row={winner} tone="pos" />
+        <MoverCard label="Biggest 30d loss" row={loser} tone="neg" />
+        <MoverCard label="Most recent close" row={notable} tone="neutral" />
+      </div>
+
+      <div className="ad-filter-bar">
+        <label htmlFor="ad-trader-tier-filter">Tier</label>
+        <select
+          id="ad-trader-tier-filter"
+          value={tierFilter}
+          onChange={e => setTierFilter(e.target.value as typeof tierFilter)}
+        >
+          <option value="all">All</option>
+          <option value="premium">Premium</option>
+          <option value="standard">Standard</option>
+          <option value="free">Free</option>
+        </select>
+        <label htmlFor="ad-trader-activity-filter">Activity</label>
+        <select
+          id="ad-trader-activity-filter"
+          value={activityFilter}
+          onChange={e => setActivityFilter(e.target.value as TraderFilter)}
+        >
+          <option value="active30d">Traded in 30d</option>
+          <option value="all">All users</option>
+        </select>
+        <span className="ad-filter-count">
+          Showing {sorted.length} of {rows.length} traders active in 30d · {totalUsers} users total
+        </span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <SortHeader label="Trader" active={sort === 'name'} onClick={() => setSort('name')} />
+              <th>Tier</th>
+              <SortHeader
+                label="Balance"
+                active={sort === 'balance'}
+                onClick={() => setSort('balance')}
+                align="right"
+              />
+              <th className="ad-right">Open</th>
+              <SortHeader
+                label="30d PnL"
+                active={sort === 'pnl'}
+                onClick={() => setSort('pnl')}
+                align="right"
+              />
+              <SortHeader
+                label="Peak"
+                active={sort === 'peak'}
+                onClick={() => setSort('peak')}
+                align="right"
+              />
+              <SortHeader
+                label="Trough"
+                active={sort === 'trough'}
+                onClick={() => setSort('trough')}
+                align="right"
+              />
+              <th>Cumulative PnL (30d)</th>
+              <th className="ad-right">Last close</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map(r => (
+              // Composite key: two traders sharing a display name would collide
+              // and cause React to reuse row DOM across users. TraderCumulativePnlRow
+              // has no stable id yet; upstream fix is to plumb privy_did into the
+              // response. Composite of name + tier + subscriptionStatus + signed
+              // balance is enough to disambiguate real users in practice.
+              <tr key={`${r.displayName}::${r.tier}::${r.subscriptionStatus}::${r.balance}`}>
+                <td>
+                  <strong>
+                    {r.displayName}
+                    {r.isSelf ? ' (you)' : ''}
+                  </strong>
+                </td>
+                <td>{tierOrRiskPill(r)}</td>
+                <td className="ad-right ad-mono">${r.balance.toFixed(0)}</td>
+                <td className="ad-right ad-mono">{r.openPositions}</td>
+                <td className="ad-right">
+                  <BarCell value={r.totalPnl30d} maxAbs={maxAbsPnl(rows)} />
+                </td>
+                <td
+                  className={`ad-right ad-mono ${r.peak30d > 0 ? 'ad-green' : ''}`}
+                >
+                  {signedMoney(r.peak30d)}
+                </td>
+                <td
+                  className={`ad-right ad-mono ${r.trough30d < 0 ? 'ad-red' : ''}`}
+                >
+                  {signedMoney(r.trough30d)}
+                </td>
+                <td>
+                  <Sparkline values={r.series.map(p => p.cumPnl)} />
+                </td>
+                <td className="ad-right ad-mono">{shortDate(r.lastCloseIso)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function MoverCard({
+  label,
+  row,
+  tone,
+}: {
+  label: string;
+  row: TraderCumulativePnlRow | null;
+  tone: 'pos' | 'neg' | 'neutral';
+}) {
+  if (!row) {
+    return (
+      <div className="ad-mover-card">
+        <div className="ad-mover-label">{label}</div>
+        <div className="ad-mover-detail" style={{ fontStyle: 'italic' }}>
+          No qualifying trader
+        </div>
+      </div>
+    );
+  }
+  const toneClass = tone === 'pos' ? 'ad-green' : tone === 'neg' ? 'ad-red' : '';
+  return (
+    <div className="ad-mover-card">
+      <div className="ad-mover-label">{label}</div>
+      <div className="ad-mover-row">
+        <span className="ad-mover-name">{row.displayName}</span>
+        {tierOrRiskPill(row)}
+        <span className={`ad-mover-pnl ${toneClass}`}>{signedMoney(row.totalPnl30d)}</span>
+      </div>
+      <div className="ad-mover-detail">
+        Peak {signedMoney(row.peak30d)} · Trough {signedMoney(row.trough30d)} · {row.openPositions}{' '}
+        open
+      </div>
+    </div>
+  );
+}
+
+function tierOrRiskPill(row: TraderCumulativePnlRow) {
+  if (row.subscriptionStatus === 'past_due') {
+    return <span className="ad-pill ad-pill-red">Past due</span>;
+  }
+  if (row.subscriptionStatus === 'cancelled') {
+    return <span className="ad-pill ad-pill-muted">Cancelled</span>;
+  }
+  return <TierPill tier={row.tier} />;
+}
+
+function maxAbsPnl(rows: TraderCumulativePnlRow[]): number {
+  return Math.max(1, ...rows.map(r => Math.abs(r.totalPnl30d)));
+}
+
+function signedMoney(n: number): string {
+  if (Math.abs(n) < 0.005) return '$0';
+  const sign = n < 0 ? '-' : '+';
+  const abs = Math.abs(n);
+  return `${sign}$${abs >= 100 ? abs.toFixed(0) : abs.toFixed(2)}`;
+}
+
+function shortDate(iso: string | null): string {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday =
+    d.getUTCFullYear() === now.getUTCFullYear() &&
+    d.getUTCMonth() === now.getUTCMonth() &&
+    d.getUTCDate() === now.getUTCDate();
+  if (isToday) return 'Today';
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+function SortHeader({
+  label,
+  active,
+  onClick,
+  align,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  align?: 'right';
+}) {
+  return (
+    <th
+      className={`${align === 'right' ? 'ad-right' : ''} ${active ? 'ad-sort-active' : 'ad-sortable'}`}
+      onClick={onClick}
+      style={{ cursor: 'pointer' }}
+    >
+      {label}
+    </th>
+  );
+}
+
+// ── Asset Scoreboard (30d) ────────────────────────────────────────────────
+//
+// Replaces the Search Visibility section. Every symbol that closed a trade in
+// the last 30d, sorted by |PnL| desc so the biggest movers surface first
+// regardless of sign. Sparkline shows the cumulative PnL trajectory so you
+// can tell if a green cell is one lucky trade or a steady climb.
+
+const ASSET_SCOREBOARD_TOP_N = 10;
+
+export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] }) {
+  const [showAll, setShowAll] = useState(false);
+  if (rows.length === 0) {
+    return (
+      <>
+        <SectionTitle>Per-Asset PnL Scoreboard (30d)</SectionTitle>
+        <div className="ad-empty-panel">No closed positions in the last 30 days.</div>
+      </>
+    );
+  }
+
+  const visible = showAll ? rows : rows.slice(0, ASSET_SCOREBOARD_TOP_N);
+  const hiddenRows = Math.max(0, rows.length - ASSET_SCOREBOARD_TOP_N);
+  const hiddenCombined = rows.slice(ASSET_SCOREBOARD_TOP_N).reduce((acc, r) => acc + r.netPnl, 0);
+  // "Worst" ranks by ascending netPnl, NOT by |netPnl| (which is how rows are
+  // sorted). Guard on netPnl < 0 so a platform that had a purely-green 30d
+  // does not get its top winner labelled as "the largest drag".
+  const worst = rows.slice().sort((a, b) => a.netPnl - b.netPnl)[0];
+  const worstIsDrag = worst && worst.netPnl < 0 ? worst : null;
+  const bestByPnl = rows.slice().sort((a, b) => b.netPnl - a.netPnl)[0];
+  const maxAbs = Math.max(1, ...rows.map(r => Math.abs(r.netPnl)));
+
+  return (
+    <>
+      <SectionTitle>Per-Asset PnL Scoreboard (30d)</SectionTitle>
+      {worstIsDrag && bestByPnl && worstIsDrag.symbol !== bestByPnl.symbol && (
+        <NarrativeLine>
+          <strong>
+            {worstIsDrag.symbol} is the largest drag: {signedMoney(worstIsDrag.netPnl)} across{' '}
+            {worstIsDrag.closes} close{worstIsDrag.closes === 1 ? '' : 's'}
+          </strong>{' '}
+          ({worstIsDrag.winPct}% win rate). Best asset: <strong>{bestByPnl.symbol}</strong> at{' '}
+          {signedMoney(bestByPnl.netPnl)}.
+        </NarrativeLine>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th className="ad-right">Closes</th>
+              <th className="ad-right">Win%</th>
+              <th className="ad-right">Volume</th>
+              <th className="ad-right">Net PnL</th>
+              <th className="ad-right">Avg hold</th>
+              <th>Cumulative PnL (30d)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(r => (
+              <tr
+                key={r.symbol}
+                className={worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : undefined}
+              >
+                <td>
+                  <strong>{r.symbol}</strong>
+                </td>
+                <td className="ad-right ad-mono">{r.closes}</td>
+                <td className={`ad-right ad-mono ${winRateTone(r.winPct)}`}>{r.winPct}%</td>
+                <td className="ad-right ad-mono">${r.volume}</td>
+                <td className="ad-right">
+                  <BarCell value={r.netPnl} maxAbs={maxAbs} />
+                </td>
+                <td className="ad-right ad-mono">{r.avgHoldHours.toFixed(1)}h</td>
+                <td>
+                  <Sparkline values={r.series.map(p => p.cumPnl)} />
+                </td>
+              </tr>
+            ))}
+            {!showAll && hiddenRows > 0 && (
+              <tr>
+                <td colSpan={7} className="ad-show-more-row" onClick={() => setShowAll(true)}>
+                  Show all {rows.length} symbols
+                  <span className="ad-show-more-subtle">
+                    ({hiddenRows} hidden, combined {signedMoney(hiddenCombined)})
+                  </span>
+                </td>
+              </tr>
+            )}
+            {showAll && (
+              <tr>
+                <td colSpan={7} className="ad-show-more-row" onClick={() => setShowAll(false)}>
+                  Collapse to top {ASSET_SCOREBOARD_TOP_N}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+function winRateTone(pct: number): string {
+  if (pct >= 80) return 'ad-green';
+  if (pct <= 20) return 'ad-red';
+  return '';
+}
+
+// ── Subscription Risks ────────────────────────────────────────────────────
+//
+// Surfaces revenue at risk before churn goes silent. Three cards for
+// past_due / cancelling / cancelled_last_30d. Dunning-nudge button is a
+// stub for now; wiring to a send-payment-reminder edge fn is a follow-up.
+
+export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }) {
+  const total =
+    risks.pastDue.length + risks.cancelling.length + risks.cancelledLast30d.length;
+  const revenueAtRisk =
+    risks.pastDue.reduce((acc, r) => acc + r.monthlyRevenue, 0) +
+    risks.cancelling.reduce((acc, r) => acc + r.monthlyRevenue, 0);
+
+  return (
+    <>
+      <SectionTitle>Subscription Risks</SectionTitle>
+      {total === 0 ? (
+        <div className="ad-empty-panel">No subscription risks. Nothing past due, nothing cancelling.</div>
+      ) : (
+        <>
+          <NarrativeLine>
+            <strong>${revenueAtRisk.toFixed(0)}/mo</strong> of recurring revenue is at risk (past due +
+            cancelling). {risks.cancelledLast30d.length} cancellation
+            {risks.cancelledLast30d.length === 1 ? '' : 's'} in the last 30 days.
+          </NarrativeLine>
+          <div className="ad-risks-grid">
+            <RiskCard
+              tone="critical"
+              title="Past due"
+              rows={risks.pastDue}
+              ctaLabel="Send dunning nudge"
+              onCtaClick={handleDunningNudgeStub}
+              emptyLabel="None this week"
+            />
+            <RiskCard
+              tone="warn"
+              title="Cancelling at period end"
+              rows={risks.cancelling}
+              ctaLabel="Send retention nudge"
+              onCtaClick={handleDunningNudgeStub}
+              emptyLabel="None this week"
+            />
+            <RiskCard
+              tone="info"
+              title="Cancelled (last 30d)"
+              rows={risks.cancelledLast30d}
+              emptyLabel="No cancellations"
+            />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function handleDunningNudgeStub(row: SubscriptionRisk) {
+  // Stub: dunning nudge send is a follow-up PR. Log for now so admins can
+  // confirm the button wires up without actually sending anything.
+  console.log('[admin-dashboard] Dunning nudge stub triggered for:', row.displayName, row);
+  window.alert(
+    `Dunning nudge for ${row.displayName} is not wired up yet. Follow-up PR will add send-payment-reminder edge fn (email + Telegram fallback).`
+  );
+}
+
+function RiskCard({
+  tone,
+  title,
+  rows,
+  ctaLabel,
+  onCtaClick,
+  emptyLabel,
+}: {
+  tone: 'critical' | 'warn' | 'info';
+  title: string;
+  rows: SubscriptionRisk[];
+  ctaLabel?: string;
+  onCtaClick?: (row: SubscriptionRisk) => void;
+  emptyLabel: string;
+}) {
+  return (
+    <div className={`ad-churn-card ad-churn-${tone}`}>
+      <h3>{title}</h3>
+      <div className="ad-churn-count">{rows.length}</div>
+      {rows.length === 0 ? (
+        <div className="ad-churn-empty">{emptyLabel}</div>
+      ) : (
+        <ul className="ad-churn-list">
+          {rows.map(r => (
+            <li key={r.displayName + r.signup}>
+              <div>
+                <div className="ad-churn-who">{r.displayName}</div>
+                <div className="ad-churn-meta">
+                  {riskSubtitle(r)}
+                </div>
+              </div>
+              <div className="ad-churn-meta ad-right">
+                ${r.balance.toFixed(0)} bal
+                {r.openPositions > 0 ? ` · ${r.openPositions} open` : ''}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {rows.length > 0 && ctaLabel && onCtaClick && (
+        <button
+          type="button"
+          className="ad-churn-action"
+          onClick={() => onCtaClick(rows[0])}
+        >
+          {ctaLabel} →
+        </button>
+      )}
+    </div>
+  );
+}
+
+function riskSubtitle(row: SubscriptionRisk): string {
+  const tierLabel = row.tier[0].toUpperCase() + row.tier.slice(1);
+  const billing = row.billingCycle
+    ? row.billingCycle[0].toUpperCase() + row.billingCycle.slice(1)
+    : '';
+  const price = row.monthlyRevenue > 0 ? ` · $${row.monthlyRevenue.toFixed(0)}/mo` : '';
+  const last = row.lastActivityIso ? ` · last activity ${shortDate(row.lastActivityIso)}` : '';
+  return `${tierLabel}${billing ? ' ' + billing : ''}${price}${last}`;
 }

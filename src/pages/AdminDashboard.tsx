@@ -22,10 +22,9 @@ import type { DashboardResponse } from '../lib/adminDashboardClient';
 import { fetchAdminDashboard } from '../lib/adminDashboardClient';
 import { FIXTURE_DASHBOARD } from '../lib/adminDashboardFixtures';
 import {
+  AssetScoreboardSection,
   CarryoverSection,
-  ChartsSection,
   CohortFunnelSection,
-  DeferredPanel,
   HighlightsSection,
   KpisSection,
   LlmCostSection,
@@ -34,6 +33,8 @@ import {
   PositionConcentrationSection,
   RevenueBreakdownSection,
   ShippedSection,
+  SubscriptionRisksSection,
+  TraderCumulativePnlSection,
   UserOverviewSection,
   VelocitySection,
 } from '../components/admin/AdminSections';
@@ -164,9 +165,20 @@ export default function AdminDashboard() {
           <VelocitySection github={data.github} />
 
           <RevenueBreakdownSection rows={data.revenueBreakdown} mrr={data.kpis.mrr} />
+          {data.subscriptionRisks && (
+            <SubscriptionRisksSection risks={data.subscriptionRisks} />
+          )}
           {data.llmCosts && <LlmCostSection data={data.llmCosts} />}
           <CohortFunnelSection rows={data.cohortFunnel} />
-          <ChartsSection pnlSeries={data.pnlSeries30d} />
+          {data.traderCumulativePnl30d && (
+            <TraderCumulativePnlSection
+              rows={data.traderCumulativePnl30d}
+              totalUsers={data.kpis.totalUsers}
+            />
+          )}
+          {data.assetScoreboard30d && (
+            <AssetScoreboardSection rows={data.assetScoreboard30d} />
+          )}
           <UserOverviewSection rows={data.userOverview} />
           <PositionConcentrationSection rows={data.positionConcentration} />
           <OpenPositionsSection rows={data.openPositions} />
@@ -178,11 +190,6 @@ export default function AdminDashboard() {
             }
           />
           <NotesSection notes={data.curated.notes} />
-
-          <DeferredPanel
-            title="Search Visibility (Google)"
-            note="Deferred: needs Google service-account JWT in the edge function (RS256 signing not yet implemented in Deno)."
-          />
 
           <p className="ad-timestamp">Generated: {data ? formatFullWhen(data.generatedAt) : '-'}</p>
         </>
