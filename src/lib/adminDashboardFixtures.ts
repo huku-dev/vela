@@ -282,6 +282,105 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     fetchedAt: '2026-01-01T00:00:00Z',
     errorMessage: null,
   },
+  traderCumulativePnl30d: (() => {
+    const trend = [
+      { name: 'Alice Example', tier: 'premium' as const, status: 'active', bal: 500, open: 4, trades: 100, daily: [0, 0.5, 1.2, 2.1, 3.0, 5.5, 6.1, 6.9, 7.5, 8.0, 8.8, 9.0, 9.2, 9.5, 4.0, 3.5, 3.4, 3.3, 3.5, 3.7, 4.0, 4.1, 3.9, 3.8, 3.6, 3.5, 3.7, 3.9, 4.1, 4.3] },
+      { name: 'Bob Sample', tier: 'premium' as const, status: 'past_due', bal: 300, open: 5, trades: 80, daily: [0, -0.5, -1.0, -0.7, -0.4, 0.2, 0.8, 1.5, 2.0, 2.5, 2.7, 3.0, 2.5, -12.0, -12.5, -12.3, -12.0, -11.8, -11.5, -11.0, -10.7, -10.5, -10.3, -10.1, -9.9, -9.7, -9.5, -9.3, -9.1, -8.9] },
+      { name: 'Carol Demo', tier: 'standard' as const, status: 'active', bal: 200, open: 3, trades: 60, daily: [0, 0.1, 0.3, 0.5, 0.4, 0.6, 0.8, 1.0, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.4, 2.5, 2.7, 2.9, 3.1, 3.3, 3.5, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4] },
+    ];
+    return trend.map(t => {
+      const series = t.daily.map((v, i) => ({
+        date: `2026-07-${String(i + 1).padStart(2, '0')}`,
+        cumPnl: v,
+      }));
+      return {
+        displayName: t.name,
+        isSelf: t.name === 'Alice Example',
+        tier: t.tier,
+        subscriptionStatus: t.status,
+        balance: t.bal,
+        openPositions: t.open,
+        totalTrades: t.trades,
+        totalPnl30d: t.daily[t.daily.length - 1],
+        peak30d: Math.max(...t.daily),
+        trough30d: Math.min(...t.daily),
+        lastCloseIso: '2026-07-30T20:00:00Z',
+        series,
+      };
+    });
+  })(),
+  assetScoreboard30d: [
+    {
+      symbol: 'DELL',
+      closes: 9,
+      wins: 6,
+      winPct: 67,
+      volume: 698,
+      netPnl: -39.91,
+      avgHoldHours: 8.8,
+      series: Array.from({ length: 30 }, (_, i) => ({
+        date: `2026-07-${String(i + 1).padStart(2, '0')}`,
+        cumPnl: i < 5 ? i * 0.2 : i < 15 ? -20 : -39.91,
+      })),
+    },
+    {
+      symbol: 'OIL',
+      closes: 3,
+      wins: 3,
+      winPct: 100,
+      volume: 644,
+      netPnl: 14.06,
+      avgHoldHours: 38.3,
+      series: Array.from({ length: 30 }, (_, i) => ({
+        date: `2026-07-${String(i + 1).padStart(2, '0')}`,
+        cumPnl: i * 0.47,
+      })),
+    },
+    {
+      symbol: 'AMZN',
+      closes: 5,
+      wins: 1,
+      winPct: 20,
+      volume: 483,
+      netPnl: -14.12,
+      avgHoldHours: 95.0,
+      series: Array.from({ length: 30 }, (_, i) => ({
+        date: `2026-07-${String(i + 1).padStart(2, '0')}`,
+        cumPnl: -i * 0.47,
+      })),
+    },
+  ],
+  subscriptionRisks: {
+    pastDue: [
+      {
+        displayName: 'Bob Sample',
+        tier: 'premium' as const,
+        billingCycle: 'monthly' as const,
+        monthlyRevenue: 20,
+        balance: 300,
+        openPositions: 5,
+        lastActivityIso: '2026-07-30T00:00:00Z',
+        status: 'past_due' as const,
+        signup: '2026-01-10',
+        notionalMove: null,
+      },
+    ],
+    cancelling: [],
+    cancelledLast30d: [
+      {
+        displayName: 'Erin Trial',
+        tier: 'free' as const,
+        billingCycle: null,
+        monthlyRevenue: 0,
+        balance: 0,
+        openPositions: 0,
+        lastActivityIso: null,
+        status: 'cancelled' as const,
+        signup: '2026-01-20',
+        notionalMove: null,
+      },
+    ],
+  },
   llmCosts: {
     kpis: {
       totalSpend: 4.27,

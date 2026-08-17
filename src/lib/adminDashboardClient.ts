@@ -150,6 +150,58 @@ export interface LlmCosts {
   errorMessage: string | null;
 }
 
+// One point on a per-user or per-asset cumulative-PnL sparkline. `date` is
+// ISO ("2026-08-03"); `cumPnl` is running total in dollars.
+export interface CumulativePnlPoint {
+  date: string;
+  cumPnl: number;
+}
+
+export interface TraderCumulativePnlRow {
+  displayName: string;
+  isSelf: boolean;
+  tier: 'premium' | 'standard' | 'free';
+  subscriptionStatus: string;
+  balance: number;
+  openPositions: number;
+  totalTrades: number;
+  totalPnl30d: number;
+  peak30d: number;
+  trough30d: number;
+  lastCloseIso: string | null;
+  series: CumulativePnlPoint[];
+}
+
+export interface AssetScoreboardRow {
+  symbol: string;
+  closes: number;
+  wins: number;
+  winPct: number;
+  volume: number;
+  netPnl: number;
+  avgHoldHours: number;
+  series: CumulativePnlPoint[];
+}
+
+export interface SubscriptionRisk {
+  displayName: string;
+  tier: 'premium' | 'standard' | 'free';
+  billingCycle: 'monthly' | 'annual' | null;
+  monthlyRevenue: number;
+  balance: number;
+  openPositions: number;
+  lastActivityIso: string | null;
+  status: 'past_due' | 'cancelling' | 'cancelled';
+  signup: string;
+  notionalMove: number | null;
+}
+
+export interface SubscriptionRisks {
+  pastDue: SubscriptionRisk[];
+  cancelling: SubscriptionRisk[];
+  cancelledLast30d: SubscriptionRisk[];
+}
+
 export interface DashboardResponse {
   generatedAt: string;
   kpis: Kpis;
@@ -159,6 +211,11 @@ export interface DashboardResponse {
   revenueBreakdown: RevenueRow[];
   cohortFunnel: CohortRow[];
   pnlSeries30d: DailyBucket[];
+  // New sections (backend PR #163 added these). Optional so an old backend
+  // response missing them still renders the rest of the dashboard.
+  traderCumulativePnl30d?: TraderCumulativePnlRow[];
+  assetScoreboard30d?: AssetScoreboardRow[];
+  subscriptionRisks?: SubscriptionRisks;
   curated: Curated;
   github: GithubActivity;
   llmCosts?: LlmCosts;

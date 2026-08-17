@@ -522,3 +522,254 @@
   font-size: 13px;
   border: 1px solid var(--ad-red);
 }
+
+/* ── Sparkline (Cumulative PnL / Trajectory) ──────────────────────────── */
+.admin-dash .ad-spark {
+  display: inline-block;
+  vertical-align: middle;
+}
+.admin-dash .ad-spark path {
+  fill: none;
+  stroke-width: 1.5;
+}
+.admin-dash .ad-spark.ad-spark-ad-green path {
+  stroke: var(--ad-green-dark);
+}
+.admin-dash .ad-spark.ad-spark-ad-red path {
+  stroke: var(--ad-red-dark);
+}
+.admin-dash .ad-spark.ad-spark-ad-gray path {
+  stroke: var(--ad-gray-400);
+}
+.admin-dash .ad-spark .ad-spark-zero {
+  stroke: var(--ad-gray-200);
+}
+.admin-dash .ad-spark-empty {
+  background: var(--ad-gray-50);
+  border-radius: 2px;
+}
+
+/* Sortable column headers */
+.admin-dash th.ad-sortable::after {
+  content: ' ↕';
+  color: var(--ad-gray-400);
+  font-weight: 400;
+  font-size: 9px;
+}
+.admin-dash th.ad-sort-active {
+  color: var(--ad-purple-dark);
+}
+.admin-dash th.ad-sort-active::after {
+  content: ' ↓';
+  font-size: 9px;
+}
+
+/* ── Movers strip (Trader Cumulative PnL section) ─────────────────────── */
+.admin-dash .ad-movers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 800px) {
+  .admin-dash .ad-movers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.admin-dash .ad-mover-card {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+.admin-dash .ad-mover-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ad-gray-500);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.admin-dash .ad-mover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.admin-dash .ad-mover-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ad-ink);
+}
+.admin-dash .ad-mover-pnl {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.admin-dash .ad-mover-detail {
+  font-size: 11px;
+  color: var(--ad-gray-500);
+  margin-top: 6px;
+}
+
+/* ── Filter bar ──────────────────────────────────────────────────────── */
+.admin-dash .ad-filter-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+.admin-dash .ad-filter-bar label {
+  font-size: 10px;
+  color: var(--ad-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.admin-dash .ad-filter-bar select {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--ad-border);
+  border-radius: 4px;
+  background: var(--ad-white);
+  color: var(--ad-ink);
+  font-family: inherit;
+  cursor: pointer;
+}
+.admin-dash .ad-filter-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ad-gray-500);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Show-more table footer (Asset Scoreboard) ────────────────────────── */
+.admin-dash .ad-show-more-row {
+  text-align: center;
+  padding: 12px !important;
+  background: var(--ad-gray-50);
+  color: var(--ad-purple-dark);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+.admin-dash .ad-show-more-row:hover {
+  background: var(--ad-lavender-50);
+}
+.admin-dash .ad-show-more-subtle {
+  color: var(--ad-gray-500);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.admin-dash tr.ad-row-highlight {
+  background: var(--ad-red-bg);
+}
+.admin-dash tr.ad-row-highlight:hover {
+  background: #fce8e8;
+}
+
+/* ── Subscription Risks ───────────────────────────────────────────────── */
+.admin-dash .ad-risks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 800px) {
+  .admin-dash .ad-risks-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.admin-dash .ad-churn-card {
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--ad-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+.admin-dash .ad-churn-critical {
+  border-left-color: var(--ad-red-dark);
+}
+.admin-dash .ad-churn-warn {
+  border-left-color: var(--ad-amber-dark);
+}
+.admin-dash .ad-churn-info {
+  border-left-color: var(--ad-gray-400);
+}
+.admin-dash .ad-churn-card h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ad-gray-500);
+  font-weight: 600;
+}
+.admin-dash .ad-churn-count {
+  font-size: 30px;
+  font-weight: 700;
+  margin: 4px 0 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ad-ink);
+  line-height: 1;
+}
+.admin-dash .ad-churn-empty {
+  color: var(--ad-gray-400);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.admin-dash .ad-churn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+.admin-dash .ad-churn-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 12px;
+  border-top: 1px dashed var(--ad-gray-200);
+  gap: 8px;
+}
+.admin-dash .ad-churn-list li:first-child {
+  border-top: none;
+}
+.admin-dash .ad-churn-who {
+  font-weight: 600;
+  color: var(--ad-ink);
+  font-size: 13px;
+}
+.admin-dash .ad-churn-meta {
+  color: var(--ad-gray-500);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.admin-dash .ad-churn-action {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--ad-purple-dark);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+.admin-dash .ad-churn-action:hover {
+  color: var(--ad-purple);
+  text-decoration: underline;
+}
