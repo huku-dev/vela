@@ -544,6 +544,15 @@
 .admin-dash .ad-spark .ad-spark-zero {
   stroke: var(--ad-gray-200);
 }
+.admin-dash .ad-spark.ad-spark-ad-green .ad-spark-marker {
+  fill: var(--ad-green-dark);
+}
+.admin-dash .ad-spark.ad-spark-ad-red .ad-spark-marker {
+  fill: var(--ad-red-dark);
+}
+.admin-dash .ad-spark.ad-spark-ad-gray .ad-spark-marker {
+  fill: var(--ad-gray-400);
+}
 .admin-dash .ad-spark-empty {
   background: var(--ad-gray-50);
   border-radius: 2px;
@@ -671,7 +680,9 @@
   background: var(--ad-red-bg);
 }
 .admin-dash tr.ad-row-highlight:hover {
-  background: #fce8e8;
+  /* Darken the red-bg slightly on hover using color-mix rather than a
+     hardcoded hex; keeps the highlight tone consistent with the token set. */
+  background: color-mix(in srgb, var(--ad-red-bg) 85%, var(--ad-ink) 5%);
 }
 
 /* ── Subscription Risks ───────────────────────────────────────────────── */

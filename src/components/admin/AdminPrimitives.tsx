@@ -105,7 +105,7 @@ export function SidePill({ side }: { side: 'long' | 'short' }) {
  * Compact SVG line chart for a running series (cumulative PnL by day, etc).
  * Auto-scales to the series' own min/max with a small padding. Tone is picked
  * from the final value's sign; a dashed zero baseline anchors interpretation.
- * Renders inline in a table cell — do not use for standalone charts.
+ * Renders inline in a table cell, not for standalone charts.
  */
 export function Sparkline({
   values,
@@ -135,7 +135,34 @@ export function Sparkline({
   };
   const zeroY = yFor(0);
 
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
+  // Single-point series: SVG path with only M and no L renders nothing. Draw
+  // a circle marker at the point instead so the row does not appear blank.
+  if (values.length === 1) {
+    const cx = width / 2;
+    const cy = yFor(values[0]);
+    return (
+      <svg
+        className={`ad-spark ad-spark-${tone}`}
+        viewBox={`0 0 ${width} ${height}`}
+        width={width}
+        height={height}
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <line
+          className="ad-spark-zero"
+          x1={0}
+          y1={zeroY}
+          x2={width}
+          y2={zeroY}
+          strokeDasharray="1 2"
+        />
+        <circle cx={cx} cy={cy} r={2} className="ad-spark-marker" />
+      </svg>
+    );
+  }
+
+  const step = width / (values.length - 1);
   const path = values
     .map((v, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${yFor(v).toFixed(1)}`)
     .join(' ');

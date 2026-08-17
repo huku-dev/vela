@@ -898,7 +898,7 @@ export function LlmCostSection({ data }: { data: LlmCosts }) {
 // Replaces the daily-PnL bar chart. Compact per-trader row with an inline
 // sparkline of cumulative realized PnL. Movers strip on top surfaces the
 // biggest gain, biggest loss, and one "notable" pick regardless of how many
-// traders the table holds — so the section stays legible past 60 users.
+// traders the table holds, so the section stays legible past 60 users.
 
 type TraderFilter = 'active30d' | 'all';
 type TraderSort = 'pnl' | 'peak' | 'trough' | 'balance' | 'name';
@@ -933,10 +933,15 @@ export function TraderCumulativePnlSection({
   const platform30d = rows.reduce((acc, r) => acc + r.totalPnl30d, 0);
   const winner = rows.slice().sort((a, b) => b.totalPnl30d - a.totalPnl30d)[0] ?? null;
   const loser = rows.slice().sort((a, b) => a.totalPnl30d - b.totalPnl30d)[0] ?? null;
-  const newest = rows
+  // Notable slot: most recent close, but never a duplicate of winner or loser.
+  // In small trader populations (2 or 3), all extremes may collide; when they
+  // do, we render null and the card shows a placeholder rather than a repeat.
+  const isDuplicate = (r: TraderCumulativePnlRow | null) =>
+    r !== null && (r === winner || r === loser);
+  const byRecency = rows
     .slice()
-    .sort((a, b) => (b.lastCloseIso ?? '').localeCompare(a.lastCloseIso ?? ''))[0];
-  const notable = newest && newest !== winner && newest !== loser ? newest : rows[Math.min(2, rows.length - 1)] ?? null;
+    .sort((a, b) => (b.lastCloseIso ?? '').localeCompare(a.lastCloseIso ?? ''));
+  const notable = byRecency.find(r => !isDuplicate(r)) ?? null;
 
   return (
     <>
@@ -1016,7 +1021,12 @@ export function TraderCumulativePnlSection({
           </thead>
           <tbody>
             {sorted.map(r => (
-              <tr key={r.displayName}>
+              // Composite key: two traders sharing a display name would collide
+              // and cause React to reuse row DOM across users. TraderCumulativePnlRow
+              // has no stable id yet; upstream fix is to plumb privy_did into the
+              // response. Composite of name + tier + subscriptionStatus + signed
+              // balance is enough to disambiguate real users in practice.
+              <tr key={`${r.displayName}::${r.tier}::${r.subscriptionStatus}::${r.balance}`}>
                 <td>
                   <strong>
                     {r.displayName}
@@ -1167,20 +1177,24 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
   const visible = showAll ? rows : rows.slice(0, ASSET_SCOREBOARD_TOP_N);
   const hiddenRows = Math.max(0, rows.length - ASSET_SCOREBOARD_TOP_N);
   const hiddenCombined = rows.slice(ASSET_SCOREBOARD_TOP_N).reduce((acc, r) => acc + r.netPnl, 0);
-  const worst = rows[0];
+  // "Worst" ranks by ascending netPnl, NOT by |netPnl| (which is how rows are
+  // sorted). Guard on netPnl < 0 so a platform that had a purely-green 30d
+  // does not get its top winner labelled as "the largest drag".
+  const worst = rows.slice().sort((a, b) => a.netPnl - b.netPnl)[0];
+  const worstIsDrag = worst && worst.netPnl < 0 ? worst : null;
   const bestByPnl = rows.slice().sort((a, b) => b.netPnl - a.netPnl)[0];
   const maxAbs = Math.max(1, ...rows.map(r => Math.abs(r.netPnl)));
 
   return (
     <>
       <SectionTitle>Per-Asset PnL Scoreboard (30d)</SectionTitle>
-      {worst && bestByPnl && worst.symbol !== bestByPnl.symbol && (
+      {worstIsDrag && bestByPnl && worstIsDrag.symbol !== bestByPnl.symbol && (
         <NarrativeLine>
           <strong>
-            {worst.symbol} is the largest drag: {signedMoney(worst.netPnl)} across {worst.closes}{' '}
-            close{worst.closes === 1 ? '' : 's'}
+            {worstIsDrag.symbol} is the largest drag: {signedMoney(worstIsDrag.netPnl)} across{' '}
+            {worstIsDrag.closes} close{worstIsDrag.closes === 1 ? '' : 's'}
           </strong>{' '}
-          ({worst.winPct}% win rate). Best asset: <strong>{bestByPnl.symbol}</strong> at{' '}
+          ({worstIsDrag.winPct}% win rate). Best asset: <strong>{bestByPnl.symbol}</strong> at{' '}
           {signedMoney(bestByPnl.netPnl)}.
         </NarrativeLine>
       )}
@@ -1199,7 +1213,10 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
           </thead>
           <tbody>
             {visible.map(r => (
-              <tr key={r.symbol} className={r === worst ? 'ad-row-highlight' : undefined}>
+              <tr
+                key={r.symbol}
+                className={worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : undefined}
+              >
                 <td>
                   <strong>{r.symbol}</strong>
                 </td>
@@ -1249,7 +1266,7 @@ function winRateTone(pct: number): string {
 //
 // Surfaces revenue at risk before churn goes silent. Three cards for
 // past_due / cancelling / cancelled_last_30d. Dunning-nudge button is a
-// stub for now — wiring to a send-payment-reminder edge fn is a follow-up.
+// stub for now; wiring to a send-payment-reminder edge fn is a follow-up.
 
 export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }) {
   const total =
