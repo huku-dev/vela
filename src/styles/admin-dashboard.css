@@ -784,3 +784,90 @@
   color: var(--ad-purple);
   text-decoration: underline;
 }
+
+/* ── Monthly Returns section ─────────────────────────────────────────── */
+.admin-dash .ad-returns-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-dash .ad-segmented {
+  display: inline-flex;
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 6px;
+  padding: 3px;
+  gap: 2px;
+}
+.admin-dash .ad-segmented button {
+  background: transparent;
+  border: none;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ad-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: inherit;
+}
+.admin-dash .ad-segmented button.active {
+  background: var(--ad-lavender-100);
+  color: var(--ad-purple-dark);
+}
+.admin-dash .ad-segmented-hint {
+  font-size: 9px;
+  font-weight: 400;
+  opacity: 0.7;
+  margin-left: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.admin-dash .ad-returns-caption {
+  font-size: 11px;
+  color: var(--ad-gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* YTD column tinted lavender to match the reference-image treatment */
+.admin-dash th.ad-returns-ytd,
+.admin-dash td.ad-returns-ytd {
+  background: var(--ad-lavender-50);
+  border-right: 1px solid var(--ad-border);
+}
+.admin-dash th.ad-returns-ytd {
+  color: var(--ad-purple-dark);
+}
+
+/* Cell content: big percent + small $ subtext */
+.admin-dash .ad-returns-pct {
+  font-weight: 700;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.admin-dash .ad-returns-sub {
+  font-size: 10px;
+  color: var(--ad-gray-500);
+  margin-top: 3px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.admin-dash .ad-returns-empty {
+  color: var(--ad-gray-400);
+  font-weight: 400;
+}
+
+/* Per-cell background tint by sign — light so hover-lavender still reads */
+.admin-dash td.ad-returns-pos-bg {
+  background: rgba(16, 185, 129, 0.08);
+}
+.admin-dash td.ad-returns-neg-bg {
+  background: rgba(239, 68, 68, 0.08);
+}

@@ -29,6 +29,7 @@ import {
   HighlightsSection,
   KpisSection,
   LlmCostSection,
+  MonthlyReturnsSection,
   NotesSection,
   OpenPositionsSection,
   PositionConcentrationSection,
@@ -176,6 +177,10 @@ export default function AdminDashboard() {
               bars show "did the platform net win or lose that day", the
               cumulative view shows "who's up, who's down, who's improving". */}
           <ChartsSection pnlSeries={data.pnlSeries30d} />
+          {/* Monthly returns table: platform-level summary of return on capital
+              traded, month by month with year-over-year rows. Sits above the
+              per-trader breakdown so the highest-altitude view comes first. */}
+          {data.monthlyReturns && <MonthlyReturnsSection data={data.monthlyReturns} />}
           {data.traderCumulativePnl30d && (
             <TraderCumulativePnlSection
               rows={data.traderCumulativePnl30d}

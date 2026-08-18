@@ -21,6 +21,9 @@ import type {
   HighlightItem,
   Kpis,
   LlmCosts,
+  MonthlyReturns,
+  MonthlyReturnRow,
+  MonthlyReturnsYear,
   OpenPositionRow,
   RevenueRow,
   SubscriptionRisk,
@@ -1512,4 +1515,228 @@ function riskSubtitle(row: SubscriptionRisk): string {
   const price = row.monthlyRevenue > 0 ? ` · $${row.monthlyRevenue.toFixed(0)}/mo` : '';
   const last = row.lastActivityIso ? ` · last activity ${shortDate(row.lastActivityIso)}` : '';
   return `${tierLabel}${billing ? ' ' + billing : ''}${price}${last}`;
+}
+
+// ── Monthly Returns ──────────────────────────────────────────────────────
+//
+// Platform-level performance table matching the vault-return convention
+// (row per year, columns YTD + Jan-Dec, colored cell per month).
+// Toggle switches the top row between Net (default; fees + funding baked in)
+// and Gross (raw price PnL). Reference table below always shows the full
+// gross / fees / funding / net breakdown so the fee-drag and funding-rebate
+// stories are visible regardless of the toggle state.
+
+type ReturnsView = 'net' | 'gross';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
+  const [view, setView] = useState<ReturnsView>('net');
+
+  if (!data.years || data.years.length === 0) {
+    return (
+      <>
+        <SectionTitle>Monthly Returns</SectionTitle>
+        <div className="ad-empty-panel">No closed positions on record.</div>
+      </>
+    );
+  }
+
+  // Latest year drives the narrative + reference table (typically the current
+  // year). All years get a row in the top table.
+  const latest = data.years[data.years.length - 1];
+  const bestMonth = latest.months.slice().sort((a, b) => b.netPnl - a.netPnl)[0];
+  const worstMonth = latest.months.slice().sort((a, b) => a.netPnl - b.netPnl)[0];
+
+  return (
+    <>
+      <SectionTitle>Monthly Returns</SectionTitle>
+      <NarrativeLine>
+        <strong>
+          {latest.year} YTD {view === 'net' ? 'net' : 'gross'}: {signedPct(latest.ytdNetPnl, latest.ytdNotionalTotal, view, latest.ytdGrossPnl)}{' '}
+          on {formatUsd(latest.ytdNotionalTotal)} notional ({latest.ytdClosesTotal} closes,{' '}
+          {signedMoney(view === 'net' ? latest.ytdNetPnl : latest.ytdGrossPnl)} {view === 'net' ? 'net' : 'gross'})
+        </strong>
+        {latest.ytdFees > 0 && (
+          <>
+            . Fees {signedMoney(-latest.ytdFees)} drag; funding{' '}
+            {latest.ytdFunding >= 0 ? (
+              <>
+                <strong className="ad-green">+{formatUsd(latest.ytdFunding)}</strong> net received
+              </>
+            ) : (
+              <>{signedMoney(latest.ytdFunding)} net paid</>
+            )}
+            .
+          </>
+        )}
+        {bestMonth && worstMonth && bestMonth.month !== worstMonth.month && (
+          <>
+            {' '}Best: <strong>{MONTH_NAMES[bestMonth.month - 1]} {signedMoney(bestMonth.netPnl)}</strong>.
+            {' '}Worst: <strong>{MONTH_NAMES[worstMonth.month - 1]} {signedMoney(worstMonth.netPnl)}</strong>.
+          </>
+        )}
+      </NarrativeLine>
+
+      <div className="ad-returns-toolbar">
+        <div className="ad-segmented">
+          <button
+            type="button"
+            className={view === 'net' ? 'active' : ''}
+            onClick={() => setView('net')}
+          >
+            Net
+            <span className="ad-segmented-hint">after fees + funding</span>
+          </button>
+          <button
+            type="button"
+            className={view === 'gross' ? 'active' : ''}
+            onClick={() => setView('gross')}
+          >
+            Gross
+            <span className="ad-segmented-hint">raw price PnL</span>
+          </button>
+        </div>
+        <span className="ad-returns-caption">% of notional traded</span>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th className="ad-right ad-returns-ytd">YTD</th>
+              {MONTH_NAMES.map(m => (
+                <th key={m} className="ad-right">{m}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.years.map(y => (
+              <ReturnsYearRow key={y.year} year={y} view={view} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <MonthlyReturnsReference year={latest} />
+    </>
+  );
+}
+
+function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: ReturnsView }) {
+  const monthByIdx = new Map<number, MonthlyReturnRow>();
+  for (const m of year.months) monthByIdx.set(m.month, m);
+
+  const ytdPnl = view === 'net' ? year.ytdNetPnl : year.ytdGrossPnl;
+  const ytdPctText = ytdPnl === 0 && year.ytdNotionalTotal === 0
+    ? '—'
+    : `${ytdPnl >= 0 ? '+' : ''}${((ytdPnl / Math.max(1, year.ytdNotionalTotal)) * 100).toFixed(2)}%`;
+
+  return (
+    <tr>
+      <td><strong>{year.year}</strong></td>
+      <td className={`ad-right ad-returns-ytd ${cellBgClass(ytdPnl)}`}>
+        <div className={`ad-returns-pct ${cellFgClass(ytdPnl)}`}>{ytdPctText}</div>
+        <div className="ad-returns-sub">{signedMoney(ytdPnl)}</div>
+      </td>
+      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+        const row = monthByIdx.get(m);
+        if (!row) {
+          return <td key={m} className="ad-right ad-returns-empty">—</td>;
+        }
+        const pnl = view === 'net' ? row.netPnl : row.grossPnl;
+        const pct = (pnl / Math.max(1, row.notional)) * 100;
+        return (
+          <td key={m} className={`ad-right ${cellBgClass(pnl)}`}>
+            <div className={`ad-returns-pct ${cellFgClass(pnl)}`}>
+              {pnl >= 0 ? '+' : ''}{pct.toFixed(2)}%
+            </div>
+            <div className="ad-returns-sub">{signedMoney(pnl)}</div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+}
+
+function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div className="ad-section-note" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ad-gray-500)', fontWeight: 600 }}>
+        Reference · {year.year} breakdown (gross / fees / funding / net)
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th className="ad-right">Closes</th>
+            <th className="ad-right">Notional</th>
+            <th className="ad-right">Gross</th>
+            <th className="ad-right">Fees</th>
+            <th className="ad-right">Funding</th>
+            <th className="ad-right">Net</th>
+            <th className="ad-right">Net %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {year.months.map(m => {
+            const netPct = (m.netPnl / Math.max(1, m.notional)) * 100;
+            return (
+              <tr key={m.month}>
+                <td>{MONTH_NAMES[m.month - 1]} {year.year}</td>
+                <td className="ad-right ad-mono">{m.closes}</td>
+                <td className="ad-right ad-mono">{formatUsd(m.notional)}</td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.grossPnl)}`}>{signedMoney(m.grossPnl)}</td>
+                <td className={`ad-right ad-mono ${m.fees > 0.005 ? 'ad-red' : ''}`}>{signedMoney(-m.fees)}</td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.funding)}`}>{signedMoney(m.funding)}</td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.netPnl)}`}><strong>{signedMoney(m.netPnl)}</strong></td>
+                <td className={`ad-right ad-mono ${cellFgClass(netPct)}`}><strong>{netPct >= 0 ? '+' : ''}{netPct.toFixed(2)}%</strong></td>
+              </tr>
+            );
+          })}
+          <tr style={{ borderTop: '2px solid var(--ad-border)' }}>
+            <td><strong>YTD</strong></td>
+            <td className="ad-right ad-mono"><strong>{year.ytdClosesTotal}</strong></td>
+            <td className="ad-right ad-mono"><strong>{formatUsd(year.ytdNotionalTotal)}</strong></td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdGrossPnl)}`}><strong>{signedMoney(year.ytdGrossPnl)}</strong></td>
+            <td className={`ad-right ad-mono ${year.ytdFees > 0.005 ? 'ad-red' : ''}`}><strong>{signedMoney(-year.ytdFees)}</strong></td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdFunding)}`}><strong>{signedMoney(year.ytdFunding)}</strong></td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}><strong>{signedMoney(year.ytdNetPnl)}</strong></td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}>
+              <strong>
+                {year.ytdNetPnl >= 0 ? '+' : ''}
+                {((year.ytdNetPnl / Math.max(1, year.ytdNotionalTotal)) * 100).toFixed(2)}%
+              </strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function cellBgClass(pnl: number): string {
+  if (Math.abs(pnl) < 0.005) return '';
+  return pnl > 0 ? 'ad-returns-pos-bg' : 'ad-returns-neg-bg';
+}
+
+function cellFgClass(v: number): string {
+  if (Math.abs(v) < 0.005) return '';
+  return v > 0 ? 'ad-green' : 'ad-red';
+}
+
+function formatUsd(n: number): string {
+  if (Math.abs(n) < 0.005) return '$0';
+  const abs = Math.abs(n);
+  if (abs >= 1000) return `$${abs.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  if (abs >= 100) return `$${abs.toFixed(0)}`;
+  return `$${abs.toFixed(2)}`;
+}
+
+function signedPct(netPnl: number, notional: number, view: ReturnsView, grossPnl: number): string {
+  const pnl = view === 'net' ? netPnl : grossPnl;
+  if (notional <= 0) return '—';
+  const pct = (pnl / notional) * 100;
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
 }
