@@ -402,4 +402,25 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     ],
     errorMessage: null,
   },
+  monthlyReturns: {
+    years: [
+      {
+        year: 2026,
+        months: [
+          { year: 2026, month: 3, closes: 64, notional: 6402, grossPnl: -38.53, fees: 5.66, funding: 0.91, netPnl: -43.28 },
+          { year: 2026, month: 4, closes: 210, notional: 23986, grossPnl: -34.63, fees: 17.54, funding: 3.90, netPnl: -48.27 },
+          { year: 2026, month: 5, closes: 168, notional: 12821, grossPnl: 21.95, fees: 8.45, funding: -1.62, netPnl: 11.88 },
+          { year: 2026, month: 6, closes: 130, notional: 10044, grossPnl: -59.01, fees: 4.16, funding: -0.36, netPnl: -63.53 },
+          { year: 2026, month: 7, closes: 154, notional: 7790, grossPnl: 1.33, fees: 3.74, funding: 0.26, netPnl: -2.15 },
+          { year: 2026, month: 8, closes: 53, notional: 3686, grossPnl: -63.79, fees: 1.74, funding: -0.51, netPnl: -66.03 },
+        ],
+        ytdClosesTotal: 779,
+        ytdNotionalTotal: 64729,
+        ytdGrossPnl: -172.68,
+        ytdFees: 41.29,
+        ytdFunding: 2.58,
+        ytdNetPnl: -211.39,
+      },
+    ],
+  },
 };

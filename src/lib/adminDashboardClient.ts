@@ -202,6 +202,32 @@ export interface SubscriptionRisks {
   cancelledLast30d: SubscriptionRisk[];
 }
 
+export interface MonthlyReturnRow {
+  year: number;
+  month: number; // 1-12
+  closes: number;
+  notional: number;
+  grossPnl: number;
+  fees: number; // always ≥ 0 (cost)
+  funding: number; // signed: positive = received, negative = paid
+  netPnl: number; // gross - fees + funding
+}
+
+export interface MonthlyReturnsYear {
+  year: number;
+  months: MonthlyReturnRow[]; // sparse; frontend fills the Jan-Dec grid
+  ytdClosesTotal: number;
+  ytdNotionalTotal: number;
+  ytdGrossPnl: number;
+  ytdFees: number;
+  ytdFunding: number;
+  ytdNetPnl: number;
+}
+
+export interface MonthlyReturns {
+  years: MonthlyReturnsYear[];
+}
+
 export interface DashboardResponse {
   generatedAt: string;
   kpis: Kpis;
@@ -216,6 +242,8 @@ export interface DashboardResponse {
   traderCumulativePnl30d?: TraderCumulativePnlRow[];
   assetScoreboard30d?: AssetScoreboardRow[];
   subscriptionRisks?: SubscriptionRisks;
+  // Backend PR #165 added this. Optional so a pre-#165 response still renders.
+  monthlyReturns?: MonthlyReturns;
   curated: Curated;
   github: GithubActivity;
   llmCosts?: LlmCosts;
