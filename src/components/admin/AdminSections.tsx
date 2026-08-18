@@ -1004,13 +1004,13 @@ export function TraderCumulativePnlSection({
                 align="right"
               />
               <SortHeader
-                label="Peak"
+                label="30d high"
                 active={sort === 'peak'}
                 onClick={() => setSort('peak')}
                 align="right"
               />
               <SortHeader
-                label="Trough"
+                label="30d low"
                 active={sort === 'trough'}
                 onClick={() => setSort('trough')}
                 align="right"
@@ -1091,8 +1091,8 @@ function MoverCard({
         <span className={`ad-mover-pnl ${toneClass}`}>{signedMoney(row.totalPnl30d)}</span>
       </div>
       <div className="ad-mover-detail">
-        Peak {signedMoney(row.peak30d)} · Trough {signedMoney(row.trough30d)} · {row.openPositions}{' '}
-        open
+        30d high {signedMoney(row.peak30d)} · 30d low {signedMoney(row.trough30d)} ·{' '}
+        {row.openPositions} open
       </div>
     </div>
   );
@@ -1163,8 +1163,42 @@ function SortHeader({
 
 const ASSET_SCOREBOARD_TOP_N = 10;
 
+// Column identifiers for sort state. 'default' means "keep backend order",
+// which is |netPnl| desc — biggest movers on either side surface first.
+type AssetSort =
+  | 'default'
+  | 'symbol'
+  | 'closes'
+  | 'winPct'
+  | 'volume'
+  | 'netPnl'
+  | 'avgHold';
+type SortDir = 'asc' | 'desc';
+
+function compareAssets(a: AssetScoreboardRow, b: AssetScoreboardRow, by: AssetSort): number {
+  switch (by) {
+    case 'symbol':
+      return a.symbol.localeCompare(b.symbol);
+    case 'closes':
+      return a.closes - b.closes;
+    case 'winPct':
+      return a.winPct - b.winPct;
+    case 'volume':
+      return a.volume - b.volume;
+    case 'netPnl':
+      return a.netPnl - b.netPnl;
+    case 'avgHold':
+      return a.avgHoldHours - b.avgHoldHours;
+    default:
+      return 0;
+  }
+}
+
 export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] }) {
   const [showAll, setShowAll] = useState(false);
+  const [sortBy, setSortBy] = useState<AssetSort>('default');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+
   if (rows.length === 0) {
     return (
       <>
@@ -1174,12 +1208,34 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
     );
   }
 
-  const visible = showAll ? rows : rows.slice(0, ASSET_SCOREBOARD_TOP_N);
-  const hiddenRows = Math.max(0, rows.length - ASSET_SCOREBOARD_TOP_N);
-  const hiddenCombined = rows.slice(ASSET_SCOREBOARD_TOP_N).reduce((acc, r) => acc + r.netPnl, 0);
-  // "Worst" ranks by ascending netPnl, NOT by |netPnl| (which is how rows are
-  // sorted). Guard on netPnl < 0 so a platform that had a purely-green 30d
-  // does not get its top winner labelled as "the largest drag".
+  // Click semantics: first click on a column sorts DESC (largest first);
+  // second click on the same column toggles to ASC. Clicking a different
+  // column resets direction to DESC. Symbol is the exception: its natural
+  // order is A-Z, so first click sorts ASC.
+  const onColumnClick = (col: AssetSort) => {
+    if (col === sortBy) {
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy(col);
+      setSortDir(col === 'symbol' ? 'asc' : 'desc');
+    }
+  };
+
+  const sortedRows =
+    sortBy === 'default'
+      ? rows
+      : rows
+          .slice()
+          .sort((a, b) => (sortDir === 'asc' ? 1 : -1) * compareAssets(a, b, sortBy));
+
+  const visible = showAll ? sortedRows : sortedRows.slice(0, ASSET_SCOREBOARD_TOP_N);
+  const hiddenRows = Math.max(0, sortedRows.length - ASSET_SCOREBOARD_TOP_N);
+  const hiddenCombined = sortedRows
+    .slice(ASSET_SCOREBOARD_TOP_N)
+    .reduce((acc, r) => acc + r.netPnl, 0);
+  // "Worst" and "Best" are always computed against the full population by
+  // netPnl, independent of the user's sort choice. Highlighting the largest
+  // drag row must stay stable even when the user sorts by, say, avg hold.
   const worst = rows.slice().sort((a, b) => a.netPnl - b.netPnl)[0];
   const worstIsDrag = worst && worst.netPnl < 0 ? worst : null;
   const bestByPnl = rows.slice().sort((a, b) => b.netPnl - a.netPnl)[0];
@@ -1202,12 +1258,53 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
         <table>
           <thead>
             <tr>
-              <th>Symbol</th>
-              <th className="ad-right">Closes</th>
-              <th className="ad-right">Win%</th>
-              <th className="ad-right">Volume</th>
-              <th className="ad-right">Net PnL</th>
-              <th className="ad-right">Avg hold</th>
+              <AssetSortHeader
+                label="Symbol"
+                col="symbol"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+              />
+              <AssetSortHeader
+                label="Closes"
+                col="closes"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
+              <AssetSortHeader
+                label="Win%"
+                col="winPct"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
+              <AssetSortHeader
+                label="Volume"
+                col="volume"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
+              <AssetSortHeader
+                label="Net PnL"
+                col="netPnl"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
+              <AssetSortHeader
+                label="Avg hold"
+                col="avgHold"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
               <th>Cumulative PnL (30d)</th>
             </tr>
           </thead>
@@ -1235,7 +1332,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
             {!showAll && hiddenRows > 0 && (
               <tr>
                 <td colSpan={7} className="ad-show-more-row" onClick={() => setShowAll(true)}>
-                  Show all {rows.length} symbols
+                  Show all {sortedRows.length} symbols
                   <span className="ad-show-more-subtle">
                     ({hiddenRows} hidden, combined {signedMoney(hiddenCombined)})
                   </span>
@@ -1253,6 +1350,35 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
         </table>
       </div>
     </>
+  );
+}
+
+function AssetSortHeader({
+  label,
+  col,
+  sortBy,
+  sortDir,
+  onClick,
+  align,
+}: {
+  label: string;
+  col: AssetSort;
+  sortBy: AssetSort;
+  sortDir: SortDir;
+  onClick: (col: AssetSort) => void;
+  align?: 'right';
+}) {
+  const isActive = sortBy === col;
+  const arrow = isActive ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+  return (
+    <th
+      className={`${align === 'right' ? 'ad-right' : ''} ${isActive ? 'ad-sort-active' : 'ad-sortable'}`}
+      onClick={() => onClick(col)}
+      style={{ cursor: 'pointer' }}
+    >
+      {label}
+      {arrow}
+    </th>
   );
 }
 

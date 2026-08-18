@@ -24,6 +24,7 @@ import { FIXTURE_DASHBOARD } from '../lib/adminDashboardFixtures';
 import {
   AssetScoreboardSection,
   CarryoverSection,
+  ChartsSection,
   CohortFunnelSection,
   HighlightsSection,
   KpisSection,
@@ -170,6 +171,11 @@ export default function AdminDashboard() {
           )}
           {data.llmCosts && <LlmCostSection data={data.llmCosts} />}
           <CohortFunnelSection rows={data.cohortFunnel} />
+          {/* Daily platform PnL bar chart. Kept alongside the per-trader
+              cumulative view because they answer different questions: the
+              bars show "did the platform net win or lose that day", the
+              cumulative view shows "who's up, who's down, who's improving". */}
+          <ChartsSection pnlSeries={data.pnlSeries30d} />
           {data.traderCumulativePnl30d && (
             <TraderCumulativePnlSection
               rows={data.traderCumulativePnl30d}
