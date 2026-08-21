@@ -222,6 +222,30 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     }
     return days;
   })(),
+  pnlSeries7d: (() => {
+    const days: DashboardResponse['pnlSeries30d'] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = i + 1;
+      const trades = ((i * 2) % 8) + 2;
+      const traders = Math.min(3, Math.ceil(trades / 3));
+      const pnl = Math.round((Math.cos(i / 2) * 6 - 2) * 100) / 100;
+      days.push({ date: `Jan ${day}`, trades, traders, pnl });
+    }
+    return days;
+  })(),
+  pnlSeries90d: (() => {
+    const days: DashboardResponse['pnlSeries30d'] = [];
+    const months = ['Nov', 'Dec', 'Jan'];
+    for (let i = 0; i < 90; i++) {
+      const monthIdx = Math.floor(i / 30);
+      const day = (i % 30) + 1;
+      const trades = (i * 3) % 15;
+      const traders = Math.min(4, Math.max(0, trades > 0 ? Math.ceil(trades / 3) : 0));
+      const pnl = Math.round((Math.sin(i / 4) * 12 + (i % 7 === 0 ? -6 : 3)) * 100) / 100;
+      days.push({ date: `${months[monthIdx]} ${day}`, trades, traders, pnl });
+    }
+    return days;
+  })(),
   curated: {
     highlights: [
       { direction: 'up', body: '**Fixture highlight A.** Synthetic prose for design iteration.' },
@@ -284,9 +308,43 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
   },
   traderCumulativePnl30d: (() => {
     const trend = [
-      { name: 'Alice Example', tier: 'premium' as const, status: 'active', bal: 500, open: 4, trades: 100, daily: [0, 0.5, 1.2, 2.1, 3.0, 5.5, 6.1, 6.9, 7.5, 8.0, 8.8, 9.0, 9.2, 9.5, 4.0, 3.5, 3.4, 3.3, 3.5, 3.7, 4.0, 4.1, 3.9, 3.8, 3.6, 3.5, 3.7, 3.9, 4.1, 4.3] },
-      { name: 'Bob Sample', tier: 'premium' as const, status: 'past_due', bal: 300, open: 5, trades: 80, daily: [0, -0.5, -1.0, -0.7, -0.4, 0.2, 0.8, 1.5, 2.0, 2.5, 2.7, 3.0, 2.5, -12.0, -12.5, -12.3, -12.0, -11.8, -11.5, -11.0, -10.7, -10.5, -10.3, -10.1, -9.9, -9.7, -9.5, -9.3, -9.1, -8.9] },
-      { name: 'Carol Demo', tier: 'standard' as const, status: 'active', bal: 200, open: 3, trades: 60, daily: [0, 0.1, 0.3, 0.5, 0.4, 0.6, 0.8, 1.0, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.4, 2.5, 2.7, 2.9, 3.1, 3.3, 3.5, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4] },
+      {
+        name: 'Alice Example',
+        tier: 'premium' as const,
+        status: 'active',
+        bal: 500,
+        open: 4,
+        trades: 100,
+        daily: [
+          0, 0.5, 1.2, 2.1, 3.0, 5.5, 6.1, 6.9, 7.5, 8.0, 8.8, 9.0, 9.2, 9.5, 4.0, 3.5, 3.4, 3.3,
+          3.5, 3.7, 4.0, 4.1, 3.9, 3.8, 3.6, 3.5, 3.7, 3.9, 4.1, 4.3,
+        ],
+      },
+      {
+        name: 'Bob Sample',
+        tier: 'premium' as const,
+        status: 'past_due',
+        bal: 300,
+        open: 5,
+        trades: 80,
+        daily: [
+          0, -0.5, -1.0, -0.7, -0.4, 0.2, 0.8, 1.5, 2.0, 2.5, 2.7, 3.0, 2.5, -12.0, -12.5, -12.3,
+          -12.0, -11.8, -11.5, -11.0, -10.7, -10.5, -10.3, -10.1, -9.9, -9.7, -9.5, -9.3, -9.1,
+          -8.9,
+        ],
+      },
+      {
+        name: 'Carol Demo',
+        tier: 'standard' as const,
+        status: 'active',
+        bal: 200,
+        open: 3,
+        trades: 60,
+        daily: [
+          0, 0.1, 0.3, 0.5, 0.4, 0.6, 0.8, 1.0, 1.1, 1.3, 1.5, 1.7, 1.9, 2.1, 2.3, 2.4, 2.5, 2.7,
+          2.9, 3.1, 3.3, 3.5, 3.7, 3.8, 3.9, 4.0, 4.1, 4.2, 4.3, 4.4,
+        ],
+      },
     ];
     return trend.map(t => {
       const series = t.daily.map((v, i) => ({
@@ -391,12 +449,24 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
       tokenVolumeDelta: 0.08,
       cacheHitRate: 0.34,
       cacheHitRateDelta: 0.02,
-      blendedPer1M: 0.10,
+      blendedPer1M: 0.1,
       blendedPer1MDelta: -0.18,
     },
     providers: [
-      { provider: 'deepseek', cost: 2.85, calls: 3200, inputTokens: 18_000_000, outputTokens: 4_500_000 },
-      { provider: 'anthropic', cost: 1.42, calls: 210, inputTokens: 1_200_000, outputTokens: 350_000 },
+      {
+        provider: 'deepseek',
+        cost: 2.85,
+        calls: 3200,
+        inputTokens: 18_000_000,
+        outputTokens: 4_500_000,
+      },
+      {
+        provider: 'anthropic',
+        cost: 1.42,
+        calls: 210,
+        inputTokens: 1_200_000,
+        outputTokens: 350_000,
+      },
       { provider: 'groq', cost: 0, calls: 4100, inputTokens: 15_000_000, outputTokens: 3_200_000 },
       { provider: 'nvidia', cost: 0, calls: 920, inputTokens: 800_000, outputTokens: 250_000 },
     ],
@@ -407,12 +477,66 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
       {
         year: 2026,
         months: [
-          { year: 2026, month: 3, closes: 64, notional: 6402, grossPnl: -38.53, fees: 5.66, funding: 0.91, netPnl: -43.28 },
-          { year: 2026, month: 4, closes: 210, notional: 23986, grossPnl: -34.63, fees: 17.54, funding: 3.90, netPnl: -48.27 },
-          { year: 2026, month: 5, closes: 168, notional: 12821, grossPnl: 21.95, fees: 8.45, funding: -1.62, netPnl: 11.88 },
-          { year: 2026, month: 6, closes: 130, notional: 10044, grossPnl: -59.01, fees: 4.16, funding: -0.36, netPnl: -63.53 },
-          { year: 2026, month: 7, closes: 154, notional: 7790, grossPnl: 1.33, fees: 3.74, funding: 0.26, netPnl: -2.15 },
-          { year: 2026, month: 8, closes: 53, notional: 3686, grossPnl: -63.79, fees: 1.74, funding: -0.51, netPnl: -66.03 },
+          {
+            year: 2026,
+            month: 3,
+            closes: 64,
+            notional: 6402,
+            grossPnl: -38.53,
+            fees: 5.66,
+            funding: 0.91,
+            netPnl: -43.28,
+          },
+          {
+            year: 2026,
+            month: 4,
+            closes: 210,
+            notional: 23986,
+            grossPnl: -34.63,
+            fees: 17.54,
+            funding: 3.9,
+            netPnl: -48.27,
+          },
+          {
+            year: 2026,
+            month: 5,
+            closes: 168,
+            notional: 12821,
+            grossPnl: 21.95,
+            fees: 8.45,
+            funding: -1.62,
+            netPnl: 11.88,
+          },
+          {
+            year: 2026,
+            month: 6,
+            closes: 130,
+            notional: 10044,
+            grossPnl: -59.01,
+            fees: 4.16,
+            funding: -0.36,
+            netPnl: -63.53,
+          },
+          {
+            year: 2026,
+            month: 7,
+            closes: 154,
+            notional: 7790,
+            grossPnl: 1.33,
+            fees: 3.74,
+            funding: 0.26,
+            netPnl: -2.15,
+          },
+          {
+            year: 2026,
+            month: 8,
+            closes: 53,
+            notional: 3686,
+            grossPnl: -63.79,
+            fees: 1.74,
+            funding: -0.51,
+            netPnl: -66.03,
+          },
         ],
         ytdClosesTotal: 779,
         ytdNotionalTotal: 64729,

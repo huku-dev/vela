@@ -167,16 +167,18 @@ export default function AdminDashboard() {
           <VelocitySection github={data.github} />
 
           <RevenueBreakdownSection rows={data.revenueBreakdown} mrr={data.kpis.mrr} />
-          {data.subscriptionRisks && (
-            <SubscriptionRisksSection risks={data.subscriptionRisks} />
-          )}
+          {data.subscriptionRisks && <SubscriptionRisksSection risks={data.subscriptionRisks} />}
           {data.llmCosts && <LlmCostSection data={data.llmCosts} />}
           <CohortFunnelSection rows={data.cohortFunnel} />
           {/* Daily platform PnL bar chart. Kept alongside the per-trader
               cumulative view because they answer different questions: the
               bars show "did the platform net win or lose that day", the
               cumulative view shows "who's up, who's down, who's improving". */}
-          <ChartsSection pnlSeries={data.pnlSeries30d} />
+          <ChartsSection
+            pnlSeries7d={data.pnlSeries7d}
+            pnlSeries30d={data.pnlSeries30d}
+            pnlSeries90d={data.pnlSeries90d}
+          />
           {/* Monthly returns table: platform-level summary of return on capital
               traded, month by month with year-over-year rows. Sits above the
               per-trader breakdown so the highest-altitude view comes first. */}
@@ -187,9 +189,7 @@ export default function AdminDashboard() {
               totalUsers={data.kpis.totalUsers}
             />
           )}
-          {data.assetScoreboard30d && (
-            <AssetScoreboardSection rows={data.assetScoreboard30d} />
-          )}
+          {data.assetScoreboard30d && <AssetScoreboardSection rows={data.assetScoreboard30d} />}
           <UserOverviewSection rows={data.userOverview} />
           <PositionConcentrationSection rows={data.positionConcentration} />
           <OpenPositionsSection rows={data.openPositions} />
