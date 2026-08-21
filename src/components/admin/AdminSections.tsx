@@ -271,13 +271,65 @@ function shortWeek(iso: string): string {
 
 // ── Trading Charts ───────────────────────────────────────────────────────
 
-export function ChartsSection({ pnlSeries }: { pnlSeries: DailyBucket[] }) {
+type ChartRange = '7d' | '30d' | '90d';
+
+/**
+ * Trading activity: volume + PnL bars.
+ * Timeframe toggle (7d / 30d / 90d, default 30d) swaps the active series.
+ * 180d intentionally omitted — daily bars become unreadable and the story
+ * duplicates the Monthly Returns section below.
+ */
+export function ChartsSection({
+  pnlSeries7d,
+  pnlSeries30d,
+  pnlSeries90d,
+}: {
+  pnlSeries7d?: DailyBucket[];
+  pnlSeries30d: DailyBucket[];
+  pnlSeries90d?: DailyBucket[];
+}) {
+  const [range, setRange] = useState<ChartRange>('30d');
+  const active =
+    range === '7d' && pnlSeries7d
+      ? pnlSeries7d
+      : range === '90d' && pnlSeries90d
+        ? pnlSeries90d
+        : pnlSeries30d;
+  const label = range === '7d' ? 'Last 7 Days' : range === '90d' ? 'Last 90 Days' : 'Last 30 Days';
   return (
     <>
-      <SectionTitle>Trading Activity (Last 30 Days)</SectionTitle>
+      <SectionTitle>Trading Activity ({label})</SectionTitle>
+      <div className="ad-returns-toolbar">
+        <div className="ad-segmented">
+          <button
+            type="button"
+            className={range === '7d' ? 'active' : ''}
+            onClick={() => setRange('7d')}
+            disabled={!pnlSeries7d}
+          >
+            7d
+          </button>
+          <button
+            type="button"
+            className={range === '30d' ? 'active' : ''}
+            onClick={() => setRange('30d')}
+          >
+            30d
+          </button>
+          <button
+            type="button"
+            className={range === '90d' ? 'active' : ''}
+            onClick={() => setRange('90d')}
+            disabled={!pnlSeries90d}
+          >
+            90d
+          </button>
+        </div>
+        <span className="ad-returns-caption">Daily trades + PnL</span>
+      </div>
       <div className="ad-chart-row">
-        <TradingVolumeChart data={pnlSeries} />
-        <PnlChart data={pnlSeries} />
+        <TradingVolumeChart data={active} />
+        <PnlChart data={active} />
       </div>
     </>
   );
@@ -324,36 +376,56 @@ export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
               <th className="ad-right">Open</th>
               <th className="ad-right">Trades</th>
               <th className="ad-right">Realized PnL</th>
+              <th className="ad-right">Realized %</th>
               <th className="ad-right">Unrealized PnL</th>
               <th>Signup</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(r => (
-              <tr key={r.displayName + r.signup}>
-                <td>
-                  <strong>
-                    {r.displayName}
-                    {r.isSelf ? ' (you)' : ''}
-                  </strong>
-                </td>
-                <td>
-                  <TierPill tier={r.tier} />
-                </td>
-                <td>{r.billingCycle ?? '-'}</td>
-                <td>{humanMode(r.tradingMode)}</td>
-                <td className="ad-right ad-mono">${r.balance.toFixed(0)}</td>
-                <td className="ad-right ad-mono">{r.openPositions}</td>
-                <td className="ad-right ad-mono">{r.trades}</td>
-                <td className="ad-right">
-                  <BarCell value={r.realizedPnl} maxAbs={maxRealized} />
-                </td>
-                <td className="ad-right">
-                  <BarCell value={r.unrealizedPnl} maxAbs={maxUnrealized} />
-                </td>
-                <td className="ad-mono">{shortWeek(r.signup)}</td>
-              </tr>
-            ))}
+            {rows.map(r => {
+              // Optional field from backend PR #180; null when the user has
+              // never closed a trade. Render "—" in both cases so a stale
+              // backend or an inactive user shows the same neutral marker.
+              const pct = r.realizedPnlPct;
+              const pctTone =
+                typeof pct === 'number'
+                  ? pct > 0.005
+                    ? 'ad-green'
+                    : pct < -0.005
+                      ? 'ad-red'
+                      : ''
+                  : '';
+              const pctLabel =
+                typeof pct === 'number'
+                  ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
+                  : '—';
+              return (
+                <tr key={r.displayName + r.signup}>
+                  <td>
+                    <strong>
+                      {r.displayName}
+                      {r.isSelf ? ' (you)' : ''}
+                    </strong>
+                  </td>
+                  <td>
+                    <TierPill tier={r.tier} />
+                  </td>
+                  <td>{r.billingCycle ?? '-'}</td>
+                  <td>{humanMode(r.tradingMode)}</td>
+                  <td className="ad-right ad-mono">${r.balance.toFixed(0)}</td>
+                  <td className="ad-right ad-mono">{r.openPositions}</td>
+                  <td className="ad-right ad-mono">{r.trades}</td>
+                  <td className="ad-right">
+                    <BarCell value={r.realizedPnl} maxAbs={maxRealized} />
+                  </td>
+                  <td className={`ad-right ad-mono ${pctTone}`}>{pctLabel}</td>
+                  <td className="ad-right">
+                    <BarCell value={r.unrealizedPnl} maxAbs={maxUnrealized} />
+                  </td>
+                  <td className="ad-mono">{shortWeek(r.signup)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -433,7 +505,40 @@ export function PositionConcentrationSection({ rows }: { rows: ConcentrationRow[
 
 // ── Open Positions ───────────────────────────────────────────────────────
 
+type OpenPosSort = 'default' | 'size' | 'pnl';
+
 export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
+  // Backend returns rows sorted by size desc; "default" preserves that.
+  // Click a column once → desc, click again → asc, click a different column
+  // → reset to desc. Matches the pattern used by the Per-Asset Scoreboard.
+  const [sortBy, setSortBy] = useState<OpenPosSort>('default');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const onColumnClick = (col: 'size' | 'pnl') => {
+    if (col === sortBy) {
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortBy(col);
+      setSortDir('desc');
+    }
+  };
+
+  const sorted =
+    sortBy === 'default'
+      ? rows
+      : rows
+          .slice()
+          .sort(
+            (a, b) =>
+              (sortDir === 'asc' ? 1 : -1) *
+              (sortBy === 'size' ? a.sizeUsd - b.sizeUsd : a.pnl - b.pnl)
+          );
+
+  const arrowFor = (col: 'size' | 'pnl') =>
+    sortBy === col ? (sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+  const headerClass = (col: 'size' | 'pnl') =>
+    `ad-right ${sortBy === col ? 'ad-sort-active' : 'ad-sortable'}`;
+
   return (
     <>
       <SectionTitle>Open Positions</SectionTitle>
@@ -447,16 +552,28 @@ export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
                 <th>User</th>
                 <th>Asset</th>
                 <th>Side</th>
-                <th className="ad-right">Size</th>
+                <th
+                  className={headerClass('size')}
+                  onClick={() => onColumnClick('size')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  Size{arrowFor('size')}
+                </th>
                 <th className="ad-right">Entry</th>
                 <th className="ad-right">Current</th>
-                <th className="ad-right">PnL</th>
+                <th
+                  className={headerClass('pnl')}
+                  onClick={() => onColumnClick('pnl')}
+                  style={{ cursor: 'pointer' }}
+                >
+                  PnL{arrowFor('pnl')}
+                </th>
                 <th className="ad-right">PnL %</th>
                 <th className="ad-right">Hours Open</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => {
+              {sorted.map((r, i) => {
                 // money() strips sign via Math.abs; add it back here so a losing
                 // position renders "-$3.90 (red)" not "$3.90 (red)".
                 const pnlTone = r.pnl > 0 ? 'ad-green' : r.pnl < 0 ? 'ad-red' : '';
@@ -816,9 +933,7 @@ function CostKpiCard({
     <div className="ad-kpi-card">
       <div className="ad-kpi-label">{label}</div>
       <div className="ad-kpi-value">{value}</div>
-      {delta && (
-        <div className={`ad-kpi-detail ${delta.tone}`}>{delta.text}</div>
-      )}
+      {delta && <div className={`ad-kpi-detail ${delta.tone}`}>{delta.text}</div>}
     </div>
   );
 }
@@ -951,8 +1066,8 @@ export function TraderCumulativePnlSection({
       <SectionTitle>Cumulative Realized PnL by Trader (30d)</SectionTitle>
       <NarrativeLine>
         Platform 30d realized PnL: <strong>{signedMoney(platform30d)}</strong> across{' '}
-        <strong>{rows.length}</strong> active trader{rows.length === 1 ? '' : 's'}. Movers strip picks the extremes
-        so the section stays legible as user count grows.
+        <strong>{rows.length}</strong> active trader{rows.length === 1 ? '' : 's'}. Movers strip
+        picks the extremes so the section stays legible as user count grows.
       </NarrativeLine>
 
       <div className="ad-movers-grid">
@@ -1042,14 +1157,10 @@ export function TraderCumulativePnlSection({
                 <td className="ad-right">
                   <BarCell value={r.totalPnl30d} maxAbs={maxAbsPnl(rows)} />
                 </td>
-                <td
-                  className={`ad-right ad-mono ${r.peak30d > 0 ? 'ad-green' : ''}`}
-                >
+                <td className={`ad-right ad-mono ${r.peak30d > 0 ? 'ad-green' : ''}`}>
                   {signedMoney(r.peak30d)}
                 </td>
-                <td
-                  className={`ad-right ad-mono ${r.trough30d < 0 ? 'ad-red' : ''}`}
-                >
+                <td className={`ad-right ad-mono ${r.trough30d < 0 ? 'ad-red' : ''}`}>
                   {signedMoney(r.trough30d)}
                 </td>
                 <td>
@@ -1131,7 +1242,20 @@ function shortDate(iso: string | null): string {
     d.getUTCMonth() === now.getUTCMonth() &&
     d.getUTCDate() === now.getUTCDate();
   if (isToday) return 'Today';
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   return `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 
@@ -1175,8 +1299,19 @@ type AssetSort =
   | 'winPct'
   | 'volume'
   | 'netPnl'
+  | 'netPnlPct'
   | 'avgHold';
 type SortDir = 'asc' | 'desc';
+
+/**
+ * Per-asset return-on-capital: netPnl / volume × 100.
+ * Volume is sum of size_usd across the asset's closes; matches the
+ * "% of notional" convention used elsewhere in the dashboard. Falls back
+ * to 0 if a row somehow has zero volume (shouldn't happen).
+ */
+function netPnlPctFor(r: AssetScoreboardRow): number {
+  return r.volume > 0 ? (r.netPnl / r.volume) * 100 : 0;
+}
 
 function compareAssets(a: AssetScoreboardRow, b: AssetScoreboardRow, by: AssetSort): number {
   switch (by) {
@@ -1190,6 +1325,8 @@ function compareAssets(a: AssetScoreboardRow, b: AssetScoreboardRow, by: AssetSo
       return a.volume - b.volume;
     case 'netPnl':
       return a.netPnl - b.netPnl;
+    case 'netPnlPct':
+      return netPnlPctFor(a) - netPnlPctFor(b);
     case 'avgHold':
       return a.avgHoldHours - b.avgHoldHours;
     default:
@@ -1227,9 +1364,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
   const sortedRows =
     sortBy === 'default'
       ? rows
-      : rows
-          .slice()
-          .sort((a, b) => (sortDir === 'asc' ? 1 : -1) * compareAssets(a, b, sortBy));
+      : rows.slice().sort((a, b) => (sortDir === 'asc' ? 1 : -1) * compareAssets(a, b, sortBy));
 
   const visible = showAll ? sortedRows : sortedRows.slice(0, ASSET_SCOREBOARD_TOP_N);
   const hiddenRows = Math.max(0, sortedRows.length - ASSET_SCOREBOARD_TOP_N);
@@ -1301,6 +1436,14 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
                 align="right"
               />
               <AssetSortHeader
+                label="Net %"
+                col="netPnlPct"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onClick={onColumnClick}
+                align="right"
+              />
+              <AssetSortHeader
                 label="Avg hold"
                 col="avgHold"
                 sortBy={sortBy}
@@ -1312,29 +1455,36 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
             </tr>
           </thead>
           <tbody>
-            {visible.map(r => (
-              <tr
-                key={r.symbol}
-                className={worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : undefined}
-              >
-                <td>
-                  <strong>{r.symbol}</strong>
-                </td>
-                <td className="ad-right ad-mono">{r.closes}</td>
-                <td className={`ad-right ad-mono ${winRateTone(r.winPct)}`}>{r.winPct}%</td>
-                <td className="ad-right ad-mono">${r.volume}</td>
-                <td className="ad-right">
-                  <BarCell value={r.netPnl} maxAbs={maxAbs} />
-                </td>
-                <td className="ad-right ad-mono">{r.avgHoldHours.toFixed(1)}h</td>
-                <td>
-                  <Sparkline values={r.series.map(p => p.cumPnl)} />
-                </td>
-              </tr>
-            ))}
+            {visible.map(r => {
+              const netPct = netPnlPctFor(r);
+              const pctTone = netPct > 0.005 ? 'ad-green' : netPct < -0.005 ? 'ad-red' : '';
+              return (
+                <tr
+                  key={r.symbol}
+                  className={worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : undefined}
+                >
+                  <td>
+                    <strong>{r.symbol}</strong>
+                  </td>
+                  <td className="ad-right ad-mono">{r.closes}</td>
+                  <td className={`ad-right ad-mono ${winRateTone(r.winPct)}`}>{r.winPct}%</td>
+                  <td className="ad-right ad-mono">${r.volume}</td>
+                  <td className="ad-right">
+                    <BarCell value={r.netPnl} maxAbs={maxAbs} />
+                  </td>
+                  <td className={`ad-right ad-mono ${pctTone}`}>
+                    {netPct >= 0 ? '+' : ''}{netPct.toFixed(2)}%
+                  </td>
+                  <td className="ad-right ad-mono">{r.avgHoldHours.toFixed(1)}h</td>
+                  <td>
+                    <Sparkline values={r.series.map(p => p.cumPnl)} />
+                  </td>
+                </tr>
+              );
+            })}
             {!showAll && hiddenRows > 0 && (
               <tr>
-                <td colSpan={7} className="ad-show-more-row" onClick={() => setShowAll(true)}>
+                <td colSpan={8} className="ad-show-more-row" onClick={() => setShowAll(true)}>
                   Show all {sortedRows.length} symbols
                   <span className="ad-show-more-subtle">
                     ({hiddenRows} hidden, combined {signedMoney(hiddenCombined)})
@@ -1344,7 +1494,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
             )}
             {showAll && (
               <tr>
-                <td colSpan={7} className="ad-show-more-row" onClick={() => setShowAll(false)}>
+                <td colSpan={8} className="ad-show-more-row" onClick={() => setShowAll(false)}>
                   Collapse to top {ASSET_SCOREBOARD_TOP_N}
                 </td>
               </tr>
@@ -1398,8 +1548,7 @@ function winRateTone(pct: number): string {
 // stub for now; wiring to a send-payment-reminder edge fn is a follow-up.
 
 export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }) {
-  const total =
-    risks.pastDue.length + risks.cancelling.length + risks.cancelledLast30d.length;
+  const total = risks.pastDue.length + risks.cancelling.length + risks.cancelledLast30d.length;
   const revenueAtRisk =
     risks.pastDue.reduce((acc, r) => acc + r.monthlyRevenue, 0) +
     risks.cancelling.reduce((acc, r) => acc + r.monthlyRevenue, 0);
@@ -1408,12 +1557,14 @@ export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }
     <>
       <SectionTitle>Subscription Risks</SectionTitle>
       {total === 0 ? (
-        <div className="ad-empty-panel">No subscription risks. Nothing past due, nothing cancelling.</div>
+        <div className="ad-empty-panel">
+          No subscription risks. Nothing past due, nothing cancelling.
+        </div>
       ) : (
         <>
           <NarrativeLine>
-            <strong>${revenueAtRisk.toFixed(0)}/mo</strong> of recurring revenue is at risk (past due +
-            cancelling). {risks.cancelledLast30d.length} cancellation
+            <strong>${revenueAtRisk.toFixed(0)}/mo</strong> of recurring revenue is at risk (past
+            due + cancelling). {risks.cancelledLast30d.length} cancellation
             {risks.cancelledLast30d.length === 1 ? '' : 's'} in the last 30 days.
           </NarrativeLine>
           <div className="ad-risks-grid">
@@ -1482,9 +1633,7 @@ function RiskCard({
             <li key={r.displayName + r.signup}>
               <div>
                 <div className="ad-churn-who">{r.displayName}</div>
-                <div className="ad-churn-meta">
-                  {riskSubtitle(r)}
-                </div>
+                <div className="ad-churn-meta">{riskSubtitle(r)}</div>
               </div>
               <div className="ad-churn-meta ad-right">
                 ${r.balance.toFixed(0)} bal
@@ -1495,11 +1644,7 @@ function RiskCard({
         </ul>
       )}
       {rows.length > 0 && ctaLabel && onCtaClick && (
-        <button
-          type="button"
-          className="ad-churn-action"
-          onClick={() => onCtaClick(rows[0])}
-        >
+        <button type="button" className="ad-churn-action" onClick={() => onCtaClick(rows[0])}>
           {ctaLabel} →
         </button>
       )}
@@ -1528,7 +1673,20 @@ function riskSubtitle(row: SubscriptionRisk): string {
 
 type ReturnsView = 'net' | 'gross';
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
   const [view, setView] = useState<ReturnsView>('net');
@@ -1553,9 +1711,11 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
       <SectionTitle>Monthly Returns</SectionTitle>
       <NarrativeLine>
         <strong>
-          {latest.year} YTD {view === 'net' ? 'net' : 'gross'}: {signedPct(latest.ytdNetPnl, latest.ytdNotionalTotal, view, latest.ytdGrossPnl)}{' '}
-          on {formatUsd(latest.ytdNotionalTotal)} notional ({latest.ytdClosesTotal} closes,{' '}
-          {signedMoney(view === 'net' ? latest.ytdNetPnl : latest.ytdGrossPnl)} {view === 'net' ? 'net' : 'gross'})
+          {latest.year} YTD {view === 'net' ? 'net' : 'gross'}:{' '}
+          {signedPct(latest.ytdNetPnl, latest.ytdNotionalTotal, view, latest.ytdGrossPnl)} on{' '}
+          {formatUsd(latest.ytdNotionalTotal)} notional ({latest.ytdClosesTotal} closes,{' '}
+          {signedMoney(view === 'net' ? latest.ytdNetPnl : latest.ytdGrossPnl)}{' '}
+          {view === 'net' ? 'net' : 'gross'})
         </strong>
         {latest.ytdFees > 0 && (
           <>
@@ -1572,8 +1732,16 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
         )}
         {bestMonth && worstMonth && bestMonth.month !== worstMonth.month && (
           <>
-            {' '}Best: <strong>{MONTH_NAMES[bestMonth.month - 1]} {signedMoney(bestMonth.netPnl)}</strong>.
-            {' '}Worst: <strong>{MONTH_NAMES[worstMonth.month - 1]} {signedMoney(worstMonth.netPnl)}</strong>.
+            {' '}
+            Best:{' '}
+            <strong>
+              {MONTH_NAMES[bestMonth.month - 1]} {signedMoney(bestMonth.netPnl)}
+            </strong>
+            . Worst:{' '}
+            <strong>
+              {MONTH_NAMES[worstMonth.month - 1]} {signedMoney(worstMonth.netPnl)}
+            </strong>
+            .
           </>
         )}
       </NarrativeLine>
@@ -1607,7 +1775,9 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
               <th>Year</th>
               <th className="ad-right ad-returns-ytd">YTD</th>
               {MONTH_NAMES.map(m => (
-                <th key={m} className="ad-right">{m}</th>
+                <th key={m} className="ad-right">
+                  {m}
+                </th>
               ))}
             </tr>
           </thead>
@@ -1629,13 +1799,16 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
   for (const m of year.months) monthByIdx.set(m.month, m);
 
   const ytdPnl = view === 'net' ? year.ytdNetPnl : year.ytdGrossPnl;
-  const ytdPctText = ytdPnl === 0 && year.ytdNotionalTotal === 0
-    ? '—'
-    : `${ytdPnl >= 0 ? '+' : ''}${((ytdPnl / Math.max(1, year.ytdNotionalTotal)) * 100).toFixed(2)}%`;
+  const ytdPctText =
+    ytdPnl === 0 && year.ytdNotionalTotal === 0
+      ? '—'
+      : `${ytdPnl >= 0 ? '+' : ''}${((ytdPnl / Math.max(1, year.ytdNotionalTotal)) * 100).toFixed(2)}%`;
 
   return (
     <tr>
-      <td><strong>{year.year}</strong></td>
+      <td>
+        <strong>{year.year}</strong>
+      </td>
       <td className={`ad-right ad-returns-ytd ${cellBgClass(ytdPnl)}`}>
         <div className={`ad-returns-pct ${cellFgClass(ytdPnl)}`}>{ytdPctText}</div>
         <div className="ad-returns-sub">{signedMoney(ytdPnl)}</div>
@@ -1643,14 +1816,19 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
         const row = monthByIdx.get(m);
         if (!row) {
-          return <td key={m} className="ad-right ad-returns-empty">—</td>;
+          return (
+            <td key={m} className="ad-right ad-returns-empty">
+              —
+            </td>
+          );
         }
         const pnl = view === 'net' ? row.netPnl : row.grossPnl;
         const pct = (pnl / Math.max(1, row.notional)) * 100;
         return (
           <td key={m} className={`ad-right ${cellBgClass(pnl)}`}>
             <div className={`ad-returns-pct ${cellFgClass(pnl)}`}>
-              {pnl >= 0 ? '+' : ''}{pct.toFixed(2)}%
+              {pnl >= 0 ? '+' : ''}
+              {pct.toFixed(2)}%
             </div>
             <div className="ad-returns-sub">{signedMoney(pnl)}</div>
           </td>
@@ -1663,7 +1841,17 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
 function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
   return (
     <div style={{ marginTop: 20 }}>
-      <div className="ad-section-note" style={{ marginBottom: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ad-gray-500)', fontWeight: 600 }}>
+      <div
+        className="ad-section-note"
+        style={{
+          marginBottom: 8,
+          fontSize: 11,
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+          color: 'var(--ad-gray-500)',
+          fontWeight: 600,
+        }}
+      >
         Reference · {year.year} breakdown (gross / fees / funding / net)
       </div>
       <table>
@@ -1684,25 +1872,54 @@ function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
             const netPct = (m.netPnl / Math.max(1, m.notional)) * 100;
             return (
               <tr key={m.month}>
-                <td>{MONTH_NAMES[m.month - 1]} {year.year}</td>
+                <td>
+                  {MONTH_NAMES[m.month - 1]} {year.year}
+                </td>
                 <td className="ad-right ad-mono">{m.closes}</td>
                 <td className="ad-right ad-mono">{formatUsd(m.notional)}</td>
-                <td className={`ad-right ad-mono ${cellFgClass(m.grossPnl)}`}>{signedMoney(m.grossPnl)}</td>
-                <td className={`ad-right ad-mono ${m.fees > 0.005 ? 'ad-red' : ''}`}>{signedMoney(-m.fees)}</td>
-                <td className={`ad-right ad-mono ${cellFgClass(m.funding)}`}>{signedMoney(m.funding)}</td>
-                <td className={`ad-right ad-mono ${cellFgClass(m.netPnl)}`}><strong>{signedMoney(m.netPnl)}</strong></td>
-                <td className={`ad-right ad-mono ${cellFgClass(netPct)}`}><strong>{netPct >= 0 ? '+' : ''}{netPct.toFixed(2)}%</strong></td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.grossPnl)}`}>
+                  {signedMoney(m.grossPnl)}
+                </td>
+                <td className={`ad-right ad-mono ${m.fees > 0.005 ? 'ad-red' : ''}`}>
+                  {signedMoney(-m.fees)}
+                </td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.funding)}`}>
+                  {signedMoney(m.funding)}
+                </td>
+                <td className={`ad-right ad-mono ${cellFgClass(m.netPnl)}`}>
+                  <strong>{signedMoney(m.netPnl)}</strong>
+                </td>
+                <td className={`ad-right ad-mono ${cellFgClass(netPct)}`}>
+                  <strong>
+                    {netPct >= 0 ? '+' : ''}
+                    {netPct.toFixed(2)}%
+                  </strong>
+                </td>
               </tr>
             );
           })}
           <tr style={{ borderTop: '2px solid var(--ad-border)' }}>
-            <td><strong>YTD</strong></td>
-            <td className="ad-right ad-mono"><strong>{year.ytdClosesTotal}</strong></td>
-            <td className="ad-right ad-mono"><strong>{formatUsd(year.ytdNotionalTotal)}</strong></td>
-            <td className={`ad-right ad-mono ${cellFgClass(year.ytdGrossPnl)}`}><strong>{signedMoney(year.ytdGrossPnl)}</strong></td>
-            <td className={`ad-right ad-mono ${year.ytdFees > 0.005 ? 'ad-red' : ''}`}><strong>{signedMoney(-year.ytdFees)}</strong></td>
-            <td className={`ad-right ad-mono ${cellFgClass(year.ytdFunding)}`}><strong>{signedMoney(year.ytdFunding)}</strong></td>
-            <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}><strong>{signedMoney(year.ytdNetPnl)}</strong></td>
+            <td>
+              <strong>YTD</strong>
+            </td>
+            <td className="ad-right ad-mono">
+              <strong>{year.ytdClosesTotal}</strong>
+            </td>
+            <td className="ad-right ad-mono">
+              <strong>{formatUsd(year.ytdNotionalTotal)}</strong>
+            </td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdGrossPnl)}`}>
+              <strong>{signedMoney(year.ytdGrossPnl)}</strong>
+            </td>
+            <td className={`ad-right ad-mono ${year.ytdFees > 0.005 ? 'ad-red' : ''}`}>
+              <strong>{signedMoney(-year.ytdFees)}</strong>
+            </td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdFunding)}`}>
+              <strong>{signedMoney(year.ytdFunding)}</strong>
+            </td>
+            <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}>
+              <strong>{signedMoney(year.ytdNetPnl)}</strong>
+            </td>
             <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}>
               <strong>
                 {year.ytdNetPnl >= 0 ? '+' : ''}

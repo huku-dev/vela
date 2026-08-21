@@ -28,6 +28,10 @@ export interface UserRow {
   trades: number;
   realizedPnl: number;
   unrealizedPnl: number;
+  // Return on capital deployed: realizedPnl / cumulativeClosedNotional × 100.
+  // Null when the user has never closed a trade — frontend renders "—".
+  // Optional so pre-#180 backend responses still deserialize cleanly.
+  realizedPnlPct?: number | null;
   signup: string;
 }
 
@@ -237,6 +241,10 @@ export interface DashboardResponse {
   revenueBreakdown: RevenueRow[];
   cohortFunnel: CohortRow[];
   pnlSeries30d: DailyBucket[];
+  // Backend PR #180 added these. Optional so a pre-#180 response still renders
+  // (ChartsSection disables the 7d/90d toggle buttons in that case).
+  pnlSeries7d?: DailyBucket[];
+  pnlSeries90d?: DailyBucket[];
   // New sections (backend PR #163 added these). Optional so an old backend
   // response missing them still renders the rest of the dashboard.
   traderCumulativePnl30d?: TraderCumulativePnlRow[];

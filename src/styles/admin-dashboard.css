@@ -110,6 +110,21 @@
 .admin-dash .ad-red {
   color: var(--ad-red-dark);
 }
+/* Higher-specificity overrides so ad-mono's default gray-700 color doesn't
+   win against tone classes in table cells like "ad-mono ad-red". Without
+   these, PnL numbers rendered as mono-formatted currency stay grey. */
+.admin-dash .ad-mono.ad-green {
+  color: var(--ad-green-dark);
+}
+.admin-dash .ad-mono.ad-red {
+  color: var(--ad-red-dark);
+}
+.admin-dash .ad-mono.ad-amber {
+  color: var(--ad-amber-dark);
+}
+.admin-dash .ad-mono.ad-purple {
+  color: var(--ad-purple-dark);
+}
 .admin-dash .ad-amber {
   color: var(--ad-amber-dark);
 }
@@ -463,7 +478,9 @@
   color: var(--ad-gray-500);
   font-size: 11px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 .admin-dash .ad-carryover-toggle:hover {
   color: var(--ad-blue);
