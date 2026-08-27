@@ -19,7 +19,6 @@ const DailyBrief = lazy(() => import('../pages/DailyBrief'));
 const Onboarding = lazy(() => import('../pages/Onboarding'));
 const Login = lazy(() => import('../pages/Login'));
 const AdminDashboard = lazy(() => import('../pages/AdminDashboard'));
-const SupportExport = lazy(() => import('../pages/SupportExport'));
 
 /**
  * Redirects new users to /welcome. Returns children for onboarded users.
@@ -110,17 +109,6 @@ export default function AuthShell() {
                 element={
                   <ErrorBoundary>
                     <AdminDashboard />
-                  </ErrorBoundary>
-                }
-              />
-
-              {/* Support export — one-off wallet key recovery, gated to a
-                  specific privyDid inside SupportExport.tsx. Delete after use. */}
-              <Route
-                path="/support/export"
-                element={
-                  <ErrorBoundary>
-                    <SupportExport />
                   </ErrorBoundary>
                 }
               />
