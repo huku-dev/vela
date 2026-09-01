@@ -27,6 +27,7 @@ import {
   ChartsSection,
   CohortFunnelSection,
   HighlightsSection,
+  HoldTimeScoreboardSection,
   KpisSection,
   LlmCostSection,
   MonthlyReturnsSection,
@@ -190,6 +191,13 @@ export default function AdminDashboard() {
             />
           )}
           {data.assetScoreboard30d && <AssetScoreboardSection rows={data.assetScoreboard30d} />}
+          {/* Hold-time bucket scoreboard. Same shape/styling as the asset
+              scoreboard, one row per hold-time bucket. Optional: gated on the
+              backend section being present so a pre-#212 backend response
+              still renders the rest of the dashboard. */}
+          {data.holdTimeScoreboard30d && (
+            <HoldTimeScoreboardSection rows={data.holdTimeScoreboard30d} />
+          )}
           <UserOverviewSection rows={data.userOverview} />
           <PositionConcentrationSection rows={data.positionConcentration} />
           <OpenPositionsSection rows={data.openPositions} />
