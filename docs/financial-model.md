@@ -1,7 +1,30 @@
 # Vela Financial Model
 
-> Last updated: 2026-02-26
+> Last updated: 2026-09-11
 > Purpose: Determine tier pricing, project costs/revenue, inform Stripe product creation
+>
+> **Source of truth for infrastructure line items:** [`src/lib/infrastructure-costs.ts`](../src/lib/infrastructure-costs.ts). Update that file first; then refresh this doc to match.
+
+---
+
+## Current state (2026-09-11)
+
+**Fixed spend (contractual, monthly):**
+- **Supabase: Pro ($25).** Moved back to Pro after two Free-tier outages (2026-09-08 and 2026-09-11) triggered by Supabase's WAL archiver stalling on the smaller Free-tier disk. Free is not viable at production load for Vela's WAL profile. See [backend retro](../../crypto-agent/.claude/worktrees/classifier-drift-handoff-4ebfac/docs/retros/2026-09-09-supabase-wal-outage.html).
+- **Domain: $1.08 amortized** ($13/yr getvela.xyz).
+- **Vercel: Hobby (Free).** Not paying for Pro.
+- **Resend, Privy, CoinGecko, Telegram: Free.** All within their respective free tiers at current user count.
+- **Fixed total: ~$26.08/mo.**
+
+**Variable spend (measured, trailing-30d estimates):**
+- **DeepSeek: ~$4.40/mo.** Paid LLM provider for classifier + enrichment. Measured: 3,056 calls / $1.02 over 7 days ending 2026-09-09; extrapolated ×30/7.
+- **Groq / NVIDIA / Anthropic: $0.** All free-tier or below their whitelisted last-resort use. Anthropic is whitelisted for `signal_explanation` / `news_summary` / `news_vela_take` last-resort only; zero paid Anthropic calls observed in the recent 7d window (a nonzero value on this line is a signal to investigate).
+- **Stripe fees: ~$1-2/mo** at current 6-subscriber mix (2.9% + $0.30 per charge).
+- **Variable total: ~$6/mo** at current traffic.
+
+**Total run-rate: ~$32/mo** ($26.08 fixed + ~$6 variable).
+
+**Confirmed paying subscribers:** 6 (per July 2026 admin dashboard snapshot: 4 Premium + 2 Standard).
 
 ---
 
@@ -9,14 +32,27 @@
 
 | Provider | Plan | Monthly | Notes |
 |----------|------|---------|-------|
-| Supabase | Free → Pro | $0 → $25 | Free: 500MB DB, 500K edge fn invocations. Gotcha: projects pause after 1 week inactivity. Upgrade to Pro when real users arrive. |
-| Vercel | Hobby → Pro | $0 → $20 | Hobby: unlimited deploys, 100GB bandwidth, serverless. Officially non-commercial but fine for pre-revenue. Upgrade when you need team seats or Pro analytics. |
-| Resend | Free | $0 | 3,000 emails/mo (scales to $20/mo Pro at ~50 users) |
-| CoinGecko | Free | $0 | Only used for daily digest macro context (market cap, BTC dominance). Signal data comes from Hyperliquid directly. 10K calls/mo free tier is more than sufficient for 1-2 digest calls/day. |
+| **Supabase** | **Pro** | **$25** | Current tier (upgraded 2026-09-11). Free tier's disk headroom is too small for Vela's WAL profile at production load; confirmed by two RO outages in 3 days. |
+| Vercel | Hobby (Free) | $0 | Free tier: unlimited deploys, 100 GB bandwidth. Officially non-commercial but fine at current scale. Not planning to upgrade. |
+| Resend | Free | $0 | 3,000 emails/mo (upgrade to Pro $20/mo at ~50 users) |
+| CoinGecko | Free | $0 | Only used for daily-digest macro context (market cap, BTC dominance). Signal data comes from Hyperliquid directly. 10K calls/mo free tier is more than sufficient for 1-2 digest calls/day. |
 | Privy | Free | $0 | 50K sigs/mo (scales at ~500 trading users) |
 | Telegram | Free | $0 | Bot API is free |
-| Stripe | Per-txn | Variable | 2.9% + $0.30 per subscription charge |
-| Domain | - | ~$2 | ~$20/year amortized |
+| Stripe | Per-txn | Variable | 2.9% + $0.30 per subscription charge — see variable spend below |
+| Domain | Annual | ~$1.08 | $13/year amortized (getvela.xyz). |
+
+### External LLM spend (variable, measured)
+
+Real observed spend on paid providers. All entries are trailing-30d extrapolations from `llm_call_log`. Refresh periodically.
+
+| Provider | Trailing 30d (est) | 7d sample (source) | Notes |
+|---|---:|---|---|
+| **DeepSeek** | **$4.40** | 3,056 calls / $1.02 over 7d ending 2026-09-09 | Primary paid provider. Classifier + enrichment. Scales with news volume. |
+| Groq | $0 | 788 calls / $0 over same window | Free tier (gpt-oss-120b). 200K TPD daily cap. |
+| NVIDIA | $0 | 139 calls / $0 over same window | Fallback provider, free tier. |
+| Anthropic | $0 | 0 paid calls in same window | Whitelisted for signal_explanation / news_summary / news_vela_take last-resort only. Nonzero here = last-resort fallback fired; investigate why. |
+
+Source of truth for these numbers: [`src/lib/infrastructure-costs.ts`](../src/lib/infrastructure-costs.ts) and the live `llm_call_log` table on prod.
 
 > **Note on data sources:** Hyperliquid provides all data needed for signal generation —
 > real-time mark/index prices, full OHLCV candle history (EMA, RSI, ADX inputs), order book
@@ -27,31 +63,38 @@
 ### Fixed cost at different stages:
 | Stage | Users | Monthly Fixed |
 |-------|-------|--------------|
-| **Day zero (true cost)** | <30 | **~$2** (domain only — Supabase Free + Vercel Hobby) |
-| **First paying users** | <30 | **$47** (upgrade to Supabase Pro to avoid inactivity pauses + Vercel Pro) |
-| **Early traction** | 30-100 | **$67** (+ Resend Pro $20) |
-| **Growth** | 100-500 | **$67** (CoinGecko stays free — only used for digest) |
-| **Scale** | 500+ | **$370+** (Privy paid ~$300 + higher Supabase tier) |
+| ~~**Day zero (aspirational)**~~ | <30 | ~~**~$2**~~ (domain only — Supabase Free + Vercel Hobby). **Not viable in practice**: two RO outages on Free tier (2026-09-08, 2026-09-11) forced the move to Pro. Free tier's ~8 GB disk cannot hold Vela's WAL profile under production cron load. |
+| **← Current: First paying users** | 6 confirmed paid | **$26.08** (Supabase Pro $25 + domain $1.08; Vercel/Resend/Privy still Free) |
+| **Early traction** | 30-100 | **$47** (+ Resend Pro $20 for higher-volume email) |
+| **Growth** | 100-500 | **$47** (CoinGecko stays free — only used for digest) |
+| **Scale** | 500+ | **$350+** (Privy paid ~$300 + potentially higher Supabase compute) |
 
 ---
 
 ## 2. Variable Costs Per User Per Month
 
-### AI Brief Generation (Claude Sonnet 4.5)
+### Actual routing (2026-09-11)
 
-Pricing: $3/M input tokens, $15/M output tokens
+Vela uses a cascade of paid + free LLM providers. All backend routing is defined in `_shared/llm/factory.ts` and `_shared/llm/registry.ts`. Per CLAUDE.md constraints: **never default to paid Anthropic for free-tier tasks**; `claude-haiku-4-5` last-resort is whitelisted ONLY for `signal_explanation`, `news_summary`, and `news_vela_take`.
 
-| Brief Type | Input Tokens | Output Tokens | Cost/Brief |
-|------------|-------------|---------------|------------|
-| Signal change brief | ~1,500 | ~800 | ~$0.017 |
-| Brief with web search | ~3,000 | ~1,200 | ~$0.027 |
-| Daily digest | ~2,000 | ~600 | ~$0.015 |
+Current provider mix by measured spend (7 days ending 2026-09-09, source: `llm_call_log`):
 
-| Tier | Signal Briefs/mo | Digests/mo | AI Cost/mo |
-|------|-----------------|------------|------------|
-| **Free** (1 asset, 4h) | ~3 | 30 | **$0.50** |
-| **Standard** (8 assets, 2h) | ~12 | 30 | **$0.66** |
-| **Premium** (5+ assets, 1h) | ~25 | 30 | **$0.88** |
+| Provider | Calls | Spend | Extrapolated monthly | Role |
+|---|---:|---:|---:|---|
+| **DeepSeek** | 3,056 | $1.02 | **~$4.40** | Primary paid provider. Classifier + enrichment. |
+| Groq | 788 | $0 | $0 | Free tier (gpt-oss-120b primary). 200K TPD daily cap. |
+| NVIDIA | 139 | $0 | $0 | Fallback, free tier. |
+| Anthropic | 0 | $0 | $0 | Last-resort whitelist only. Zero fires this week. |
+
+**Total measured LLM spend: ~$4.40/mo.**
+
+### Per-user cost attribution
+
+Not yet computed. The measured spend is dominated by the news pipeline (classifier + enrichment) which processes global feeds regardless of user count. It scales with news volume, not user tier.
+
+**Naive per-user split at current traffic:** $4.40/mo ÷ 6 paid subscribers = ~$0.73/user/mo blended. This is misleading — it attributes news-pipeline cost to paying users when in fact the pipeline runs at fixed load. **Do not use this for pricing decisions until per-`task_name` cost is broken out** and each task is mapped to its consumer (free vs standard vs premium vs pipeline).
+
+**Follow-up task:** query `llm_call_log` grouped by `task_name`, join to which pipeline / tier consumes each task, and produce a real per-tier variable cost.
 
 ### Privy Wallet Signatures
 
@@ -78,13 +121,13 @@ Resend free (3K/mo) supports ~25-30 users. Pro ($20/mo, 50K) supports ~350 users
 
 ### Total Variable Cost Per User
 
-| Tier | AI | Sigs | Email | **Total/User/Mo** |
-|------|-----|------|-------|--------------------|
-| **Free** | $0.50 | $0 | $0 | **$0.50** |
-| **Standard** | $0.66 | $0 | $0 | **$0.66** |
-| **Premium** | $0.88 | $0 | $0 | **$0.88** |
+**Per-user AI cost: not yet computed** (see attribution note above). Sigs, Email, Privy: all zero at current scale.
 
-> Variable costs per user are very low. AI briefs are the dominant cost.
+| Tier | AI (blended est.) | Sigs | Email | **Total/User/Mo** |
+|------|-----|------|-------|--------------------|
+| All tiers | ~$0.73 (blended, dominated by news pipeline) | $0 | $0 | **~$0.73** |
+
+> AI cost is dominated by the news pipeline (classifier + enrichment), which runs at fixed load regardless of user count. As paid users grow, blended per-user cost falls even if total AI spend stays flat. Real per-tier attribution will separate pipeline cost (COGS) from per-user cost (user-scaling).
 
 ---
 
@@ -154,8 +197,8 @@ Example at 10 BPS (0.1%):
 |--|-------------|----------|--------|
 | Subscription (net) | $9.41 | $9.41 | $9.41 |
 | Trade fee (0.1%) | $15 (5 trades) | $30 (10 trades) | $60 (20 trades) |
-| Variable cost | -$0.66 | -$0.66 | -$0.66 |
-| **Gross margin/user** | **$23.75** | **$38.75** | **$68.75** |
+| Variable cost | -$0.73 (blended, TBD once per-tier attribution done) | -$0.73 | -$0.73 |
+| **Gross margin/user (approx)** | **$23.68** | **$38.68** | **$68.68** |
 
 > At $10/mo subscription, trade fees are the primary revenue driver for Standard.
 > A moderate user generates 3× more from trade fees ($30) than subscriptions ($9.41).
@@ -167,8 +210,8 @@ Example at 10 BPS (0.1%):
 | Subscription (net) | $19.12 | $19.12 | $19.12 |
 | Trade fee (0%) | $0 | $0 | $0 |
 | Builder fee (if 10 BPS) | $50 | $125 | $250 |
-| Variable cost | -$0.88 | -$0.88 | -$0.88 |
-| **Gross margin/user** | **$68.24** | **$143.24** | **$268.24** |
+| Variable cost | -$0.73 (blended, TBD) | -$0.73 | -$0.73 |
+| **Gross margin/user (approx)** | **$68.39** | **$143.39** | **$268.39** |
 
 > Premium revenue is dominated by builder fees from trading volume.
 > Subscription is the "floor" — active traders generate 13× more.
@@ -178,32 +221,37 @@ Example at 10 BPS (0.1%):
 | | Per User |
 |--|---------|
 | Revenue | $0 |
-| Variable cost | -$0.50 |
-| **Gross margin** | **-$0.50** |
+| Variable cost | ~$0.73 blended (TBD from per-tier attribution) |
+| **Gross margin (est)** | **~-$0.73** |
 
-> Free users cost ~$0.50/mo each. 100 free users = $50/mo.
-> They're essentially free until you hit hundreds of them.
+> Free-tier true cost is uncertain until per-`task_name` cost attribution is done. Current best estimate: news-pipeline-dominated blended $0.73/user. **Key open question:** how much of the ~$4.40/mo DeepSeek spend is user-scaling vs. fixed-pipeline. If it's mostly fixed pipeline, free users are near-zero marginal cost.
 
 ---
 
 ## 5. Break-Even Analysis
 
-### Monthly fixed costs to cover: ~$2 (day zero) to ~$67 (with Pro plans + Resend)
+### Today's actual run-rate: ~$32/mo
 
-| Scenario | Paid Users Needed | Mix |
-|----------|-------------------|-----|
-| **Day zero ($2/mo)** | 1 Standard | 1 × $9.41 sub ≈ $9 (covers domain easily) |
-| **With Pro plans ($47/mo)** | 5 Standard | 5 × $9.41 = $47 (subs alone; trade fees add ~$150) |
-| **With Resend ($67/mo)** | 7 Standard | 7 × $9.41 = $66 (or 4 Premium × $19 = $76) |
-| **Trade fees accelerate** | 3 Standard + trades | 3 × ($9.41 + $30) = $118 → covers $67 easily |
+- Fixed: **$26.08** (Supabase Pro $25 + domain $1.08)
+- Variable at current traffic: **~$6** (DeepSeek $4.40 + Stripe $1-2)
 
-> Break-even requires more paid users at lower price points, but trade fees
-> compensate significantly. 3 active Standard users generating trade fees
-> already cover the $67 Pro-plan fixed costs.
+### Break-even at each scale
+
+| Scenario | Total Fixed + Variable | Paid Users Needed (subs only) | Notes |
+|----------|-----------------------|-------------------------------|-------|
+| **~~Day zero~~ (not viable)** | ~~$2/mo (Free tier)~~ | ~~1 Standard~~ | Free tier proven unable to hold Vela's WAL profile (2026-09-08, 2026-09-11 outages). |
+| **← Current: Pro + measured variable** | ~$32/mo | **4 Standard** | 4 × $9.41 = $38 (subs alone; trade fees add ~$60-120 on top). |
+| Early traction (Resend Pro added) | ~$52/mo | 6 Standard | 6 × $9.41 = $56 (or 3 Premium × $19 = $57). Add ~$5-10 for variable LLM growth. |
+| Growth (≥100 users) | ~$60+/mo | 8 Standard | Variable AI cost scales with news pipeline load; expect $10-20/mo at 100 users. |
+
+> **Today we're break-even on subscriptions alone at 4 Standard.** With 6 confirmed paid subscribers (4 Premium + 2 Standard per the July admin snapshot), net subscription revenue is roughly **6 × $9-19 = $60-100/mo**, comfortably above the $32/mo run-rate. Trade fees are pure upside on top.
 
 ---
 
 ## 6. Growth Scenarios (Monthly Revenue Projections)
+
+> **Fixed-cost values below are updated to reflect current reality (2026-09-11).**
+> Variable-cost values still use the legacy per-user assumption from §2, which is now known to be stale. Re-derive per-user variable cost from measured `llm_call_log` before treating the net numbers as decision-grade.
 
 ### Assumptions
 - **Conversion rate:** 5% free→standard, 2% free→premium (industry avg for dev tools)
@@ -213,6 +261,7 @@ Example at 10 BPS (0.1%):
 - **Average trades/mo:** Standard=10, Premium=25
 - **Average trade size:** Standard=$3K, Premium=$5K
 - **Builder fee:** 10 BPS (option 2 from above)
+- **Vercel:** Hobby (Free) throughout — no Pro upgrade planned.
 
 ### Month 6 — Early Traction
 
@@ -228,10 +277,10 @@ Example at 10 BPS (0.1%):
 
 | Costs | |
 |-------|------|
-| Fixed | -$67 |
-| Variable (219 users) | -$120 |
+| Fixed | -$47 (Supabase Pro + Resend Pro + domain; Vercel Free) |
+| Variable (est., dominated by news pipeline; refresh from measurement) | ~-$120 |
 | Stripe fees | -$12 |
-| **Net** | **$966** |
+| **Net (approx)** | **$986** |
 
 ### Month 12 — Growth
 
@@ -244,10 +293,10 @@ Example at 10 BPS (0.1%):
 
 | Costs | |
 |-------|------|
-| Fixed | -$67 |
-| Variable | -$470 |
+| Fixed | -$47 (same stage) |
+| Variable (est.) | ~-$470 |
 | Stripe fees | -$40 |
-| **Net** | **$3,689** |
+| **Net (approx)** | **$3,709** |
 
 ### Month 24 — Scale
 
@@ -260,10 +309,10 @@ Example at 10 BPS (0.1%):
 
 | Costs | |
 |-------|------|
-| Fixed | -$370 |
-| Variable | -$1,780 |
+| Fixed | -$350 (Privy paid ~$300 + Supabase higher compute; Vercel Free assumed to hold) |
+| Variable (est.) | ~-$1,780 |
 | Stripe fees | -$150 |
-| **Net** | **$14,186** |
+| **Net (approx)** | **$14,206** |
 
 > **Key insight:** At $10/$20 subscription pricing, trade fees and builder fees
 > dominate revenue (82% at Month 12, 82% at Month 24). Subscriptions are the
@@ -368,10 +417,11 @@ Trade fee + builder fee revenue drops by 67%. At $1K avg:
 - Premium user generates $42/mo in builder fees instead of $125
 - Still profitable per user ($19/mo Standard margin), but aggregate revenue scales slower
 
-### What if free users cost more? (e.g., web search enabled)
+### What if news pipeline volume grows?
 
-With web search enabled on all briefs, free user cost rises to ~$1.00/mo.
-1,000 free users = $1,000/mo. Consider disabling web search for free tier briefs.
+DeepSeek is currently the dominant paid LLM line at ~$4.40/mo, driven mostly by classifier + enrichment on the news feed (not per-user). If ingested news volume doubles (e.g., add another source, or tighten dedup thresholds), DeepSeek spend roughly doubles to ~$8-9/mo — still trivial relative to revenue at current scale.
+
+If we ever route classifier fall-throughs to Anthropic Haiku (currently zero paid Anthropic), cost per classification rises ~10-20x. **Monitor the Anthropic line in the config — nonzero values are a warning signal, not a normal run-rate.**
 
 ### What if subscription price is too low?
 
@@ -394,7 +444,7 @@ first lever to pull. The low starting price gives room to raise later.
 | Average trade size | >$2,000 |
 | LTV:CAC ratio | >3:1 |
 | Gross margin per paid user | >$30/mo |
-| AI cost per user | <$1.50/mo |
+| AI cost per user (blended) | <$1.50/mo (current: ~$0.73 blended) |
 | Trade fee revenue as % of total | Track trend (expected: 60-80%) |
 | Builder fee revenue per Premium user | >$100/mo |
 
@@ -476,9 +526,11 @@ METRICS vs MODEL
 | **Annual price** | $0 | $100 | $200 |
 | **Trade fee** | 0.5% | 0.1% | 0% |
 | **Builder fee** | - | 10 BPS | 10 BPS |
-| **Cost to serve** | $0.50/mo | $0.66/mo | $0.88/mo |
-| **Gross margin (moderate)** | -$0.50 | ~$39 | ~$143 |
-| **Break-even** | N/A | 5 users (subs only) | 3 users (subs only) |
+| **Cost to serve** (blended) | ~$0.73 | ~$0.73 | ~$0.73 |
+| **Gross margin (moderate)** | ~-$0.73 | ~$38.7 | ~$143.4 |
+| **Break-even at current run-rate** | N/A | 4 users (subs only, ~$32/mo total) | 2 users (subs only) |
+
+> "Cost to serve" is the naive per-user split of measured LLM spend at current traffic. It's dominated by fixed news-pipeline cost (classifier + enrichment) not per-user cost, so real per-tier attribution will likely show free users much closer to $0 and per-paid-user marginal cost also low. Refresh from `llm_call_log` grouped by `task_name` for decision-grade numbers.
 
 The business is volume-driven at these price points. Subscriptions serve as
 activation/commitment fees while trade fees and builder fees generate the
