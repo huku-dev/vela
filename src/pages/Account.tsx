@@ -1402,6 +1402,13 @@ interface NotificationsPanelProps {
   loading: boolean;
   tierFeatures: Record<string, boolean>;
   onUpgradeClick: () => void;
+  /**
+   * Refetches preferences from the source of truth. Called after
+   * TelegramConnectButton mutates chat_id server-side so this panel's
+   * `preferences` prop reflects the disconnect and the local `chatId`
+   * state can't silently re-link on the next Save.
+   */
+  onPreferencesRefresh?: () => void | Promise<void>;
 }
 
 function NotificationsPanel({
@@ -1410,6 +1417,7 @@ function NotificationsPanel({
   loading,
   tierFeatures,
   onUpgradeClick,
+  onPreferencesRefresh,
 }: NotificationsPanelProps) {
   const [saving, setSaving] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(preferences?.notifications_email ?? true);
@@ -1422,11 +1430,16 @@ function NotificationsPanel({
   const [weeklyRecapEnabled, setWeeklyRecapEnabled] = useState(
     preferences?.notifications_weekly_recap ?? true
   );
+  const [tradeActivityFreq, setTradeActivityFreq] = useState<
+    'instant' | 'weekly' | 'off'
+  >(preferences?.trade_activity_email_frequency ?? 'weekly');
   const [chatId, setChatId] = useState(preferences?.telegram_chat_id ?? '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const telegramAllowed = tierFeatures.telegram_alerts;
+  const telegramConnected =
+    telegramAllowed && telegramEnabled && !!preferences?.telegram_chat_id;
 
   // Sync when preferences load
   useEffect(() => {
@@ -1435,6 +1448,7 @@ function NotificationsPanel({
       setTelegramEnabled(preferences.notifications_telegram);
       setDailyBriefEnabled(preferences.notifications_daily_brief);
       setWeeklyRecapEnabled(preferences.notifications_weekly_recap);
+      setTradeActivityFreq(preferences.trade_activity_email_frequency ?? 'weekly');
       setChatId(preferences.telegram_chat_id ?? '');
     }
   }, [preferences]);
@@ -1448,6 +1462,7 @@ function NotificationsPanel({
         notifications_telegram: telegramAllowed ? telegramEnabled : false,
         notifications_daily_brief: dailyBriefEnabled,
         notifications_weekly_recap: weeklyRecapEnabled,
+        trade_activity_email_frequency: tradeActivityFreq,
         telegram_chat_id: telegramAllowed && telegramEnabled ? chatId.trim() || null : null,
       } as Record<string, unknown>);
       setSuccess(true);
@@ -1539,6 +1554,50 @@ function NotificationsPanel({
         </button>
       </div>
 
+      {/* Trade activity email frequency (fills, closes, forced exits, account nudges) */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 'var(--space-4)',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <p className="vela-body-sm" style={{ fontWeight: 600, margin: 0 }}>
+            Trade activity emails
+          </p>
+          <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+            Fills, closes, and forced exits
+          </p>
+        </div>
+        <select
+          value={tradeActivityFreq}
+          onChange={e =>
+            setTradeActivityFreq(e.target.value as 'instant' | 'weekly' | 'off')
+          }
+          aria-label="Trade activity email frequency"
+          style={{
+            border: '2px solid var(--black)',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 13,
+            fontWeight: 600,
+            backgroundColor: 'var(--color-surface, #FFFBF5)',
+            color: 'var(--black)',
+            cursor: 'pointer',
+            flexShrink: 0,
+            fontFamily: 'inherit',
+            minWidth: 100,
+          }}
+        >
+          <option value="instant">Instant</option>
+          <option value="weekly">Weekly</option>
+          <option value="off">Off</option>
+        </select>
+      </div>
+
       {/* Telegram section */}
       <div
         style={{
@@ -1584,9 +1643,33 @@ function NotificationsPanel({
                 </svg>
               )}
             </p>
-            <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
-              {telegramAllowed ? 'Instant alerts via Telegram bot' : 'Upgrade to unlock'}
-            </p>
+            {!telegramAllowed ? (
+              <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+                Upgrade to unlock
+              </p>
+            ) : telegramConnected ? (
+              // When linked, show the connected state inline in the subtext
+              // slot instead of the descriptive copy (avoids two elements
+              // saying overlapping things). Disconnect lives in this same
+              // control — no separate block below when connected.
+              //
+              // onStatusChange MUST refresh the parent preferences after a
+              // disconnect. Otherwise TelegramConnectButton's own sync effect
+              // sees the stale `chatId` prop and snaps back to Connected,
+              // and this panel's local `chatId` state would silently re-link
+              // on the next Save.
+              <div style={{ marginTop: 2 }}>
+                <TelegramConnectButton
+                  chatId={preferences?.telegram_chat_id ?? null}
+                  onStatusChange={() => onPreferencesRefresh?.()}
+                  compact
+                />
+              </div>
+            ) : (
+              <p className="vela-body-sm vela-text-muted" style={{ margin: 0 }}>
+                Real-time news, signals, and trades
+              </p>
+            )}
           </div>
           {telegramAllowed ? (
             <button
@@ -1642,14 +1725,14 @@ function NotificationsPanel({
           )}
         </div>
 
-        {/* Telegram connection — only shown when Telegram is toggled on */}
-        {telegramAllowed && telegramEnabled && (
+        {/* Telegram connect flow — only when toggled on AND not already
+            connected. When connected, the compact TelegramConnectButton in
+            the row subtext above owns the state (Connected · Disconnect). */}
+        {telegramAllowed && telegramEnabled && !telegramConnected && (
           <div style={{ marginBottom: 'var(--space-2)' }}>
             <TelegramConnectButton
               chatId={preferences?.telegram_chat_id ?? null}
-              onStatusChange={() => {
-                // Refresh preferences to pick up new chat_id
-              }}
+              onStatusChange={() => onPreferencesRefresh?.()}
             />
             {/* Manual fallback for users who can't use deep linking */}
             {!preferences?.telegram_chat_id && (
@@ -3366,6 +3449,7 @@ export default function Account() {
               loading={tradingLoading}
               tierFeatures={getTierConfig(currentTier).features}
               onUpgradeClick={() => setShowTierSheet(true)}
+              onPreferencesRefresh={refresh}
             />
           </div>
         )}

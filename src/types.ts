@@ -177,6 +177,13 @@ export interface UserPreferences {
   notifications_daily_brief: boolean;
   /** Weekly recap marketing email opt-in. Flipped off by the footer Unsubscribe link. */
   notifications_weekly_recap: boolean;
+  /**
+   * How often to send fills, closes, forced exits, and account-state nudges by email.
+   * 'instant' = per-event (pre-2026-09 behavior). 'weekly' = bundled into Monday personal digest. 'off' = no email.
+   * Telegram is unaffected by this setting (always instant when linked).
+   * Default is 'weekly' server-side (migration 20260918154737).
+   */
+  trade_activity_email_frequency: 'instant' | 'weekly' | 'off';
   telegram_chat_id: string | null;
   created_at: string;
   updated_at: string;
