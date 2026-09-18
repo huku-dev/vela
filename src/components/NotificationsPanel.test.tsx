@@ -162,6 +162,7 @@ const basePreferences: UserPreferences = {
   notifications_email: true,
   notifications_daily_brief: true,
   notifications_weekly_recap: true,
+  trade_activity_email_frequency: 'weekly',
   telegram_chat_id: null,
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
