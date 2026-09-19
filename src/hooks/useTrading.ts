@@ -70,8 +70,17 @@ export interface TradingState {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
-/** Polling interval for position updates (30 seconds) */
-const POLL_INTERVAL_MS = 30_000;
+/**
+ * Fallback polling interval for position updates (5 minutes).
+ *
+ * The primary live-update path is the Supabase Realtime channel set up
+ * below (postgres_changes on positions, trade_proposals, user_wallets).
+ * This poll runs as a safety net in case Realtime silently disconnects.
+ * Was 30 seconds pre-2026-09-19; the shorter interval fired 6 concurrent
+ * queries per tick per open tab on top of Realtime, driving sustained
+ * PostgREST load on our Nano/Micro tier. See 2026-09-19 audit + retro.
+ */
+const POLL_INTERVAL_MS = 5 * 60_000;
 
 // ── Wallet cache ──
 // Prevents "$0.00 balance" flash on Account page by seeding wallet state
@@ -319,7 +328,7 @@ export function useTrading(): TradingState {
     }
   }, [supabaseClient, isAuthenticated]);
 
-  // Initial fetch + polling (every 30s for position updates)
+  // Initial fetch + fallback poll (Realtime channel below is primary)
   useEffect(() => {
     if (!isAuthenticated) {
       setLoading(false);

@@ -1009,7 +1009,14 @@ function RecentActivity() {
       )
       .subscribe();
 
-    const pollInterval = setInterval(() => fetchEvents(), 30_000);
+    // Fallback poll behind the Realtime channel above. Was 30 seconds
+    // pre-2026-09-19; on Nano/Micro that pace fired 30k+ redundant
+    // authenticated queries against audit_log per open tab per 10 days
+    // (500 sec cumulative DB time on this single query, per pg_stat_
+    // statements). Raised to 5 minutes so a silent Realtime disconnect
+    // still self-heals but Vela stops paying for the redundant polls.
+    // See 2026-09-19 consumption audit.
+    const pollInterval = setInterval(() => fetchEvents(), 5 * 60_000);
 
     return () => {
       channel.unsubscribe();
