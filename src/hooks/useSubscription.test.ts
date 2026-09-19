@@ -214,6 +214,125 @@ describe('useSubscription', () => {
 
       expect(result.current.cancelAtPeriodEnd).toBe(false);
     });
+
+    // ── hasLiveSubscription — 2026-09-17 sarah.uku incident fix ──
+    //
+    // This is the routing predicate for TierComparisonSheet: true → open
+    // customer portal (plan switch / card update), false → open Stripe
+    // Checkout. Must match backend hasLiveSubscription in
+    // supabase/functions/_shared/subscription-state.ts (enforced by
+    // STRIPE-SRC cross-repo test in stripe-billing.test.ts).
+
+    it('hasLiveSubscription is false when subscription is null', async () => {
+      mockSupabaseClient.single.mockResolvedValue({ data: null, error: { message: 'no rows' } });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(false);
+      });
+    });
+
+    it('hasLiveSubscription is false for tier=free even when status=active', async () => {
+      // Every new user starts as {tier: "free", status: "active"} per
+      // auth-exchange/index.ts:177-182. The predicate must short-circuit on
+      // tier==="free" or every new signup would be routed to portal (which
+      // would 404 with no customer_id).
+      const freeSub = {
+        ...ACTIVE_STANDARD_SUB,
+        tier: 'free' as const,
+        status: 'active' as const,
+        provider_customer_id: null,
+        provider_subscription_id: null,
+      };
+      storageMock.setItem(CACHE_KEY, JSON.stringify(freeSub));
+      mockSupabaseClient.single.mockResolvedValue({ data: freeSub, error: null });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(false);
+      });
+    });
+
+    it('hasLiveSubscription is true for active paid subscription', async () => {
+      storageMock.setItem(CACHE_KEY, JSON.stringify(ACTIVE_STANDARD_SUB));
+      mockSupabaseClient.single.mockResolvedValue({ data: ACTIVE_STANDARD_SUB, error: null });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(true);
+      });
+    });
+
+    it('hasLiveSubscription is true for trialing paid subscription (broader than isPaid)', async () => {
+      // isPaid only accepts status === "active"; hasLiveSubscription also
+      // accepts trialing and past_due. Broader on purpose — the routing
+      // decision "checkout vs portal" needs to catch trialing/past_due
+      // users too, or they'd hit the backend's 409 guard.
+      const trialingSub = {
+        ...ACTIVE_STANDARD_SUB,
+        tier: 'premium' as const,
+        status: 'trialing' as const,
+      };
+      storageMock.setItem(CACHE_KEY, JSON.stringify(trialingSub));
+      mockSupabaseClient.single.mockResolvedValue({ data: trialingSub, error: null });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(true);
+      });
+    });
+
+    it('hasLiveSubscription is true for past_due paid subscription', async () => {
+      const pastDueSub = {
+        ...ACTIVE_STANDARD_SUB,
+        status: 'past_due' as const,
+      };
+      storageMock.setItem(CACHE_KEY, JSON.stringify(pastDueSub));
+      mockSupabaseClient.single.mockResolvedValue({ data: pastDueSub, error: null });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(true);
+      });
+    });
+
+    it('hasLiveSubscription is false for cancelled subscription', async () => {
+      // After applySubscriptionDeleted, row is tier="free" AND status="cancelled".
+      // Free short-circuit above catches this, but pin the invariant so a
+      // hypothetical row with tier=standard/status=cancelled also routes
+      // to checkout (allows re-subscribe).
+      const cancelledSub = {
+        ...ACTIVE_STANDARD_SUB,
+        tier: 'standard' as const,
+        status: 'cancelled' as const,
+      };
+      storageMock.setItem(CACHE_KEY, JSON.stringify(cancelledSub));
+      mockSupabaseClient.single.mockResolvedValue({ data: cancelledSub, error: null });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      await waitFor(() => {
+        expect(result.current.hasLiveSubscription).toBe(false);
+      });
+    });
+
+    // Note: dev-tier override behavior (useSubscription.ts:241-246) is
+    // gated on VITE_DEV_BYPASS_AUTH which is unset in test env, so it can't
+    // be exercised here without env-var stubbing. The invariant it protects
+    // — hasLiveSubscription reads the raw subscription row, not the
+    // possibly-overridden `tier` field — is inherent in the implementation
+    // (the boolean is derived from `subscription`, not `tier`).
   });
 
   // ── Fetch behavior ──
@@ -356,6 +475,94 @@ describe('useSubscription', () => {
           await result.current.startCheckout('standard', 'monthly');
         })
       ).rejects.toThrow('Failed to start checkout');
+    });
+
+    // ── Error attachment — 2026-09-17 sarah.uku incident fix ──
+    //
+    // On non-2xx, startCheckout attaches `code` and `status` to the thrown
+    // Error so downstream handlers (Onboarding/Account/TrackRecord wrappers)
+    // can branch on the backend's benign 409 codes without matching on the
+    // human-readable message string.
+
+    it('attaches code + status from body to thrown error on 409 existing_subscription', async () => {
+      mockGetToken.mockResolvedValue('jwt-token-123');
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          error: 'Looks like you already have a Vela plan. To switch plans, tap Manage billing on your Account.',
+          code: 'existing_subscription',
+        }),
+      });
+      mockSupabaseClient.single.mockResolvedValue({ data: null, error: { message: 'no rows' } });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      let caught: (Error & { code?: string; status?: number }) | null = null;
+      try {
+        await act(async () => {
+          await result.current.startCheckout('standard', 'monthly');
+        });
+      } catch (err) {
+        caught = err as Error & { code?: string; status?: number };
+      }
+      expect(caught).not.toBeNull();
+      expect(caught?.message).toContain('Manage billing');
+      expect(caught?.code).toBe('existing_subscription');
+      expect(caught?.status).toBe(409);
+    });
+
+    it('attaches code + status on 409 same_tier', async () => {
+      mockGetToken.mockResolvedValue('jwt-token-123');
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 409,
+        json: async () => ({
+          error: 'You are already on the premium plan.',
+          code: 'same_tier',
+        }),
+      });
+      mockSupabaseClient.single.mockResolvedValue({ data: null, error: { message: 'no rows' } });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      let caught: (Error & { code?: string; status?: number }) | null = null;
+      try {
+        await act(async () => {
+          await result.current.startCheckout('premium', 'monthly');
+        });
+      } catch (err) {
+        caught = err as Error & { code?: string; status?: number };
+      }
+      expect(caught?.code).toBe('same_tier');
+      expect(caught?.status).toBe(409);
+    });
+
+    it('leaves code undefined and status set for non-coded errors (e.g. 500)', async () => {
+      mockGetToken.mockResolvedValue('jwt-token-123');
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: 'Server error' }),
+      });
+      mockSupabaseClient.single.mockResolvedValue({ data: null, error: { message: 'no rows' } });
+
+      const { useSubscription } = await loadHook();
+      const { result } = renderHook(() => useSubscription());
+
+      let caught: (Error & { code?: string; status?: number }) | null = null;
+      try {
+        await act(async () => {
+          await result.current.startCheckout('standard', 'monthly');
+        });
+      } catch (err) {
+        caught = err as Error & { code?: string; status?: number };
+      }
+      expect(caught?.code).toBeUndefined();
+      expect(caught?.status).toBe(500);
+      expect(caught?.message).toBe('Server error');
     });
   });
 
