@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { SubscriptionTier, TierConfig } from '../types';
 import { TIER_DEFINITIONS, COMPARISON_FEATURES } from '../lib/tier-definitions';
 import { track, AnalyticsEvent } from '../lib/analytics';
+import { useSubscription } from '../hooks/useSubscription';
 
 interface TierComparisonSheetProps {
   currentTier: SubscriptionTier;
@@ -28,6 +29,25 @@ export default function TierComparisonSheet({
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [expandedTiers, setExpandedTiers] = useState<Set<SubscriptionTier>>(new Set());
 
+  // Sheet-internal routing: paying users open the portal (plan switch,
+  // proration, card update handled by Stripe) instead of hitting
+  // create-checkout-session which would create a second Stripe sub
+  // on the same customer — the 2026-09-17 sarah.uku incident. The
+  // backend `hasLiveSubscription` guard is the defense-in-depth backstop;
+  // routing here is the primary defense and gives a smoother UX (direct
+  // deep-link to the plan-change screen when `provider_subscription_id`
+  // is live, per create-portal-session's flow_data pass-through).
+  //
+  // Reading `useSubscription` here rather than plumbing props from all 5
+  // sheet call sites (Account, TrackRecord, Home, AssetDetail×2) keeps the
+  // change localized. The hook already fires from the surrounding page, so
+  // the second consumer reuses the shared state.
+  const {
+    isLoading: isSubscriptionLoading,
+    hasLiveSubscription: userHasLiveSubscription,
+    openPortal,
+  } = useSubscription();
+
   const TIER_ORDER: SubscriptionTier[] = ['free', 'standard', 'premium'];
   const currentTierIndex = TIER_ORDER.indexOf(currentTier);
 
@@ -45,6 +65,34 @@ export default function TierComparisonSheet({
 
   async function handleCta(tier: TierConfig) {
     if (!onStartCheckout || tier.monthly_price_usd === 0) return;
+    // Cold-cache no-op: on first mount without a cache, subscription is
+    // null and isSubscriptionLoading is true. Silently no-op so we don't
+    // route a user with unknown state into checkout by mistake. Button
+    // is visually disabled via the same flag below.
+    if (isSubscriptionLoading) return;
+
+    // Route paying users to the portal, free/cancelled users to checkout.
+    // Uses the raw subscription row (not the dev-tier override) so a
+    // dev-forced paid tier without a real Stripe sub still goes through
+    // checkout instead of 404ing create-portal-session.
+    if (userHasLiveSubscription) {
+      setCheckingOutTier(tier.tier);
+      setCheckoutError(null);
+      try {
+        await openPortal();
+        // openPortal hard-redirects to the Stripe-hosted customer portal;
+        // React state after this line is not observed. If openPortal itself
+        // throws (network / 4xx before the redirect), the catch below
+        // surfaces the error inline via checkoutError.
+      } catch (err) {
+        console.error('[TierComparisonSheet] Portal error:', err);
+        const msg = err instanceof Error ? err.message : 'Something went wrong';
+        setCheckoutError(msg);
+        setCheckingOutTier(null);
+      }
+      return;
+    }
+
     setCheckingOutTier(tier.tier);
     setCheckoutError(null);
     try {
@@ -438,13 +486,14 @@ export default function TierComparisonSheet({
                 ) : isPaid ? (
                   <button
                     onClick={() => handleCta(tier)}
-                    disabled={checkingOutTier !== null}
+                    disabled={checkingOutTier !== null || isSubscriptionLoading}
                     className="vela-btn vela-btn-primary vela-label-sm"
                     style={{
                       width: '100%',
                       fontWeight: 600,
-                      opacity: checkingOutTier !== null ? 0.7 : 1,
-                      cursor: checkingOutTier !== null ? 'wait' : 'pointer',
+                      opacity: checkingOutTier !== null || isSubscriptionLoading ? 0.7 : 1,
+                      cursor:
+                        checkingOutTier !== null || isSubscriptionLoading ? 'wait' : 'pointer',
                     }}
                   >
                     {getCtaLabel(tier)}

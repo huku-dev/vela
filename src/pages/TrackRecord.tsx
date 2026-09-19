@@ -429,6 +429,14 @@ export default function TrackRecord() {
               await startCheckout(t, billingCycle);
               setShowTierSheet(false);
             } catch (err) {
+              const code = (err as { code?: string })?.code;
+              // For benign 409s (existing_subscription / same_tier), keep the
+              // sheet open and re-throw so TierComparisonSheet's handleCta
+              // renders the raw message via its internal checkoutError banner.
+              // Otherwise fall through to the existing silent close.
+              if (code === 'existing_subscription' || code === 'same_tier') {
+                throw err;
+              }
               setShowTierSheet(false);
               console.error('[TrackRecord] Checkout error:', err);
             }
