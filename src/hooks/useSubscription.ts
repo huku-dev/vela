@@ -4,6 +4,22 @@ import { useAuthContext } from '../contexts/AuthContext';
 import { track, AnalyticsEvent } from '../lib/analytics';
 import type { UserSubscription, SubscriptionTier } from '../types';
 
+// KEEP IN SYNC with hasLiveSubscription in
+// supabase/functions/_shared/subscription-state.ts.
+// Enforced by the STRIPE-SRC cross-repo test in
+// supabase/functions/_shared/stripe-billing.test.ts — if the status set
+// drifts on either side, that test fails.
+//
+// Used by TierComparisonSheet to route paid users to the customer portal
+// (plan-switching) rather than create-checkout-session (which would 409
+// them via the backend guard anyway).
+export function hasLiveSubscription(
+  sub: Pick<UserSubscription, 'tier' | 'status'> | null | undefined,
+): boolean {
+  if (!sub || !sub.tier || sub.tier === 'free') return false;
+  return ['active', 'trialing', 'past_due'].includes(sub.status ?? '');
+}
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const DEV_BYPASS = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
 
@@ -50,6 +66,16 @@ export interface SubscriptionState {
   error: string | null;
   /** True when the subscription is active and on a paid tier */
   isPaid: boolean;
+  /**
+   * True when the user has a live paid Stripe sub in any state (active,
+   * trialing, past_due) on a non-free tier. Broader than `isPaid` (which
+   * excludes trialing/past_due) — the routing decision "checkout vs
+   * portal" needs to catch trialing and past_due users too, or they'd
+   * hit the backend's 409 existing_subscription guard. Kept separate
+   * from `isPaid` so the two intents (auth-check vs routing) don't
+   * confuse each other.
+   */
+  hasLiveSubscription: boolean;
   /** True when the subscription will cancel at period end */
   cancelAtPeriodEnd: boolean;
   /**
@@ -193,12 +219,27 @@ export function useSubscription(): SubscriptionState {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const errMsg = body.error ?? 'Failed to start checkout';
-        Sentry.captureMessage(`Checkout session failed: ${errMsg}`, {
-          level: 'error',
-          tags: { flow: 'subscription' },
-          extra: { tier, billingCycle, status: res.status },
-        });
-        throw new Error(errMsg);
+        const code: string | undefined = body.code;
+        // Skip Sentry for the known-benign 409 codes. These fire when the
+        // backend rejects a duplicate-sub attempt — for `existing_subscription`
+        // that means the sheet's client-side routing didn't catch a paid user
+        // (stale cache, cross-tab race, direct API); for `same_tier` the user
+        // clicked their current tier. In both cases the UI renders the error
+        // string to the user and no engineering action is needed.
+        if (code !== 'existing_subscription' && code !== 'same_tier') {
+          Sentry.captureMessage(`Checkout session failed: ${errMsg}`, {
+            level: 'error',
+            tags: { flow: 'subscription' },
+            extra: { tier, billingCycle, status: res.status, code },
+          });
+        }
+        // Attach code + status so downstream handlers can suppress the
+        // "Couldn't start checkout: ... You can try again" wrapper for the
+        // 409-benign codes and render the raw message instead.
+        const err = new Error(errMsg) as Error & { code?: string; status?: number };
+        err.code = code;
+        err.status = res.status;
+        throw err;
       }
 
       const { url } = await res.json();
@@ -246,6 +287,11 @@ export function useSubscription(): SubscriptionState {
   const tier: SubscriptionTier = devTierOverride ?? subscription?.tier ?? 'free';
   const isPaid = tier !== 'free' && (devTierOverride ? true : subscription?.status === 'active');
   const cancelAtPeriodEnd = subscription?.cancel_at_period_end ?? false;
+  // hasLiveSubscription is computed from the RAW subscription row (not
+  // from `tier`, which carries the vela_dev_tier override above). Routing
+  // to portal for a dev-forced paid tier when there's no real Stripe sub
+  // would 404 in create-portal-session.
+  const hasLive = hasLiveSubscription(subscription);
 
   return {
     subscription,
@@ -253,6 +299,7 @@ export function useSubscription(): SubscriptionState {
     isLoading,
     error,
     isPaid,
+    hasLiveSubscription: hasLive,
     cancelAtPeriodEnd,
     startCheckout,
     openPortal,

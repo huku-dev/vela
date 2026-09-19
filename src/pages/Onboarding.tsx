@@ -1585,9 +1585,19 @@ export default function Onboarding() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Checkout failed';
       console.error('[Onboarding] Checkout redirect failed:', msg);
-      setCheckoutError(
-        `Couldn\u2019t start checkout: ${msg}. You can try again or continue on the free plan.`
-      );
+      // For the backend's benign 409 codes (existing_subscription / same_tier),
+      // the raw message is already user-actionable ("tap Manage billing..."
+      // or "you're already on this plan"). Wrapping with "Couldn't start
+      // checkout: X. You can try again or continue on the free plan"
+      // contradicts the raw message and confuses the user.
+      const code = (err as { code?: string })?.code;
+      if (code === 'existing_subscription' || code === 'same_tier') {
+        setCheckoutError(msg);
+      } else {
+        setCheckoutError(
+          `Couldn\u2019t start checkout: ${msg}. You can try again or continue on the free plan.`
+        );
+      }
     }
   };
 

@@ -325,10 +325,15 @@ const accountSrc = readFileSync(resolve(__dirname, '../pages/Account.tsx'), 'utf
 
 describe('UPGRADE-SRC: upgrade flow source verification', () => {
   it('paid tier buttons are live CTAs wired to checkout', () => {
-    // CTAs call onStartCheckout — disabled only while a checkout is in flight
+    // CTAs call onStartCheckout — disabled while a checkout is in flight OR
+    // while the subscription state is still loading (cold-cache path). The
+    // second gate lets the sheet route paid users to portal instead of
+    // checkout without a stale-cache race hitting the backend guard.
     expect(sheetSrc).toContain('onStartCheckout');
     expect(sheetSrc).toContain('handleCta');
-    expect(sheetSrc).toContain("cursor: checkingOutTier !== null ? 'wait' : 'pointer'");
+    expect(sheetSrc).toMatch(
+      /cursor:\s*[\s\S]*?checkingOutTier !== null \|\| isSubscriptionLoading \? 'wait' : 'pointer'/,
+    );
   });
 
   it('annual billing is the default selection', () => {
@@ -385,7 +390,10 @@ describe('UPGRADE-ADV: adversarial — no premature purchase flow', () => {
 
   it('in-flight checkout shows "Redirecting…" and dims other buttons', () => {
     expect(sheetSrc).toContain('Redirecting\u2026');
-    expect(sheetSrc).toContain('checkingOutTier !== null ? 0.7 : 1');
+    // Button opacity dims while checking out OR while subscription state is
+    // loading (cold-cache path). Both must dim the button so the user
+    // doesn't click into an unknown-routing state.
+    expect(sheetSrc).toContain('checkingOutTier !== null || isSubscriptionLoading ? 0.7 : 1');
   });
 
   it('sheet cannot render without explicit user action', () => {
