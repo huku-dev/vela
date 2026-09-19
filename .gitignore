@@ -29,3 +29,7 @@ SESSION_SUMMARY.txt
 Vela_Best_Practices_Analysis.docx
 notion-growth-marketing-playbook.md
 vela_financial_model.xlsx
+
+# Claude Code + Supabase CLI temp state
+.agents/skills/.claude/
+supabase/.temp/
