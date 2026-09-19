@@ -19,6 +19,7 @@ import type {
   DailyBucket,
   GithubActivity,
   HighlightItem,
+  HoldTimeScoreboardRow,
   Kpis,
   LlmCosts,
   MonthlyReturns,
@@ -1539,6 +1540,154 @@ function winRateTone(pct: number): string {
   if (pct >= 80) return 'ad-green';
   if (pct <= 20) return 'ad-red';
   return '';
+}
+
+// ── Hold-Time Scoreboard ─────────────────────────────────────────────────
+//
+// Buckets last-30d closes by hold time (<1h, 1-4h, 4-12h, 12-24h, 1-2d,
+// 2d+). Surfaces where PnL is being made vs lost as a function of how long
+// positions are held. Backend emits all 6 buckets always, in fixed order,
+// even when empty. All averages may be null (empty bucket, or single-side
+// bucket with no win/loss data); render as em-dash, do NOT coerce to $0
+// or 0.0h because that reads as a real measurement.
+
+// Renders one average cell that may be null. Kept out of JSX to reduce
+// nested ternaries and to keep the "null → dash, not zero" contract
+// visible in one place.
+function AvgCell({
+  value,
+  format,
+  className,
+}: {
+  value: number | null;
+  format: 'money' | 'hours' | 'sizeUsd';
+  className?: string;
+}) {
+  const cls = `ad-right ad-mono${className ? ' ' + className : ''}`;
+  if (value === null) return <td className={cls}>—</td>;
+  if (format === 'money') return <td className={cls}>{signedMoney(value)}</td>;
+  if (format === 'hours') return <td className={cls}>{value.toFixed(1)}h</td>;
+  return <td className={cls}>${Math.round(value).toLocaleString('en-US')}</td>;
+}
+
+export function HoldTimeScoreboardSection({ rows }: { rows: HoldTimeScoreboardRow[] }) {
+  const populated = rows.filter(r => r.closes > 0);
+
+  if (populated.length === 0) {
+    return (
+      <>
+        <SectionTitle>Hold-Time Scoreboard (30d)</SectionTitle>
+        <div className="ad-empty-panel">No closed positions in the last 30 days.</div>
+      </>
+    );
+  }
+
+  // Row highlights: the largest drag row (only if genuinely negative) and
+  // the best-expectancy row (only if genuinely positive). Computed against
+  // populated buckets so an empty bucket never wins "best".
+  const worstByPnl = populated.slice().sort((a, b) => a.netPnl - b.netPnl)[0];
+  const worstIsDrag = worstByPnl && worstByPnl.netPnl < 0 ? worstByPnl : null;
+  const bestByEv = populated
+    .slice()
+    .sort((a, b) => (b.expectancy ?? -Infinity) - (a.expectancy ?? -Infinity))[0];
+  const bestIsWinner = bestByEv && (bestByEv.expectancy ?? 0) > 0 ? bestByEv : null;
+
+  const maxAbs = Math.max(1, ...populated.map(r => Math.abs(r.netPnl)));
+  const totalCloses = populated.reduce((s, r) => s + r.closes, 0);
+  const totalPnl = populated.reduce((s, r) => s + r.netPnl, 0);
+
+  return (
+    <>
+      <SectionTitle>Hold-Time Scoreboard (30d)</SectionTitle>
+      {worstIsDrag && bestIsWinner && worstIsDrag.bucketKey !== bestIsWinner.bucketKey && (
+        <NarrativeLine>
+          <strong>
+            {worstIsDrag.bucketLabel} loses {signedMoney(worstIsDrag.netPnl)} across{' '}
+            {worstIsDrag.closes} close{worstIsDrag.closes === 1 ? '' : 's'}
+          </strong>{' '}
+          at {worstIsDrag.winPct}% wins. Best expectancy:{' '}
+          <strong>{bestIsWinner.bucketLabel}</strong> at{' '}
+          {signedMoney(bestIsWinner.expectancy ?? 0)}/close.
+        </NarrativeLine>
+      )}
+      <div style={{ overflowX: 'auto' }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Hold time</th>
+              <th className="ad-right">Closes</th>
+              <th className="ad-right">Net PnL</th>
+              <th className="ad-right">Win%</th>
+              <th className="ad-right">Avg win</th>
+              <th className="ad-right">Avg loss</th>
+              <th className="ad-right">Expectancy</th>
+              <th className="ad-right">Avg hold</th>
+              <th className="ad-right">Avg size</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => {
+              const isEmpty = r.closes === 0;
+              const highlightCls = worstIsDrag && r === worstIsDrag
+                ? 'ad-row-highlight'
+                : bestIsWinner && r === bestIsWinner
+                  ? 'ad-row-highlight-good'
+                  : undefined;
+              const rowCls = [
+                isEmpty ? 'ad-row-empty' : '',
+                highlightCls ?? '',
+              ].filter(Boolean).join(' ') || undefined;
+              return (
+                <tr key={r.bucketKey} className={rowCls}>
+                  <td>
+                    <strong>{r.bucketLabel}</strong>
+                  </td>
+                  <td className="ad-right ad-mono">{isEmpty ? '—' : r.closes}</td>
+                  <td className="ad-right">
+                    {isEmpty ? <span className="ad-mono">—</span> : <BarCell value={r.netPnl} maxAbs={maxAbs} />}
+                  </td>
+                  <td className={`ad-right ad-mono ${isEmpty ? '' : winRateTone(r.winPct)}`}>
+                    {isEmpty ? '—' : `${r.winPct}%`}
+                  </td>
+                  <AvgCell value={r.avgWin} format="money" className={r.avgWin !== null ? 'ad-green' : ''} />
+                  <AvgCell value={r.avgLoss} format="money" className={r.avgLoss !== null ? 'ad-red' : ''} />
+                  <AvgCell
+                    value={r.expectancy}
+                    format="money"
+                    className={
+                      r.expectancy === null
+                        ? ''
+                        : r.expectancy > 0
+                          ? 'ad-green'
+                          : r.expectancy < 0
+                            ? 'ad-red'
+                            : ''
+                    }
+                  />
+                  <AvgCell value={r.avgHoldHours} format="hours" />
+                  <AvgCell value={r.avgSizeUsd} format="sizeUsd" />
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>
+                <strong>Total (populated)</strong>
+              </td>
+              <td className="ad-right ad-mono">
+                <strong>{totalCloses}</strong>
+              </td>
+              <td className="ad-right ad-mono">
+                <strong>{signedMoney(totalPnl)}</strong>
+              </td>
+              <td colSpan={6}></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </>
+  );
 }
 
 // ── Subscription Risks ────────────────────────────────────────────────────
