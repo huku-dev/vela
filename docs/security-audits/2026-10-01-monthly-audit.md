@@ -31,7 +31,7 @@ The September mechanism (worktree off `origin/main`, branch, push, PR) worked: t
 │    4 allowlisted ungated: uptime-probe (public by design),  │
 │    e2e-testnet-test / e2e-trade-test / test-r2-tp-trim      │
 │    (403 off staging; on staging: anonymous trade driving    │
-│     + arbitrary-sub JWT forge in e2e-trade-test)      M2    │
+│     + service-role writes, hard-coded-sub JWT mint)   M2    │
 │  deploy.sh auth preflight ✓ (whole-file grep)         L1    │
 │  Auth boundary : Privy ES256 → HS256 JWT 1h (auth-exchange) │
 │  Financial     : JWT + peppered OTP (process-withdrawal)    │
@@ -98,7 +98,7 @@ None. Both September CRITICALs are fixed and live-verified in source (see §6).
 - `process-withdrawal/index.ts:455-458`: `.update({ used: true }).eq("id", otp.id)` with no `.eq("used", false)` and no row-count check. Two concurrent `confirm` calls with the same code both pass the SELECT at `:431-440` before either UPDATE lands. Today the `idx_one_active_withdrawal` unique index catches the second `funding_events` insert while the first is `processing`, so the window is narrow. One-line fix: `.eq("used", false).select("id")` and abort on zero rows.
 
 #### M2: Staging is driveable by anonymous callers through the three allowlisted test functions (new framing of a known shape)
-- `e2e-trade-test/index.ts:31-37` returns 403 unless `ENVIRONMENT === "staging"`. On staging it has no caller auth, **mints HS256 JWTs for an arbitrary caller-supplied `sub`** (`:63-77`) and calls `executeTradeProposal` (`:176, :277, :356, :430`) and `trade-webhook` as that user, inserting and deleting `trade_proposals` / `positions`. `e2e-testnet-test` (`:50-56`) and `test-r2-tp-trim-during-trail` (`:66-72`) have the same staging-only guard and place HL testnet orders for caller-chosen assets. All three are in `deploy.sh`'s `ALLOW_UNAUTHENTICATED` list (`:157-166`).
+- `e2e-trade-test/index.ts:31-37` returns 403 unless `ENVIRONMENT === "staging"`. On staging it has no caller auth, mints HS256 JWTs (`:63-77`; **correction 2026-10-07:** the `sub` values are hard-coded test users and the function never reads the request body, so this is not an arbitrary-`sub` forge; that primitive exists only in `e2e-prod-test`, already gated) and calls `executeTradeProposal` (`:176, :277, :356, :430`) and `trade-webhook` as those users, inserting and deleting `trade_proposals` / `positions`. `e2e-testnet-test` (`:50-56`) and `test-r2-tp-trim-during-trail` (`:66-72`) have the same staging-only guard and place HL testnet orders for caller-chosen assets. All three are in `deploy.sh`'s `ALLOW_UNAUTHENTICATED` list (`:157-166`).
 - Prod is not affected. Staging holds testnet funds and shadow/forward-test data whose integrity matters (BB2 shadow tracking, regime-gate forward test). An anonymous caller can corrupt that at will and burn the Micro-plan worker pool (150s runs).
 - **Fix:** gate all three with `evaluateE2EAuth` / `X-E2E-Secret`, exactly as `e2e-prod-test` now does; `deploy.sh` already sends that header for prod. Then shrink `ALLOW_UNAUTHENTICATED` to `uptime-probe`.
 
@@ -155,7 +155,7 @@ None. Both September CRITICALs are fixed and live-verified in source (see §6).
 |---|---|---|---|---|
 | Tampering / EoP | Exceed withdrawal daily cap | Mint N OTPs each under cap, confirm sequentially | **HIGH** | ❌ **H1** |
 | Tampering | Double-spend a single OTP | Concurrent `confirm` with same code | MEDIUM | ⚠️ **M1** (narrow window, index-mitigated) |
-| Spoofing / Tampering | Drive staging trades + forge JWT `sub` anonymously | POST `e2e-trade-test` on staging | MEDIUM | ❌ **M2** (prod 403) |
+| Tampering / DoS | Drive staging testnet trades, service-role writes and the prod-gating E2E suite anonymously | POST `e2e-trade-test` / `e2e-testnet-test` / `test-r2` on staging | MEDIUM | ❌ **M2** (prod 403) |
 | Info Disclosure | Enumerate backend table shapes without sign-in | GraphQL introspection with anon key | MEDIUM | ⚠️ **M3** (rows blocked by RLS) |
 | EoP | Future `USING (true)` policy on a re-granted table becomes a leak | One bad migration | MEDIUM | ⚠️ **M3** (defense-in-depth gap) |
 | Spoofing | Post to X as the brand via engagement callback | Unset `TELEGRAM_ADMIN_CHAT_ID` + forged callback | MEDIUM | ⚠️ **M4** (env set today) |
@@ -251,7 +251,7 @@ None. Both September CRITICALs are fixed and live-verified in source (see §6).
 | 2 | **Make the OTP burn conditional** (`.eq("used", false).select()`; abort on 0 rows) (M1) | 5 min | `process-withdrawal/index.ts:455-458` |
 | 3 | **`npm audit fix` + bump `@privy-io/react-auth`, `vite`, `vitest`**; re-test login / build / OG; retry dropping CSP `unsafe-eval` (H2, L8) | 2h | `package.json`, `vercel.json` |
 | 4 | **Grant lockdown migration + `ALTER DEFAULT PRIVILEGES`** for tables and functions, both projects; add a `REVOKE`-presence rule to `check-migration-security.sh` (M3, L10) | 30 min | new migration, `.claude/hooks/` |
-| 5 | **Gate the three staging test functions** with `evaluateE2EAuth`; shrink `ALLOW_UNAUTHENTICATED` to `uptime-probe` (M2) | 30 min | `e2e-trade-test`, `e2e-testnet-test`, `test-r2-tp-trim-during-trail`, `deploy.sh:157-166` |
+| 5 | **Gate the three staging test functions** with `verifyCronAuth` (X-Cron-Secret, already on both projects; a 2026-10-07 Phase 0 review rejected reusing `E2E_PROD_SECRET` because it would put the prod mainnet-trade secret on staging); shrink `ALLOW_UNAUTHENTICATED` to `uptime-probe` (M2) | 30 min | `e2e-trade-test`, `e2e-testnet-test`, `test-r2-tp-trim-during-trail`, `deploy.sh:157-166` |
 | 6 | **Invert the two fail-open gates** (`twitter-fetcher` → `verifyCronAuth`; engagement gate 500 when `TELEGRAM_ADMIN_CHAT_ID` unset) (M4) | 15 min | `twitter-fetcher:352`, `trade-webhook:461` |
 | 7 | **Drop the staging `paper_trades` public UPDATE policy**; add policy-diff to `verify-deployment.sh` (M5) | 15 min | staging SQL, `scripts/verify-deployment.sh` |
 | 8 | **Verify the nine legacy `Bearer <service_role>` crons are actually succeeding** (`cron_heartbeats`), then migrate them to `verifyCronAuth` (L3) | 45 min | nine `index.ts` handlers |
