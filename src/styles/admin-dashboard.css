@@ -701,6 +701,25 @@
      hardcoded hex; keeps the highlight tone consistent with the token set. */
   background: color-mix(in srgb, var(--ad-red-bg) 85%, var(--ad-ink) 5%);
 }
+.admin-dash tr.ad-row-highlight-good {
+  background: var(--ad-green-bg);
+}
+.admin-dash tr.ad-row-highlight-good:hover {
+  background: color-mix(in srgb, var(--ad-green-bg) 85%, var(--ad-ink) 5%);
+}
+/* Empty-bucket rows: dim to signal "no data this window" without hiding them.
+   Keeps table height stable week-to-week so a bucket becoming populated is
+   visually noticeable. */
+.admin-dash tr.ad-row-empty,
+.admin-dash tr.ad-row-empty:hover {
+  opacity: 0.55;
+}
+/* tfoot totals row inherits row hover from the body-scoped rule above;
+   the total is a static aggregate, not a data row, so a hover highlight
+   reads as an interactive affordance it doesn't have. */
+.admin-dash tfoot tr:hover td {
+  background: inherit;
+}
 
 /* ── Subscription Risks ───────────────────────────────────────────────── */
 .admin-dash .ad-risks-grid {

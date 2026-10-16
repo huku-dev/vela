@@ -187,6 +187,26 @@ export interface AssetScoreboardRow {
   series: CumulativePnlPoint[];
 }
 
+// One bucket in the Hold-Time Scoreboard. Backend emits all 6 in fixed order
+// even when empty. All averages are null when they cannot be meaningfully
+// computed (empty bucket, single-side bucket). Do NOT coerce averages to 0
+// for display, render an em-dash / '-' instead — coercing prints fake
+// measurements ($0 avg size, 0.0h hold).
+export interface HoldTimeScoreboardRow {
+  bucketKey: 'lt1h' | 'h1_4' | 'h4_12' | 'h12_24' | 'd1_2' | 'd2plus';
+  bucketLabel: string;
+  closes: number;
+  wins: number;
+  losses: number;
+  winPct: number;
+  netPnl: number;
+  avgWin: number | null;
+  avgLoss: number | null;
+  expectancy: number | null;
+  avgHoldHours: number | null;
+  avgSizeUsd: number | null;
+}
+
 export interface SubscriptionRisk {
   displayName: string;
   tier: 'premium' | 'standard' | 'free';
@@ -249,6 +269,8 @@ export interface DashboardResponse {
   // response missing them still renders the rest of the dashboard.
   traderCumulativePnl30d?: TraderCumulativePnlRow[];
   assetScoreboard30d?: AssetScoreboardRow[];
+  // Backend PR #212 added this. Optional so a pre-#212 response still renders.
+  holdTimeScoreboard30d?: HoldTimeScoreboardRow[];
   subscriptionRisks?: SubscriptionRisks;
   // Backend PR #165 added this. Optional so a pre-#165 response still renders.
   monthlyReturns?: MonthlyReturns;
