@@ -472,6 +472,14 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
     ],
     errorMessage: null,
   },
+  holdTimeScoreboard30d: [
+    { bucketKey: 'lt1h', bucketLabel: '<1h', closes: 1, wins: 1, losses: 0, winPct: 100, netPnl: 0.03, avgWin: 0.03, avgLoss: null, expectancy: 0.03, avgHoldHours: 0.1, avgSizeUsd: 24 },
+    { bucketKey: 'h1_4', bucketLabel: '1-4h', closes: 1, wins: 1, losses: 0, winPct: 100, netPnl: 0.03, avgWin: 0.03, avgLoss: null, expectancy: 0.03, avgHoldHours: 2.0, avgSizeUsd: 29 },
+    { bucketKey: 'h4_12', bucketLabel: '4-12h', closes: 20, wins: 12, losses: 8, winPct: 60, netPnl: -41.03, avgWin: 0.68, avgLoss: -6.15, expectancy: -2.05, avgHoldHours: 8.7, avgSizeUsd: 73 },
+    { bucketKey: 'h12_24', bucketLabel: '12-24h', closes: 25, wins: 19, losses: 6, winPct: 76, netPnl: 22.08, avgWin: 1.32, avgLoss: -0.49, expectancy: 0.88, avgHoldHours: 19.7, avgSizeUsd: 70 },
+    { bucketKey: 'd1_2', bucketLabel: '1-2d', closes: 21, wins: 9, losses: 12, winPct: 43, netPnl: 34.73, avgWin: 6.60, avgLoss: -2.05, expectancy: 1.65, avgHoldHours: 34.9, avgSizeUsd: 86 },
+    { bucketKey: 'd2plus', bucketLabel: '2d+', closes: 71, wins: 40, losses: 31, winPct: 56, netPnl: 47.28, avgWin: 2.44, avgLoss: -1.62, expectancy: 0.67, avgHoldHours: 170.5, avgSizeUsd: 63 },
+  ],
   monthlyReturns: {
     years: [
       {
