@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      runtime-minor-and-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-minor-and-patch:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
