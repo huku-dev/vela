@@ -20,6 +20,15 @@ updates:
           - "patch"
     labels:
       - "dependencies"
+    # Vitest 1 → 5 is a coordinated multi-package migration (vitest +
+    # @vitest/coverage-v8 + peer deps). Dependabot opens each separately and
+    # neither installs alone. Ignore major bumps; do the migration manually
+    # when prioritized.
+    ignore:
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
