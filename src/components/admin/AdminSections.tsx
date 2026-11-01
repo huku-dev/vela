@@ -396,9 +396,7 @@ export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
                       : ''
                   : '';
               const pctLabel =
-                typeof pct === 'number'
-                  ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`
-                  : '—';
+                typeof pct === 'number' ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : '—';
               return (
                 <tr key={r.displayName + r.signup}>
                   <td>
@@ -1458,13 +1456,33 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
             {visible.map(r => {
               const netPct = netPnlPctFor(r);
               const pctTone = netPct > 0.005 ? 'ad-green' : netPct < -0.005 ? 'ad-red' : '';
+              // Delisted treatment is gated on `enabled === false` STRICTLY,
+              // never `!r.enabled`. During the backend→frontend rollout gap
+              // (and from any older cached response) `enabled` can be
+              // `undefined` and must render as active. A loose check would
+              // mark every row delisted whenever the field is missing.
+              const isDelisted = r.enabled === false;
+              const rowClasses = [
+                worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : null,
+                isDelisted ? 'ad-row-delisted' : null,
+              ]
+                .filter(Boolean)
+                .join(' ');
               return (
-                <tr
-                  key={r.symbol}
-                  className={worstIsDrag && r === worstIsDrag ? 'ad-row-highlight' : undefined}
-                >
+                <tr key={r.symbol} className={rowClasses || undefined}>
                   <td>
                     <strong>{r.symbol}</strong>
+                    {isDelisted && (
+                      <>
+                        {' '}
+                        <span
+                          className="ad-pill ad-pill-muted ad-delisted-badge"
+                          aria-label="delisted asset"
+                        >
+                          delisted
+                        </span>
+                      </>
+                    )}
                   </td>
                   <td className="ad-right ad-mono">{r.closes}</td>
                   <td className={`ad-right ad-mono ${winRateTone(r.winPct)}`}>{r.winPct}%</td>
@@ -1473,7 +1491,8 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
                     <BarCell value={r.netPnl} maxAbs={maxAbs} />
                   </td>
                   <td className={`ad-right ad-mono ${pctTone}`}>
-                    {netPct >= 0 ? '+' : ''}{netPct.toFixed(2)}%
+                    {netPct >= 0 ? '+' : ''}
+                    {netPct.toFixed(2)}%
                   </td>
                   <td className="ad-right ad-mono">{r.avgHoldHours.toFixed(1)}h</td>
                   <td>

@@ -701,6 +701,27 @@
      hardcoded hex; keeps the highlight tone consistent with the token set. */
   background: color-mix(in srgb, var(--ad-red-bg) 85%, var(--ad-ink) 5%);
 }
+/* Delisted asset rows: text and sparkline muted so you can tell at a glance
+   which assets are no longer in rotation. Row density is preserved: all
+   data still renders. CSS `opacity` on the row applies to every descendant
+   through the stacking context, so the badge participates in the dim. To
+   keep it legible under that dim we give it darker gray-700/gray-200
+   tokens than the default `.ad-pill-muted` (gray-500 on gray-100), which
+   lands around 3.6:1 contrast at 0.55 opacity. The symbol cell is pinned
+   to a single line so narrow viewports don't let the badge wrap under
+   the symbol and inflate just the delisted rows' height. */
+.admin-dash tr.ad-row-delisted {
+  opacity: 0.55;
+}
+.admin-dash tr.ad-row-delisted td:first-child {
+  white-space: nowrap;
+}
+.admin-dash tr.ad-row-delisted .ad-delisted-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+  background: var(--ad-gray-200);
+  color: var(--ad-gray-700);
+}
 
 /* ── Subscription Risks ───────────────────────────────────────────────── */
 .admin-dash .ad-risks-grid {
