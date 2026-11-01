@@ -380,6 +380,7 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
         date: `2026-07-${String(i + 1).padStart(2, '0')}`,
         cumPnl: i < 5 ? i * 0.2 : i < 15 ? -20 : -39.91,
       })),
+      enabled: false,
     },
     {
       symbol: 'OIL',
@@ -393,6 +394,7 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
         date: `2026-07-${String(i + 1).padStart(2, '0')}`,
         cumPnl: i * 0.47,
       })),
+      enabled: true,
     },
     {
       symbol: 'AMZN',
@@ -406,6 +408,7 @@ export const FIXTURE_DASHBOARD: DashboardResponse = {
         date: `2026-07-${String(i + 1).padStart(2, '0')}`,
         cumPnl: -i * 0.47,
       })),
+      enabled: true,
     },
   ],
   subscriptionRisks: {

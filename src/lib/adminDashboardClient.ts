@@ -185,6 +185,10 @@ export interface AssetScoreboardRow {
   netPnl: number;
   avgHoldHours: number;
   series: CumulativePnlPoint[];
+  // Backend 2026-11-01 added this (PR #385). Optional so a pre-#385 cached
+  // response still renders every row as active. Treat `undefined` as active;
+  // only `=== false` is delisted. See AssetScoreboardSection for the check.
+  enabled?: boolean;
 }
 
 export interface SubscriptionRisk {
