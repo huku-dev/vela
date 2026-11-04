@@ -20,12 +20,13 @@ Never `reports/` (untracked, periodically cleaned). An uncommitted report is the
 | 2026-08 | [2026-08-02](2026-08-02-monthly-audit.md) | ✅ `aafc07e`+ (recovered 2026-09-01) | 2 CRITICAL (cron secret leak regression; `scanner-30m` unauthenticated), 2 HIGH, 3 MEDIUM. Written + moved to this dir but never committed until recovered from stash on 2026-09-01. |
 | 2026-09 | [2026-09-01](2026-09-01-monthly-audit.md) | ✅ | Aug C1 (cron secret) FIXED + live-verified. **Still open: C2 `scanner-30m` (CRITICAL), + `e2e-prod-test` mainnet trade/JWT-forge (CRITICAL, new), ~13 ungated fns (HIGH).** New: anon-executable `admin_llm_cost_*` RPCs. npm audit 75. |
 | 2026-10 | [2026-10-01](2026-10-01-monthly-audit.md) | ✅ | **Sept C1/C2/H1/M1/M3 all FIXED** (scanner-30m + e2e-prod-test gated, 13 cron fns gated, deploy preflight landed, llm_cost RPCs revoked). **New: H1 withdrawal daily-cap bypass (confirm never re-checks `maxDaily`)**, M3 default anon/auth grants on 3 post-July tables, M5 staging `paper_trades` public UPDATE. npm audit 79 (worse). 0 CRITICAL. |
+| 2026-11 | [2026-11-02](2026-11-02-monthly-audit.md) | ✅ | **Oct H1/M1/M2/M3/M4/M5/L4/L5 all FIXED** (daily cap at confirm, atomic OTP burn, E2E harnesses gated, default privileges locked, fail-open gates inverted). **New: H1 orphan prod fn `test-emails` (unauthenticated branded email relay, deployed 2026-03, not in repo)**, M1 six more orphan deployed fns (2 unauthenticated on staging), M2 `CRON_SHARED_SECRET` now gates 4 trade/SL paths, M3 legacy ALL grants on 19 frontend tables (RLS SELECT-only, inert). npm audit 106 (worse). 0 CRITICAL. |
 
 ---
 
 ## Recurring failure: uncommitted reports
 
-Four of six monthly runs (Apr, Jun, Jul, Aug) left no committed record at the time. Sept and Oct both landed via the worktree + PR mechanism. Jul and Aug were
+Four of six monthly runs (Apr, Jun, Jul, Aug) left no committed record at the time. Sept, Oct and Nov all landed via the worktree + PR mechanism. Jul and Aug were
 recovered from git stashes on 2026-09-01 — the Aug report carried 2 CRITICAL findings that were
 effectively invisible for a month as a result. The task spec now mandates committing the report
 before the run ends; keep this table current, and a blank/❌ row is the signal that a month was missed.
