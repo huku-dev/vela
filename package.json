@@ -35,6 +35,9 @@
     "satori-html": "^0.3.2",
     "sharp": "^0.34.5"
   },
+  "overrides": {
+    "fflate": "^0.8.2"
+  },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^16.0.0",
