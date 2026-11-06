@@ -162,7 +162,7 @@ export default function AdminDashboard() {
         <>
           <KpisSection kpis={data.kpis} />
 
-          <HighlightsSection items={data.curated.highlights} />
+          <HighlightsSection items={data.curated.highlights} updatedAt={data.curated.updatedAt} />
           <ShippedSection github={data.github} />
           <VelocitySection github={data.github} />
 

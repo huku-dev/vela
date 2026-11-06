@@ -634,11 +634,64 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return parts;
 }
 
-export function HighlightsSection({ items }: { items: HighlightItem[] }) {
+function formatUpdatedAt(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  const ageHours = (Date.now() - d.getTime()) / 3600_000;
+  const ageLabel =
+    ageHours < 1
+      ? `${Math.max(1, Math.round(ageHours * 60))}m ago`
+      : ageHours < 48
+        ? `${Math.round(ageHours)}h ago`
+        : `${Math.round(ageHours / 24)}d ago`;
+  return `Updated ${months[d.getUTCMonth()]} ${d.getUTCDate()}, ${hh}:${mm} UTC · ${ageLabel}`;
+}
+
+export function HighlightsSection({
+  items,
+  updatedAt,
+}: {
+  items: HighlightItem[];
+  updatedAt?: string | null;
+}) {
   if (!items.length) return null;
+  const stamp = formatUpdatedAt(updatedAt ?? null);
+  const ageHours = updatedAt ? (Date.now() - new Date(updatedAt).getTime()) / 3600_000 : 0;
+  const stale = ageHours > 120;
   return (
     <>
       <SectionTitle>Highlights</SectionTitle>
+      {stamp && (
+        <div
+          className="ad-highlights-updated"
+          style={{
+            fontSize: '0.75rem',
+            color: stale ? 'var(--color-signal-sell, #c0392b)' : 'var(--ad-gray-500)',
+            marginTop: '-0.5rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          {stamp}
+          {stale ? ' · stale' : ''}
+        </div>
+      )}
       <ul className="ad-highlights-list">
         {items.map((h, i) => (
           <li key={i}>
