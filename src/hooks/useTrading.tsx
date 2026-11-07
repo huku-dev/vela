@@ -1,4 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  useContext,
+  createContext,
+  type ReactNode,
+} from 'react';
 import * as Sentry from '@sentry/react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { track, AnalyticsEvent } from '../lib/analytics';
@@ -233,9 +242,21 @@ const DEV_MOCK_CLOSED_POSITIONS: Position[] = DEV_BYPASS
     ]
   : [];
 
-// ── Hook ──────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────
+//
+// 2026-11-07: lifted from a per-consumer hook into a single provider so there
+// is one Realtime subscription per tab. supabase-js 2.118 dedupes channels by
+// topic (RealtimeClient.channel() returns an existing channel with the same
+// name) and RealtimeChannel.on('postgres_changes', ...) throws when the
+// channel is already joined/joining. With seven useTrading() call sites each
+// calling .channel('trading-updates'), every mount after the first threw and
+// crashed the Layout tree into an empty root div. See
+// docs/retros if added, and commit message for the Nov 4 dependabot bump
+// (@supabase/supabase-js 2.95.3 -> 2.118.0) that surfaced the latent dup.
 
-export function useTrading(): TradingState {
+const TradingContext = createContext<TradingState | null>(null);
+
+export function TradingProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, supabaseClient, user, getToken } = useAuthContext();
 
   const [proposals, setProposals] = useState<TradeProposal[]>([]);
@@ -250,6 +271,26 @@ export function useTrading(): TradingState {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Guard against concurrent fetches (from polling + Realtime firing simultaneously)
   const fetchInFlightRef = useRef(false);
+
+  // Reset state when the signed-in user changes (logout → login, OR login as
+  // a different user on the same tab without a null in between — the A → B
+  // path that handleLogout happens to avoid today but that nothing in this
+  // provider enforces). Without this the provider leaks the previous user's
+  // proposals/positions/wallet into the next session, which is a regression
+  // over the pre-refactor per-hook mount cycle.
+  const prevPrivyDidRef = useRef<string | undefined>(user?.privyDid);
+  useEffect(() => {
+    if (prevPrivyDidRef.current !== user?.privyDid) {
+      prevPrivyDidRef.current = user?.privyDid;
+      setProposals([]);
+      setPositions([]);
+      setClosedPositions([]);
+      setPreferences(null);
+      setWallet(null);
+      setCircuitBreakers([]);
+      setError(null);
+    }
+  }, [user?.privyDid]);
 
   // ── Fetch all trading data ──
   const fetchTradingData = useCallback(async () => {
@@ -344,67 +385,97 @@ export function useTrading(): TradingState {
   }, [isAuthenticated, fetchTradingData]);
 
   // ── Set up Supabase Realtime for live position updates ──
+  //
+  // StrictMode + supabase-js 2.118 gotcha: RealtimeClient.channel(topic) dedupes
+  // by name and returns the existing channel if one with the same topic is
+  // still in the registry. channel.unsubscribe() sends an async LEAVE message
+  // but the channel only clears from the registry on the _onClose hook, which
+  // fires after the server acks (network round-trip). StrictMode double-mount
+  // (and any resubscribe before the ack lands) therefore sees the still-joined
+  // channel on the second mount and RealtimeChannel.on('postgres_changes', ...)
+  // throws "cannot add callbacks ... after subscribe()". Guard by removing any
+  // leftover channel with this topic FIRST and awaiting the remove before
+  // creating the new channel. Cleanup goes through removeChannel so the
+  // registry is drained synchronously past our effect boundary.
   useEffect(() => {
     if (!supabaseClient || !isAuthenticated || !user?.privyDid) return;
 
-    const channel = supabaseClient
-      .channel('trading-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'positions',
-          filter: `user_id=eq.${user.privyDid}`,
-        },
-        () => {
-          // Re-fetch on any position change (debounced by fetchInFlightRef)
-          fetchTradingData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'trade_proposals',
-          filter: `user_id=eq.${user.privyDid}`,
-        },
-        () => {
-          fetchTradingData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'user_wallets',
-          filter: `user_id=eq.${user.privyDid}`,
-        },
-        () => {
-          // Balance update from position-monitor (every 2 min) or refresh-balance
-          fetchTradingData();
-        }
-      )
-      .subscribe((status, err) => {
-        if (err) {
-          Sentry.captureException(err, {
-            tags: { flow: 'realtime' },
-            extra: { channel: 'trading-updates', status },
-          });
-          console.error('[useTrading] Realtime error:', status, err);
-        }
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          Sentry.captureMessage(`Realtime subscription ${status}`, {
-            level: 'warning',
-            tags: { flow: 'realtime' },
-          });
-        }
-      });
+    let channel: ReturnType<typeof supabaseClient.channel> | null = null;
+    let cancelled = false;
+
+    const setup = async () => {
+      const stale = supabaseClient
+        .getChannels()
+        .find((c) => c.topic === 'realtime:trading-updates');
+      if (stale) {
+        await supabaseClient.removeChannel(stale);
+      }
+      if (cancelled) return;
+
+      channel = supabaseClient
+        .channel('trading-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'positions',
+            filter: `user_id=eq.${user.privyDid}`,
+          },
+          () => {
+            // Re-fetch on any position change (debounced by fetchInFlightRef)
+            fetchTradingData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'trade_proposals',
+            filter: `user_id=eq.${user.privyDid}`,
+          },
+          () => {
+            fetchTradingData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'user_wallets',
+            filter: `user_id=eq.${user.privyDid}`,
+          },
+          () => {
+            // Balance update from position-monitor (every 2 min) or refresh-balance
+            fetchTradingData();
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) {
+            Sentry.captureException(err, {
+              tags: { flow: 'realtime' },
+              extra: { channel: 'trading-updates', status },
+            });
+            console.error('[useTrading] Realtime error:', status, err);
+          }
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            Sentry.captureMessage(`Realtime subscription ${status}`, {
+              level: 'warning',
+              tags: { flow: 'realtime' },
+            });
+          }
+        });
+    };
+
+    setup();
 
     return () => {
-      channel.unsubscribe();
+      cancelled = true;
+      if (channel) {
+        supabaseClient.removeChannel(channel);
+      }
     };
     // Intentionally stable deps — only re-subscribe when auth state changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -645,24 +716,58 @@ export function useTrading(): TradingState {
     [getToken, wallet?.agent_registered, updatePreferences, fetchTradingData]
   );
 
-  return {
-    proposals,
-    positions,
-    closedPositions,
-    preferences,
-    wallet,
-    circuitBreakers,
-    loading,
-    error,
-    isTradingEnabled: preferences?.mode !== 'view_only' && preferences?.mode != null,
-    hasWallet: !!wallet?.master_address,
-    acceptProposal,
-    declineProposal,
-    updatePreferences,
-    enableTrading,
-    generateTelegramLink,
-    refresh: fetchTradingData,
-  };
+  const value = useMemo<TradingState>(
+    () => ({
+      proposals,
+      positions,
+      closedPositions,
+      preferences,
+      wallet,
+      circuitBreakers,
+      loading,
+      error,
+      isTradingEnabled: preferences?.mode !== 'view_only' && preferences?.mode != null,
+      hasWallet: !!wallet?.master_address,
+      acceptProposal,
+      declineProposal,
+      updatePreferences,
+      enableTrading,
+      generateTelegramLink,
+      refresh: fetchTradingData,
+    }),
+    [
+      proposals,
+      positions,
+      closedPositions,
+      preferences,
+      wallet,
+      circuitBreakers,
+      loading,
+      error,
+      acceptProposal,
+      declineProposal,
+      updatePreferences,
+      enableTrading,
+      generateTelegramLink,
+      fetchTradingData,
+    ]
+  );
+
+  return <TradingContext.Provider value={value}>{children}</TradingContext.Provider>;
+}
+
+/**
+ * Consumer hook — reads the shared trading state from TradingProvider.
+ * Throws if used outside the provider; mount <TradingProvider> around any
+ * subtree that calls useTrading. In Vela that is the authenticated Layout
+ * subtree (see AuthShell.tsx).
+ */
+export function useTrading(): TradingState {
+  const ctx = useContext(TradingContext);
+  if (!ctx) {
+    throw new Error('useTrading must be used within a TradingProvider');
+  }
+  return ctx;
 }
 
 /**

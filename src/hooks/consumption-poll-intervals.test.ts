@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
-const useTradingSrc = readFileSync(resolve(__dirname, './useTrading.ts'), 'utf-8');
+const useTradingSrc = readFileSync(resolve(__dirname, './useTrading.tsx'), 'utf-8');
 const accountSrc = readFileSync(resolve(__dirname, '../pages/Account.tsx'), 'utf-8');
 
 describe('POLL-SRC: fallback poll intervals stay at 5 minutes', () => {

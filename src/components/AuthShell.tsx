@@ -4,6 +4,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { AuthProvider, useAuthContext } from '../contexts/AuthContext';
 import { PRIVY_APP_ID, privyConfig } from '../lib/privy';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { TradingProvider } from '../hooks/useTrading';
 import { ErrorBoundary } from './ErrorBoundary';
 import DeactivationScreen from './DeactivationScreen';
 import Layout from './Layout';
@@ -113,11 +114,21 @@ export default function AuthShell() {
                 }
               />
 
-              {/* Main app — gated by onboarding check */}
+              {/* Main app — gated by onboarding check.
+                  TradingProvider wraps Layout (not AuthShell) because the
+                  seven useTrading consumers (Layout, PendingProposalsBanner →
+                  usePendingProposalsCountdown, TelegramConnectButton, Home,
+                  AssetDetail, TrackRecord, Account) all mount inside Layout.
+                  /welcome, /login, and /admin never call useTrading, so
+                  mounting it higher would start a Realtime subscription and
+                  fetch for pages that do not need it and would leave cached
+                  state stale across the onboarding handoff. */}
               <Route
                 element={
                   <OnboardingGate>
-                    <Layout />
+                    <TradingProvider>
+                      <Layout />
+                    </TradingProvider>
                   </OnboardingGate>
                 }
               >
