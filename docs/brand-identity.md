@@ -1,5 +1,9 @@
 # Vela Brand Identity System
 
+> **Scope: logomark, wordmark, favicon and Signal Green only.** This is NOT the design system.
+> For colours, tokens, typography, components, dark mode and voice, read **`VELA-BRAND-SYSTEM-V2.md`** (repo root) and the live tokens in `src/styles/vela-design-system.css`. Where this file and the code disagree, the code wins.
+> Signal Green is the logomark iris and an accent. It is not the action colour (blue, `--color-action-primary`) or the brand colour (purple, `--color-brand`).
+
 > **Version:** 1.0 · **Last Updated:** 2026-02-28
 > **Status:** ✅ Implemented
 

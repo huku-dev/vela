@@ -7,9 +7,9 @@
 ## Visual Language: Neobrutalism
 
 Vela uses a **neobrutalist design system** characterized by:
-- Thick black borders (3px solid)
-- High-contrast colors (cream backgrounds #FFFBF5, black text #0A0A0A)
-- Bold typography (Instrument Sans for headings, Inter for body)
+- Thick black borders (3px solid in light mode; dark mode uses `--color-border-default` #334155)
+- High-contrast colors (page background `--color-bg-page` #f5f1e8, black text #0A0A0A)
+- Bold typography (Space Grotesk for headings, Inter for body)
 - No subtle shadows or gradients — everything is flat and bold
 
 ---
@@ -20,16 +20,16 @@ Vela uses a **neobrutalist design system** characterized by:
 
 **Layer 1: Primitives** (base palette)
 ```css
---green-primary: #00D084
---red-primary: #FF4757
---gray-primary: #EBEBEB
+--green-primary: #10b981
+--red-primary: #ef4444
+--amber-primary: #f59e0b
 ```
 
 **Layer 2: Semantic Tokens** (intent-based)
 ```css
 --color-signal-buy: var(--green-primary)
 --color-signal-sell: var(--red-primary)
---color-signal-wait: var(--gray-primary)
+--color-signal-wait: var(--amber-primary)
 ```
 
 **Layer 3: Component Usage**
@@ -38,7 +38,7 @@ Vela uses a **neobrutalist design system** characterized by:
 <div style={{ backgroundColor: 'var(--color-signal-buy)' }}>BUY</div>
 
 // WRONG: Don't hardcode colors
-<div style={{ backgroundColor: '#00D084' }}>BUY</div>
+<div style={{ backgroundColor: '#10b981' }}>BUY</div>
 ```
 
 ### Signal Status Color Mapping (CRITICAL)
@@ -46,7 +46,7 @@ Vela uses a **neobrutalist design system** characterized by:
 Signal status colors have **semantic meaning** — misusing them breaks user trust:
 - **Green = BUY** (bullish signals ONLY)
 - **Red = SELL** (bearish signals ONLY)
-- **Gray = WAIT** (neutral/no signal)
+- **Amber = WAIT** (neutral/no signal)
 
 **Never** use green for anything except bullish signals.
 **Never** use red for anything except bearish signals.
@@ -55,7 +55,7 @@ Signal status colors have **semantic meaning** — misusing them breaks user tru
 
 ## Typography Standards
 
-- **Headings:** Instrument Sans, 700 weight
+- **Headings:** Space Grotesk, 700 for XL, 600 for LG and base (`--type-heading-*` tokens)
 - **Body:** Inter, 400 weight (500 for emphasis)
 - **Signal Status Labels:** 700 weight, uppercase, 14px
 

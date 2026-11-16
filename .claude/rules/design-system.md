@@ -12,7 +12,7 @@ paths:
 
 ## Color Tokens (NEVER hardcode)
 - Use semantic tokens from `vela-design-system.css` — never hex values in components
-- Signal colors are semantic: Green=BUY (`--color-signal-buy`), Red=SELL (`--color-signal-sell`), Gray=WAIT (`--color-signal-wait`)
+- Signal colors are semantic: Green=BUY (`--color-signal-buy`), Red=SELL (`--color-signal-sell`), Amber=WAIT (`--color-signal-wait`)
 - Never use green for anything except bullish signals. Never use red for anything except bearish.
 
 ## Components
@@ -21,7 +21,7 @@ paths:
 - Error boundaries required on all data-dependent pages
 
 ## Typography
-- Headings: Instrument Sans 700. Body: Inter 400 (500 for emphasis).
+- Headings: Space Grotesk (700 XL, 600 LG and base; use `--type-heading-*` tokens). Body: Inter 400 (500 for emphasis).
 
 ## Brand Voice (Three Pillars)
 1. **Always Watching** — 24/7 monitoring. Never "check back later."

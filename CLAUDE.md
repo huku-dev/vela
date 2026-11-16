@@ -33,7 +33,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Critical Rules — NEVER VIOLATE
 
 1. **Never hardcode colors** — use semantic tokens from `vela-design-system.css`
-2. **Signal colors are semantic:** Green=BUY, Red=SELL, Gray=WAIT — never misuse
+2. **Signal colors are semantic:** Green=BUY, Red=SELL, Amber=WAIT. Never misuse
 3. **Never hardcode API keys** — env vars only, never commit `.env.local`
 4. **New env vars: same commit must update** `.env.example` + `DEPLOY.md` + set staging/prod values
 5. **Critical env vars MUST fail loud** — never `?? "testnet"` or any silent default
@@ -136,7 +136,8 @@ Vercel serverless functions (Node.js) use `satori` + `sharp` to render social ca
 | QA testing or pre-launch checks | `docs/claude-reference/qa-checklist.md` |
 | Starting or ending a session | `docs/claude-reference/session-routines.md` |
 | Editing CLAUDE.md or MEMORY.md | `docs/claude-reference/documentation-maintenance.md` |
-| Touching brand, logos, or design specs | `VELA-BRAND-SYSTEM-V2.md` + `docs/brand-identity.md` |
+| Touching brand, design specs or tokens | `VELA-BRAND-SYSTEM-V2.md` (canonical) + live tokens in `src/styles/vela-design-system.css` |
+| Touching the logo, wordmark or favicon only | `docs/brand-identity.md` (logomark scope only) |
 | Working on Hyperliquid, trading, or backend | `memory/backend-patterns.md` |
 | Working on signal engine or briefs | MEMORY.md Signal Engine Architecture section |
 | Working on social posting or content | `memory/social-media-playbook.md` |

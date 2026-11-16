@@ -111,4 +111,4 @@ Before deploying to production, verify:
 ### Brand
 - [ ] All user-facing copy reviewed against Three Pillar framework
 - [ ] Design system tokens used (no hardcoded colors)
-- [ ] Typography consistent (Instrument Sans for headings, Inter for body)
+- [ ] Typography consistent (Space Grotesk for headings, Inter for body)

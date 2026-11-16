@@ -12,7 +12,7 @@ Apply these standards when creating or modifying any React component, page, styl
 **Never hardcode colors.** Always use semantic tokens from `src/styles/vela-design-system.css`.
 
 Three-layer system:
-1. **Primitives:** `--green-primary`, `--red-primary`, `--gray-primary`
+1. **Primitives:** `--green-primary`, `--red-primary`, `--amber-primary`
 2. **Semantic tokens:** `--color-signal-buy`, `--color-signal-sell`, `--color-signal-wait`
 3. **Component usage:** Reference semantic tokens in JSX/CSS
 
@@ -21,13 +21,13 @@ Three-layer system:
 <div style={{ backgroundColor: 'var(--color-signal-buy)' }}>BUY</div>
 
 // WRONG — never hardcode
-<div style={{ backgroundColor: '#00D084' }}>BUY</div>
+<div style={{ backgroundColor: '#10b981' }}>BUY</div>
 ```
 
 ### Signal Color Semantics (CRITICAL)
 - **Green = BUY only** (bullish signals)
 - **Red = SELL only** (bearish signals)
-- **Gray = WAIT only** (neutral)
+- **Amber = WAIT only** (neutral)
 
 Never use signal colors for non-signal purposes.
 
@@ -38,7 +38,7 @@ Never use signal colors for non-signal purposes.
 
 ## Typography
 
-- **Headings:** Instrument Sans, 700 weight
+- **Headings:** Space Grotesk, 700 for XL, 600 for LG and base (`--type-heading-*` tokens)
 - **Body:** Inter, 400 weight (500 for emphasis)
 - **Signal labels:** 700 weight, uppercase, 14px
 
@@ -117,7 +117,7 @@ All data-dependent pages MUST have error boundaries:
 
 Before committing UI changes, verify:
 1. [ ] No hardcoded colors — all use semantic tokens
-2. [ ] Signal colors used correctly (green=BUY, red=SELL, gray=WAIT)
+2. [ ] Signal colors used correctly (green=BUY, red=SELL, amber=WAIT)
 3. [ ] Loading states present for async operations
 4. [ ] Error handling for all data fetches
 5. [ ] ARIA labels on interactive elements

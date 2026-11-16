@@ -446,7 +446,7 @@ import {
 ### Visual
 - [ ] Uses semantic tokens (not primitives)
 - [ ] Typography uses composite tokens
-- [ ] Borders are 3-4px, black
+- [ ] Borders are 3-4px, via `--color-border-default` (black in light mode, #334155 in dark mode)
 - [ ] Shadows are solid (no blur)
 - [ ] Icons use appropriate stroke weight (2px inline, 2.5px isolated)
 - [ ] Meets WCAG AA minimum (AAA preferred)
