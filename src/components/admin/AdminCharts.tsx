@@ -8,39 +8,23 @@
 // non-admins never download it — the whole /admin route (including this file
 // and chart.js) only ships when an admin navigates to the page.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import {
   BarController,
   BarElement,
   CategoryScale,
   Chart,
-  Filler,
   Legend,
-  LineController,
-  LineElement,
   LinearScale,
-  PointElement,
   Title,
   Tooltip,
 } from 'chart.js';
 import type { DailyBucket } from '../../lib/adminDashboardClient';
+import { HIDDEN_VALUE, useValuesHidden } from './hideValues';
 
-Chart.register(
-  BarController,
-  LineController,
-  BarElement,
-  LineElement,
-  PointElement,
-  LinearScale,
-  CategoryScale,
-  Tooltip,
-  Legend,
-  Title,
-  Filler,
-);
+Chart.register(BarController, BarElement, LinearScale, CategoryScale, Tooltip, Legend, Title);
 
 const PURPLE = '#8b5cf6';
-const AMBER_DARK = '#d97706';
 const GREEN_DARK = '#059669';
 const RED_DARK = '#dc2626';
 const TICK_COLOR = '#475569';
@@ -52,8 +36,8 @@ interface ChartProps {
 }
 
 /**
- * Daily trades (bars) + active traders per day (area line).
- * Ported verbatim from docs/dashboard.html Chart.js config.
+ * Daily trades closed (bars). Active traders for the day show on hover rather
+ * than as a second line on a second axis.
  */
 export function TradingVolumeChart({ data }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -61,7 +45,6 @@ export function TradingVolumeChart({ data }: ChartProps) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const traderMax = Math.max(5, ...data.map(d => d.traders));
     chartRef.current = new Chart(canvasRef.current, {
       type: 'bar',
       data: {
@@ -75,22 +58,14 @@ export function TradingVolumeChart({ data }: ChartProps) {
             borderWidth: 1,
             borderRadius: 4,
           },
-          {
-            label: 'Active Traders',
-            data: data.map(d => d.traders),
-            type: 'line',
-            borderColor: AMBER_DARK,
-            backgroundColor: 'rgba(217, 119, 6, 0.1)',
-            tension: 0.3,
-            fill: true,
-            yAxisID: 'y1',
-            pointRadius: 2,
-          },
         ],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Hovering anywhere in a day's column opens the tooltip, so short bars
+        // are still easy to read.
+        interaction: { mode: 'index', intersect: false },
         plugins: {
           title: {
             display: true,
@@ -105,6 +80,13 @@ export function TradingVolumeChart({ data }: ChartProps) {
             borderWidth: 1,
             titleColor: '#0f172a',
             bodyColor: '#374151',
+            footerColor: '#374151',
+            callbacks: {
+              footer: items => {
+                const day = items.length ? data[items[0].dataIndex] : undefined;
+                return day ? `Active Traders: ${day.traders}` : '';
+              },
+            },
           },
         },
         scales: {
@@ -116,14 +98,6 @@ export function TradingVolumeChart({ data }: ChartProps) {
             ticks: { color: TICK_COLOR },
             grid: { color: GRID_COLOR },
             title: { display: true, text: 'Trades', color: TICK_COLOR },
-          },
-          y1: {
-            position: 'right',
-            ticks: { color: AMBER_DARK },
-            grid: { display: false },
-            title: { display: true, text: 'Traders', color: AMBER_DARK },
-            min: 0,
-            max: traderMax,
           },
         },
       },
@@ -149,8 +123,10 @@ export function TradingVolumeChart({ data }: ChartProps) {
 export function PnlChart({ data }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
+  const hidden = useValuesHidden();
 
-  useEffect(() => {
+  // Layout effect: the unmasked chart is gone before the toggled page paints.
+  useLayoutEffect(() => {
     if (!canvasRef.current) return;
     chartRef.current = new Chart(canvasRef.current, {
       type: 'bar',
@@ -161,7 +137,7 @@ export function PnlChart({ data }: ChartProps) {
             label: 'Platform PnL ($)',
             data: data.map(d => d.pnl),
             backgroundColor: data.map(d =>
-              d.pnl >= 0 ? 'rgba(16, 185, 129, 0.55)' : 'rgba(239, 68, 68, 0.55)',
+              d.pnl >= 0 ? 'rgba(16, 185, 129, 0.55)' : 'rgba(239, 68, 68, 0.55)'
             ),
             borderColor: data.map(d => (d.pnl >= 0 ? GREEN_DARK : RED_DARK)),
             borderWidth: 1,
@@ -188,6 +164,7 @@ export function PnlChart({ data }: ChartProps) {
             bodyColor: '#374151',
             callbacks: {
               label: ctx => {
+                if (hidden) return `Platform PnL: ${HIDDEN_VALUE}`;
                 const v = ctx.parsed.y ?? 0;
                 const sign = v > 0 ? '+' : v < 0 ? '-' : '';
                 return `Platform PnL: ${sign}$${Math.abs(v).toFixed(2)}`;
@@ -203,7 +180,10 @@ export function PnlChart({ data }: ChartProps) {
           y: {
             ticks: {
               color: TICK_COLOR,
-              callback: v => (typeof v === 'number' && v < 0 ? `-$${Math.abs(v)}` : `$${v}`),
+              callback: v => {
+                if (hidden) return HIDDEN_VALUE;
+                return typeof v === 'number' && v < 0 ? `-$${Math.abs(v)}` : `$${v}`;
+              },
             },
             grid: { color: GRID_COLOR },
           },
@@ -214,7 +194,7 @@ export function PnlChart({ data }: ChartProps) {
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [data]);
+  }, [data, hidden]);
 
   return (
     <div className="ad-chart-wrap">

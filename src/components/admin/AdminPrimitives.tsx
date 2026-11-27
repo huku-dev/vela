@@ -5,6 +5,7 @@
 // changes; edit sections if content or layout changes.
 
 import type { ReactNode } from 'react';
+import { useMask } from './hideValues';
 
 export function SectionTitle({ children }: { children: ReactNode }) {
   return <div className="ad-section-title">{children}</div>;
@@ -54,7 +55,9 @@ export function BarCell({
   const raw = maxAbs > 0 ? Math.round((Math.abs(value) / maxAbs) * 100) : 0;
   const width = isZero ? 0 : Math.max(3, raw);
   const tone = value < 0 ? 'ad-red' : 'ad-green';
-  const label = formatMoney(value, currency);
+  const mask = useMask();
+  const formatted = formatMoney(value, currency);
+  const label = currency ? mask(formatted) : formatted;
   return (
     <div className="ad-pnl-cell">
       <span
