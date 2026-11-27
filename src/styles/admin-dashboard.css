@@ -61,6 +61,56 @@
   font-size: 13px;
   margin-bottom: 28px;
 }
+/* Business / Trading / Users tabs and the "Hide values" toggle. */
+.admin-dash .ad-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--ad-border);
+}
+.admin-dash .ad-tabs button {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ad-gray-500);
+  cursor: pointer;
+}
+.admin-dash .ad-tabs button[aria-selected='true'] {
+  color: var(--ad-purple-dark);
+  border-bottom-color: var(--ad-purple);
+}
+.admin-dash .ad-hide-toggle {
+  margin-bottom: 6px;
+  padding: 5px 12px;
+  background: var(--ad-white);
+  border: 1px solid var(--ad-border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ad-gray-500);
+  cursor: pointer;
+}
+.admin-dash .ad-hide-toggle[aria-pressed='true'] {
+  background: var(--ad-lavender-100);
+  color: var(--ad-purple-dark);
+}
+/* Free text can name users or quote amounts, so it is blurred as a block. */
+.admin-dash .ad-values-hidden .ad-redacted {
+  filter: blur(6px);
+  user-select: none;
+}
+
 .admin-dash .ad-section-title {
   font-size: 12px;
   font-weight: 600;

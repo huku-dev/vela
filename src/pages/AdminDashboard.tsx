@@ -11,7 +11,7 @@
 // service-account JWT implementation.
 //
 // Design tweaks: src/styles/admin-dashboard.css
-// Section layout: rearrange the components below.
+// Tabs and section layout: src/components/admin/DashboardView.tsx.
 // New section: add a query in the backend + a component in AdminSections.tsx.
 
 import { useEffect, useState } from 'react';
@@ -21,25 +21,7 @@ import { useAuthContext } from '../contexts/AuthContext';
 import type { DashboardResponse } from '../lib/adminDashboardClient';
 import { fetchAdminDashboard } from '../lib/adminDashboardClient';
 import { FIXTURE_DASHBOARD } from '../lib/adminDashboardFixtures';
-import {
-  AssetScoreboardSection,
-  CarryoverSection,
-  ChartsSection,
-  CohortFunnelSection,
-  HighlightsSection,
-  KpisSection,
-  LlmCostSection,
-  MonthlyReturnsSection,
-  NotesSection,
-  OpenPositionsSection,
-  PositionConcentrationSection,
-  RevenueBreakdownSection,
-  ShippedSection,
-  SubscriptionRisksSection,
-  TraderCumulativePnlSection,
-  UserOverviewSection,
-  VelocitySection,
-} from '../components/admin/AdminSections';
+import { DashboardView } from '../components/admin/DashboardView';
 import PageLoader from '../components/PageLoader';
 import '../styles/admin-dashboard.css';
 
@@ -160,47 +142,7 @@ export default function AdminDashboard() {
 
       {data && (
         <>
-          <KpisSection kpis={data.kpis} />
-
-          <HighlightsSection items={data.curated.highlights} updatedAt={data.curated.updatedAt} />
-          <ShippedSection github={data.github} />
-          <VelocitySection github={data.github} />
-
-          <RevenueBreakdownSection rows={data.revenueBreakdown} mrr={data.kpis.mrr} />
-          {data.subscriptionRisks && <SubscriptionRisksSection risks={data.subscriptionRisks} />}
-          {data.llmCosts && <LlmCostSection data={data.llmCosts} />}
-          <CohortFunnelSection rows={data.cohortFunnel} />
-          {/* Daily platform PnL bar chart. Kept alongside the per-trader
-              cumulative view because they answer different questions: the
-              bars show "did the platform net win or lose that day", the
-              cumulative view shows "who's up, who's down, who's improving". */}
-          <ChartsSection
-            pnlSeries7d={data.pnlSeries7d}
-            pnlSeries30d={data.pnlSeries30d}
-            pnlSeries90d={data.pnlSeries90d}
-          />
-          {/* Monthly returns table: platform-level summary of return on capital
-              traded, month by month with year-over-year rows. Sits above the
-              per-trader breakdown so the highest-altitude view comes first. */}
-          {data.monthlyReturns && <MonthlyReturnsSection data={data.monthlyReturns} />}
-          {data.traderCumulativePnl30d && (
-            <TraderCumulativePnlSection
-              rows={data.traderCumulativePnl30d}
-              totalUsers={data.kpis.totalUsers}
-            />
-          )}
-          {data.assetScoreboard30d && <AssetScoreboardSection rows={data.assetScoreboard30d} />}
-          <UserOverviewSection rows={data.userOverview} />
-          <PositionConcentrationSection rows={data.positionConcentration} />
-          <OpenPositionsSection rows={data.openPositions} />
-
-          <CarryoverSection
-            nextUp={data.curated.carryoverNextUp ?? data.curated.carryoverInProgress ?? []}
-            needsAttention={
-              data.curated.carryoverNeedsAttention ?? data.curated.carryoverNeedsStatus ?? []
-            }
-          />
-          <NotesSection notes={data.curated.notes} />
+          <DashboardView data={data} />
 
           <p className="ad-timestamp">Generated: {data ? formatFullWhen(data.generatedAt) : '-'}</p>
         </>

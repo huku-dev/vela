@@ -41,6 +41,7 @@ import {
   TierPill,
 } from './AdminPrimitives';
 import { PnlChart, TradingVolumeChart } from './AdminCharts';
+import { useMask } from './hideValues';
 
 function money(n: number, showZero = true): string {
   if (!showZero && Math.abs(n) < 0.005) return '$0';
@@ -58,6 +59,7 @@ function priceLabel(price: number): string {
 // ── KPIs ─────────────────────────────────────────────────────────────────
 
 export function KpisSection({ kpis }: { kpis: Kpis }) {
+  const mask = useMask();
   return (
     <>
       <SectionTitle>Key Metrics</SectionTitle>
@@ -71,7 +73,7 @@ export function KpisSection({ kpis }: { kpis: Kpis }) {
         />
         <KpiCard
           label="MRR"
-          value={`$${kpis.mrr.toFixed(0)}`}
+          value={mask(`$${kpis.mrr.toFixed(0)}`)}
           detail={kpis.payingBreakdown}
           valueTone="green"
         />
@@ -88,7 +90,7 @@ export function KpisSection({ kpis }: { kpis: Kpis }) {
         />
         <KpiCard
           label="Platform AUM"
-          value={`$${kpis.platformAum.toFixed(0)}`}
+          value={mask(`$${kpis.platformAum.toFixed(0)}`)}
           detail="Total USDC across wallets"
         />
       </div>
@@ -110,6 +112,7 @@ export function DeferredPanel({ title, note }: { title: string; note: string }) 
 // ── Revenue Breakdown ────────────────────────────────────────────────────
 
 export function RevenueBreakdownSection({ rows, mrr }: { rows: RevenueRow[]; mrr: number }) {
+  const mask = useMask();
   const active = rows.filter(r => r.tier !== 'free');
   const maxActive = Math.max(
     1,
@@ -132,7 +135,7 @@ export function RevenueBreakdownSection({ rows, mrr }: { rows: RevenueRow[]; mrr
             </strong>{' '}
             is the largest tier at{' '}
             <strong>
-              ${largest.monthlyRevenue.toFixed(0)} ({largestPct}% of MRR)
+              {mask(`$${largest.monthlyRevenue.toFixed(0)}`)} ({largestPct}% of MRR)
             </strong>
             .
           </>
@@ -140,7 +143,7 @@ export function RevenueBreakdownSection({ rows, mrr }: { rows: RevenueRow[]; mrr
           <>No paying subscribers on file.</>
         )}
         {pastDueTotal > 0
-          ? ` $${pastDueTotal.toFixed(0)} past due; MRR would be $${(mrr + pastDueTotal).toFixed(0)} if resolved.`
+          ? ` ${mask(`$${pastDueTotal.toFixed(0)}`)} past due; MRR would be ${mask(`$${(mrr + pastDueTotal).toFixed(0)}`)} if resolved.`
           : ' No past-due subscriptions.'}
       </NarrativeLine>
       <table>
@@ -177,7 +180,7 @@ export function RevenueBreakdownSection({ rows, mrr }: { rows: RevenueRow[]; mrr
               <strong>{totalSubs}</strong>
             </td>
             <td className="ad-right ad-mono ad-green">
-              <strong>${mrr.toFixed(0)}</strong>
+              <strong>{mask(`$${mrr.toFixed(0)}`)}</strong>
             </td>
           </tr>
         </tbody>
@@ -338,6 +341,7 @@ export function ChartsSection({
 // ── User Overview ────────────────────────────────────────────────────────
 
 export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
+  const mask = useMask();
   const maxRealized = Math.max(1, ...rows.map(r => Math.abs(r.realizedPnl)));
   const maxUnrealized = Math.max(1, ...rows.map(r => Math.abs(r.unrealizedPnl)));
   const totalRealized = rows.reduce((acc, r) => acc + r.realizedPnl, 0);
@@ -355,12 +359,13 @@ export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
           <>
             {topTwo[0].displayName} and {topTwo[1].displayName} account for{' '}
             <strong>
-              -${Math.abs(topTwoSum).toFixed(2)} of the -${Math.abs(totalRealized).toFixed(2)}
+              {mask(`-$${Math.abs(topTwoSum).toFixed(2)}`)} of the{' '}
+              {mask(`-$${Math.abs(totalRealized).toFixed(2)}`)}
             </strong>{' '}
             total realized PnL ({topTwoPct}%).
           </>
         ) : (
-          <>Realized PnL across users: ${totalRealized.toFixed(2)}.</>
+          <>Realized PnL across users: {mask(`$${totalRealized.toFixed(2)}`)}.</>
         )}{' '}
         {inactiveUsers} of {rows.length} users have never funded a wallet or opened a trade.
       </NarrativeLine>
@@ -410,7 +415,7 @@ export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
                   </td>
                   <td>{r.billingCycle ?? '-'}</td>
                   <td>{humanMode(r.tradingMode)}</td>
-                  <td className="ad-right ad-mono">${r.balance.toFixed(0)}</td>
+                  <td className="ad-right ad-mono">{mask(`$${r.balance.toFixed(0)}`)}</td>
                   <td className="ad-right ad-mono">{r.openPositions}</td>
                   <td className="ad-right ad-mono">{r.trades}</td>
                   <td className="ad-right">
@@ -441,6 +446,7 @@ function humanMode(m: string): string {
 // ── Position Concentration ───────────────────────────────────────────────
 
 export function PositionConcentrationSection({ rows }: { rows: ConcentrationRow[] }) {
+  const mask = useMask();
   const maxAbs = Math.max(1, ...rows.map(r => Math.abs(r.unrealizedPnl)));
   const totalNotional = rows.reduce((acc, r) => acc + r.notional, 0);
   const totalOpen = rows.reduce((acc, r) => acc + r.openPositions, 0);
@@ -454,20 +460,21 @@ export function PositionConcentrationSection({ rows }: { rows: ConcentrationRow[
       ) : (
         <>
           <NarrativeLine>
-            {rows.length} users hold all {totalOpen} open positions (${totalNotional.toFixed(0)}{' '}
-            notional).
+            {rows.length} users hold all {totalOpen} open positions (
+            {mask(`$${totalNotional.toFixed(0)}`)} notional).
             {worst && worst.unrealizedPnl < 0 ? (
               <>
                 {' '}
                 <strong>
-                  {worst.displayName}&rsquo;s book is the largest drag at $
-                  {worst.unrealizedPnl.toFixed(2)} unrealized.
+                  {worst.displayName}&rsquo;s book is the largest drag at{' '}
+                  {mask(`$${worst.unrealizedPnl.toFixed(2)}`)} unrealized.
                 </strong>
               </>
             ) : (
               <>
                 {' '}
-                Total unrealized: {totalUnrealized >= 0 ? '+' : ''}${totalUnrealized.toFixed(2)}.
+                Total unrealized:{' '}
+                {mask(`${totalUnrealized >= 0 ? '+' : ''}$${totalUnrealized.toFixed(2)}`)}.
               </>
             )}
           </NarrativeLine>
@@ -487,7 +494,7 @@ export function PositionConcentrationSection({ rows }: { rows: ConcentrationRow[
                     <strong>{r.displayName}</strong>
                   </td>
                   <td className="ad-right ad-mono">{r.openPositions}</td>
-                  <td className="ad-right ad-mono">${r.notional.toFixed(0)}</td>
+                  <td className="ad-right ad-mono">{mask(`$${r.notional.toFixed(0)}`)}</td>
                   <td className="ad-right">
                     <BarCell value={r.unrealizedPnl} maxAbs={maxAbs} />
                   </td>
@@ -511,6 +518,7 @@ export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
   // → reset to desc. Matches the pattern used by the Per-Asset Scoreboard.
   const [sortBy, setSortBy] = useState<OpenPosSort>('default');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const mask = useMask();
 
   const onColumnClick = (col: 'size' | 'pnl') => {
     if (col === sortBy) {
@@ -590,10 +598,10 @@ export function OpenPositionsSection({ rows }: { rows: OpenPositionRow[] }) {
                     <td>
                       <SidePill side={r.side} />
                     </td>
-                    <td className="ad-right ad-mono">${r.sizeUsd.toFixed(0)}</td>
-                    <td className="ad-right ad-mono">${priceLabel(r.entryPrice)}</td>
-                    <td className="ad-right ad-mono">${priceLabel(r.currentPrice)}</td>
-                    <td className={`ad-right ad-mono ${pnlTone}`}>{pnlLabel}</td>
+                    <td className="ad-right ad-mono">{mask(`$${r.sizeUsd.toFixed(0)}`)}</td>
+                    <td className="ad-right ad-mono">{mask(`$${priceLabel(r.entryPrice)}`)}</td>
+                    <td className="ad-right ad-mono">{mask(`$${priceLabel(r.currentPrice)}`)}</td>
+                    <td className={`ad-right ad-mono ${pnlTone}`}>{mask(pnlLabel)}</td>
                     <td className={`ad-right ad-mono ${pctTone}`}>{pctLabel}</td>
                     <td className="ad-right ad-mono">{r.hoursOpen}h</td>
                   </tr>
@@ -698,7 +706,7 @@ export function HighlightsSection({
             <span className={`ad-highlight-arrow ad-${h.direction}`}>
               {h.direction === 'up' ? '↑' : h.direction === 'down' ? '↓' : '→'}
             </span>
-            <span className="ad-highlight-text">{renderInlineMarkdown(h.body)}</span>
+            <span className="ad-highlight-text ad-redacted">{renderInlineMarkdown(h.body)}</span>
           </li>
         ))}
       </ul>
@@ -784,7 +792,7 @@ function CarryoverCol({
         <>
           {visible.map((c, i) => (
             <div key={i} className="ad-carryover-item">
-              <div className="ad-carryover-title">
+              <div className="ad-carryover-title ad-redacted">
                 {c.notionUrl ? (
                   <a href={c.notionUrl} target="_blank" rel="noopener noreferrer">
                     {c.title}
@@ -793,7 +801,9 @@ function CarryoverCol({
                   c.title
                 )}
               </div>
-              {c.description && <div className="ad-carryover-desc">{c.description}</div>}
+              {c.description && (
+                <div className="ad-carryover-desc ad-redacted">{c.description}</div>
+              )}
               <div className="ad-carryover-meta">
                 <span
                   className="ad-carryover-pill"
@@ -845,7 +855,9 @@ export function NotesSection({ notes }: { notes: string }) {
       <SectionTitle>Notes</SectionTitle>
       <div className="ad-notes-block">
         {paragraphs.map((p, i) => (
-          <p key={i}>{renderInlineMarkdown(p)}</p>
+          <p key={i} className="ad-redacted">
+            {renderInlineMarkdown(p)}
+          </p>
         ))}
       </div>
     </>
@@ -885,7 +897,7 @@ export function ShippedSection({ github }: { github: GithubActivity }) {
                     #{pr.number}
                   </a>
                 </td>
-                <td>{pr.title}</td>
+                <td className="ad-redacted">{pr.title}</td>
                 <td className="ad-mono">{pr.author}</td>
                 <td className="ad-mono">{pr.mergedLabel}</td>
               </tr>
@@ -990,6 +1002,7 @@ function CostKpiCard({
 }
 
 export function LlmCostSection({ data }: { data: LlmCosts }) {
+  const mask = useMask();
   const { kpis, providers, errorMessage } = data;
   const maxCost = Math.max(1, ...providers.map(p => p.cost));
 
@@ -1003,7 +1016,7 @@ export function LlmCostSection({ data }: { data: LlmCosts }) {
           <div className="ad-kpi-grid">
             <CostKpiCard
               label="Total Spend"
-              value={`$${kpis.totalSpend.toFixed(2)}`}
+              value={mask(`$${kpis.totalSpend.toFixed(2)}`)}
               delta={formatDelta(kpis.totalSpendDelta)}
             />
             <CostKpiCard
@@ -1023,7 +1036,7 @@ export function LlmCostSection({ data }: { data: LlmCosts }) {
             />
             <CostKpiCard
               label="Blended $/1M tokens"
-              value={`$${kpis.blendedPer1M.toFixed(2)}`}
+              value={mask(`$${kpis.blendedPer1M.toFixed(2)}`)}
               delta={formatDelta(kpis.blendedPer1MDelta)}
             />
           </div>
@@ -1074,16 +1087,21 @@ type TraderSort = 'pnl' | 'peak' | 'trough' | 'balance' | 'name';
 
 export function TraderCumulativePnlSection({
   rows,
+  users,
   totalUsers,
 }: {
   rows: TraderCumulativePnlRow[];
+  users: UserRow[];
   totalUsers: number;
 }) {
   const [tierFilter, setTierFilter] = useState<'all' | 'premium' | 'standard' | 'free'>('all');
   const [activityFilter, setActivityFilter] = useState<TraderFilter>('active30d');
   const [sort, setSort] = useState<TraderSort>('pnl');
+  const mask = useMask();
 
-  const visible = rows.filter(r => tierFilter === 'all' || r.tier === tierFilter);
+  const showAllUsers = activityFilter === 'all';
+  const listed = showAllUsers ? [...rows, ...inactiveTraderRows(rows, users)] : rows;
+  const visible = listed.filter(r => tierFilter === 'all' || r.tier === tierFilter);
   const sorted = visible.slice().sort((a, b) => {
     switch (sort) {
       case 'pnl':
@@ -1100,8 +1118,14 @@ export function TraderCumulativePnlSection({
   });
 
   const platform30d = rows.reduce((acc, r) => acc + r.totalPnl30d, 0);
-  const winner = rows.slice().sort((a, b) => b.totalPnl30d - a.totalPnl30d)[0] ?? null;
-  const loser = rows.slice().sort((a, b) => a.totalPnl30d - b.totalPnl30d)[0] ?? null;
+  // A gain card needs a gain and a loss card needs a loss. Half a cent is the
+  // same zero threshold signedMoney uses.
+  const winner =
+    rows.filter(r => r.totalPnl30d >= 0.005).sort((a, b) => b.totalPnl30d - a.totalPnl30d)[0] ??
+    null;
+  const loser =
+    rows.filter(r => r.totalPnl30d <= -0.005).sort((a, b) => a.totalPnl30d - b.totalPnl30d)[0] ??
+    null;
   // Notable slot: most recent close, but never a duplicate of winner or loser.
   // In small trader populations (2 or 3), all extremes may collide; when they
   // do, we render null and the card shows a placeholder rather than a repeat.
@@ -1116,7 +1140,7 @@ export function TraderCumulativePnlSection({
     <>
       <SectionTitle>Cumulative Realized PnL by Trader (30d)</SectionTitle>
       <NarrativeLine>
-        Platform 30d realized PnL: <strong>{signedMoney(platform30d)}</strong> across{' '}
+        Platform 30d realized PnL: <strong>{mask(signedMoney(platform30d))}</strong> across{' '}
         <strong>{rows.length}</strong> active trader{rows.length === 1 ? '' : 's'}. Movers strip
         picks the extremes so the section stays legible as user count grows.
       </NarrativeLine>
@@ -1149,7 +1173,9 @@ export function TraderCumulativePnlSection({
           <option value="all">All users</option>
         </select>
         <span className="ad-filter-count">
-          Showing {sorted.length} of {rows.length} traders active in 30d · {totalUsers} users total
+          {showAllUsers
+            ? `Showing ${sorted.length} of ${totalUsers} users`
+            : `Showing ${sorted.length} of ${rows.length} traders active in 30d · ${totalUsers} users total`}
         </span>
       </div>
 
@@ -1189,13 +1215,11 @@ export function TraderCumulativePnlSection({
             </tr>
           </thead>
           <tbody>
-            {sorted.map(r => (
-              // Composite key: two traders sharing a display name would collide
-              // and cause React to reuse row DOM across users. TraderCumulativePnlRow
-              // has no stable id yet; upstream fix is to plumb privy_did into the
-              // response. Composite of name + tier + subscriptionStatus + signed
-              // balance is enough to disambiguate real users in practice.
-              <tr key={`${r.displayName}::${r.tier}::${r.subscriptionStatus}::${r.balance}`}>
+            {sorted.map((r, i) => (
+              // TraderCumulativePnlRow has no stable id yet (upstream fix is to
+              // plumb privy_did into the response). Rows hold no state, so the
+              // index only breaks ties between otherwise identical users.
+              <tr key={`${r.displayName}::${r.tier}::${r.subscriptionStatus}::${r.balance}::${i}`}>
                 <td>
                   <strong>
                     {r.displayName}
@@ -1203,16 +1227,16 @@ export function TraderCumulativePnlSection({
                   </strong>
                 </td>
                 <td>{tierOrRiskPill(r)}</td>
-                <td className="ad-right ad-mono">${r.balance.toFixed(0)}</td>
+                <td className="ad-right ad-mono">{mask(`$${r.balance.toFixed(0)}`)}</td>
                 <td className="ad-right ad-mono">{r.openPositions}</td>
                 <td className="ad-right">
                   <BarCell value={r.totalPnl30d} maxAbs={maxAbsPnl(rows)} />
                 </td>
                 <td className={`ad-right ad-mono ${r.peak30d > 0 ? 'ad-green' : ''}`}>
-                  {signedMoney(r.peak30d)}
+                  {mask(signedMoney(r.peak30d))}
                 </td>
                 <td className={`ad-right ad-mono ${r.trough30d < 0 ? 'ad-red' : ''}`}>
-                  {signedMoney(r.trough30d)}
+                  {mask(signedMoney(r.trough30d))}
                 </td>
                 <td>
                   <Sparkline values={r.series.map(p => p.cumPnl)} />
@@ -1227,6 +1251,54 @@ export function TraderCumulativePnlSection({
   );
 }
 
+/**
+ * Users with no close in the last 30 days, shaped as trader rows so the
+ * "All users" filter can list them. Matched by name, tier and balance (counted,
+ * so two users who look alike are not both dropped).
+ */
+function inactiveTraderRows(
+  active: TraderCumulativePnlRow[],
+  users: UserRow[]
+): TraderCumulativePnlRow[] {
+  const candidates: TraderCumulativePnlRow[] = users.map(u => ({
+    displayName: u.displayName,
+    isSelf: u.isSelf,
+    tier: u.tier,
+    subscriptionStatus: u.subscriptionStatus,
+    balance: u.balance,
+    openPositions: u.openPositions,
+    totalTrades: u.trades,
+    totalPnl30d: 0,
+    peak30d: 0,
+    trough30d: 0,
+    lastCloseIso: null,
+    series: [],
+  }));
+
+  // The two lists share no user id. Match each active row on name, tier and
+  // balance, taking the user whose other details also agree first, so that
+  // users who share those three do not swap details. Every active row claims at
+  // most one user, so nobody is listed twice.
+  const sameUser = (a: TraderCumulativePnlRow, b: TraderCumulativePnlRow) =>
+    a.displayName === b.displayName && a.tier === b.tier && a.balance === b.balance;
+  const sameDetails = (a: TraderCumulativePnlRow, b: TraderCumulativePnlRow) =>
+    sameUser(a, b) &&
+    a.isSelf === b.isSelf &&
+    a.subscriptionStatus === b.subscriptionStatus &&
+    a.openPositions === b.openPositions &&
+    a.totalTrades === b.totalTrades;
+
+  const claimed = new Set<TraderCumulativePnlRow>();
+  const claim = (row: TraderCumulativePnlRow, matches: typeof sameUser): boolean => {
+    const found = candidates.find(c => !claimed.has(c) && matches(c, row));
+    if (found) claimed.add(found);
+    return found !== undefined;
+  };
+  active.filter(row => !claim(row, sameDetails)).forEach(row => claim(row, sameUser));
+
+  return candidates.filter(c => !claimed.has(c));
+}
+
 function MoverCard({
   label,
   row,
@@ -1236,6 +1308,7 @@ function MoverCard({
   row: TraderCumulativePnlRow | null;
   tone: 'pos' | 'neg' | 'neutral';
 }) {
+  const mask = useMask();
   if (!row) {
     return (
       <div className="ad-mover-card">
@@ -1253,10 +1326,10 @@ function MoverCard({
       <div className="ad-mover-row">
         <span className="ad-mover-name">{row.displayName}</span>
         {tierOrRiskPill(row)}
-        <span className={`ad-mover-pnl ${toneClass}`}>{signedMoney(row.totalPnl30d)}</span>
+        <span className={`ad-mover-pnl ${toneClass}`}>{mask(signedMoney(row.totalPnl30d))}</span>
       </div>
       <div className="ad-mover-detail">
-        30d high {signedMoney(row.peak30d)} · 30d low {signedMoney(row.trough30d)} ·{' '}
+        30d high {mask(signedMoney(row.peak30d))} · 30d low {mask(signedMoney(row.trough30d))} ·{' '}
         {row.openPositions} open
       </div>
     </div>
@@ -1344,14 +1417,7 @@ const ASSET_SCOREBOARD_TOP_N = 10;
 // Column identifiers for sort state. 'default' means "keep backend order",
 // which is |netPnl| desc — biggest movers on either side surface first.
 type AssetSort =
-  | 'default'
-  | 'symbol'
-  | 'closes'
-  | 'winPct'
-  | 'volume'
-  | 'netPnl'
-  | 'netPnlPct'
-  | 'avgHold';
+  'default' | 'symbol' | 'closes' | 'winPct' | 'volume' | 'netPnl' | 'netPnlPct' | 'avgHold';
 type SortDir = 'asc' | 'desc';
 
 /**
@@ -1389,6 +1455,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
   const [showAll, setShowAll] = useState(false);
   const [sortBy, setSortBy] = useState<AssetSort>('default');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const mask = useMask();
 
   if (rows.length === 0) {
     return (
@@ -1436,11 +1503,11 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
       {worstIsDrag && bestByPnl && worstIsDrag.symbol !== bestByPnl.symbol && (
         <NarrativeLine>
           <strong>
-            {worstIsDrag.symbol} is the largest drag: {signedMoney(worstIsDrag.netPnl)} across{' '}
+            {worstIsDrag.symbol} is the largest drag: {mask(signedMoney(worstIsDrag.netPnl))} across{' '}
             {worstIsDrag.closes} close{worstIsDrag.closes === 1 ? '' : 's'}
           </strong>{' '}
           ({worstIsDrag.winPct}% win rate). Best asset: <strong>{bestByPnl.symbol}</strong> at{' '}
-          {signedMoney(bestByPnl.netPnl)}.
+          {mask(signedMoney(bestByPnl.netPnl))}.
         </NarrativeLine>
       )}
       <div style={{ overflowX: 'auto' }}>
@@ -1539,7 +1606,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
                   </td>
                   <td className="ad-right ad-mono">{r.closes}</td>
                   <td className={`ad-right ad-mono ${winRateTone(r.winPct)}`}>{r.winPct}%</td>
-                  <td className="ad-right ad-mono">${r.volume}</td>
+                  <td className="ad-right ad-mono">{mask(`$${r.volume}`)}</td>
                   <td className="ad-right">
                     <BarCell value={r.netPnl} maxAbs={maxAbs} />
                   </td>
@@ -1559,7 +1626,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
                 <td colSpan={8} className="ad-show-more-row" onClick={() => setShowAll(true)}>
                   Show all {sortedRows.length} symbols
                   <span className="ad-show-more-subtle">
-                    ({hiddenRows} hidden, combined {signedMoney(hiddenCombined)})
+                    ({hiddenRows} hidden, combined {mask(signedMoney(hiddenCombined))})
                   </span>
                 </td>
               </tr>
@@ -1620,6 +1687,7 @@ function winRateTone(pct: number): string {
 // stub for now; wiring to a send-payment-reminder edge fn is a follow-up.
 
 export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }) {
+  const mask = useMask();
   const total = risks.pastDue.length + risks.cancelling.length + risks.cancelledLast30d.length;
   const revenueAtRisk =
     risks.pastDue.reduce((acc, r) => acc + r.monthlyRevenue, 0) +
@@ -1635,8 +1703,8 @@ export function SubscriptionRisksSection({ risks }: { risks: SubscriptionRisks }
       ) : (
         <>
           <NarrativeLine>
-            <strong>${revenueAtRisk.toFixed(0)}/mo</strong> of recurring revenue is at risk (past
-            due + cancelling). {risks.cancelledLast30d.length} cancellation
+            <strong>{mask(`$${revenueAtRisk.toFixed(0)}`)}/mo</strong> of recurring revenue is at
+            risk (past due + cancelling). {risks.cancelledLast30d.length} cancellation
             {risks.cancelledLast30d.length === 1 ? '' : 's'} in the last 30 days.
           </NarrativeLine>
           <div className="ad-risks-grid">
@@ -1693,6 +1761,7 @@ function RiskCard({
   onCtaClick?: (row: SubscriptionRisk) => void;
   emptyLabel: string;
 }) {
+  const mask = useMask();
   return (
     <div className={`ad-churn-card ad-churn-${tone}`}>
       <h3>{title}</h3>
@@ -1705,10 +1774,10 @@ function RiskCard({
             <li key={r.displayName + r.signup}>
               <div>
                 <div className="ad-churn-who">{r.displayName}</div>
-                <div className="ad-churn-meta">{riskSubtitle(r)}</div>
+                <div className="ad-churn-meta">{riskSubtitle(r, mask)}</div>
               </div>
               <div className="ad-churn-meta ad-right">
-                ${r.balance.toFixed(0)} bal
+                {mask(`$${r.balance.toFixed(0)}`)} bal
                 {r.openPositions > 0 ? ` · ${r.openPositions} open` : ''}
               </div>
             </li>
@@ -1724,12 +1793,12 @@ function RiskCard({
   );
 }
 
-function riskSubtitle(row: SubscriptionRisk): string {
+function riskSubtitle(row: SubscriptionRisk, mask: (formatted: string) => string): string {
   const tierLabel = row.tier[0].toUpperCase() + row.tier.slice(1);
   const billing = row.billingCycle
     ? row.billingCycle[0].toUpperCase() + row.billingCycle.slice(1)
     : '';
-  const price = row.monthlyRevenue > 0 ? ` · $${row.monthlyRevenue.toFixed(0)}/mo` : '';
+  const price = row.monthlyRevenue > 0 ? ` · ${mask(`$${row.monthlyRevenue.toFixed(0)}`)}/mo` : '';
   const last = row.lastActivityIso ? ` · last activity ${shortDate(row.lastActivityIso)}` : '';
   return `${tierLabel}${billing ? ' ' + billing : ''}${price}${last}`;
 }
@@ -1762,6 +1831,7 @@ const MONTH_NAMES = [
 
 export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
   const [view, setView] = useState<ReturnsView>('net');
+  const mask = useMask();
 
   if (!data.years || data.years.length === 0) {
     return (
@@ -1785,19 +1855,20 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
         <strong>
           {latest.year} YTD {view === 'net' ? 'net' : 'gross'}:{' '}
           {signedPct(latest.ytdNetPnl, latest.ytdNotionalTotal, view, latest.ytdGrossPnl)} on{' '}
-          {formatUsd(latest.ytdNotionalTotal)} notional ({latest.ytdClosesTotal} closes,{' '}
-          {signedMoney(view === 'net' ? latest.ytdNetPnl : latest.ytdGrossPnl)}{' '}
+          {mask(formatUsd(latest.ytdNotionalTotal))} notional ({latest.ytdClosesTotal} closes,{' '}
+          {mask(signedMoney(view === 'net' ? latest.ytdNetPnl : latest.ytdGrossPnl))}{' '}
           {view === 'net' ? 'net' : 'gross'})
         </strong>
         {latest.ytdFees > 0 && (
           <>
-            . Fees {signedMoney(-latest.ytdFees)} drag; funding{' '}
+            . Fees {mask(signedMoney(-latest.ytdFees))} drag; funding{' '}
             {latest.ytdFunding >= 0 ? (
               <>
-                <strong className="ad-green">+{formatUsd(latest.ytdFunding)}</strong> net received
+                <strong className="ad-green">{mask(`+${formatUsd(latest.ytdFunding)}`)}</strong> net
+                received
               </>
             ) : (
-              <>{signedMoney(latest.ytdFunding)} net paid</>
+              <>{mask(signedMoney(latest.ytdFunding))} net paid</>
             )}
             .
           </>
@@ -1807,11 +1878,11 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
             {' '}
             Best:{' '}
             <strong>
-              {MONTH_NAMES[bestMonth.month - 1]} {signedMoney(bestMonth.netPnl)}
+              {MONTH_NAMES[bestMonth.month - 1]} {mask(signedMoney(bestMonth.netPnl))}
             </strong>
             . Worst:{' '}
             <strong>
-              {MONTH_NAMES[worstMonth.month - 1]} {signedMoney(worstMonth.netPnl)}
+              {MONTH_NAMES[worstMonth.month - 1]} {mask(signedMoney(worstMonth.netPnl))}
             </strong>
             .
           </>
@@ -1867,6 +1938,7 @@ export function MonthlyReturnsSection({ data }: { data: MonthlyReturns }) {
 }
 
 function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: ReturnsView }) {
+  const mask = useMask();
   const monthByIdx = new Map<number, MonthlyReturnRow>();
   for (const m of year.months) monthByIdx.set(m.month, m);
 
@@ -1883,7 +1955,7 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
       </td>
       <td className={`ad-right ad-returns-ytd ${cellBgClass(ytdPnl)}`}>
         <div className={`ad-returns-pct ${cellFgClass(ytdPnl)}`}>{ytdPctText}</div>
-        <div className="ad-returns-sub">{signedMoney(ytdPnl)}</div>
+        <div className="ad-returns-sub">{mask(signedMoney(ytdPnl))}</div>
       </td>
       {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
         const row = monthByIdx.get(m);
@@ -1902,7 +1974,7 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
               {pnl >= 0 ? '+' : ''}
               {pct.toFixed(2)}%
             </div>
-            <div className="ad-returns-sub">{signedMoney(pnl)}</div>
+            <div className="ad-returns-sub">{mask(signedMoney(pnl))}</div>
           </td>
         );
       })}
@@ -1911,6 +1983,7 @@ function ReturnsYearRow({ year, view }: { year: MonthlyReturnsYear; view: Return
 }
 
 function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
+  const mask = useMask();
   return (
     <div style={{ marginTop: 20 }}>
       <div
@@ -1948,18 +2021,18 @@ function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
                   {MONTH_NAMES[m.month - 1]} {year.year}
                 </td>
                 <td className="ad-right ad-mono">{m.closes}</td>
-                <td className="ad-right ad-mono">{formatUsd(m.notional)}</td>
+                <td className="ad-right ad-mono">{mask(formatUsd(m.notional))}</td>
                 <td className={`ad-right ad-mono ${cellFgClass(m.grossPnl)}`}>
-                  {signedMoney(m.grossPnl)}
+                  {mask(signedMoney(m.grossPnl))}
                 </td>
                 <td className={`ad-right ad-mono ${m.fees > 0.005 ? 'ad-red' : ''}`}>
-                  {signedMoney(-m.fees)}
+                  {mask(signedMoney(-m.fees))}
                 </td>
                 <td className={`ad-right ad-mono ${cellFgClass(m.funding)}`}>
-                  {signedMoney(m.funding)}
+                  {mask(signedMoney(m.funding))}
                 </td>
                 <td className={`ad-right ad-mono ${cellFgClass(m.netPnl)}`}>
-                  <strong>{signedMoney(m.netPnl)}</strong>
+                  <strong>{mask(signedMoney(m.netPnl))}</strong>
                 </td>
                 <td className={`ad-right ad-mono ${cellFgClass(netPct)}`}>
                   <strong>
@@ -1978,19 +2051,19 @@ function MonthlyReturnsReference({ year }: { year: MonthlyReturnsYear }) {
               <strong>{year.ytdClosesTotal}</strong>
             </td>
             <td className="ad-right ad-mono">
-              <strong>{formatUsd(year.ytdNotionalTotal)}</strong>
+              <strong>{mask(formatUsd(year.ytdNotionalTotal))}</strong>
             </td>
             <td className={`ad-right ad-mono ${cellFgClass(year.ytdGrossPnl)}`}>
-              <strong>{signedMoney(year.ytdGrossPnl)}</strong>
+              <strong>{mask(signedMoney(year.ytdGrossPnl))}</strong>
             </td>
             <td className={`ad-right ad-mono ${year.ytdFees > 0.005 ? 'ad-red' : ''}`}>
-              <strong>{signedMoney(-year.ytdFees)}</strong>
+              <strong>{mask(signedMoney(-year.ytdFees))}</strong>
             </td>
             <td className={`ad-right ad-mono ${cellFgClass(year.ytdFunding)}`}>
-              <strong>{signedMoney(year.ytdFunding)}</strong>
+              <strong>{mask(signedMoney(year.ytdFunding))}</strong>
             </td>
             <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}>
-              <strong>{signedMoney(year.ytdNetPnl)}</strong>
+              <strong>{mask(signedMoney(year.ytdNetPnl))}</strong>
             </td>
             <td className={`ad-right ad-mono ${cellFgClass(year.ytdNetPnl)}`}>
               <strong>
