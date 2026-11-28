@@ -5,7 +5,7 @@
 // Rearrange sections by reordering the calls below.
 
 import { useMemo, useState, type ReactNode } from 'react';
-import type { DashboardResponse } from '../../lib/adminDashboardClient';
+import type { DashboardResponse, TradingPeriodKey } from '../../lib/adminDashboardClient';
 import {
   AssetScoreboardSection,
   CarryoverSection,
@@ -22,10 +22,22 @@ import {
   ShippedSection,
   SubscriptionRisksSection,
   TraderCumulativePnlSection,
+  TradingActivitySection,
   UserOverviewSection,
   VelocitySection,
 } from './AdminSections';
 import { aliasUserNames, HideValuesContext } from './hideValues';
+import { periodOption } from './tradingFormat';
+import {
+  PeriodSelector,
+  ProfitOverTimeSection,
+  ProfitSourcesSection,
+  TradingPerformanceSection,
+} from './TradingSections';
+
+// Above this many closed positions the calculation should move into the
+// database; it is years away at the current rate.
+const CLOSED_POSITIONS_WARNING = 10_000;
 
 type DashboardTab = 'business' | 'trading' | 'users';
 
@@ -42,12 +54,17 @@ export function DashboardView({ data }: { data: DashboardResponse }) {
   // switching away and back.
   const [opened, setOpened] = useState<ReadonlySet<DashboardTab>>(() => new Set([tab]));
   const [hidden, setHidden] = useState(false);
+  const [periodKey, setPeriodKey] = useState<TradingPeriodKey>('d30');
   const shown = useMemo(() => (hidden ? aliasUserNames(data) : data), [data, hidden]);
 
   const openTab = (id: DashboardTab) => {
     setTab(id);
     setOpened(prev => new Set(prev).add(id));
   };
+
+  const trading = shown.trading;
+  const period = periodOption(periodKey);
+  const periodData = trading?.periods[periodKey];
 
   const panels: Record<DashboardTab, ReactNode> = {
     business: (
@@ -74,15 +91,45 @@ export function DashboardView({ data }: { data: DashboardResponse }) {
     ),
     trading: (
       <>
-        <ChartsSection
-          pnlSeries7d={shown.pnlSeries7d}
-          pnlSeries30d={shown.pnlSeries30d}
-          pnlSeries90d={shown.pnlSeries90d}
-        />
+        {trading && periodData ? (
+          <>
+            <PeriodSelector value={periodKey} onChange={setPeriodKey} />
+            {trading.closedPositions > CLOSED_POSITIONS_WARNING && (
+              <div className="ad-empty-panel" role="status">
+                Over 10,000 closed trades. These figures may start to load slowly.
+              </div>
+            )}
+            <TradingPerformanceSection data={periodData} period={period} />
+            <ProfitOverTimeSection data={periodData} period={period} />
+            <ProfitSourcesSection data={periodData} period={period} />
+            <TradingActivitySection
+              title={period.title}
+              unit={periodData.activityUnit}
+              data={periodData.activity}
+            />
+          </>
+        ) : (
+          <>
+            {shown.tradingError && (
+              <div className="ad-empty-panel" role="alert">
+                {shown.tradingError}
+              </div>
+            )}
+            <ChartsSection
+              pnlSeries7d={shown.pnlSeries7d}
+              pnlSeries30d={shown.pnlSeries30d}
+              pnlSeries90d={shown.pnlSeries90d}
+            />
+          </>
+        )}
         {/* Monthly returns table: platform-level summary of return on capital
-          traded, month by month with year-over-year rows. */}
+            traded, month by month with year-over-year rows. */}
         {shown.monthlyReturns && <MonthlyReturnsSection data={shown.monthlyReturns} />}
-        {shown.assetScoreboard30d && <AssetScoreboardSection rows={shown.assetScoreboard30d} />}
+        {periodData ? (
+          <AssetScoreboardSection rows={periodData.assets} period={period} />
+        ) : (
+          shown.assetScoreboard30d && <AssetScoreboardSection rows={shown.assetScoreboard30d} />
+        )}
         <PositionConcentrationSection rows={shown.positionConcentration} />
         <OpenPositionsSection rows={shown.openPositions} />
       </>

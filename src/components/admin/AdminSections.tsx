@@ -338,6 +338,27 @@ export function ChartsSection({
   );
 }
 
+/** Trading activity for the period chosen by the tab's selector. */
+export function TradingActivitySection({
+  title,
+  unit,
+  data,
+}: {
+  title: string;
+  unit: 'day' | 'week' | 'month';
+  data: DailyBucket[];
+}) {
+  return (
+    <>
+      <SectionTitle>Trading Activity ({title})</SectionTitle>
+      <div className="ad-chart-row">
+        <TradingVolumeChart data={data} unit={unit} />
+        <PnlChart data={data} unit={unit} />
+      </div>
+    </>
+  );
+}
+
 // ── User Overview ────────────────────────────────────────────────────────
 
 export function UserOverviewSection({ rows }: { rows: UserRow[] }) {
@@ -1451,7 +1472,15 @@ function compareAssets(a: AssetScoreboardRow, b: AssetScoreboardRow, by: AssetSo
   }
 }
 
-export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] }) {
+export function AssetScoreboardSection({
+  rows,
+  period,
+}: {
+  rows: AssetScoreboardRow[];
+  /** Set when the tab's selector drives the rows; without it they cover 30d. */
+  period?: { title: string; short: string };
+}) {
+  const heading = `Per-Asset PnL Scoreboard (${period?.title ?? '30d'})`;
   const [showAll, setShowAll] = useState(false);
   const [sortBy, setSortBy] = useState<AssetSort>('default');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -1460,8 +1489,12 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
   if (rows.length === 0) {
     return (
       <>
-        <SectionTitle>Per-Asset PnL Scoreboard (30d)</SectionTitle>
-        <div className="ad-empty-panel">No closed positions in the last 30 days.</div>
+        <SectionTitle>{heading}</SectionTitle>
+        <div className="ad-empty-panel">
+          {period
+            ? 'No closed positions in this period.'
+            : 'No closed positions in the last 30 days.'}
+        </div>
       </>
     );
   }
@@ -1499,7 +1532,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
 
   return (
     <>
-      <SectionTitle>Per-Asset PnL Scoreboard (30d)</SectionTitle>
+      <SectionTitle>{heading}</SectionTitle>
       {worstIsDrag && bestByPnl && worstIsDrag.symbol !== bestByPnl.symbol && (
         <NarrativeLine>
           <strong>
@@ -1569,7 +1602,7 @@ export function AssetScoreboardSection({ rows }: { rows: AssetScoreboardRow[] })
                 onClick={onColumnClick}
                 align="right"
               />
-              <th>Cumulative PnL (30d)</th>
+              <th>Cumulative PnL ({period?.short ?? '30d'})</th>
             </tr>
           </thead>
           <tbody>
