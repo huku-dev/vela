@@ -111,6 +111,61 @@
   user-select: none;
 }
 
+/* Trading tab period selector: stays in view while the tab scrolls. */
+.admin-dash .ad-period-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 0;
+  background: var(--ad-cream);
+}
+.admin-dash .ad-period-bar + .ad-section-title {
+  margin-top: 12px;
+}
+/* On a phone the caption would make the pinned bar cover too much screen. */
+@media (max-width: 600px) {
+  .admin-dash .ad-period-bar .ad-returns-caption {
+    display: none;
+  }
+}
+.admin-dash .ad-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0 8px;
+  font-size: 11px;
+  color: var(--ad-gray-600);
+}
+.admin-dash .ad-chart-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.admin-dash .ad-chart-split {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ad-border);
+}
+.admin-dash .ad-chart-split .ad-chart-title {
+  margin-bottom: 0;
+}
+.admin-dash .ad-chart-table {
+  margin-top: 12px;
+}
+.admin-dash .ad-chart-table summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ad-gray-600);
+}
+
 .admin-dash .ad-section-title {
   font-size: 12px;
   font-weight: 600;

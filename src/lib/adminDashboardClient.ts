@@ -236,7 +236,61 @@ export interface MonthlyReturns {
   years: MonthlyReturnsYear[];
 }
 
+// Trading tab: one block per selectable period, after fees and funding.
+// Mirrors the backend's types.ts.
+export type TradingPeriodKey = 'd7' | 'd30' | 'd90' | 'all';
+
+export interface TradingStats {
+  trades: number;
+  winners: number;
+  netPnl: number;
+  avgWin: number | null;
+  avgLoss: number | null;
+  netWithoutBest5: number | null;
+  best5NetPnl: number | null;
+}
+
+export interface ProfitPoint {
+  date: string;
+  net: number;
+  gross: number;
+  belowBest: number;
+}
+
+export interface ProfitGroupRow {
+  name: string;
+  trades: number;
+  winners: number;
+  netPnl: number;
+}
+
+export interface TradingPeriod {
+  since: string;
+  stats: TradingStats;
+  previous: TradingStats | null;
+  pointUnit: 'day' | 'week';
+  points: ProfitPoint[];
+  worstDay: { date: string; belowBest: number } | null;
+  groups: {
+    side: ProfitGroupRow[];
+    market: ProfitGroupRow[];
+    holdTime: ProfitGroupRow[];
+  };
+  activityUnit: 'day' | 'week' | 'month';
+  activity: DailyBucket[];
+  assets: AssetScoreboardRow[];
+}
+
+export interface TradingData {
+  periods: Record<TradingPeriodKey, TradingPeriod>;
+  closedPositions: number;
+}
+
 export interface DashboardResponse {
+  // Optional so a response from an older backend still renders. Null with
+  // `tradingError` set when only this calculation failed.
+  trading?: TradingData | null;
+  tradingError?: string | null;
   generatedAt: string;
   kpis: Kpis;
   userOverview: UserRow[];

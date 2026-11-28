@@ -9,9 +9,84 @@
 // keep the data synthetic as belt-and-braces in case a future refactor
 // weakens either guard.
 
-import type { DashboardResponse } from './adminDashboardClient';
+import type { DashboardResponse, TradingPeriod } from './adminDashboardClient';
+
+/**
+ * Made-up figures for one period. Each period gets its own scale so a test can
+ * tell which one is on screen.
+ */
+function samplePeriod(scale: number, days: number | null): TradingPeriod {
+  const count = days === null ? 12 : days;
+  const points = Array.from({ length: count }, (_, i) => {
+    const net = Math.round((Math.sin(i / 2) * 5 + i) * scale * 100) / 100;
+    return {
+      date: days === null ? `Mar ${i + 1}` : `Jan ${i + 1}`,
+      net,
+      gross: net + scale,
+      belowBest: i % 3 === 2 ? -2 * scale : 0,
+    };
+  });
+  const stats = (factor: number) => ({
+    trades: 40 * scale,
+    winners: 22 * scale,
+    netPnl: 11.5 * scale * factor,
+    avgWin: 1.25 * scale,
+    avgLoss: -0.75 * scale,
+    netWithoutBest5: -3.2 * scale,
+    best5NetPnl: 14.7 * scale,
+  });
+  const group = (name: string, netPnl: number) => ({
+    name,
+    trades: 10 * scale,
+    winners: 6 * scale,
+    netPnl: netPnl * scale,
+  });
+  return {
+    since: days === null ? '2026-03-01' : '2026-01-01',
+    stats: stats(1),
+    previous: days === null ? null : stats(-1),
+    pointUnit: days === null ? 'week' : 'day',
+    points,
+    worstDay: { date: 'Jan 3', belowBest: -2.5 * scale },
+    groups: {
+      side: [group('Long', 4.5), group('Short', -1.5)],
+      market: [group('Crypto', 3.25), group('Equities', -0.25)],
+      holdTime: [group('Under 8 hours', -2), group('1 to 3 days', 5)],
+    },
+    activityUnit: days === null ? 'week' : 'day',
+    activity: points.map((p, i) => ({
+      date: p.date,
+      trades: scale + (i % 3),
+      traders: 1 + (i % 2),
+      pnl: p.net,
+    })),
+    assets: [
+      {
+        symbol: `SMP${scale}`,
+        closes: 8 * scale,
+        wins: 5 * scale,
+        winPct: 63,
+        volume: 500 * scale,
+        netPnl: 6.5 * scale,
+        avgHoldHours: 12.5,
+        series: points.map(p => ({ date: p.date, cumPnl: p.net })),
+        enabled: true,
+      },
+    ],
+  };
+}
 
 export const FIXTURE_DASHBOARD: DashboardResponse = {
+  trading: {
+    periods: {
+      d7: samplePeriod(1, 7),
+      d30: samplePeriod(2, 30),
+      d90: samplePeriod(3, 90),
+      all: samplePeriod(4, null),
+    },
+    closedPositions: 160,
+  },
+  tradingError: null,
   generatedAt: '2026-01-01T00:00:00Z',
   kpis: {
     totalUsers: 7,
